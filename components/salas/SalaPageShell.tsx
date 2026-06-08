@@ -210,7 +210,10 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
   const lyricsDimmed = drawerProgress > 0.05;
 
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden overscroll-none bg-bg-app">
+    <div
+      className="relative flex flex-col overflow-hidden overscroll-none bg-bg-app"
+      style={{ height: "100dvh" }}
+    >
       <header className="shrink-0 border-b border-accent/35 bg-accent-dim px-2 py-1.5">
         <div className="flex items-center gap-1">
           <TapLink

@@ -280,6 +280,15 @@ export default function ColaBottomSheet({
         }}
         aria-hidden={isPeekMode && !isDragging}
       >
+        {deleteFabOpen && (
+          <button
+            type="button"
+            aria-label="Cerrar menú de borrado"
+            className="absolute inset-0 z-10 rounded-t-2xl bg-black/50"
+            onClick={() => setDeleteFabOpen(false)}
+          />
+        )}
+
         <div
           {...bindPanelDrag()}
           className="relative z-20 shrink-0 touch-none bg-bg-cola-sheet"
@@ -297,10 +306,10 @@ export default function ColaBottomSheet({
             <div className="size-8 shrink-0" aria-hidden="true" />
 
             <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
-              Lista de canciones
+              Fila de canciones
             </h2>
 
-            <div className="relative z-20 shrink-0">
+            <div className="relative z-30 shrink-0">
               <TapButton
                 type="button"
                 aria-label="Borrar toda la lista"
@@ -338,14 +347,6 @@ export default function ColaBottomSheet({
         />
 
         <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
-          {deleteFabOpen && (
-            <button
-              type="button"
-              aria-label="Cerrar menú de borrado"
-              className="absolute inset-0 z-10 bg-black/20"
-              onClick={() => setDeleteFabOpen(false)}
-            />
-          )}
           <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
             <Droppable droppableId="cola-juntada">
               {(provided) => (
@@ -409,6 +410,11 @@ export default function ColaBottomSheet({
               )}
             </Droppable>
           </DragDropContext>
+
+          <div
+            className="cola-list-fade-bottom pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-20"
+            aria-hidden="true"
+          />
         </div>
       </div>
 
@@ -433,10 +439,10 @@ export default function ColaBottomSheet({
           }`}
         >
           <span className="shrink-0 text-sm font-semibold text-text-primary">
-            Cola
+            En fila
           </span>
           <span
-            className={`flex shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white ${
+            className={`flex shrink-0 items-center justify-center rounded-full bg-cola-badge-bg font-bold text-bg-darker ${
               isPeekMode ? "size-5 text-[10px]" : "size-7 text-[11px]"
             }`}
           >

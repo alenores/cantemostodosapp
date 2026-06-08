@@ -3,6 +3,7 @@ type LetraViewerProps = {
   title?: string;
   edgeToEdge?: boolean;
   elevated?: boolean;
+  minHeight?: string;
 };
 
 export default function LetraViewer({
@@ -10,9 +11,11 @@ export default function LetraViewer({
   title = "Previsualización de letra",
   edgeToEdge = false,
   elevated = false,
+  minHeight,
 }: LetraViewerProps) {
   return (
     <div
+      style={minHeight ? { minHeight } : undefined}
       className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-letra-bg ${
         edgeToEdge ? "" : "rounded-[12px]"
       } ${

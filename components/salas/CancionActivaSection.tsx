@@ -5,7 +5,8 @@ import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const LETRA_SCROLL_BOTTOM_PX = COLA_BAR_HEIGHT_PX + 16;
+const LETRA_SCROLL_BOTTOM_PX = COLA_BAR_HEIGHT_PX + 24;
+const LETRA_IFRAME_MIN_HEIGHT = `calc(100dvh - ${COLA_BAR_HEIGHT_PX + 140}px)`;
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -111,8 +112,12 @@ export default function CancionActivaSection({
           )}
 
           {showEmbeddedLetra && urlLetra && (
-            <div className="mt-3 flex w-full flex-col">
-              <LetraViewer url={urlLetra} title="Letra de la canción activa" />
+            <div className="mt-3 flex min-h-0 w-full flex-1 flex-col">
+              <LetraViewer
+                url={urlLetra}
+                title="Letra de la canción activa"
+                minHeight={LETRA_IFRAME_MIN_HEIGHT}
+              />
               <a
                 href={urlLetra}
                 target="_blank"

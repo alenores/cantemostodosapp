@@ -106,7 +106,7 @@ export default function ColaItemCard({
   return (
     <div
       className={`flex items-stretch overflow-hidden rounded-[12px] border ${
-        isActiva ? "min-h-[62px]" : "items-center py-2.5 px-3"
+        isActiva ? "min-h-[68px]" : "items-center py-2.5 px-3"
       } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""}`}
       style={tocadaOpacity !== null ? { opacity: tocadaOpacity } : undefined}
       onContextMenu={isPendiente ? (event) => event.preventDefault() : undefined}
@@ -127,7 +127,7 @@ export default function ColaItemCard({
 
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 ${
-          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : isPendiente ? "gap-0" : ""
+          isActiva ? "gap-2 py-4 pl-2 pr-2" : isPendiente ? "gap-0" : ""
         }`}
       >
         {isPendiente ? (
@@ -153,7 +153,7 @@ export default function ColaItemCard({
         >
           <span
             className={`shrink-0 text-center font-bold ${
-              isActiva ? "w-4 text-sm" : "w-4 text-[11px]"
+              isActiva ? "w-5 text-base" : "w-4 text-[11px]"
             } ${orderClasses(variant)}`}
           >
             {item.orden}
@@ -163,7 +163,7 @@ export default function ColaItemCard({
             <p
               className={`truncate ${
                 isActiva
-                  ? "text-base font-bold text-bg-darker"
+                  ? "text-[17px] font-bold leading-snug text-bg-darker"
                   : "text-[15px] font-semibold leading-snug text-text-primary"
               }`}
             >
@@ -173,7 +173,7 @@ export default function ColaItemCard({
               <p
                 className={`truncate ${
                   isActiva
-                    ? "text-sm font-semibold text-bg-darker/75"
+                    ? "text-[15px] font-semibold leading-snug text-bg-darker/75"
                     : "text-[13px] leading-snug text-text-muted"
                 }`}
               >

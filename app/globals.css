@@ -25,6 +25,7 @@
 
   /* Acento — naranja escenario */
   --accent: #f4845f;
+  --cola-badge-bg: #f5a48a;
   --accent-dim: rgba(244, 132, 95, 0.12);
   --preview-frame-bg: #4d4540;
 
@@ -74,6 +75,7 @@
   --color-border-subtle: var(--border-subtle);
   --color-border-card: var(--border-card);
   --color-accent: var(--accent);
+  --color-cola-badge-bg: var(--cola-badge-bg);
   --color-accent-dim: var(--accent-dim);
   --color-preview-frame: var(--preview-frame-bg);
   --color-letra-bg: var(--letra-bg);
@@ -99,4 +101,14 @@ body {
   -webkit-user-select: none;
   user-select: none;
   touch-action: none;
+}
+
+.cola-list-fade-bottom {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--bg-cola-list) 28%, transparent) 42%,
+    color-mix(in srgb, var(--bg-cola-list) 72%, transparent) 72%,
+    var(--bg-cola-list) 100%
+  );
 }

@@ -1,6 +1,6 @@
+import { TapLink } from "@/components/ui/TapFeedback";
 import type { Sala } from "@/types";
 import { ArrowRight } from "lucide-react";
-import Link from "next/link";
 
 type SalaCardProps = {
   sala: Pick<Sala, "id" | "nombre" | "descripcion">;
@@ -8,7 +8,7 @@ type SalaCardProps = {
 
 export default function SalaCard({ sala }: SalaCardProps) {
   return (
-    <Link
+    <TapLink
       href={`/salas/${sala.id}`}
       className="flex min-h-11 items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3"
     >
@@ -24,6 +24,6 @@ export default function SalaCard({ sala }: SalaCardProps) {
         className="size-5 shrink-0 text-text-muted"
         aria-hidden="true"
       />
-    </Link>
+    </TapLink>
   );
 }

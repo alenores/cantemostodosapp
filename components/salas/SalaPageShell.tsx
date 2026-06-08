@@ -1,9 +1,9 @@
 "use client";
 
-import BarraCola from "@/components/salas/BarraCola";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
-import ColaJuntadaSection from "@/components/salas/ColaJuntadaSection";
+import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
+import { TapLink } from "@/components/ui/TapFeedback";
 import {
   deriveCancionActivaFromCola,
   deriveColaResumen,
@@ -12,14 +12,12 @@ import {
   fetchGuardadasKeys,
   getColaItemIdFromSesion,
   type CancionActivaData,
-  type ColaResumen,
 } from "@/lib/sala-data";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const GIT_COMMIT_SHA = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA ?? "dev";
 const SHOW_BUILD_SHA =
@@ -30,21 +28,15 @@ type SalaPageShellProps = {
   salaNombre: string;
 };
 
-const emptyColaResumen: ColaResumen = {
-  pendientes: 0,
-  proximaNombre: null,
-};
-
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const closeDrawerRef = useRef<() => void>(() => {});
+  const [drawerProgress, setDrawerProgress] = useState(0);
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
   );
   const [colaItems, setColaItems] = useState<ColaItem[]>([]);
   const [guardadasKeys, setGuardadasKeys] = useState<Set<string>>(new Set());
-  const [colaResumen, setColaResumen] = useState<ColaResumen>(emptyColaResumen);
 
   const loadColaCompleta = useCallback(async () => {
     const supabase = createClient();
@@ -55,7 +47,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
     setColaItems(items);
     setGuardadasKeys(keys);
-    setColaResumen(deriveColaResumen(items));
     setCancionActiva(deriveCancionActivaFromCola(items));
   }, [salaId]);
 
@@ -165,17 +156,19 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     };
   }, [salaId, loadColaCompleta, handleSesionChange]);
 
+  const lyricsDimmed = drawerProgress > 0.05;
+
   return (
     <div className="relative flex h-[100dvh] flex-col bg-bg-app">
       <header className="shrink-0 border-b border-accent/35 bg-accent-dim px-2 py-1.5">
         <div className="flex items-center gap-1">
-          <Link
+          <TapLink
             href="/salas"
-            aria-label="Volver a salas"
+            ariaLabel="Volver a salas"
             className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
           >
             <ArrowLeft className="size-5" aria-hidden="true" />
-          </Link>
+          </TapLink>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase leading-tight tracking-[1.5px] text-accent">
               Sala activa
@@ -194,10 +187,10 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       </header>
 
       <div
-        className={`relative flex min-h-0 flex-1 flex-col transition-opacity duration-350 ${
-          drawerOpen ? "opacity-40" : "opacity-100"
-        }`}
-        style={{ transitionTimingFunction: "var(--transition-timing)" }}
+        className="relative flex min-h-0 flex-1 flex-col transition-opacity duration-150"
+        style={{
+          opacity: lyricsDimmed ? 1 - drawerProgress * 0.6 : 1,
+        }}
       >
         <CancionActivaSection
           cancionNombre={cancionActiva?.nombre ?? null}
@@ -206,45 +199,25 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         />
       </div>
 
-      {drawerOpen && (
+      {lyricsDimmed && (
         <button
           type="button"
           aria-label="Cerrar cola"
           className="absolute inset-0 bottom-[52px] z-10 bg-black/40"
-          onClick={() => {
-            setDrawerOpen(false);
-            setDrawerExpanded(false);
-          }}
+          style={{ opacity: drawerProgress }}
+          onClick={() => closeDrawerRef.current()}
         />
       )}
 
-      <ColaJuntadaSection
-        open={drawerOpen}
-        expanded={drawerExpanded}
-        onToggleExpand={() => setDrawerExpanded((prev) => !prev)}
+      <ColaBottomSheet
         items={colaItems}
         guardadasKeys={guardadasKeys}
         salaId={salaId}
         onColaChange={loadColaCompleta}
         onOpenBuscador={() => setBuscadorOpen(true)}
-      />
-
-      <BarraCola
-        pendientes={colaResumen.pendientes}
-        proximaNombre={colaResumen.proximaNombre}
-        open={drawerOpen}
-        onToggle={() =>
-          setDrawerOpen((prev) => {
-            if (prev) {
-              setDrawerExpanded(false);
-            }
-            return !prev;
-          })
-        }
-        onOpen={() => setDrawerOpen(true)}
-        onClose={() => {
-          setDrawerOpen(false);
-          setDrawerExpanded(false);
+        onProgressChange={setDrawerProgress}
+        onRegisterClose={(close) => {
+          closeDrawerRef.current = close;
         }}
       />
 

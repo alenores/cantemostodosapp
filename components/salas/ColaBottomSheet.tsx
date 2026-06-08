@@ -3,6 +3,7 @@
 import ColaItemCard from "@/components/salas/ColaItem";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
+import { TapButton } from "@/components/ui/TapFeedback";
 import {
   avanzarCancion,
   buildReorderUpdates,
@@ -10,6 +11,7 @@ import {
   deleteColaItem,
   persistColaOrden,
 } from "@/lib/cola-logic";
+import { triggerHaptic } from "@/lib/haptic";
 import { buildGuardadaKey } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
 import type { ColaItem } from "@/types";
@@ -19,32 +21,119 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { Search } from "lucide-react";
-import { useState } from "react";
+import { useDrag } from "@use-gesture/react";
+import { ChevronUp, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-type ColaJuntadaSectionProps = {
-  open: boolean;
-  expanded: boolean;
-  onToggleExpand: () => void;
+const BAR_HEIGHT_PX = 52;
+const SNAP_THRESHOLD = 0.3;
+
+type ColaBottomSheetProps = {
   items: ColaItem[];
   guardadasKeys: Set<string>;
   salaId: number;
   onColaChange: () => Promise<void>;
   onOpenBuscador: () => void;
+  onProgressChange?: (progress: number) => void;
+  onRegisterClose?: (close: () => void) => void;
 };
 
-export default function ColaJuntadaSection({
-  open,
-  expanded,
-  onToggleExpand,
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+export default function ColaBottomSheet({
   items,
   guardadasKeys,
   salaId,
   onColaChange,
   onOpenBuscador,
-}: ColaJuntadaSectionProps) {
+  onProgressChange,
+  onRegisterClose,
+}: ColaBottomSheetProps) {
+  const [viewportHeight, setViewportHeight] = useState(800);
+  const [expanded, setExpanded] = useState(false);
+  const [translateY, setTranslateY] = useState(400);
+  const [isDragging, setIsDragging] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+
+  const openHeight =
+    expanded ? viewportHeight - 108 : viewportHeight * 0.45;
+
+  const progress = openHeight > 0 ? 1 - translateY / openHeight : 0;
+  const isSettledOpen = translateY < openHeight * (1 - SNAP_THRESHOLD);
+
+  useEffect(() => {
+    function updateViewport() {
+      setViewportHeight(window.innerHeight);
+    }
+
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    setTranslateY((current) => (current < openHeight * 0.5 ? 0 : openHeight));
+  }, [openHeight]);
+
+  useEffect(() => {
+    onProgressChange?.(progress);
+  }, [progress, onProgressChange]);
+
+  const snapOpen = useCallback(() => {
+    setTranslateY(0);
+  }, []);
+
+  const snapClosed = useCallback(() => {
+    setTranslateY(openHeight);
+    setExpanded(false);
+  }, [openHeight]);
+
+  useEffect(() => {
+    onRegisterClose?.(snapClosed);
+  }, [onRegisterClose, snapClosed]);
+
+  const bindBarDrag = useDrag(
+    ({ movement: [, my], last, first, memo }) => {
+      const startY = first ? translateY : (memo as number);
+      const next = clamp(startY + my, 0, openHeight);
+      setTranslateY(next);
+      setIsDragging(!last);
+
+      if (last) {
+        const dragProgress = 1 - next / openHeight;
+        if (dragProgress >= SNAP_THRESHOLD) {
+          snapOpen();
+        } else {
+          snapClosed();
+        }
+      }
+
+      return startY;
+    },
+    {
+      axis: "y",
+      filterTaps: true,
+      pointer: { touch: true },
+    },
+  );
+
+  function handleBarTap() {
+    triggerHaptic();
+
+    if (isSettledOpen) {
+      snapClosed();
+    } else {
+      snapOpen();
+    }
+  }
+
+  function handleToggleExpand() {
+    triggerHaptic();
+    setExpanded((prev) => !prev);
+  }
 
   async function handleDragEnd(result: DropResult) {
     const updates = buildReorderUpdates(items, result);
@@ -90,36 +179,46 @@ export default function ColaJuntadaSection({
     await onColaChange();
   }
 
+  const pendientes = items.filter((item) => item.estado === "pendiente").length;
+  const proximaNombre =
+    items.find((item) => item.estado === "pendiente")?.nombre ?? null;
+
+  const panelTransition = isDragging
+    ? "none"
+    : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
+
   return (
     <>
       <div
-        className={`fixed inset-x-0 bottom-[52px] z-20 flex flex-col rounded-t-2xl bg-bg-dark transition-[max-height,transform] duration-350 ${
-          open ? "translate-y-0" : "translate-y-full"
-        } ${expanded ? "max-h-[calc(100dvh-108px)]" : "max-h-[45dvh]"}`}
-        style={{ transitionTimingFunction: "var(--transition-timing)" }}
-        aria-hidden={!open}
+        className="fixed inset-x-0 z-20 flex flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
+        style={{
+          bottom: BAR_HEIGHT_PX,
+          height: openHeight,
+          transform: `translateY(${translateY}px)`,
+          transition: panelTransition,
+        }}
+        aria-hidden={!isSettledOpen && !isDragging}
       >
         <button
           type="button"
-          onClick={onToggleExpand}
+          onClick={handleToggleExpand}
           aria-label={expanded ? "Contraer cola" : "Expandir cola"}
-          className="flex justify-center py-3"
+          className="flex shrink-0 justify-center py-2"
         >
           <div className="h-1 w-10 rounded-full bg-border" />
         </button>
 
-        <div className="flex items-center justify-between border-b border-border px-4 pb-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3">
           <h2 className="text-base font-bold text-text-primary">
             Cola de la juntada
           </h2>
-          <button
-            type="button"
+          <TapButton
             aria-label="Buscar canción"
             onClick={onOpenBuscador}
             className="flex size-10 items-center justify-center rounded-full bg-accent"
           >
             <Search className="size-5 text-white" aria-hidden="true" />
-          </button>
+          </TapButton>
         </div>
 
         <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
@@ -128,7 +227,7 @@ export default function ColaJuntadaSection({
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className="flex-1 space-y-2 overflow-y-auto px-4 py-3"
+                className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3"
               >
                 {items.length === 0 ? (
                   <p className="py-8 text-center text-sm text-text-muted">
@@ -173,15 +272,49 @@ export default function ColaJuntadaSection({
           </Droppable>
         </DragDropContext>
 
-        <div className="border-t border-border px-4 py-3">
-          <button
-            type="button"
+        <div className="shrink-0 border-t border-border px-4 py-3">
+          <TapButton
             onClick={() => setShowDeleteAllDialog(true)}
             className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
           >
             Borrar todo
-          </button>
+          </TapButton>
         </div>
+      </div>
+
+      <div
+        {...bindBarDrag()}
+        className="fixed inset-x-0 bottom-0 z-30 touch-none border-t border-border bg-bg-dark"
+        style={{ height: BAR_HEIGHT_PX }}
+      >
+        <div className="pointer-events-none absolute inset-x-0 -top-3 flex justify-center">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleBarTap}
+          aria-expanded={isSettledOpen}
+          aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
+          className="flex size-full items-center gap-2 px-4"
+        >
+          <span className="shrink-0 text-sm font-semibold text-text-primary">
+            Cola
+          </span>
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
+            {pendientes}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
+            Próxima: {proximaNombre ?? "—"}
+          </span>
+          <ChevronUp
+            className={`size-5 shrink-0 text-text-muted transition-transform duration-350 ${
+              isSettledOpen ? "rotate-180" : ""
+            }`}
+            style={{ transitionTimingFunction: "var(--transition-timing)" }}
+            aria-hidden="true"
+          />
+        </button>
       </div>
 
       <ConfirmDialog

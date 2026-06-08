@@ -15,7 +15,11 @@ export default function LetraViewer({
     <div
       className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-letra-bg ${
         edgeToEdge ? "" : "rounded-[12px]"
-      } ${elevated ? "shadow-[0_6px_28px_rgba(0,0,0,0.38)]" : ""}`}
+      } ${
+        elevated
+          ? "border border-accent/80 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]"
+          : ""
+      }`}
     >
       <iframe
         src={url}

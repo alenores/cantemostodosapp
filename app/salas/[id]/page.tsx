@@ -63,5 +63,5 @@ export default async function SalaPage({ params }: SalasPageProps) {
     notFound();
   }
 
-  return <SalaPageShell salaNombre={sala.nombre} />;
+  return <SalaPageShell salaId={sala.id} salaNombre={sala.nombre} />;
 }

@@ -2,15 +2,107 @@
 
 import BarraCola from "@/components/salas/BarraCola";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
+import {
+  fetchCancionActiva,
+  fetchColaItemById,
+  fetchColaResumen,
+  getColaItemIdFromSesion,
+  type CancionActivaData,
+  type ColaResumen,
+} from "@/lib/sala-data";
+import { createClient } from "@/lib/supabase/client";
+import type { SesionSala } from "@/types";
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type SalaPageShellProps = {
+  salaId: number;
   salaNombre: string;
 };
 
-export default function SalaPageShell({ salaNombre }: SalaPageShellProps) {
+const emptyColaResumen: ColaResumen = {
+  pendientes: 0,
+  proximaNombre: null,
+};
+
+export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
+    null,
+  );
+  const [colaResumen, setColaResumen] = useState<ColaResumen>(emptyColaResumen);
+
+  const loadCancionActiva = useCallback(async () => {
+    const supabase = createClient();
+    const cancion = await fetchCancionActiva(supabase, salaId);
+    setCancionActiva(cancion);
+  }, [salaId]);
+
+  const loadColaResumen = useCallback(async () => {
+    const supabase = createClient();
+    const resumen = await fetchColaResumen(supabase, salaId);
+    setColaResumen(resumen);
+  }, [salaId]);
+
+  const updateCancionFromSesion = useCallback(
+    async (sesion: SesionSala) => {
+      const colaItemId = getColaItemIdFromSesion(sesion);
+
+      if (!colaItemId) {
+        setCancionActiva(null);
+        return;
+      }
+
+      const supabase = createClient();
+      const cancion = await fetchColaItemById(supabase, colaItemId);
+      setCancionActiva(cancion);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    void loadCancionActiva();
+    void loadColaResumen();
+
+    const sesionChannel = supabase
+      .channel(`sesion-${salaId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "sesion_sala",
+          filter: `sala_id=eq.${salaId}`,
+        },
+        (payload) => {
+          void updateCancionFromSesion(payload.new as SesionSala);
+        },
+      )
+      .subscribe();
+
+    const colaChannel = supabase
+      .channel(`cola-${salaId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "cola_juntada",
+          filter: `sala_id=eq.${salaId}`,
+        },
+        () => {
+          void loadColaResumen();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(sesionChannel);
+      void supabase.removeChannel(colaChannel);
+    };
+  }, [salaId, loadCancionActiva, loadColaResumen, updateCancionFromSesion]);
 
   return (
     <div className="relative flex h-[100dvh] flex-col bg-bg-app">
@@ -40,7 +132,10 @@ export default function SalaPageShell({ salaNombre }: SalaPageShellProps) {
         }`}
         style={{ transitionTimingFunction: "var(--transition-timing)" }}
       >
-        <CancionActivaSection />
+        <CancionActivaSection
+          cancionNombre={cancionActiva?.nombre ?? null}
+          artista={cancionActiva?.artista ?? null}
+        />
       </div>
 
       {drawerOpen && (
@@ -70,8 +165,8 @@ export default function SalaPageShell({ salaNombre }: SalaPageShellProps) {
       </div>
 
       <BarraCola
-        pendientes={0}
-        proximaNombre={null}
+        pendientes={colaResumen.pendientes}
+        proximaNombre={colaResumen.proximaNombre}
         open={drawerOpen}
         onToggle={() => setDrawerOpen((prev) => !prev)}
       />

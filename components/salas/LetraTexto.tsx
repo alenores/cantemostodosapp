@@ -6,7 +6,7 @@ type LetraTextoProps = {
 export default function LetraTexto({ texto }: LetraTextoProps) {
   return (
     <div
-      className="mt-3 w-full rounded-[12px] bg-letra-bg px-2.5 py-5 text-letra-text whitespace-pre-wrap"
+      className="mt-3 w-full shrink-0 rounded-[12px] bg-letra-bg px-2.5 py-5 text-letra-text whitespace-pre-wrap"
       style={{
         fontSize: "var(--letra-size)",
         lineHeight: "var(--letra-line-height)",

@@ -7,11 +7,7 @@ import {
   shouldPreferTextExtract,
   type LetraContenido,
 } from "@/lib/letra-display";
-import {
-  COLA_BAR_HEIGHT_PX,
-  LETRA_EMBED_HEIGHT_CSS,
-  LETRA_SECTION_BOTTOM_PADDING,
-} from "@/lib/sala-layout";
+import { COLA_BAR_HEIGHT_PX, LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -107,95 +103,69 @@ export default function CancionActivaSection({
     });
   }, [extractedText, letraTexto, loadingExtract, needsExtract, urlLetra]);
 
-  const header = (
-    <>
-      <h2 className="shrink-0 text-xl font-bold text-text-primary">
-        {cancionNombre}
-      </h2>
-      {artista && (
-        <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">{artista}</p>
-      )}
-    </>
-  );
+  const isEmbed = contenido?.mode === "embed";
 
-  if (!hasCancion) {
-    return (
-      <section className="flex min-h-[50vh] flex-1 flex-col bg-bg-app px-2 py-3">
+  return (
+    <section
+      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 pt-3 ${
+        isEmbed ? "overflow-hidden" : "overflow-y-auto py-3"
+      }`}
+      style={{
+        paddingBottom: isEmbed
+          ? `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 4px)`
+          : LETRA_SECTION_BOTTOM_PADDING,
+      }}
+    >
+      {!hasCancion ? (
         <div className="flex flex-1 items-center justify-center">
           <p className="text-center text-sm text-text-muted">
             Ninguna canción seleccionada aún
           </p>
         </div>
-      </section>
-    );
-  }
+      ) : (
+        <>
+          <h2 className="shrink-0 text-xl font-bold text-text-primary">
+            {cancionNombre}
+          </h2>
+          {artista && (
+            <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
+              {artista}
+            </p>
+          )}
 
-  if (!contenido && !waitingForExtract) {
-    return (
-      <section
-        className="bg-bg-app px-2 py-3"
-        style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
-      >
-        {header}
-        <p className="mt-6 text-center text-sm text-text-muted">
-          Esta canción no tiene letra disponible.
-        </p>
-      </section>
-    );
-  }
+          {waitingForExtract && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+              <Loader2
+                className="size-4 animate-spin text-accent"
+                aria-hidden="true"
+              />
+              <span>Cargando letra...</span>
+            </div>
+          )}
 
-  if (waitingForExtract) {
-    return (
-      <section
-        className="bg-bg-app px-2 py-3"
-        style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
-      >
-        {header}
-        <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
-          <Loader2
-            className="size-4 animate-spin text-accent"
-            aria-hidden="true"
-          />
-          <span>Cargando letra...</span>
-        </div>
-      </section>
-    );
-  }
+          {!contenido && !waitingForExtract && (
+            <p className="mt-6 text-center text-sm text-text-muted">
+              Esta canción no tiene letra disponible.
+            </p>
+          )}
 
-  if (!contenido) {
-    return null;
-  }
+          {contenido?.mode === "texto" && (
+            <LetraTexto texto={contenido.texto} />
+          )}
 
-  if (contenido.mode === "texto") {
-    return (
-      <section
-        className="bg-bg-app px-2 py-3"
-        style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
-      >
-        {header}
-        <LetraTexto texto={contenido.texto} />
-      </section>
-    );
-  }
-
-  return (
-    <section
-      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
-      style={{
-        paddingBottom: `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 4px)`,
-      }}
-    >
-      {header}
-      <div
-        className="mt-3 w-full shrink-0"
-        style={{ height: LETRA_EMBED_HEIGHT_CSS, minHeight: 320 }}
-      >
-        <LetraViewer
-          url={contenido.url}
-          title="Letra de la canción activa"
-          fill
-        />
-      </div>
+          {contenido?.mode === "embed" && (
+            <div className="mt-3 flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1">
+                <LetraViewer
+                  url={contenido.url}
+                  title="Letra de la canción activa"
+                  fill
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }

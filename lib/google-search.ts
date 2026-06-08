@@ -1,119 +1,235 @@
 import type { ResultadoBusqueda } from "@/types";
+import * as cheerio from "cheerio";
 
-type GoogleSearchItem = {
-  title: string;
-  link: string;
-};
-
-type GoogleSearchResponse = {
-  items?: GoogleSearchItem[];
-  error?: {
-    message?: string;
-  };
-};
-
-const GOOGLE_SEARCH_URL = "https://www.googleapis.com/customsearch/v1";
+const BASE_URL = "https://acordes.lacuerda.net";
+const SEARCH_URL = `${BASE_URL}/busca.php`;
 const MAX_RESULTS = 8;
+const SHTML_URL_PATTERN = /['"]([^'"]+\.shtml(?:\?[^'"]*)?)['"]/i;
 
-const TITLE_SUFFIX_PATTERN =
-  /\s*[\|·]\s*(La Cuerda|Cifra Club|Ultimate Guitar).*$/i;
-const PARENTHETICAL_PATTERN = /\s*\([^)]*\)\s*$/;
-
-function getGoogleCredentials(): { apiKey: string; cseId: string } {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  const cseId = process.env.GOOGLE_CSE_ID;
-
-  if (!apiKey || !cseId) {
-    throw new Error("Faltan GOOGLE_API_KEY o GOOGLE_CSE_ID en el entorno");
-  }
-
-  return { apiKey, cseId };
+function toLaCuerdaSlug(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
-export function extractSitio(url: string): string {
-  const hostname = new URL(url).hostname.replace(/^www\./i, "");
-  const parts = hostname.split(".");
+function normalizeSongUrl(rawUrl: string, artistSlug: string): string | null {
+  const trimmed = rawUrl.trim();
 
-  if (parts.length >= 3 && parts[0].length <= 3) {
-    return parts[parts.length - 2];
+  if (!trimmed) {
+    return null;
   }
 
-  return parts[0];
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed.split("#")[0];
+  }
+
+  if (trimmed.startsWith("/")) {
+    return `${BASE_URL}${trimmed.split("#")[0]}`;
+  }
+
+  if (trimmed.includes(".shtml")) {
+    if (trimmed.includes("/")) {
+      return `${BASE_URL}/${trimmed.replace(/^\/+/, "").split("#")[0]}`;
+    }
+
+    return `${BASE_URL}/${artistSlug}/${trimmed.split("#")[0]}`;
+  }
+
+  return null;
 }
 
-export function parseTituloArtista(title: string): {
-  titulo: string;
-  artista: string;
-} {
-  let cleaned = title.trim();
-  cleaned = cleaned.replace(TITLE_SUFFIX_PATTERN, "");
-  cleaned = cleaned.replace(PARENTHETICAL_PATTERN, "").trim();
+function extractArtistSlug(href: string): string | null {
+  try {
+    const url = new URL(href, BASE_URL);
+    const [slug] = url.pathname.split("/").filter(Boolean);
 
-  const byMatch = cleaned.match(/^(.+?)\s+by\s+(.+)$/i);
-  if (byMatch) {
-    return {
-      titulo: byMatch[1].trim(),
-      artista: byMatch[2].trim(),
-    };
+    if (!slug || slug.includes(".") || slug === "busca") {
+      return null;
+    }
+
+    return slug;
+  } catch {
+    return null;
   }
-
-  const dashParts = cleaned.split(/\s+-\s+/);
-  if (dashParts.length === 2) {
-    return {
-      titulo: dashParts[0].trim(),
-      artista: dashParts[1].trim(),
-    };
-  }
-
-  return {
-    titulo: cleaned,
-    artista: "",
-  };
 }
 
-function mapGoogleItem(item: GoogleSearchItem): ResultadoBusqueda {
-  const { titulo, artista } = parseTituloArtista(item.title);
+type SongAnchor = {
+  href: string;
+  onclick: string;
+  text: string;
+};
 
-  return {
-    titulo,
-    artista,
-    url: item.link,
-    sitio: extractSitio(item.link),
-  };
+function extractSongUrl(anchor: SongAnchor, artistSlug: string): string | null {
+  const href = anchor.href.trim();
+
+  if (href.includes(".shtml")) {
+    return normalizeSongUrl(href, artistSlug);
+  }
+
+  const onclick = anchor.onclick;
+  const onclickMatch = onclick.match(SHTML_URL_PATTERN);
+
+  if (onclickMatch) {
+    return normalizeSongUrl(onclickMatch[1], artistSlug);
+  }
+
+  const songName = anchor.text.trim();
+
+  if (
+    songName &&
+    (href.startsWith("javascript") || href === "#" || href === "")
+  ) {
+    const slug = toLaCuerdaSlug(songName);
+
+    if (slug) {
+      return `${BASE_URL}/${artistSlug}/${slug}.shtml`;
+    }
+  }
+
+  return null;
+}
+
+function isNavigationLink(text: string, href: string): boolean {
+  const lowered = text.toLowerCase();
+
+  return (
+    !text ||
+    lowered === "pertinencia" ||
+    lowered === "canción" ||
+    lowered === "cancion" ||
+    lowered === "artista" ||
+    href.includes("javascript:s") ||
+    href.includes("javascript:S")
+  );
+}
+
+export function parseLaCuerdaSearchHtml(html: string): ResultadoBusqueda[] {
+  const $ = cheerio.load(html);
+  const results: ResultadoBusqueda[] = [];
+  const seenUrls = new Set<string>();
+
+  $("table tr").each((_, row) => {
+    const $row = $(row);
+    const $artistLink = $row
+      .find(`a[href*="${BASE_URL}/"], a[href^="/"]`)
+      .filter((_, anchor) => {
+        const href = $(anchor).attr("href") ?? "";
+        return Boolean(extractArtistSlug(href));
+      })
+      .first();
+
+    const artistHref = $artistLink.attr("href");
+
+    if (!artistHref) {
+      return;
+    }
+
+    const artistSlug = extractArtistSlug(artistHref);
+
+    if (!artistSlug) {
+      return;
+    }
+
+    const artista = $artistLink.text().trim();
+
+    $row.find("a").each((_, anchor) => {
+      if (results.length >= MAX_RESULTS) {
+        return false;
+      }
+
+      const $anchor = $(anchor);
+      const href = $anchor.attr("href") ?? "";
+      const text = $anchor.text().trim();
+
+      if ($anchor.is($artistLink) || isNavigationLink(text, href)) {
+        return;
+      }
+
+      const url = extractSongUrl(
+        {
+          href,
+          onclick: $anchor.attr("onclick") ?? $anchor.attr("onClick") ?? "",
+          text,
+        },
+        artistSlug,
+      );
+
+      if (!url || !url.includes(".shtml") || seenUrls.has(url)) {
+        return;
+      }
+
+      seenUrls.add(url);
+      results.push({
+        titulo: text,
+        artista,
+        url,
+        sitio: "lacuerda",
+      });
+    });
+  });
+
+  if (results.length > 0) {
+    return results.slice(0, MAX_RESULTS);
+  }
+
+  $(`a[href*=".shtml"]`).each((_, anchor) => {
+    if (results.length >= MAX_RESULTS) {
+      return false;
+    }
+
+    const $anchor = $(anchor);
+    const href = $anchor.attr("href") ?? "";
+    const url = normalizeSongUrl(href, "");
+
+    if (!url || seenUrls.has(url)) {
+      return;
+    }
+
+    const artistSlug = extractArtistSlug(url);
+
+    if (!artistSlug) {
+      return;
+    }
+
+    const titulo = $anchor.text().trim();
+
+    if (!titulo) {
+      return;
+    }
+
+    seenUrls.add(url);
+    results.push({
+      titulo,
+      artista: "",
+      url,
+      sitio: "lacuerda",
+    });
+  });
+
+  return results.slice(0, MAX_RESULTS);
 }
 
 export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> {
-  const { apiKey, cseId } = getGoogleCredentials();
-
-  const params = new URLSearchParams({
-    key: apiKey,
-    cx: cseId,
-    q: query,
-    num: String(MAX_RESULTS),
+  const params = new URLSearchParams({ exp: query });
+  const response = await fetch(`${SEARCH_URL}?${params.toString()}`, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "Accept-Language": "es-AR,es;q=0.9",
+      "User-Agent":
+        "Mozilla/5.0 (compatible; CantemosTodosApp/1.0; +https://cantemostodosapp.vercel.app)",
+    },
+    cache: "no-store",
   });
 
-  const response = await fetch(`${GOOGLE_SEARCH_URL}?${params.toString()}`);
-
   if (!response.ok) {
-    let message = `Google Custom Search respondió con status ${response.status}`;
-
-    try {
-      const errorBody = (await response.json()) as GoogleSearchResponse;
-      if (errorBody.error?.message) {
-        message = errorBody.error.message;
-      }
-    } catch {
-      // Mantener mensaje genérico si el cuerpo no es JSON.
-    }
-
-    throw new Error(message);
+    throw new Error(
+      `La Cuerda respondió con status ${response.status} al buscar "${query}"`,
+    );
   }
 
-  const data = (await response.json()) as GoogleSearchResponse;
-
-  if (!data.items?.length) {
-    return [];
-  }
-
-  return data.items.map(mapGoogleItem);
+  const html = await response.text();
+  return parseLaCuerdaSearchHtml(html);
 }

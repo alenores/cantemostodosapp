@@ -26,6 +26,8 @@ import {
   DragDropContext,
   Droppable,
   Draggable,
+  type DraggableProvided,
+  type DraggableStateSnapshot,
   type DropResult,
 } from "@hello-pangea/dnd";
 import { useDrag } from "@use-gesture/react";
@@ -77,6 +79,7 @@ export default function ColaBottomSheet({
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [deleteFabOpen, setDeleteFabOpen] = useState(false);
   const [avisoEntered, setAvisoEntered] = useState(false);
+  const [isColaReordering, setIsColaReordering] = useState(false);
 
   const panelYRef = useRef(panelY);
   const contentHeightRef = useRef(400);
@@ -257,6 +260,8 @@ export default function ColaBottomSheet({
   }
 
   async function handleDragEnd(result: DropResult) {
+    setIsColaReordering(false);
+
     const updates = buildReorderUpdates(items, result);
 
     if (!updates) {
@@ -314,6 +319,54 @@ export default function ColaBottomSheet({
   const panelTransition = isDragging
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
+
+  function renderColaDraggableRow(
+    item: ColaItem,
+    index: number,
+    draggableProvided: DraggableProvided,
+    snapshot: DraggableStateSnapshot,
+  ) {
+    const isPendiente = item.estado === "pendiente";
+    const isDraggingVisual = snapshot.isDragging;
+
+    return (
+      <div
+        ref={draggableProvided.innerRef}
+        {...draggableProvided.draggableProps}
+        {...(isPendiente ? draggableProvided.dragHandleProps : {})}
+        style={draggableProvided.draggableProps.style}
+        className={
+          isPendiente
+            ? "cola-draggable-item cursor-grab active:cursor-grabbing"
+            : undefined
+        }
+        onContextMenu={
+          isPendiente ? (event) => event.preventDefault() : undefined
+        }
+      >
+        <div
+          className={
+            isDraggingVisual
+              ? "cola-drag-surface cola-drag-surface--active"
+              : "cola-drag-surface"
+          }
+        >
+          <ColaItemCard
+            item={item}
+            items={items}
+            index={index}
+            isDragging={isDraggingVisual}
+            yaGuardada={guardadasKeys.has(
+              buildGuardadaKey(item.nombre, item.url_letra),
+            )}
+            onDelete={(itemId) => void handleDeleteItem(itemId)}
+            onSelect={(itemId) => setAdvanceItemId(itemId)}
+            onFinalize={() => void handleFinalize()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -393,9 +446,34 @@ export default function ColaBottomSheet({
           </div>
         </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
-          <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
-            <Droppable droppableId="cola-juntada">
+        <div
+          className={`relative flex min-h-0 flex-1 flex-col bg-bg-cola-list ${
+            isColaReordering ? "cola-dnd-active" : ""
+          }`}
+        >
+          <DragDropContext
+            onDragStart={() => setIsColaReordering(true)}
+            onDragEnd={(result) => void handleDragEnd(result)}
+          >
+            <Droppable
+              droppableId="cola-juntada"
+              renderClone={(provided, snapshot, rubric) => {
+                const item = items.find(
+                  (colaItem) => String(colaItem.id) === rubric.draggableId,
+                );
+
+                if (!item) {
+                  return null;
+                }
+
+                return renderColaDraggableRow(
+                  item,
+                  rubric.source.index,
+                  provided,
+                  snapshot,
+                );
+              }}
+            >
               {(provided) => (
                 <div
                   ref={(node) => {
@@ -417,38 +495,14 @@ export default function ColaBottomSheet({
                       index={index}
                       isDragDisabled={item.estado !== "pendiente"}
                     >
-                      {(draggableProvided, snapshot) => (
-                        <div
-                          ref={draggableProvided.innerRef}
-                          {...draggableProvided.draggableProps}
-                          {...(item.estado === "pendiente"
-                            ? draggableProvided.dragHandleProps
-                            : {})}
-                          className={
-                            item.estado === "pendiente"
-                              ? "cola-draggable-item cursor-grab active:cursor-grabbing"
-                              : undefined
-                          }
-                          onContextMenu={
-                            item.estado === "pendiente"
-                              ? (event) => event.preventDefault()
-                              : undefined
-                          }
-                        >
-                          <ColaItemCard
-                            item={item}
-                            items={items}
-                            index={index}
-                            isDragging={snapshot.isDragging}
-                            yaGuardada={guardadasKeys.has(
-                              buildGuardadaKey(item.nombre, item.url_letra),
-                            )}
-                            onDelete={(itemId) => void handleDeleteItem(itemId)}
-                            onSelect={(itemId) => setAdvanceItemId(itemId)}
-                            onFinalize={() => void handleFinalize()}
-                          />
-                        </div>
-                      )}
+                      {(draggableProvided, snapshot) =>
+                        renderColaDraggableRow(
+                          item,
+                          index,
+                          draggableProvided,
+                          snapshot,
+                        )
+                      }
                     </Draggable>
                   ))
                 )}

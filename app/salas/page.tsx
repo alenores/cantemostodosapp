@@ -9,38 +9,17 @@ export default async function SalasPage() {
 
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser();
-
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  console.log("[salas] auth:", {
-    userId: user?.id ?? null,
-    hasSession: Boolean(session),
-    userError: userError?.message ?? null,
-    sessionError: sessionError?.message ?? null,
-  });
 
   if (!user) {
     redirect("/auth/login");
   }
 
-  const { data: salas, error: salasError, count } = await supabase
+  const { data: salas, error: salasError } = await supabase
     .from("salas")
-    .select("id, nombre, descripcion", { count: "exact" })
+    .select("id, nombre, descripcion")
     .eq("visible", true)
     .order("nombre");
-
-  console.log("[salas] query:", {
-    count,
-    rows: salas?.length ?? 0,
-    data: salas,
-    error: salasError?.message ?? null,
-    code: salasError?.code ?? null,
-  });
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">

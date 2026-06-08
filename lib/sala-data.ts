@@ -5,6 +5,8 @@ export type CancionActivaData = {
   nombre: string;
   artista: string | null;
   url_letra: string;
+  /** Texto de letra propio (manual). Si existe, se muestra en hoja blanca. */
+  letra_texto?: string | null;
 };
 
 export type ColaResumen = {

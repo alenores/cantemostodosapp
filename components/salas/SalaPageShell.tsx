@@ -238,7 +238,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       </header>
 
       <main
-        className="relative grid min-h-0 flex-1 grid-rows-1 overflow-hidden transition-opacity duration-150"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity duration-150"
         style={{
           opacity: lyricsDimmed ? 1 - drawerProgress * 0.6 : 1,
         }}
@@ -247,6 +247,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           cancionNombre={cancionActiva?.nombre ?? null}
           artista={cancionActiva?.artista ?? null}
           urlLetra={cancionActiva?.url_letra ?? null}
+          letraTexto={cancionActiva?.letra_texto ?? null}
         />
       </main>
 

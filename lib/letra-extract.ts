@@ -156,8 +156,10 @@ function extractAcordesDeCancionesLetra($: cheerio.CheerioAPI): string | null {
 
     if (tag === "div") {
       const text = node.text().trim();
-      if (/letra\s+y\s+música/i.test(text)) {
-        blocks.push(text);
+      // Crédito/autoría: no forma parte de la letra.
+      if (/letra\s+y\s+m[uú]sica/i.test(text)) {
+        node = node.next();
+        continue;
       }
     }
 

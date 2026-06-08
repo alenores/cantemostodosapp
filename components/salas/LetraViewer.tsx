@@ -18,7 +18,7 @@ export default function LetraViewer({
   if (fill) {
     return (
       <div
-        className={`relative h-full min-h-0 w-full overflow-hidden bg-letra-bg ${
+        className={`relative h-full w-full overflow-hidden bg-letra-bg ${
           edgeToEdge ? "" : "rounded-[12px]"
         }`}
       >

@@ -68,7 +68,7 @@ function variantClasses(variant: ColaVariant): string {
     case "activa":
       return "border-accent bg-accent shadow-[0_2px_12px_rgba(244,132,95,0.35)]";
     case "proxima":
-      return "border-cola-proxima-border bg-cola-proxima-bg";
+      return "border-[#353535] border-l-[3px] border-l-accent bg-[#2A2A2A]";
     case "pendiente":
       return "border-border-card bg-bg-card";
   }

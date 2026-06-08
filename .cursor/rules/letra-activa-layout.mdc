@@ -1,0 +1,16 @@
+---
+description: Layout de letra activa y cola en sala — no romper altura del main
+globs: components/salas/SalaPageShell.tsx,components/salas/CancionActivaSection.tsx,components/salas/ColaBottomSheet.tsx,components/salas/LetraViewer.tsx,components/salas/LetraTexto.tsx,lib/sala-layout.ts
+alwaysApply: false
+---
+
+# Layout letra activa
+
+Antes de editar estos archivos, leer la sección **Layout: letra activa (sala)** en `AGENTS.md`.
+
+Resumen crítico:
+
+- Panel cola en `ColaBottomSheet`: solo `fixed`, nunca `relative` en el mismo elemento.
+- `SalaPageShell`: raíz `height: 100dvh`; `main` con `min-h-0 flex-1 overflow-hidden`.
+- `CancionActivaSection`: section única; texto = scroll + `LETRA_SECTION_BOTTOM_PADDING`; embed = `LETRA_EMBED_HEIGHT_CSS` + `LetraViewer fill`.
+- Verificar: `document.querySelector("main")?.offsetHeight` ≈ 600–700px, no ~80px.

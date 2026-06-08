@@ -7,7 +7,7 @@ import {
   shouldPreferTextExtract,
   type LetraContenido,
 } from "@/lib/letra-display";
-import { LETRA_EMBED_HEIGHT_CSS, LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
+import { COLA_BAR_HEIGHT_PX, LETRA_EMBED_HEIGHT_CSS, LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -165,7 +165,7 @@ export default function CancionActivaSection({
   if (contenido.mode === "texto") {
     return (
       <section
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-bg-app px-2 py-3"
+        className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
         style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
       >
         {header}
@@ -176,8 +176,10 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-app px-2 pt-3"
-      style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
+      style={{
+        paddingBottom: `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 4px)`,
+      }}
     >
       {header}
       <div

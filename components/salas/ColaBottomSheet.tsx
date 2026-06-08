@@ -77,6 +77,7 @@ export default function ColaBottomSheet({
   const panelYRef = useRef(panelY);
   const contentHeightRef = useRef(400);
   const listScrollRef = useRef<HTMLDivElement>(null);
+  const listScrollLockedRef = useRef(false);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
   contentHeightRef.current = contentHeight;
@@ -201,8 +202,44 @@ export default function ColaBottomSheet({
   [snapPanelClosed, snapPanelOpen, togglePanel],
   );
 
+  const listPanelDragHandler = useCallback(
+    (state: {
+      movement: [number, number];
+      last: boolean;
+      first: boolean;
+      memo?: unknown;
+      tap?: boolean;
+    }) => {
+      const height = contentHeightRef.current;
+      const isOpen = panelYRef.current < height * (1 - SNAP_THRESHOLD);
+
+      if (!isOpen) {
+        listScrollLockedRef.current = false;
+        return panelYRef.current;
+      }
+
+      if (state.first) {
+        listScrollLockedRef.current =
+          (listScrollRef.current?.scrollTop ?? 0) > 0;
+      }
+
+      if (listScrollLockedRef.current) {
+        return state.first ? panelYRef.current : (state.memo as number);
+      }
+
+      return sheetDragHandler(state);
+    },
+    [sheetDragHandler],
+  );
+
   const bindBarDrag = useDrag(sheetDragHandler, sheetDragOptions);
   const bindPanelDrag = useDrag(sheetDragHandler, sheetDragOptions);
+
+  useDrag(listPanelDragHandler, {
+    ...sheetDragOptions,
+    target: listScrollRef,
+    eventOptions: { passive: false },
+  });
 
   function handleToggleExpand() {
     triggerHaptic();

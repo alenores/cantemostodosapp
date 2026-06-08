@@ -9,6 +9,7 @@ import {
   buildReorderUpdates,
   deleteColaCompleta,
   deleteColaItem,
+  finalizarCancionActiva,
   persistColaOrden,
 } from "@/lib/cola-logic";
 import { triggerHaptic } from "@/lib/haptic";
@@ -255,6 +256,13 @@ export default function ColaBottomSheet({
     await onColaChange();
   }
 
+  async function handleFinalize() {
+    triggerHaptic();
+    const supabase = createClient();
+    await finalizarCancionActiva(supabase, salaId);
+    await onColaChange();
+  }
+
   const pendientes = items.filter((item) => item.estado === "pendiente").length;
   const proximaNombre =
     items.find((item) => item.estado === "pendiente")?.nombre ?? null;
@@ -285,21 +293,33 @@ export default function ColaBottomSheet({
             <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </button>
 
-          <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 pb-3">
-            <h2 className="text-base font-bold text-text-primary">
-              Cola de la juntada
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 pb-3">
+            <h2 className="min-w-0 flex-1 text-base font-bold text-text-primary">
+              Lista de canciones
             </h2>
             {!isPeekMode && (
-              <TapButton
-                aria-label="Agregar canción"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenBuscador();
-                }}
-                className="flex size-10 items-center justify-center rounded-full bg-accent"
-              >
-                <Plus className="size-5 text-white" aria-hidden="true" />
-              </TapButton>
+              <div className="flex shrink-0 items-center gap-2">
+                <TapButton
+                  aria-label="Borrar toda la cola"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowDeleteAllDialog(true);
+                  }}
+                  className="rounded-md border border-border/70 bg-bg-card/60 px-2.5 py-1 text-[11px] font-semibold text-text-secondary"
+                >
+                  Borrar todo
+                </TapButton>
+                <TapButton
+                  aria-label="Agregar canción"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenBuscador();
+                  }}
+                  className="flex size-10 items-center justify-center rounded-full bg-accent"
+                >
+                  <Plus className="size-5 text-white" aria-hidden="true" />
+                </TapButton>
+              </div>
             )}
           </div>
         </div>
@@ -349,6 +369,7 @@ export default function ColaBottomSheet({
                             )}
                             onDelete={(itemId) => void handleDeleteItem(itemId)}
                             onSelect={(itemId) => setAdvanceItemId(itemId)}
+                            onFinalize={() => void handleFinalize()}
                           />
                         </div>
                       )}
@@ -388,18 +409,6 @@ export default function ColaBottomSheet({
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
             {pendientes}
           </span>
-          {!isPeekMode && (
-            <TapButton
-              aria-label="Borrar toda la cola"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowDeleteAllDialog(true);
-              }}
-              className="shrink-0 rounded-md border border-border/70 bg-bg-card/60 px-2 py-0.5 text-[10px] font-semibold text-text-secondary"
-            >
-              Borrar todo
-            </TapButton>
-          )}
           {isPeekMode ? (
             <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
               Próxima: {proximaNombre ?? "—"}
@@ -407,13 +416,12 @@ export default function ColaBottomSheet({
           ) : (
             <span className="min-w-0 flex-1" aria-hidden="true" />
           )}
-          <ChevronUp
-            className={`pointer-events-none size-5 shrink-0 text-text-muted transition-transform duration-350 ${
-              isSettledOpen ? "rotate-180" : ""
-            }`}
-            style={{ transitionTimingFunction: "var(--transition-timing)" }}
-            aria-hidden="true"
-          />
+          {isPeekMode && (
+            <ChevronUp
+              className="pointer-events-none size-5 shrink-0 text-text-muted"
+              aria-hidden="true"
+            />
+          )}
         </div>
       </div>
 

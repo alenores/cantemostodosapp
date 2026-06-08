@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 380 380" role="img" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="380" height="380" rx="72" fill="#2C2C2C"/>
+  <rect x="12" y="12" width="356" height="356" rx="64" fill="#232323"/>
+  <ellipse cx="175" cy="255" rx="62" ry="72" fill="#F4845F"/>
+  <ellipse cx="175" cy="255" rx="48" ry="56" fill="#E06B44"/>
+  <rect x="148" y="210" width="54" height="38" rx="4" fill="#F4845F"/>
+  <rect x="155" y="215" width="40" height="28" rx="3" fill="#E06B44"/>
+  <ellipse cx="175" cy="255" rx="62" ry="72" fill="none" stroke="#2C2C2C" stroke-width="3"/>
+  <ellipse cx="175" cy="255" rx="18" ry="18" fill="#2C2C2C" opacity="0.6"/>
+  <line x1="162" y1="195" x2="162" y2="315" stroke="#F0F0F0" stroke-width="1" opacity="0.6"/>
+  <line x1="169" y1="193" x2="169" y2="317" stroke="#F0F0F0" stroke-width="1" opacity="0.6"/>
+  <line x1="175" y1="192" x2="175" y2="318" stroke="#F0F0F0" stroke-width="1.2" opacity="0.7"/>
+  <line x1="181" y1="193" x2="181" y2="317" stroke="#F0F0F0" stroke-width="1" opacity="0.6"/>
+  <line x1="188" y1="195" x2="188" y2="315" stroke="#F0F0F0" stroke-width="1" opacity="0.6"/>
+  <rect x="163" y="100" width="24" height="120" rx="4" fill="#3A3A3A"/>
+  <rect x="165" y="100" width="20" height="118" rx="3" fill="#444"/>
+  <line x1="163" y1="130" x2="187" y2="130" stroke="#F4845F" stroke-width="1.5" opacity="0.7"/>
+  <line x1="163" y1="155" x2="187" y2="155" stroke="#F4845F" stroke-width="1.5" opacity="0.7"/>
+  <line x1="163" y1="178" x2="187" y2="178" stroke="#F4845F" stroke-width="1.5" opacity="0.7"/>
+  <rect x="158" y="72" width="34" height="32" rx="6" fill="#3A3A3A"/>
+  <rect x="160" y="74" width="30" height="28" rx="5" fill="#444"/>
+  <circle cx="163" cy="78" r="4" fill="#F4845F"/>
+  <circle cx="175" cy="78" r="4" fill="#F4845F"/>
+  <circle cx="187" cy="78" r="4" fill="#F4845F"/>
+  <circle cx="163" cy="98" r="4" fill="#F4845F"/>
+  <circle cx="175" cy="98" r="4" fill="#F4845F"/>
+  <circle cx="187" cy="98" r="4" fill="#F4845F"/>
+  <circle cx="248" cy="112" r="14" fill="#F4845F"/>
+  <line x1="262" y1="105" x2="262" y2="55" stroke="#F4845F" stroke-width="5" stroke-linecap="round"/>
+  <path d="M262 55 Q292 65 280 88" stroke="#F4845F" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="100" cy="300" r="6" fill="#F4845F" opacity="0.4"/>
+  <circle cx="85" cy="280" r="4" fill="#F4845F" opacity="0.25"/>
+  <circle cx="260" cy="310" r="5" fill="#F4845F" opacity="0.35"/>
+  <circle cx="278" cy="285" r="3" fill="#F4845F" opacity="0.2"/>
+</svg>

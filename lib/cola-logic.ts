@@ -246,6 +246,103 @@ export async function avanzarCancion(
   }
 }
 
+export async function finalizarCancionActiva(
+  supabase: SupabaseClient,
+  salaId: number,
+): Promise<void> {
+  const { data: pendiente, error: pendienteError } = await supabase
+    .from("cola_juntada")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("estado", "pendiente")
+    .order("orden", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (pendienteError) {
+    throw pendienteError;
+  }
+
+  if (pendiente) {
+    await avanzarCancion(supabase, salaId, pendiente.id);
+    return;
+  }
+
+  const { data: activaItems, error: activaError } = await supabase
+    .from("cola_juntada")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("estado", "activa");
+
+  if (activaError) {
+    throw activaError;
+  }
+
+  const activa = activaItems?.[0];
+
+  if (!activa) {
+    return;
+  }
+
+  const { error: tocadaError } = await supabase
+    .from("cola_juntada")
+    .update({ estado: "tocada" })
+    .eq("id", activa.id);
+
+  if (tocadaError) {
+    throw tocadaError;
+  }
+
+  const { data: tocadas, error: tocadasError } = await supabase
+    .from("cola_juntada")
+    .select("id, orden")
+    .eq("sala_id", salaId)
+    .eq("estado", "tocada")
+    .order("orden", { ascending: true });
+
+  if (tocadasError) {
+    throw tocadasError;
+  }
+
+  if (tocadas && tocadas.length > 2) {
+    const oldest = tocadas[0];
+    const { error } = await supabase
+      .from("cola_juntada")
+      .delete()
+      .eq("id", oldest.id);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  const { data: sesion, error: sesionError } = await supabase
+    .from("sesion_sala")
+    .select("id")
+    .eq("sala_id", salaId)
+    .maybeSingle();
+
+  if (sesionError) {
+    throw sesionError;
+  }
+
+  if (!sesion) {
+    return;
+  }
+
+  const { error: clearError } = await supabase
+    .from("sesion_sala")
+    .update({
+      cola_item_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("sala_id", salaId);
+
+  if (clearError) {
+    throw clearError;
+  }
+}
+
 export async function agregarACola(
   supabase: SupabaseClient,
   salaId: number,

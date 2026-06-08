@@ -1,0 +1,23 @@
+{
+  "name": "CantemosTodos",
+  "short_name": "CantemosTodos",
+  "description": "Letras en tiempo real para reuniones musicales con amigos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#232323",
+  "theme_color": "#F4845F",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import SplashScreen from "@/components/SplashScreen";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -9,8 +10,22 @@ const font = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CantemosTodosApp",
+  title: "CantemosTodos",
   description: "Letras en tiempo real para reuniones musicales con amigos",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "CantemosTodos",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#F4845F",
 };
 
 export default function RootLayout({
@@ -20,7 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${font.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <SplashScreen />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,8 +1,11 @@
 "use client";
 
 import LetraViewer from "@/components/salas/LetraViewer";
+import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+
+const LETRA_SCROLL_BOTTOM_PX = COLA_BAR_HEIGHT_PX + 16;
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -69,7 +72,10 @@ export default function CancionActivaSection({
   }, [urlLetra]);
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3 pb-6">
+    <section
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
+      style={{ paddingBottom: LETRA_SCROLL_BOTTOM_PX }}
+    >
       {hasCancion ? (
         <>
           <h2 className="shrink-0 text-xl font-bold text-text-primary">
@@ -93,7 +99,7 @@ export default function CancionActivaSection({
 
           {showExtractedLetra && (
             <div
-              className="mt-3 w-full rounded-[12px] bg-letra-bg px-[18px] py-5 text-letra-text whitespace-pre-wrap"
+              className="mt-3 w-full rounded-[12px] bg-letra-bg px-2.5 py-5 text-letra-text whitespace-pre-wrap"
               style={{
                 fontSize: "var(--letra-size)",
                 lineHeight: "var(--letra-line-height)",

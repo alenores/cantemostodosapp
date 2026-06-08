@@ -1,5 +1,6 @@
 "use client";
 
+import LetraViewer from "@/components/salas/LetraViewer";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,15 +17,15 @@ export default function CancionActivaSection({
 }: CancionActivaSectionProps) {
   const [letra, setLetra] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const hasCancion = Boolean(cancionNombre);
+  const showExtractedLetra = Boolean(letra);
+  const showEmbeddedLetra = Boolean(urlLetra) && !showExtractedLetra;
 
   useEffect(() => {
     if (!urlLetra) {
       setLetra(null);
       setLoading(false);
-      setError(null);
       return;
     }
 
@@ -33,7 +34,6 @@ export default function CancionActivaSection({
 
     async function loadLetra() {
       setLoading(true);
-      setError(null);
       setLetra(null);
 
       try {
@@ -49,21 +49,11 @@ export default function CancionActivaSection({
           return;
         }
 
-        if (!response.ok) {
-          throw new Error(data.error ?? "Error al cargar la letra");
+        if (response.ok && data.letra) {
+          setLetra(data.letra);
         }
-
-        setLetra(data.letra ?? null);
-      } catch (fetchError) {
-        if (cancelled) {
-          return;
-        }
-
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Error al cargar la letra",
-        );
+      } catch {
+        // Si falla el scrape server-side, el iframe muestra la letra en el browser.
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -82,26 +72,28 @@ export default function CancionActivaSection({
     <section className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-4 py-4">
       {hasCancion ? (
         <>
-          <h2 className="text-xl font-extrabold text-text-primary">
+          <h2 className="shrink-0 text-xl font-extrabold text-text-primary">
             {cancionNombre}
           </h2>
           {artista && (
-            <p className="mt-1 text-[13px] text-text-muted">{artista}</p>
+            <p className="mt-1 shrink-0 text-[13px] text-text-muted">
+              {artista}
+            </p>
           )}
 
-          {loading && (
-            <div className="mt-6 flex items-center justify-center gap-3 py-8">
+          {loading && !showExtractedLetra && !showEmbeddedLetra && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
               <Loader2
-                className="size-7 animate-spin text-accent"
+                className="size-4 animate-spin text-accent"
                 aria-hidden="true"
               />
-              <span className="sr-only">Cargando letra</span>
+              <span>Cargando letra...</span>
             </div>
           )}
 
-          {!loading && letra && (
+          {showExtractedLetra && (
             <div
-              className="mt-4 rounded-[12px] bg-letra-bg px-[18px] py-5 text-letra-text whitespace-pre-wrap"
+              className="mt-4 min-h-0 flex-1 rounded-[12px] bg-letra-bg px-[18px] py-5 text-letra-text whitespace-pre-wrap"
               style={{
                 fontSize: "var(--letra-size)",
                 lineHeight: "var(--letra-line-height)",
@@ -112,18 +104,17 @@ export default function CancionActivaSection({
             </div>
           )}
 
-          {!loading && error && urlLetra && (
-            <div className="mt-4 rounded-[12px] border border-border bg-bg-card px-[18px] py-5 text-center">
-              <p className="text-sm text-text-muted">{error}</p>
-              <button
-                type="button"
-                onClick={() =>
-                  window.open(urlLetra, "_blank", "noopener,noreferrer")
-                }
-                className="mt-4 min-h-11 rounded-[10px] bg-accent px-4 text-sm font-semibold text-white"
+          {showEmbeddedLetra && urlLetra && (
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
+              <LetraViewer url={urlLetra} title="Letra de la canción activa" />
+              <a
+                href={urlLetra}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 self-center text-sm text-text-muted underline-offset-2 hover:underline"
               >
-                Ver en el sitio
-              </button>
+                Abrir en el sitio
+              </a>
             </div>
           )}
         </>

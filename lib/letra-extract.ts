@@ -98,12 +98,16 @@ export async function obtenerLetraDesdeUrl(url: string): Promise<string> {
     throw new Error("URL no permitida");
   }
 
+  const pageUrl = new URL(url);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(url, {
-      headers: FETCH_HEADERS,
+      headers: {
+        ...FETCH_HEADERS,
+        Referer: `${pageUrl.origin}/`,
+      },
       cache: "no-store",
       signal: controller.signal,
     });

@@ -60,6 +60,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function isColaDraggableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element && Boolean(target.closest(".cola-draggable-item"))
+  );
+}
+
 export default function ColaBottomSheet({
   items,
   guardadasKeys,
@@ -85,6 +91,7 @@ export default function ColaBottomSheet({
   const contentHeightRef = useRef(400);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const listScrollLockedRef = useRef(false);
+  const isColaReorderingRef = useRef(false);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
   const closedPanelY = getColaPanelClosedY(contentHeight);
@@ -222,6 +229,8 @@ export default function ColaBottomSheet({
       first: boolean;
       memo?: unknown;
       tap?: boolean;
+      event?: Event;
+      cancel?: () => void;
     }) => {
       const height = contentHeightRef.current;
       const isOpen = panelYRef.current < height * (1 - SNAP_THRESHOLD);
@@ -231,7 +240,17 @@ export default function ColaBottomSheet({
         return panelYRef.current;
       }
 
+      if (isColaReorderingRef.current) {
+        return state.first ? panelYRef.current : (state.memo as number);
+      }
+
       if (state.first) {
+        if (isColaDraggableTarget(state.event?.target ?? null)) {
+          listScrollLockedRef.current = true;
+          state.cancel?.();
+          return panelYRef.current;
+        }
+
         listScrollLockedRef.current =
           (listScrollRef.current?.scrollTop ?? 0) > 0;
       }
@@ -317,6 +336,7 @@ export default function ColaBottomSheet({
   const panelTransition = isDragging
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
+  const panelTranslateY = panelY > 0 ? panelY : 0;
 
   function renderColaDraggableRow(
     item: ColaItem,
@@ -377,7 +397,10 @@ export default function ColaBottomSheet({
         style={{
           bottom: COLA_BAR_HEIGHT_PX,
           height: contentHeight,
-          transform: `translateY(${panelY}px)`,
+          transform:
+            panelTranslateY > 0 && !isColaReordering
+              ? `translateY(${panelTranslateY}px)`
+              : undefined,
           transition: panelTransition,
           visibility: isPeekMode && !isDragging ? "hidden" : "visible",
         }}
@@ -450,32 +473,17 @@ export default function ColaBottomSheet({
           }`}
         >
           <DragDropContext
-            onDragStart={() => setIsColaReordering(true)}
+            onDragStart={() => {
+              isColaReorderingRef.current = true;
+              setIsColaReordering(true);
+            }}
             onDragEnd={(result) => {
+              isColaReorderingRef.current = false;
               setIsColaReordering(false);
               void handleDragEnd(result);
             }}
           >
-            <Droppable
-              droppableId="cola-juntada"
-              getContainerForClone={() => document.body}
-              renderClone={(provided, snapshot, rubric) => {
-                const item = items.find(
-                  (colaItem) => String(colaItem.id) === rubric.draggableId,
-                );
-
-                if (!item) {
-                  return null;
-                }
-
-                return renderColaDraggableRow(
-                  item,
-                  rubric.source.index,
-                  provided,
-                  snapshot,
-                );
-              }}
-            >
+            <Droppable droppableId="cola-juntada">
               {(provided) => (
                 <div
                   ref={(node) => {

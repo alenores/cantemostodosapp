@@ -222,28 +222,26 @@ export default function BuscadorModal({
 
                 <input
                   ref={inputRef}
-                  type="search"
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Buscar canción..."
                   autoFocus
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent"
                 />
 
                 <button
                   type="submit"
                   aria-label="Buscar"
-                  disabled={loading || !query.trim()}
+                  disabled={!query.trim()}
                   className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent disabled:opacity-60"
                 >
-                  {loading ? (
-                    <Loader2
-                      className="size-5 animate-spin text-white"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Search className="size-5 text-white" aria-hidden="true" />
-                  )}
+                  <Search className="size-5 text-white" aria-hidden="true" />
                 </button>
               </form>
             </header>
@@ -391,7 +389,7 @@ export default function BuscadorModal({
 
                 <footer className="shrink-0 border-t border-border bg-bg-darker px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                   <p className="mb-2 text-center text-base font-bold text-accent">
-                    ¿Confirmás esta canción?
+                    ¿Confirmás que es esta la canción?
                   </p>
 
                   {error && (

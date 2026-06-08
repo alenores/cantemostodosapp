@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F4845F",
+  themeColor: "#232323",
 };
 
 export default function RootLayout({
@@ -35,6 +35,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${font.variable} h-full antialiased`}>
+      <head>
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+      </head>
       <body className="flex min-h-full flex-col">
         <SplashScreen />
         {children}

@@ -121,10 +121,6 @@ body {
   transform: scale(1.03);
 }
 
-.cola-dnd-active [data-rfd-draggable-context-id] {
-  transition: transform 0.32s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
-}
-
 .cola-dnd-active [data-rfd-placeholder-context-id] {
   box-sizing: border-box;
   margin-block: 0.25rem;

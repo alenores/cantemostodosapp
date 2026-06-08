@@ -260,8 +260,6 @@ export default function ColaBottomSheet({
   }
 
   async function handleDragEnd(result: DropResult) {
-    setIsColaReordering(false);
-
     const updates = buildReorderUpdates(items, result);
 
     if (!updates) {
@@ -327,14 +325,14 @@ export default function ColaBottomSheet({
     snapshot: DraggableStateSnapshot,
   ) {
     const isPendiente = item.estado === "pendiente";
-    const isDraggingVisual = snapshot.isDragging;
+    const isDraggingVisual =
+      snapshot.isDragging && !snapshot.isDropAnimating;
 
     return (
       <div
         ref={draggableProvided.innerRef}
         {...draggableProvided.draggableProps}
         {...(isPendiente ? draggableProvided.dragHandleProps : {})}
-        style={draggableProvided.draggableProps.style}
         className={
           isPendiente
             ? "cola-draggable-item cursor-grab active:cursor-grabbing"
@@ -453,27 +451,12 @@ export default function ColaBottomSheet({
         >
           <DragDropContext
             onDragStart={() => setIsColaReordering(true)}
-            onDragEnd={(result) => void handleDragEnd(result)}
+            onDragEnd={(result) => {
+              setIsColaReordering(false);
+              void handleDragEnd(result);
+            }}
           >
-            <Droppable
-              droppableId="cola-juntada"
-              renderClone={(provided, snapshot, rubric) => {
-                const item = items.find(
-                  (colaItem) => String(colaItem.id) === rubric.draggableId,
-                );
-
-                if (!item) {
-                  return null;
-                }
-
-                return renderColaDraggableRow(
-                  item,
-                  rubric.source.index,
-                  provided,
-                  snapshot,
-                );
-              }}
-            >
+            <Droppable droppableId="cola-juntada">
               {(provided) => (
                 <div
                   ref={(node) => {

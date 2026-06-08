@@ -1,5 +1,7 @@
 export const COLA_BAR_HEIGHT_PX = 60;
 export const COLA_AVISO_SHOW_DELAY_MS = 400;
+/** Pausa tras tap en Sig. antes de cerrar la cola y mostrar la letra */
+export const COLA_FINALIZE_BUTTON_MS = 180;
 export const SALA_HEADER_HEIGHT_PX = 56;
 /** Extra translateY al cerrar: oculta sombra/redondeo que asomaba sobre la letra activa */
 export const COLA_PANEL_CLOSED_EXTRA_PX = 32;

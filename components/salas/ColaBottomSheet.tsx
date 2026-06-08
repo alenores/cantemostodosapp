@@ -17,6 +17,7 @@ import {
 import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_BAR_HEIGHT_PX,
+  COLA_FINALIZE_BUTTON_MS,
   getColaOpenHeight,
   getColaPanelClosedY,
 } from "@/lib/sala-layout";
@@ -335,9 +336,14 @@ export default function ColaBottomSheet({
 
   async function handleFinalize() {
     triggerHaptic();
+    await new Promise((resolve) =>
+      setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
+    );
+
     const supabase = createClient();
     await finalizarCancionActiva(supabase, salaId);
     await onColaChange();
+    snapPanelClosed();
   }
 
   const pendientes = items.filter((item) => item.estado === "pendiente").length;

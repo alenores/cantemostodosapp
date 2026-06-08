@@ -12,6 +12,7 @@ import {
   persistColaOrden,
 } from "@/lib/cola-logic";
 import { triggerHaptic } from "@/lib/haptic";
+import { COLA_BAR_HEIGHT_PX, getColaOpenHeight } from "@/lib/sala-layout";
 import { buildGuardadaKey } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
 import type { ColaItem } from "@/types";
@@ -25,7 +26,6 @@ import { useDrag } from "@use-gesture/react";
 import { ChevronUp, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-const BAR_HEIGHT_PX = 52;
 const SNAP_THRESHOLD = 0.3;
 
 type ColaBottomSheetProps = {
@@ -58,8 +58,7 @@ export default function ColaBottomSheet({
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
-  const openHeight =
-    expanded ? viewportHeight - 108 : viewportHeight * 0.45;
+  const openHeight = getColaOpenHeight(viewportHeight, expanded);
 
   const progress = openHeight > 0 ? 1 - translateY / openHeight : 0;
   const isSettledOpen = translateY < openHeight * (1 - SNAP_THRESHOLD);
@@ -192,7 +191,7 @@ export default function ColaBottomSheet({
       <div
         className="fixed inset-x-0 z-20 flex flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
         style={{
-          bottom: BAR_HEIGHT_PX,
+          bottom: COLA_BAR_HEIGHT_PX,
           height: openHeight,
           transform: `translateY(${translateY}px)`,
           transition: panelTransition,
@@ -284,10 +283,10 @@ export default function ColaBottomSheet({
 
       <div
         {...bindBarDrag()}
-        className="fixed inset-x-0 bottom-0 z-30 touch-none border-t border-border bg-bg-dark"
-        style={{ height: BAR_HEIGHT_PX }}
+        className="fixed inset-x-0 bottom-0 z-30 flex touch-none flex-col overflow-hidden border-t border-border bg-bg-dark"
+        style={{ height: COLA_BAR_HEIGHT_PX }}
       >
-        <div className="pointer-events-none absolute inset-x-0 -top-3 flex justify-center">
+        <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
           <div className="h-1 w-10 rounded-full bg-border" />
         </div>
 
@@ -296,7 +295,7 @@ export default function ColaBottomSheet({
           onClick={handleBarTap}
           aria-expanded={isSettledOpen}
           aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
-          className="flex size-full items-center gap-2 px-4"
+          className="flex min-h-0 flex-1 items-center gap-2 px-4 pb-1.5"
         >
           <span className="shrink-0 text-sm font-semibold text-text-primary">
             Cola

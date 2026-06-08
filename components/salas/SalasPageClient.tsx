@@ -22,26 +22,17 @@ export default function SalasPageClient({
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+    <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
       <header className="border-b border-accent/40 bg-accent px-4 py-3">
         <h1 className="text-lg font-extrabold tracking-tight text-bg-darker">
           CantemosTodosApp
         </h1>
       </header>
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
-            Salas disponibles
-          </p>
-          <TapButton
-            aria-label="Crear sala"
-            onClick={() => setModalOpen(true)}
-            className="flex size-10 items-center justify-center rounded-full bg-accent text-white shadow-sm"
-          >
-            <Plus className="size-5" aria-hidden="true" />
-          </TapButton>
-        </div>
+      <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+        <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
+          Salas disponibles
+        </p>
 
         {errorMessage ? (
           <p className="text-sm text-accent" role="alert">
@@ -61,6 +52,14 @@ export default function SalasPageClient({
       </main>
 
       <BuildVersionFooter />
+
+      <TapButton
+        aria-label="Crear sala"
+        onClick={() => setModalOpen(true)}
+        className="fixed bottom-6 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_4px_20px_rgba(244,132,95,0.45)]"
+      >
+        <Plus className="size-6" aria-hidden="true" />
+      </TapButton>
 
       <CrearSalaModal
         open={modalOpen}

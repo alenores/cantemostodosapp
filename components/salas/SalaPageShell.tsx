@@ -13,6 +13,7 @@ import {
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
+import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -203,8 +204,8 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         <button
           type="button"
           aria-label="Cerrar cola"
-          className="absolute inset-0 bottom-[52px] z-10 bg-black/40"
-          style={{ opacity: drawerProgress }}
+          className="absolute inset-x-0 top-0 z-10 bg-black/40"
+          style={{ bottom: COLA_BAR_HEIGHT_PX, opacity: drawerProgress }}
           onClick={() => closeDrawerRef.current()}
         />
       )}

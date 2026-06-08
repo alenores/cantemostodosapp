@@ -369,9 +369,19 @@ export default function ColaBottomSheet({
             {pendientes}
           </span>
           {isPeekMode ? (
-            <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
-              Próxima: {proximaNombre ?? "—"}
-            </span>
+            <>
+              <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
+                Próxima: {proximaNombre ?? "—"}
+              </span>
+              <AddButton
+                ariaLabel="Agregar canción"
+                size="xs"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenBuscador();
+                }}
+              />
+            </>
           ) : (
             <>
               <span className="min-w-0 flex-1" aria-hidden="true" />
@@ -387,7 +397,7 @@ export default function ColaBottomSheet({
               </TapButton>
               <AddButton
                 ariaLabel="Agregar canción"
-                size="sm"
+                size="xs"
                 onClick={(event) => {
                   event.stopPropagation();
                   onOpenBuscador();

@@ -7,7 +7,11 @@ import {
   shouldPreferTextExtract,
   type LetraContenido,
 } from "@/lib/letra-display";
-import { COLA_BAR_HEIGHT_PX, LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
+import {
+  COLA_BAR_HEIGHT_PX,
+  LETRA_EMBED_HEIGHT_CSS,
+  LETRA_SECTION_BOTTOM_PADDING,
+} from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -107,7 +111,7 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 pt-3 ${
+      className={`flex min-h-0 flex-1 flex-col bg-bg-app px-2 pt-3 ${
         isEmbed ? "overflow-hidden" : "overflow-y-auto py-3"
       }`}
       style={{
@@ -154,14 +158,12 @@ export default function CancionActivaSection({
           )}
 
           {contenido?.mode === "embed" && (
-            <div className="mt-3 flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1">
-                <LetraViewer
-                  url={contenido.url}
-                  title="Letra de la canción activa"
-                  fill
-                />
-              </div>
+            <div className="mt-3 w-full shrink-0">
+              <LetraViewer
+                url={contenido.url}
+                title="Letra de la canción activa"
+                minHeight={LETRA_EMBED_HEIGHT_CSS}
+              />
             </div>
           )}
         </>

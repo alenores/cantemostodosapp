@@ -380,12 +380,17 @@ export default function BuscadorModal({
                   </div>
                 </header>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 py-3">
-                  <LetraViewer url={seleccionado.url} />
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 pb-3 pt-2">
+                  <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    Previsualización
+                  </p>
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <LetraViewer url={seleccionado.url} />
+                  </div>
                 </div>
 
                 <footer className="shrink-0 border-t border-border bg-bg-darker px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-                  <p className="mb-2 text-center text-sm font-semibold text-text-secondary">
+                  <p className="mb-2 text-center text-base font-bold text-accent">
                     ¿Confirmás esta canción?
                   </p>
 
@@ -401,7 +406,7 @@ export default function BuscadorModal({
                       className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-accent px-2 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
                     >
                       <ListPlus className="size-4 shrink-0" aria-hidden="true" />
-                      <span>+ fila</span>
+                      <span className="text-center leading-tight">Sumar a fila</span>
                     </button>
 
                     <button

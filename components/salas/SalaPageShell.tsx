@@ -2,16 +2,19 @@
 
 import BarraCola from "@/components/salas/BarraCola";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
+import ColaJuntadaSection from "@/components/salas/ColaJuntadaSection";
 import {
+  deriveColaResumen,
   fetchCancionActiva,
+  fetchColaCompleta,
   fetchColaItemById,
-  fetchColaResumen,
+  fetchGuardadasKeys,
   getColaItemIdFromSesion,
   type CancionActivaData,
   type ColaResumen,
 } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
-import type { SesionSala } from "@/types";
+import type { ColaItem, SesionSala } from "@/types";
 import { Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -27,10 +30,25 @@ const emptyColaResumen: ColaResumen = {
 
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
   );
+  const [colaItems, setColaItems] = useState<ColaItem[]>([]);
+  const [guardadasKeys, setGuardadasKeys] = useState<Set<string>>(new Set());
   const [colaResumen, setColaResumen] = useState<ColaResumen>(emptyColaResumen);
+
+  const loadColaCompleta = useCallback(async () => {
+    const supabase = createClient();
+    const [items, keys] = await Promise.all([
+      fetchColaCompleta(supabase, salaId),
+      fetchGuardadasKeys(supabase, salaId),
+    ]);
+
+    setColaItems(items);
+    setGuardadasKeys(keys);
+    setColaResumen(deriveColaResumen(items));
+  }, [salaId]);
 
   const loadCancionActiva = useCallback(async () => {
     const supabase = createClient();
@@ -38,33 +56,24 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     setCancionActiva(cancion);
   }, [salaId]);
 
-  const loadColaResumen = useCallback(async () => {
+  const updateCancionFromSesion = useCallback(async (sesion: SesionSala) => {
+    const colaItemId = getColaItemIdFromSesion(sesion);
+
+    if (!colaItemId) {
+      setCancionActiva(null);
+      return;
+    }
+
     const supabase = createClient();
-    const resumen = await fetchColaResumen(supabase, salaId);
-    setColaResumen(resumen);
-  }, [salaId]);
-
-  const updateCancionFromSesion = useCallback(
-    async (sesion: SesionSala) => {
-      const colaItemId = getColaItemIdFromSesion(sesion);
-
-      if (!colaItemId) {
-        setCancionActiva(null);
-        return;
-      }
-
-      const supabase = createClient();
-      const cancion = await fetchColaItemById(supabase, colaItemId);
-      setCancionActiva(cancion);
-    },
-    [],
-  );
+    const cancion = await fetchColaItemById(supabase, colaItemId);
+    setCancionActiva(cancion);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
 
     void loadCancionActiva();
-    void loadColaResumen();
+    void loadColaCompleta();
 
     const sesionChannel = supabase
       .channel(`sesion-${salaId}`)
@@ -93,7 +102,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           filter: `sala_id=eq.${salaId}`,
         },
         () => {
-          void loadColaResumen();
+          void loadColaCompleta();
         },
       )
       .subscribe();
@@ -102,7 +111,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       void supabase.removeChannel(sesionChannel);
       void supabase.removeChannel(colaChannel);
     };
-  }, [salaId, loadCancionActiva, loadColaResumen, updateCancionFromSesion]);
+  }, [salaId, loadCancionActiva, loadColaCompleta, updateCancionFromSesion]);
 
   return (
     <div className="relative flex h-[100dvh] flex-col bg-bg-app">
@@ -143,32 +152,35 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           type="button"
           aria-label="Cerrar cola"
           className="absolute inset-0 bottom-[52px] z-10 bg-black/40"
-          onClick={() => setDrawerOpen(false)}
+          onClick={() => {
+            setDrawerOpen(false);
+            setDrawerExpanded(false);
+          }}
         />
       )}
 
-      <div
-        className={`fixed inset-x-0 bottom-[52px] z-20 flex max-h-[45dvh] flex-col rounded-t-2xl bg-bg-dark transition-transform duration-350 ${
-          drawerOpen ? "translate-y-0" : "translate-y-full"
-        }`}
-        style={{ transitionTimingFunction: "var(--transition-timing)" }}
-        aria-hidden={!drawerOpen}
-      >
-        <div className="flex justify-center py-3">
-          <div className="h-1 w-10 rounded-full bg-border" />
-        </div>
-        <div className="flex flex-1 items-center justify-center px-4 pb-6">
-          <p className="text-sm text-text-muted">
-            Drawer de cola — próximo paso
-          </p>
-        </div>
-      </div>
+      <ColaJuntadaSection
+        open={drawerOpen}
+        expanded={drawerExpanded}
+        onToggleExpand={() => setDrawerExpanded((prev) => !prev)}
+        items={colaItems}
+        guardadasKeys={guardadasKeys}
+        salaId={salaId}
+        onColaChange={loadColaCompleta}
+      />
 
       <BarraCola
         pendientes={colaResumen.pendientes}
         proximaNombre={colaResumen.proximaNombre}
         open={drawerOpen}
-        onToggle={() => setDrawerOpen((prev) => !prev)}
+        onToggle={() =>
+          setDrawerOpen((prev) => {
+            if (prev) {
+              setDrawerExpanded(false);
+            }
+            return !prev;
+          })
+        }
       />
     </div>
   );

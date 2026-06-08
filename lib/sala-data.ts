@@ -1,4 +1,4 @@
-import type { SesionSala } from "@/types";
+import type { ColaItem, SesionSala } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CancionActivaData = {
@@ -11,6 +11,54 @@ export type ColaResumen = {
   pendientes: number;
   proximaNombre: string | null;
 };
+
+export function buildGuardadaKey(nombre: string, urlLetra: string): string {
+  return `${nombre}::${urlLetra}`;
+}
+
+export function deriveColaResumen(items: ColaItem[]): ColaResumen {
+  const pendientes = items.filter((item) => item.estado === "pendiente");
+
+  return {
+    pendientes: pendientes.length,
+    proximaNombre: pendientes[0]?.nombre ?? null,
+  };
+}
+
+export async function fetchColaCompleta(
+  supabase: SupabaseClient,
+  salaId: number,
+): Promise<ColaItem[]> {
+  const { data, error } = await supabase
+    .from("cola_juntada")
+    .select("*")
+    .eq("sala_id", salaId)
+    .order("orden", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data;
+}
+
+export async function fetchGuardadasKeys(
+  supabase: SupabaseClient,
+  salaId: number,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("canciones_guardadas")
+    .select("nombre, url_letra")
+    .eq("sala_id", salaId);
+
+  if (error || !data) {
+    return new Set();
+  }
+
+  return new Set(
+    data.map((item) => buildGuardadaKey(item.nombre, item.url_letra)),
+  );
+}
 
 export async function fetchColaItemById(
   supabase: SupabaseClient,
@@ -50,21 +98,8 @@ export async function fetchColaResumen(
   supabase: SupabaseClient,
   salaId: number,
 ): Promise<ColaResumen> {
-  const { data, error, count } = await supabase
-    .from("cola_juntada")
-    .select("nombre", { count: "exact" })
-    .eq("sala_id", salaId)
-    .eq("estado", "pendiente")
-    .order("orden", { ascending: true });
-
-  if (error) {
-    return { pendientes: 0, proximaNombre: null };
-  }
-
-  return {
-    pendientes: count ?? 0,
-    proximaNombre: data?.[0]?.nombre ?? null,
-  };
+  const items = await fetchColaCompleta(supabase, salaId);
+  return deriveColaResumen(items);
 }
 
 export function getColaItemIdFromSesion(payload: SesionSala): number | null {

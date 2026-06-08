@@ -140,6 +140,7 @@ export default function BuscadorModal({
   }
 
   function handleSelectResultado(resultado: ResultadoBusqueda) {
+    dismissKeyboard();
     setSeleccionado(resultado);
     setPantalla("preview");
   }
@@ -193,18 +194,17 @@ export default function BuscadorModal({
   }
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col bg-bg-darker">
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg-darker">
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <div
-          className="flex h-[200%] flex-col transition-transform duration-350"
+        <section
+          className="absolute inset-0 flex flex-col transition-transform duration-350"
           style={{
             transform:
-              pantalla === "preview" ? "translateY(-50%)" : "translateY(0)",
+              pantalla === "preview" ? "translateY(-100%)" : "translateY(0)",
             transitionTimingFunction: "var(--transition-timing)",
           }}
         >
-          <section className="flex h-1/2 min-h-0 flex-col">
-            <header className="shrink-0 border-b border-border px-4 py-3">
+          <header className="shrink-0 border-b border-border px-4 py-3">
               <form
                 className="flex items-center gap-3"
                 onSubmit={handleSearch}
@@ -340,12 +340,19 @@ export default function BuscadorModal({
                 </>
               )}
             </div>
-          </section>
+        </section>
 
-          <section className="flex h-1/2 min-h-0 flex-col">
-            {seleccionado && (
-              <>
-                <header className="shrink-0 border-b border-border px-4 py-3">
+        <section
+          className="absolute inset-0 flex flex-col transition-transform duration-350"
+          style={{
+            transform:
+              pantalla === "preview" ? "translateY(0)" : "translateY(100%)",
+            transitionTimingFunction: "var(--transition-timing)",
+          }}
+        >
+          {seleccionado && (
+            <>
+              <header className="shrink-0 border-b border-border px-4 py-3">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
@@ -371,11 +378,11 @@ export default function BuscadorModal({
                   </div>
                 </header>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4">
+                <div className="min-h-0 flex-1 overflow-hidden px-4 py-3">
                   <LetraViewer url={seleccionado.url} />
                 </div>
 
-                <footer className="shrink-0 border-t border-border px-4 py-4">
+                <footer className="shrink-0 border-t border-border bg-bg-darker px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                   <p className="mb-3 text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
                     ¿Qué hacemos con esto?
                   </p>
@@ -415,8 +422,7 @@ export default function BuscadorModal({
                 </footer>
               </>
             )}
-          </section>
-        </div>
+        </section>
       </div>
     </div>
   );

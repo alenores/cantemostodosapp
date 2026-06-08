@@ -18,7 +18,7 @@ export default function LetraViewer({
       <iframe
         src={url}
         title={title}
-        className="size-full min-h-[320px] flex-1 border-0"
+        className="size-full min-h-0 flex-1 border-0"
         sandbox="allow-scripts allow-same-origin allow-popups"
         referrerPolicy="no-referrer-when-downgrade"
       />

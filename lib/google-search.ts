@@ -212,17 +212,66 @@ export function parseLaCuerdaSearchHtml(html: string): ResultadoBusqueda[] {
   return results.slice(0, MAX_RESULTS);
 }
 
+const LA_CUERDA_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+  Referer: `${BASE_URL}/`,
+  "Upgrade-Insecure-Requests": "1",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "same-origin",
+  "Sec-Fetch-User": "?1",
+};
+
+function formatFetchError(error: unknown, query: string): string {
+  if (!(error instanceof Error)) {
+    return `Error de red al buscar "${query}" en La Cuerda`;
+  }
+
+  const cause = error.cause as { code?: string; message?: string } | undefined;
+  const code = cause?.code ?? "";
+
+  if (code === "UND_ERR_CONNECT_TIMEOUT" || code === "ETIMEDOUT") {
+    return `La Cuerda no respondió (timeout${code ? `: ${code}` : ""}). Posible bloqueo de IP de datacenter al buscar "${query}"`;
+  }
+
+  if (code === "ECONNREFUSED" || code === "UND_ERR_CONNECT") {
+    return `Conexión rechazada por La Cuerda (${code}) al buscar "${query}"`;
+  }
+
+  if (cause?.message) {
+    return `Error de red al buscar "${query}": ${cause.message}`;
+  }
+
+  return error.message || `Error de red al buscar "${query}" en La Cuerda`;
+}
+
 export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> {
   const params = new URLSearchParams({ exp: query });
-  const response = await fetch(`${SEARCH_URL}?${params.toString()}`, {
-    headers: {
-      Accept: "text/html,application/xhtml+xml",
-      "Accept-Language": "es-AR,es;q=0.9",
-      "User-Agent":
-        "Mozilla/5.0 (compatible; CantemosTodosApp/1.0; +https://cantemostodosapp.vercel.app)",
-    },
-    cache: "no-store",
-  });
+  const searchUrl = `${SEARCH_URL}?${params.toString()}`;
+
+  let response: Response;
+
+  try {
+    response = await fetch(searchUrl, {
+      headers: LA_CUERDA_HEADERS,
+      cache: "no-store",
+    });
+  } catch (error) {
+    console.error("[lacuerda] fetch failed:", {
+      query,
+      url: searchUrl,
+      error: error instanceof Error ? error.message : error,
+      cause:
+        error instanceof Error && error.cause
+          ? error.cause
+          : undefined,
+    });
+    throw new Error(formatFetchError(error, query));
+  }
 
   if (!response.ok) {
     throw new Error(

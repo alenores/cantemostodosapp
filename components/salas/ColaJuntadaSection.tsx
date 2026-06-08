@@ -19,7 +19,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { Plus } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
 
 type ColaJuntadaSectionProps = {
@@ -30,6 +30,7 @@ type ColaJuntadaSectionProps = {
   guardadasKeys: Set<string>;
   salaId: number;
   onColaChange: () => Promise<void>;
+  onOpenBuscador: () => void;
 };
 
 export default function ColaJuntadaSection({
@@ -40,6 +41,7 @@ export default function ColaJuntadaSection({
   guardadasKeys,
   salaId,
   onColaChange,
+  onOpenBuscador,
 }: ColaJuntadaSectionProps) {
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -112,10 +114,11 @@ export default function ColaJuntadaSection({
           </h2>
           <button
             type="button"
-            aria-label="Agregar canción"
-            className="flex size-11 items-center justify-center rounded-full border border-border text-text-primary"
+            aria-label="Buscar canción"
+            onClick={onOpenBuscador}
+            className="flex size-10 items-center justify-center rounded-full bg-accent"
           >
-            <Plus className="size-5" aria-hidden="true" />
+            <Search className="size-5 text-white" aria-hidden="true" />
           </button>
         </div>
 

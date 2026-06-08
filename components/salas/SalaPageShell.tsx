@@ -17,8 +17,13 @@ import {
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+
+const GIT_COMMIT_SHA = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA ?? "dev";
+const SHOW_BUILD_SHA =
+  process.env.NODE_ENV === "production" && GIT_COMMIT_SHA !== "dev";
 
 type SalaPageShellProps = {
   salaId: number;
@@ -162,24 +167,29 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
   return (
     <div className="relative flex h-[100dvh] flex-col bg-bg-app">
-      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
+      <header className="shrink-0 border-b border-border bg-bg-darker px-2 py-1.5">
+        <div className="flex items-center gap-1">
+          <Link
+            href="/salas"
+            aria-label="Volver a salas"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
+          >
+            <ArrowLeft className="size-5" aria-hidden="true" />
+          </Link>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
+            <p className="text-[10px] font-medium uppercase leading-tight tracking-[1.5px] text-text-faint">
               Sala activa
+              {SHOW_BUILD_SHA && (
+                <span className="normal-case tracking-normal text-text-muted">
+                  {" "}
+                  · {GIT_COMMIT_SHA}
+                </span>
+              )}
             </p>
-            <h1 className="truncate text-lg font-extrabold text-text-primary">
+            <h1 className="truncate text-base font-extrabold leading-tight text-text-primary">
               {salaNombre}
             </h1>
           </div>
-          <button
-            type="button"
-            aria-label="Buscar canción"
-            onClick={() => setBuscadorOpen(true)}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent"
-          >
-            <Search className="size-5 text-white" aria-hidden="true" />
-          </button>
         </div>
       </header>
 
@@ -216,6 +226,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         guardadasKeys={guardadasKeys}
         salaId={salaId}
         onColaChange={loadColaCompleta}
+        onOpenBuscador={() => setBuscadorOpen(true)}
       />
 
       <BarraCola

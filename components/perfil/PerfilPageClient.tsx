@@ -5,6 +5,7 @@ import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import { ArrowLeft, Camera } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 
 const inputClassName =
@@ -13,6 +14,7 @@ const inputClassName =
 const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
 
+const MIN_PASSWORD_LENGTH = 6;
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -33,13 +35,17 @@ type PerfilPageClientProps = {
 export default function PerfilPageClient({
   usuarioInicial,
 }: PerfilPageClientProps) {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nombre, setNombre] = useState(usuarioInicial.nombre);
+  const [email, setEmail] = useState(usuarioInicial.email);
+  const [contraseñaActual, setContraseñaActual] = useState("");
+  const [nuevaContraseña, setNuevaContraseña] = useState("");
+  const [confirmarContraseña, setConfirmarContraseña] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(usuarioInicial.avatar_url);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function handleAvatarPick(event: React.ChangeEvent<HTMLInputElement>) {
@@ -61,7 +67,6 @@ export default function PerfilPageClient({
     }
 
     setError(null);
-    setSuccess(null);
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   }
@@ -70,14 +75,39 @@ export default function PerfilPageClient({
     event.preventDefault();
 
     const trimmedNombre = nombre.trim();
+    const trimmedEmail = email.trim();
+
     if (!trimmedNombre) {
       setError("El nombre es obligatorio.");
       return;
     }
 
+    if (!trimmedEmail) {
+      setError("El email es obligatorio.");
+      return;
+    }
+
+    const quiereCambiarContraseña = nuevaContraseña.length > 0;
+
+    if (quiereCambiarContraseña) {
+      if (!contraseñaActual) {
+        setError("Ingresá tu contraseña actual para cambiarla.");
+        return;
+      }
+
+      if (nuevaContraseña.length < MIN_PASSWORD_LENGTH) {
+        setError(`La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+        return;
+      }
+
+      if (nuevaContraseña !== confirmarContraseña) {
+        setError("Las contraseñas nuevas no coinciden.");
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
-    setSuccess(null);
 
     const supabase = createClient();
     let nextAvatarUrl = avatarUrl;
@@ -107,12 +137,29 @@ export default function PerfilPageClient({
       nextAvatarUrl = `${publicUrl}?t=${Date.now()}`;
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({
+    const emailCambiado = trimmedEmail !== usuarioInicial.email;
+    const updatePayload: {
+      email?: string;
+      password?: string;
+      currentPassword?: string;
+      data: { nombre: string; avatar_url: string | null };
+    } = {
       data: {
         nombre: trimmedNombre,
         avatar_url: nextAvatarUrl,
       },
-    });
+    };
+
+    if (emailCambiado) {
+      updatePayload.email = trimmedEmail;
+    }
+
+    if (quiereCambiarContraseña) {
+      updatePayload.password = nuevaContraseña;
+      updatePayload.currentPassword = contraseñaActual;
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser(updatePayload);
 
     setLoading(false);
 
@@ -127,7 +174,10 @@ export default function PerfilPageClient({
       URL.revokeObjectURL(avatarPreview);
       setAvatarPreview(null);
     }
-    setSuccess("Perfil actualizado.");
+
+    router.refresh();
+    const aviso = emailCambiado ? "email-pendiente" : "perfil-actualizado";
+    router.push(`/salas?aviso=${aviso}`);
   }
 
   const previewUrl = avatarPreview ?? avatarUrl;
@@ -170,7 +220,7 @@ export default function PerfilPageClient({
               ) : (
                 <UserAvatar
                   nombre={nombre}
-                  email={usuarioInicial.email}
+                  email={email}
                   avatarUrl={null}
                   size={96}
                   className="text-2xl"
@@ -220,10 +270,77 @@ export default function PerfilPageClient({
             <input
               id="perfil-email"
               type="email"
-              readOnly
-              value={usuarioInicial.email}
-              className={`${inputClassName} opacity-70`}
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className={inputClassName}
             />
+            <p className="text-xs text-text-muted">
+              Si lo cambiás, Supabase envía un email de confirmación. Hasta
+              confirmarlo seguís entrando con el email actual.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-card/50 p-4">
+            <p className="text-sm font-semibold text-text-primary">
+              Cambiar contraseña
+            </p>
+            <p className="text-xs text-text-muted">
+              Dejá estos campos vacíos si no querés cambiarla. Supabase puede
+              pedir tu contraseña actual por seguridad.
+            </p>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="perfil-password-actual"
+                className="text-sm text-text-secondary"
+              >
+                Contraseña actual
+              </label>
+              <input
+                id="perfil-password-actual"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Solo si querés cambiarla"
+                value={contraseñaActual}
+                onChange={(event) => setContraseñaActual(event.target.value)}
+                className={inputClassName}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="perfil-password-nueva"
+                className="text-sm text-text-secondary"
+              >
+                Nueva contraseña
+              </label>
+              <input
+                id="perfil-password-nueva"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Mínimo 6 caracteres"
+                value={nuevaContraseña}
+                onChange={(event) => setNuevaContraseña(event.target.value)}
+                className={inputClassName}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="perfil-password-confirmar"
+                className="text-sm text-text-secondary"
+              >
+                Confirmar nueva contraseña
+              </label>
+              <input
+                id="perfil-password-confirmar"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Repetí la nueva contraseña"
+                value={confirmarContraseña}
+                onChange={(event) => setConfirmarContraseña(event.target.value)}
+                className={inputClassName}
+              />
+            </div>
           </div>
 
           <button
@@ -235,11 +352,6 @@ export default function PerfilPageClient({
             {loading ? "Guardando..." : "Guardar cambios"}
           </button>
 
-          {success && (
-            <p className="text-center text-sm text-text-secondary" role="status">
-              {success}
-            </p>
-          )}
           {error && (
             <p className="text-center text-sm text-accent" role="alert">
               {error}

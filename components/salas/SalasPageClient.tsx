@@ -8,8 +8,14 @@ import AddButton from "@/components/ui/AddButton";
 import { TapLink } from "@/components/ui/TapFeedback";
 import type { Sala, UsuarioActivo } from "@/types";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+
+const AVISO_MENSAJES: Record<string, string> = {
+  "perfil-actualizado": "Perfil actualizado.",
+  "email-pendiente":
+    "Te enviamos un email para confirmar el cambio. Hasta entonces seguís entrando con el email actual.",
+};
 
 type SalasPageClientProps = {
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
@@ -23,7 +29,10 @@ export default function SalasPageClient({
   usuario,
 }: SalasPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [modalOpen, setModalOpen] = useState(false);
+  const aviso = searchParams.get("aviso");
+  const avisoMensaje = aviso ? AVISO_MENSAJES[aviso] : null;
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
@@ -59,6 +68,15 @@ export default function SalasPageClient({
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+        {avisoMensaje && (
+          <p
+            className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
+            role="status"
+          >
+            {avisoMensaje}
+          </p>
+        )}
+
         <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
           Salas disponibles
         </p>

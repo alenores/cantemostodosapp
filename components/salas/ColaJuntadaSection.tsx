@@ -1,7 +1,10 @@
 "use client";
 
 import ColaItemCard from "@/components/salas/ColaItem";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
 import {
+  avanzarCancion,
   buildReorderUpdates,
   deleteColaCompleta,
   deleteColaItem,
@@ -17,6 +20,7 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd";
 import { Plus } from "lucide-react";
+import { useState } from "react";
 
 type ColaJuntadaSectionProps = {
   open: boolean;
@@ -37,6 +41,9 @@ export default function ColaJuntadaSection({
   salaId,
   onColaChange,
 }: ColaJuntadaSectionProps) {
+  const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+
   async function handleDragEnd(result: DropResult) {
     const updates = buildReorderUpdates(items, result);
 
@@ -63,109 +70,131 @@ export default function ColaJuntadaSection({
     await onColaChange();
   }
 
-  async function handleDeleteAll() {
-    const confirmed = window.confirm(
-      "¿Borrar toda la cola de la juntada?",
-    );
-
-    if (!confirmed) {
+  async function handleConfirmAdvance() {
+    if (advanceItemId === null) {
       return;
     }
 
     const supabase = createClient();
+    await avanzarCancion(supabase, salaId, advanceItemId);
+    setAdvanceItemId(null);
+    await onColaChange();
+  }
+
+  async function handleConfirmDeleteAll() {
+    const supabase = createClient();
     await deleteColaCompleta(supabase, salaId);
+    setShowDeleteAllDialog(false);
     await onColaChange();
   }
 
   return (
-    <div
-      className={`fixed inset-x-0 bottom-[52px] z-20 flex flex-col rounded-t-2xl bg-bg-dark transition-[max-height,transform] duration-350 ${
-        open ? "translate-y-0" : "translate-y-full"
-      } ${expanded ? "max-h-[calc(100dvh-108px)]" : "max-h-[45dvh]"}`}
-      style={{ transitionTimingFunction: "var(--transition-timing)" }}
-      aria-hidden={!open}
-    >
-      <button
-        type="button"
-        onClick={onToggleExpand}
-        aria-label={expanded ? "Contraer cola" : "Expandir cola"}
-        className="flex justify-center py-3"
+    <>
+      <div
+        className={`fixed inset-x-0 bottom-[52px] z-20 flex flex-col rounded-t-2xl bg-bg-dark transition-[max-height,transform] duration-350 ${
+          open ? "translate-y-0" : "translate-y-full"
+        } ${expanded ? "max-h-[calc(100dvh-108px)]" : "max-h-[45dvh]"}`}
+        style={{ transitionTimingFunction: "var(--transition-timing)" }}
+        aria-hidden={!open}
       >
-        <div className="h-1 w-10 rounded-full bg-border" />
-      </button>
-
-      <div className="flex items-center justify-between border-b border-border px-4 pb-3">
-        <h2 className="text-base font-bold text-text-primary">
-          Cola de la juntada
-        </h2>
         <button
           type="button"
-          aria-label="Agregar canción"
-          className="flex size-11 items-center justify-center rounded-full border border-border text-text-primary"
+          onClick={onToggleExpand}
+          aria-label={expanded ? "Contraer cola" : "Expandir cola"}
+          className="flex justify-center py-3"
         >
-          <Plus className="size-5" aria-hidden="true" />
+          <div className="h-1 w-10 rounded-full bg-border" />
         </button>
+
+        <div className="flex items-center justify-between border-b border-border px-4 pb-3">
+          <h2 className="text-base font-bold text-text-primary">
+            Cola de la juntada
+          </h2>
+          <button
+            type="button"
+            aria-label="Agregar canción"
+            className="flex size-11 items-center justify-center rounded-full border border-border text-text-primary"
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
+          <Droppable droppableId="cola-juntada">
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="flex-1 space-y-2 overflow-y-auto px-4 py-3"
+              >
+                {items.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-text-muted">
+                    La cola está vacía
+                  </p>
+                ) : (
+                  items.map((item, index) => (
+                    <Draggable
+                      key={item.id}
+                      draggableId={String(item.id)}
+                      index={index}
+                      isDragDisabled={item.estado !== "pendiente"}
+                    >
+                      {(draggableProvided, snapshot) => (
+                        <div
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                        >
+                          <ColaItemCard
+                            item={item}
+                            items={items}
+                            dragHandleProps={
+                              item.estado === "pendiente"
+                                ? draggableProvided.dragHandleProps
+                                : null
+                            }
+                            isDragging={snapshot.isDragging}
+                            yaGuardada={guardadasKeys.has(
+                              buildGuardadaKey(item.nombre, item.url_letra),
+                            )}
+                            onDelete={(itemId) => void handleDeleteItem(itemId)}
+                            onSelect={(itemId) => setAdvanceItemId(itemId)}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))
+                )}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+
+        <div className="border-t border-border px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setShowDeleteAllDialog(true)}
+            className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
+          >
+            Borrar todo
+          </button>
+        </div>
       </div>
 
-      <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
-        <Droppable droppableId="cola-juntada">
-          {(provided) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="flex-1 space-y-2 overflow-y-auto px-4 py-3"
-            >
-              {items.length === 0 ? (
-                <p className="py-8 text-center text-sm text-text-muted">
-                  La cola está vacía
-                </p>
-              ) : (
-                items.map((item, index) => (
-                  <Draggable
-                    key={item.id}
-                    draggableId={String(item.id)}
-                    index={index}
-                    isDragDisabled={item.estado !== "pendiente"}
-                  >
-                    {(draggableProvided, snapshot) => (
-                      <div
-                        ref={draggableProvided.innerRef}
-                        {...draggableProvided.draggableProps}
-                      >
-                        <ColaItemCard
-                          item={item}
-                          items={items}
-                          dragHandleProps={
-                            item.estado === "pendiente"
-                              ? draggableProvided.dragHandleProps
-                              : null
-                          }
-                          isDragging={snapshot.isDragging}
-                          yaGuardada={guardadasKeys.has(
-                            buildGuardadaKey(item.nombre, item.url_letra),
-                          )}
-                          onDelete={(itemId) => void handleDeleteItem(itemId)}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                ))
-              )}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <ConfirmDialog
+        open={advanceItemId !== null}
+        message="¿Querés cambiar la canción? Todos en la sala van a ver la nueva letra."
+        onCancel={() => setAdvanceItemId(null)}
+        onConfirm={() => void handleConfirmAdvance()}
+      />
 
-      <div className="border-t border-border px-4 py-3">
-        <button
-          type="button"
-          onClick={() => void handleDeleteAll()}
-          className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
-        >
-          Borrar todo
-        </button>
-      </div>
-    </div>
+      <DoubleConfirmDialog
+        open={showDeleteAllDialog}
+        step1Message="¿Querés borrar toda la cola?"
+        step2Message="¿Estás seguro? Esta acción no se puede deshacer."
+        onCancel={() => setShowDeleteAllDialog(false)}
+        onConfirm={() => void handleConfirmDeleteAll()}
+      />
+    </>
   );
 }

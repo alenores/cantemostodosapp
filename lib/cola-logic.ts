@@ -128,3 +128,114 @@ export async function deleteColaCompleta(
     throw error;
   }
 }
+
+export async function avanzarCancion(
+  supabase: SupabaseClient,
+  salaId: number,
+  nuevoItemId: number,
+): Promise<void> {
+  const { data: nuevoItem, error: nuevoError } = await supabase
+    .from("cola_juntada")
+    .select("id, estado, sala_id")
+    .eq("id", nuevoItemId)
+    .single();
+
+  if (
+    nuevoError ||
+    !nuevoItem ||
+    nuevoItem.sala_id !== salaId ||
+    nuevoItem.estado !== "pendiente"
+  ) {
+    throw new Error("La canción seleccionada no está disponible para activar.");
+  }
+
+  const { data: activaItems, error: activaError } = await supabase
+    .from("cola_juntada")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("estado", "activa");
+
+  if (activaError) {
+    throw activaError;
+  }
+
+  const activa = activaItems?.[0];
+
+  if (activa) {
+    const { error } = await supabase
+      .from("cola_juntada")
+      .update({ estado: "tocada" })
+      .eq("id", activa.id);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  const { data: tocadas, error: tocadasError } = await supabase
+    .from("cola_juntada")
+    .select("id, orden")
+    .eq("sala_id", salaId)
+    .eq("estado", "tocada")
+    .order("orden", { ascending: true });
+
+  if (tocadasError) {
+    throw tocadasError;
+  }
+
+  if (tocadas && tocadas.length > 2) {
+    const oldest = tocadas[0];
+    const { error } = await supabase
+      .from("cola_juntada")
+      .delete()
+      .eq("id", oldest.id);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  const { error: activarError } = await supabase
+    .from("cola_juntada")
+    .update({ estado: "activa" })
+    .eq("id", nuevoItemId);
+
+  if (activarError) {
+    throw activarError;
+  }
+
+  const { data: sesion, error: sesionError } = await supabase
+    .from("sesion_sala")
+    .select("id")
+    .eq("sala_id", salaId)
+    .maybeSingle();
+
+  if (sesionError) {
+    throw sesionError;
+  }
+
+  if (sesion) {
+    const { error } = await supabase
+      .from("sesion_sala")
+      .update({
+        cola_item_id: nuevoItemId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("sala_id", salaId);
+
+    if (error) {
+      throw error;
+    }
+
+    return;
+  }
+
+  const { error: insertError } = await supabase.from("sesion_sala").insert({
+    sala_id: salaId,
+    cola_item_id: nuevoItemId,
+  });
+
+  if (insertError) {
+    throw insertError;
+  }
+}

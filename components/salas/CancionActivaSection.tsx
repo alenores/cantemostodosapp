@@ -72,7 +72,7 @@ export default function CancionActivaSection({
     <section className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3 pb-6">
       {hasCancion ? (
         <>
-          <h2 className="shrink-0 text-xl font-extrabold text-text-primary">
+          <h2 className="shrink-0 text-xl font-bold text-text-primary">
             {cancionNombre}
           </h2>
           {artista && (

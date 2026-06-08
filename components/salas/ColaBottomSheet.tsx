@@ -266,7 +266,7 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className="fixed inset-x-0 z-20 flex flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
+        className="fixed inset-x-0 z-20 flex flex-col overflow-hidden rounded-t-2xl bg-bg-cola-sheet"
         style={{
           bottom: COLA_BAR_HEIGHT_PX,
           height: contentHeight,
@@ -282,10 +282,10 @@ export default function ColaBottomSheet({
             aria-label={expanded ? "Contraer cola" : "Expandir cola"}
             className="flex w-full shrink-0 justify-center py-2"
           >
-            <div className="h-1 w-10 rounded-full bg-border" />
+            <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </button>
 
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 pb-3">
             <h2 className="text-base font-bold text-text-primary">
               Cola de la juntada
             </h2>
@@ -368,12 +368,12 @@ export default function ColaBottomSheet({
         tabIndex={0}
         aria-expanded={isSettledOpen}
         aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
-        className="fixed inset-x-0 bottom-0 z-30 flex touch-none flex-col overflow-hidden border-t border-border bg-bg-dark"
+        className="fixed inset-x-0 bottom-0 z-30 flex touch-none flex-col overflow-hidden border-t border-border/60 bg-bg-cola-sheet"
         style={{ height: COLA_BAR_HEIGHT_PX }}
       >
         {isPeekMode && (
           <div className="pointer-events-none flex shrink-0 justify-center pt-1.5 pb-0.5">
-            <div className="h-1 w-10 rounded-full bg-border" />
+            <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </div>
         )}
 
@@ -388,16 +388,18 @@ export default function ColaBottomSheet({
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
             {pendientes}
           </span>
-          <TapButton
-            aria-label="Borrar toda la cola"
-            onClick={(event) => {
-              event.stopPropagation();
-              setShowDeleteAllDialog(true);
-            }}
-            className="shrink-0 rounded-md border border-border px-2 py-0.5 text-[10px] font-semibold text-text-secondary"
-          >
-            Borrar todo
-          </TapButton>
+          {!isPeekMode && (
+            <TapButton
+              aria-label="Borrar toda la cola"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowDeleteAllDialog(true);
+              }}
+              className="shrink-0 rounded-md border border-border/70 bg-bg-card/60 px-2 py-0.5 text-[10px] font-semibold text-text-secondary"
+            >
+              Borrar todo
+            </TapButton>
+          )}
           {isPeekMode ? (
             <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
               Próxima: {proximaNombre ?? "—"}

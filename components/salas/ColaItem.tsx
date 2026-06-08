@@ -108,7 +108,7 @@ export default function ColaItemCard({
   return (
     <div
       className={`flex items-center gap-2 rounded-[12px] border py-2 ${
-        isActiva ? "gap-1.5 pl-2 pr-2.5 py-2.5" : "px-3"
+        isActiva ? "min-h-[60px] gap-1.5 pl-2 pr-2.5 py-3.5" : "px-3"
       } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""}`}
       style={tocadaOpacity !== null ? { opacity: tocadaOpacity } : undefined}
     >
@@ -137,10 +137,10 @@ export default function ColaItemCard({
 
         <div className="min-w-0 flex-1">
           <p
-            className={`truncate font-semibold ${
+            className={`truncate ${
               isActiva
-                ? "text-base text-bg-darker"
-                : "text-sm text-text-primary"
+                ? "text-base font-bold text-bg-darker"
+                : "text-sm font-semibold text-text-primary"
             }`}
           >
             {item.nombre}
@@ -148,7 +148,9 @@ export default function ColaItemCard({
           {item.artista && (
             <p
               className={`truncate ${
-                isActiva ? "text-sm text-bg-darker/75" : "text-xs text-text-muted"
+                isActiva
+                  ? "text-sm font-semibold text-bg-darker/75"
+                  : "text-xs text-text-muted"
               }`}
             >
               {item.artista}

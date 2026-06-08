@@ -7,6 +7,8 @@
   --bg-darker: #141414;
   --bg-card: #252525;
   --bg-card-hover: #2a2018;
+  --bg-cola-sheet: #383838;
+  --cola-sheet-pill: #525252;
 
   /* Texto */
   --text-primary: #f0f0f0;
@@ -44,7 +46,7 @@
   /* Letra de canción */
   --letra-size: 16px;
   --letra-line-height: 2;
-  --letra-weight: 500;
+  --letra-weight: 700;
 
   /* Transiciones */
   --transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
@@ -57,6 +59,8 @@
   --color-bg-darker: var(--bg-darker);
   --color-bg-card: var(--bg-card);
   --color-bg-card-hover: var(--bg-card-hover);
+  --color-bg-cola-sheet: var(--bg-cola-sheet);
+  --color-cola-sheet-pill: var(--cola-sheet-pill);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);

@@ -456,7 +456,26 @@ export default function ColaBottomSheet({
               void handleDragEnd(result);
             }}
           >
-            <Droppable droppableId="cola-juntada">
+            <Droppable
+              droppableId="cola-juntada"
+              getContainerForClone={() => document.body}
+              renderClone={(provided, snapshot, rubric) => {
+                const item = items.find(
+                  (colaItem) => String(colaItem.id) === rubric.draggableId,
+                );
+
+                if (!item) {
+                  return null;
+                }
+
+                return renderColaDraggableRow(
+                  item,
+                  rubric.source.index,
+                  provided,
+                  snapshot,
+                );
+              }}
+            >
               {(provided) => (
                 <div
                   ref={(node) => {

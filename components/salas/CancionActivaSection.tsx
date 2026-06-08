@@ -6,10 +6,7 @@ import {
   resolveLetraContenido,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
-import {
-  LETRA_EMBED_HEIGHT_CSS,
-  LETRA_SECTION_BOTTOM_PADDING,
-} from "@/lib/sala-layout";
+import { LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -104,74 +101,61 @@ export default function CancionActivaSection({
     });
   }, [extractedText, letraTexto, loadingExtract, needsExtract, urlLetra]);
 
-  const header = (
-    <>
-      <h2 className="shrink-0 text-xl font-bold text-text-primary">
-        {cancionNombre}
-      </h2>
-      {artista && (
-        <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">{artista}</p>
-      )}
-    </>
-  );
-
-  const sectionStyle = { paddingBottom: LETRA_SECTION_BOTTOM_PADDING };
-
-  if (!hasCancion) {
-    return (
-      <section className="flex min-h-0 flex-1 items-center justify-center bg-bg-app px-2 py-3">
-        <p className="text-center text-sm text-text-muted">
-          Ninguna canción seleccionada aún
-        </p>
-      </section>
-    );
-  }
-
-  if (contenido?.mode === "embed") {
-    return (
-      <section
-        className="min-h-0 flex-1 overflow-y-auto bg-bg-app px-2 py-3"
-        style={sectionStyle}
-      >
-        {header}
-        <div
-          className="mt-3 w-full shrink-0 overflow-hidden rounded-[12px]"
-          style={{ height: LETRA_EMBED_HEIGHT_CSS, minHeight: 320 }}
-        >
-          <LetraViewer
-            url={contenido.url}
-            title="Letra de la canción activa"
-            fill
-          />
-        </div>
-      </section>
-    );
-  }
+  const showTexto = contenido?.mode === "texto";
+  const showEmbed = contenido?.mode === "embed";
 
   return (
     <section
-      className="min-h-0 flex-1 overflow-y-auto bg-bg-app px-2 py-3"
-      style={sectionStyle}
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
+      style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
     >
-      {header}
+      {hasCancion ? (
+        <>
+          <h2 className="shrink-0 text-xl font-bold text-text-primary">
+            {cancionNombre}
+          </h2>
+          {artista && (
+            <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
+              {artista}
+            </p>
+          )}
 
-      {waitingForExtract && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
-          <Loader2
-            className="size-4 animate-spin text-accent"
-            aria-hidden="true"
-          />
-          <span>Cargando letra...</span>
+          {waitingForExtract && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+              <Loader2
+                className="size-4 animate-spin text-accent"
+                aria-hidden="true"
+              />
+              <span>Cargando letra...</span>
+            </div>
+          )}
+
+          {!contenido && !waitingForExtract && (
+            <p className="mt-6 text-center text-sm text-text-muted">
+              Esta canción no tiene letra disponible.
+            </p>
+          )}
+
+          {showTexto && contenido.mode === "texto" && (
+            <LetraTexto texto={contenido.texto} />
+          )}
+
+          {showEmbed && contenido.mode === "embed" && (
+            <div className="mt-3 w-full shrink-0">
+              <LetraViewer
+                url={contenido.url}
+                title="Letra de la canción activa"
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-center text-sm text-text-muted">
+            Ninguna canción seleccionada aún
+          </p>
         </div>
       )}
-
-      {!contenido && !waitingForExtract && (
-        <p className="mt-6 text-center text-sm text-text-muted">
-          Esta canción no tiene letra disponible.
-        </p>
-      )}
-
-      {contenido?.mode === "texto" && <LetraTexto texto={contenido.texto} />}
     </section>
   );
 }

@@ -1,12 +1,17 @@
 "use client";
 
+import { useDrag } from "@use-gesture/react";
 import { ChevronUp } from "lucide-react";
+
+const SWIPE_THRESHOLD_PX = 50;
 
 type BarraColaProps = {
   pendientes: number;
   proximaNombre: string | null;
   open: boolean;
   onToggle: () => void;
+  onOpen: () => void;
+  onClose: () => void;
 };
 
 export default function BarraCola({
@@ -14,14 +19,39 @@ export default function BarraCola({
   proximaNombre,
   open,
   onToggle,
+  onOpen,
+  onClose,
 }: BarraColaProps) {
+  const bind = useDrag(
+    ({ movement: [, my], last }) => {
+      if (!last) {
+        return;
+      }
+
+      if (my < -SWIPE_THRESHOLD_PX && !open) {
+        onOpen();
+        return;
+      }
+
+      if (my > SWIPE_THRESHOLD_PX && open) {
+        onClose();
+      }
+    },
+    {
+      axis: "y",
+      filterTaps: true,
+      pointer: { touch: true },
+    },
+  );
+
   return (
     <button
       type="button"
+      {...bind()}
       onClick={onToggle}
       aria-expanded={open}
       aria-label={open ? "Cerrar cola" : "Abrir cola"}
-      className="relative z-30 flex h-[52px] shrink-0 cursor-pointer items-center gap-2 border-t border-border bg-bg-dark px-4"
+      className="relative z-30 flex h-[52px] shrink-0 cursor-pointer touch-none items-center gap-2 border-t border-border bg-bg-dark px-4"
     >
       <span className="shrink-0 text-sm font-semibold text-text-primary">
         Cola

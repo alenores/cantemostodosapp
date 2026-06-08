@@ -167,7 +167,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
   return (
     <div className="relative flex h-[100dvh] flex-col bg-bg-app">
-      <header className="shrink-0 border-b border-border bg-bg-darker px-2 py-1.5">
+      <header className="shrink-0 border-b border-accent/35 bg-accent-dim px-2 py-1.5">
         <div className="flex items-center gap-1">
           <Link
             href="/salas"
@@ -177,7 +177,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
             <ArrowLeft className="size-5" aria-hidden="true" />
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium uppercase leading-tight tracking-[1.5px] text-text-faint">
+            <p className="text-[10px] font-semibold uppercase leading-tight tracking-[1.5px] text-accent">
               Sala activa
               {SHOW_BUILD_SHA && (
                 <span className="normal-case tracking-normal text-text-muted">
@@ -241,6 +241,11 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
             return !prev;
           })
         }
+        onOpen={() => setDrawerOpen(true)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setDrawerExpanded(false);
+        }}
       />
 
       {buscadorOpen && (

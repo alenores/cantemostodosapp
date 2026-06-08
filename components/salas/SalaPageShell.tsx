@@ -4,8 +4,8 @@ import BarraCola from "@/components/salas/BarraCola";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaJuntadaSection from "@/components/salas/ColaJuntadaSection";
 import {
+  deriveCancionActivaFromCola,
   deriveColaResumen,
-  fetchCancionActiva,
   fetchColaCompleta,
   fetchColaItemById,
   fetchGuardadasKeys,
@@ -48,12 +48,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     setColaItems(items);
     setGuardadasKeys(keys);
     setColaResumen(deriveColaResumen(items));
-  }, [salaId]);
-
-  const loadCancionActiva = useCallback(async () => {
-    const supabase = createClient();
-    const cancion = await fetchCancionActiva(supabase, salaId);
-    setCancionActiva(cancion);
+    setCancionActiva(deriveCancionActivaFromCola(items));
   }, [salaId]);
 
   const updateCancionFromSesion = useCallback(async (sesion: SesionSala) => {
@@ -69,10 +64,17 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     setCancionActiva(cancion);
   }, []);
 
+  const handleSesionChange = useCallback(
+    (payload: { new: Record<string, unknown> }) => {
+      console.log("[sesion] evento:", payload.new);
+      void updateCancionFromSesion(payload.new as SesionSala);
+    },
+    [updateCancionFromSesion],
+  );
+
   useEffect(() => {
     const supabase = createClient();
 
-    void loadCancionActiva();
     void loadColaCompleta();
 
     const sesionChannel = supabase
@@ -85,11 +87,21 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           table: "sesion_sala",
           filter: `sala_id=eq.${salaId}`,
         },
-        (payload) => {
-          void updateCancionFromSesion(payload.new as SesionSala);
-        },
+        handleSesionChange,
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "sesion_sala",
+          filter: `sala_id=eq.${salaId}`,
+        },
+        handleSesionChange,
+      )
+      .subscribe((status) => {
+        console.log("[sesion] status:", status);
+      });
 
     const colaChannel = supabase
       .channel(`cola-${salaId}`)
@@ -105,13 +117,15 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           void loadColaCompleta();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[cola] status:", status);
+      });
 
     return () => {
       void supabase.removeChannel(sesionChannel);
       void supabase.removeChannel(colaChannel);
     };
-  }, [salaId, loadCancionActiva, loadColaCompleta, updateCancionFromSesion]);
+  }, [salaId, loadColaCompleta, handleSesionChange]);
 
   return (
     <div className="relative flex h-[100dvh] flex-col bg-bg-app">

@@ -25,6 +25,22 @@ export function deriveColaResumen(items: ColaItem[]): ColaResumen {
   };
 }
 
+export function deriveCancionActivaFromCola(
+  items: ColaItem[],
+): CancionActivaData | null {
+  const activa = items.find((item) => item.estado === "activa");
+
+  if (!activa) {
+    return null;
+  }
+
+  return {
+    nombre: activa.nombre,
+    artista: activa.artista,
+    url_letra: activa.url_letra,
+  };
+}
+
 export async function fetchColaCompleta(
   supabase: SupabaseClient,
   salaId: number,

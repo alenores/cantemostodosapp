@@ -1,7 +1,10 @@
 "use client";
 
 import LetraViewer from "@/components/salas/LetraViewer";
-import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
+import {
+  COLA_BAR_HEIGHT_PX,
+  LETRA_ACTIVE_HEIGHT_CSS,
+} from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -112,7 +115,11 @@ export default function CancionActivaSection({
 
           {showEmbeddedLetra && urlLetra && (
             <div className="mt-3 flex w-full flex-col">
-              <LetraViewer url={urlLetra} title="Letra de la canción activa" />
+              <LetraViewer
+                url={urlLetra}
+                title="Letra de la canción activa"
+                height={LETRA_ACTIVE_HEIGHT_CSS}
+              />
               <a
                 href={urlLetra}
                 target="_blank"

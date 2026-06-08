@@ -14,7 +14,11 @@ import {
   persistColaOrden,
 } from "@/lib/cola-logic";
 import { triggerHaptic } from "@/lib/haptic";
-import { COLA_BAR_HEIGHT_PX, getColaOpenHeight } from "@/lib/sala-layout";
+import {
+  COLA_BAR_HEIGHT_PX,
+  getColaOpenHeight,
+  getColaPanelClosedY,
+} from "@/lib/sala-layout";
 import { buildGuardadaKey } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
 import type { ColaItem } from "@/types";
@@ -80,12 +84,16 @@ export default function ColaBottomSheet({
   const listScrollLockedRef = useRef(false);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
+  const closedPanelY = getColaPanelClosedY(contentHeight);
   contentHeightRef.current = contentHeight;
   panelYRef.current = panelY;
 
-  const progress = contentHeight > 0 ? 1 - panelY / contentHeight : 0;
+  const progress =
+    contentHeight > 0
+      ? Math.max(0, Math.min(1, 1 - panelY / contentHeight))
+      : 0;
   const isSettledOpen = panelY < contentHeight * (1 - SNAP_THRESHOLD);
-  const isPeekMode = panelY >= contentHeight * PEEK_THRESHOLD;
+  const isPeekMode = panelY >= closedPanelY * PEEK_THRESHOLD;
 
   useEffect(() => {
     function updateViewport() {
@@ -98,7 +106,8 @@ export default function ColaBottomSheet({
   }, []);
 
   useEffect(() => {
-    setPanelY((current) => (current < contentHeight * 0.5 ? 0 : contentHeight));
+    const closedY = getColaPanelClosedY(contentHeight);
+    setPanelY((current) => (current < contentHeight * 0.5 ? 0 : closedY));
   }, [contentHeight]);
 
   useEffect(() => {
@@ -110,7 +119,7 @@ export default function ColaBottomSheet({
   }, []);
 
   const snapPanelClosed = useCallback(() => {
-    setPanelY(contentHeightRef.current);
+    setPanelY(getColaPanelClosedY(contentHeightRef.current));
     setExpanded(false);
     setDeleteFabOpen(false);
   }, []);
@@ -177,6 +186,7 @@ export default function ColaBottomSheet({
     cancel?: () => void;
   }) => {
     const height = contentHeightRef.current;
+    const closedY = getColaPanelClosedY(height);
     const startY = first ? panelYRef.current : (memo as number);
 
     if (last && (tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX)) {
@@ -184,7 +194,7 @@ export default function ColaBottomSheet({
       return startY;
     }
 
-    const next = clamp(startY + my, 0, height);
+    const next = clamp(startY + my, 0, closedY);
     setPanelY(next);
     setIsDragging(!last);
 
@@ -308,12 +318,17 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className="fixed left-1.5 right-1.5 z-20 flex flex-col overflow-hidden rounded-t-2xl shadow-[0_-6px_28px_rgba(0,0,0,0.45)] relative"
+        className={`fixed left-1.5 right-1.5 z-20 flex flex-col overflow-hidden rounded-t-2xl relative ${
+          isPeekMode && !isDragging
+            ? "pointer-events-none shadow-none"
+            : "shadow-[0_-6px_28px_rgba(0,0,0,0.45)]"
+        }`}
         style={{
           bottom: COLA_BAR_HEIGHT_PX,
           height: contentHeight,
           transform: `translateY(${panelY}px)`,
           transition: panelTransition,
+          visibility: isPeekMode && !isDragging ? "hidden" : "visible",
         }}
         aria-hidden={isPeekMode && !isDragging}
       >

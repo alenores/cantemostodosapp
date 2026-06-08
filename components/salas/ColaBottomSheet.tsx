@@ -291,7 +291,7 @@ export default function ColaBottomSheet({
 
         <div
           {...bindPanelDrag()}
-          className="relative z-20 shrink-0 touch-none bg-bg-cola-sheet"
+          className="relative z-20 shrink-0 touch-none border-b border-border bg-bg-cola-sheet"
         >
           <button
             type="button"
@@ -340,11 +340,6 @@ export default function ColaBottomSheet({
             </div>
           </div>
         </div>
-
-        <div
-          className="mx-3 h-px shrink-0 bg-border/70"
-          aria-hidden="true"
-        />
 
         <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
           <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
@@ -412,7 +407,7 @@ export default function ColaBottomSheet({
           </DragDropContext>
 
           <div
-            className="cola-list-fade-bottom pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-20"
+            className="cola-list-fade-bottom pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-36"
             aria-hidden="true"
           />
         </div>

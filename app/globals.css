@@ -107,8 +107,9 @@ body {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    color-mix(in srgb, var(--bg-cola-list) 28%, transparent) 42%,
-    color-mix(in srgb, var(--bg-cola-list) 72%, transparent) 72%,
+    color-mix(in srgb, var(--bg-cola-list) 18%, transparent) 28%,
+    color-mix(in srgb, var(--bg-cola-list) 45%, transparent) 52%,
+    color-mix(in srgb, var(--bg-cola-list) 78%, transparent) 78%,
     var(--bg-cola-list) 100%
   );
 }

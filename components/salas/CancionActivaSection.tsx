@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const LETRA_SCROLL_BOTTOM_PX = COLA_BAR_HEIGHT_PX + 24;
-const LETRA_IFRAME_MIN_HEIGHT = `calc(100dvh - ${COLA_BAR_HEIGHT_PX + 140}px)`;
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -74,8 +73,14 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
-      style={{ paddingBottom: LETRA_SCROLL_BOTTOM_PX }}
+      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 pt-3 ${
+        showEmbeddedLetra ? "overflow-hidden" : "overflow-y-auto py-3"
+      }`}
+      style={{
+        paddingBottom: showEmbeddedLetra
+          ? COLA_BAR_HEIGHT_PX + 4
+          : LETRA_SCROLL_BOTTOM_PX,
+      }}
     >
       {hasCancion ? (
         <>
@@ -112,17 +117,19 @@ export default function CancionActivaSection({
           )}
 
           {showEmbeddedLetra && urlLetra && (
-            <div className="mt-3 flex min-h-0 w-full flex-1 flex-col">
-              <LetraViewer
-                url={urlLetra}
-                title="Letra de la canción activa"
-                minHeight={LETRA_IFRAME_MIN_HEIGHT}
-              />
+            <div className="mt-3 flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1">
+                <LetraViewer
+                  url={urlLetra}
+                  title="Letra de la canción activa"
+                  fill
+                />
+              </div>
               <a
                 href={urlLetra}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 self-center text-sm text-text-muted underline-offset-2 hover:underline"
+                className="mt-2 shrink-0 self-center pb-1 text-sm text-text-muted underline-offset-2 hover:underline"
               >
                 Abrir en el sitio
               </a>

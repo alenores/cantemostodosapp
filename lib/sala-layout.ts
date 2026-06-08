@@ -1,5 +1,6 @@
 export const COLA_BAR_HEIGHT_PX = 60;
 export const COLA_AVISO_SHOW_DELAY_MS = 400;
+export const SALA_HEADER_HEIGHT_PX = 56;
 
 export function getColaOpenHeight(
   viewportHeight: number,

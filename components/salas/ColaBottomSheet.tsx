@@ -55,23 +55,21 @@ export default function ColaBottomSheet({
 }: ColaBottomSheetProps) {
   const [viewportHeight, setViewportHeight] = useState(800);
   const [expanded, setExpanded] = useState(false);
-  const [translateY, setTranslateY] = useState<number | null>(null);
+  const [panelY, setPanelY] = useState(400);
   const [isDragging, setIsDragging] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
-  const translateYRef = useRef(0);
-  const contentHeightRef = useRef(0);
+  const panelYRef = useRef(panelY);
+  const contentHeightRef = useRef(400);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
   contentHeightRef.current = contentHeight;
+  panelYRef.current = panelY;
 
-  const settledY = translateY ?? contentHeight;
-  translateYRef.current = settledY;
-
-  const progress = contentHeight > 0 ? 1 - settledY / contentHeight : 0;
-  const isSettledOpen = settledY < contentHeight * (1 - SNAP_THRESHOLD);
-  const isPeekMode = settledY >= contentHeight * PEEK_THRESHOLD;
+  const progress = contentHeight > 0 ? 1 - panelY / contentHeight : 0;
+  const isSettledOpen = panelY < contentHeight * (1 - SNAP_THRESHOLD);
+  const isPeekMode = panelY >= contentHeight * PEEK_THRESHOLD;
 
   useEffect(() => {
     function updateViewport() {
@@ -84,73 +82,57 @@ export default function ColaBottomSheet({
   }, []);
 
   useEffect(() => {
-    setTranslateY((current) => {
-      if (current === null) {
-        return contentHeight;
-      }
-
-      if (current <= contentHeight * (1 - SNAP_THRESHOLD)) {
-        return 0;
-      }
-
-      if (current >= contentHeight * PEEK_THRESHOLD) {
-        return contentHeight;
-      }
-
-      const openProgress = 1 - current / contentHeight;
-      return contentHeight * (1 - openProgress);
-    });
+    setPanelY((current) => (current < contentHeight * 0.5 ? 0 : contentHeight));
   }, [contentHeight]);
 
   useEffect(() => {
     onProgressChange?.(progress);
   }, [progress, onProgressChange]);
 
-  const snapOpen = useCallback(() => {
-    setTranslateY(0);
+  const snapPanelOpen = useCallback(() => {
+    setPanelY(0);
   }, []);
 
-  const snapClosed = useCallback(() => {
-    setTranslateY(contentHeightRef.current);
+  const snapPanelClosed = useCallback(() => {
+    setPanelY(contentHeightRef.current);
     setExpanded(false);
   }, []);
 
   useEffect(() => {
-    onRegisterClose?.(snapClosed);
-  }, [onRegisterClose, snapClosed]);
+    onRegisterClose?.(snapPanelClosed);
+  }, [onRegisterClose, snapPanelClosed]);
 
-  const toggleSheet = useCallback(() => {
+  const togglePanel = useCallback(() => {
     triggerHaptic();
     const height = contentHeightRef.current;
-    const currentY = translateYRef.current;
 
-    if (currentY < height * (1 - SNAP_THRESHOLD)) {
-      snapClosed();
+    if (panelYRef.current < height * (1 - SNAP_THRESHOLD)) {
+      snapPanelClosed();
     } else {
-      snapOpen();
+      snapPanelOpen();
     }
-  }, [snapClosed, snapOpen]);
+  }, [snapPanelClosed, snapPanelOpen]);
 
   const bindBarDrag = useDrag(
     ({ movement: [, my], last, first, memo, tap }) => {
       const height = contentHeightRef.current;
-      const startY = first ? translateYRef.current : (memo as number);
+      const startY = first ? panelYRef.current : (memo as number);
 
       if (last && (tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX)) {
-        toggleSheet();
+        togglePanel();
         return startY;
       }
 
       const next = clamp(startY + my, 0, height);
-      setTranslateY(next);
+      setPanelY(next);
       setIsDragging(!last);
 
       if (last) {
         const dragProgress = 1 - next / height;
         if (dragProgress >= SNAP_THRESHOLD) {
-          snapOpen();
+          snapPanelOpen();
         } else {
-          snapClosed();
+          snapPanelClosed();
         }
       }
 
@@ -216,152 +198,148 @@ export default function ColaBottomSheet({
   const proximaNombre =
     items.find((item) => item.estado === "pendiente")?.nombre ?? null;
 
-  const sheetTransition = isDragging
+  const panelTransition = isDragging
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
 
   return (
     <>
       <div
-        className="fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden bg-bg-dark"
+        className="fixed inset-x-0 z-20 flex flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
         style={{
-          height: contentHeight + COLA_BAR_HEIGHT_PX,
-          transform: `translateY(${settledY}px)`,
-          transition: sheetTransition,
+          bottom: COLA_BAR_HEIGHT_PX,
+          height: contentHeight,
+          transform: `translateY(${panelY}px)`,
+          transition: panelTransition,
         }}
+        aria-hidden={isPeekMode && !isDragging}
       >
-        <div
-          className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
-          style={{ height: contentHeight }}
-          aria-hidden={isPeekMode}
+        <button
+          type="button"
+          onClick={handleToggleExpand}
+          aria-label={expanded ? "Contraer cola" : "Expandir cola"}
+          className="flex shrink-0 justify-center py-2"
         >
-          <button
-            type="button"
-            onClick={handleToggleExpand}
-            aria-label={expanded ? "Contraer cola" : "Expandir cola"}
-            className="flex shrink-0 justify-center py-2"
-          >
-            <div className="h-1 w-10 rounded-full bg-border" />
-          </button>
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </button>
 
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3">
-            <h2 className="text-base font-bold text-text-primary">
-              Cola de la juntada
-            </h2>
-            {!isPeekMode && (
-              <TapButton
-                aria-label="Buscar canción"
-                onClick={onOpenBuscador}
-                className="flex size-10 items-center justify-center rounded-full bg-accent"
-              >
-                <Search className="size-5 text-white" aria-hidden="true" />
-              </TapButton>
-            )}
-          </div>
-
-          <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
-            <Droppable droppableId="cola-juntada">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3"
-                >
-                  {items.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-text-muted">
-                      La cola está vacía
-                    </p>
-                  ) : (
-                    items.map((item, index) => (
-                      <Draggable
-                        key={item.id}
-                        draggableId={String(item.id)}
-                        index={index}
-                        isDragDisabled={item.estado !== "pendiente"}
-                      >
-                        {(draggableProvided, snapshot) => (
-                          <div
-                            ref={draggableProvided.innerRef}
-                            {...draggableProvided.draggableProps}
-                          >
-                            <ColaItemCard
-                              item={item}
-                              items={items}
-                              index={index}
-                              dragHandleProps={
-                                item.estado === "pendiente"
-                                  ? draggableProvided.dragHandleProps
-                                  : null
-                              }
-                              isDragging={snapshot.isDragging}
-                              yaGuardada={guardadasKeys.has(
-                                buildGuardadaKey(item.nombre, item.url_letra),
-                              )}
-                              onDelete={(itemId) => void handleDeleteItem(itemId)}
-                              onSelect={(itemId) => setAdvanceItemId(itemId)}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))
-                  )}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-
-          <div className="shrink-0 border-t border-border px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3">
+          <h2 className="text-base font-bold text-text-primary">
+            Cola de la juntada
+          </h2>
+          {!isPeekMode && (
             <TapButton
-              onClick={() => setShowDeleteAllDialog(true)}
-              className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
+              aria-label="Buscar canción"
+              onClick={onOpenBuscador}
+              className="flex size-10 items-center justify-center rounded-full bg-accent"
             >
-              Borrar todo
+              <Search className="size-5 text-white" aria-hidden="true" />
             </TapButton>
-          </div>
+          )}
         </div>
 
-        <div
-          {...bindBarDrag()}
-          role="button"
-          tabIndex={0}
-          aria-expanded={isSettledOpen}
-          aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
-          className="flex shrink-0 touch-none flex-col overflow-hidden border-t border-border bg-bg-dark"
-          style={{ height: COLA_BAR_HEIGHT_PX }}
-        >
-          {isPeekMode && (
-            <div className="pointer-events-none flex shrink-0 justify-center pt-1.5 pb-0.5">
-              <div className="h-1 w-10 rounded-full bg-border" />
-            </div>
-          )}
-
-          <div
-            className={`flex min-h-0 flex-1 items-center gap-2 px-4 ${
-              isPeekMode ? "pb-1.5" : "py-2"
-            }`}
-          >
-            <span className="shrink-0 text-sm font-semibold text-text-primary">
-              Cola
-            </span>
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
-              {pendientes}
-            </span>
-            {isPeekMode ? (
-              <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
-                Próxima: {proximaNombre ?? "—"}
-              </span>
-            ) : (
-              <span className="min-w-0 flex-1" aria-hidden="true" />
+        <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
+          <Droppable droppableId="cola-juntada">
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3"
+              >
+                {items.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-text-muted">
+                    La cola está vacía
+                  </p>
+                ) : (
+                  items.map((item, index) => (
+                    <Draggable
+                      key={item.id}
+                      draggableId={String(item.id)}
+                      index={index}
+                      isDragDisabled={item.estado !== "pendiente"}
+                    >
+                      {(draggableProvided, snapshot) => (
+                        <div
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                        >
+                          <ColaItemCard
+                            item={item}
+                            items={items}
+                            index={index}
+                            dragHandleProps={
+                              item.estado === "pendiente"
+                                ? draggableProvided.dragHandleProps
+                                : null
+                            }
+                            isDragging={snapshot.isDragging}
+                            yaGuardada={guardadasKeys.has(
+                              buildGuardadaKey(item.nombre, item.url_letra),
+                            )}
+                            onDelete={(itemId) => void handleDeleteItem(itemId)}
+                            onSelect={(itemId) => setAdvanceItemId(itemId)}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))
+                )}
+                {provided.placeholder}
+              </div>
             )}
-            <ChevronUp
-              className={`pointer-events-none size-5 shrink-0 text-text-muted transition-transform duration-350 ${
-                isSettledOpen ? "rotate-180" : ""
-              }`}
-              style={{ transitionTimingFunction: "var(--transition-timing)" }}
-              aria-hidden="true"
-            />
+          </Droppable>
+        </DragDropContext>
+
+        <div className="shrink-0 border-t border-border px-4 py-3">
+          <TapButton
+            onClick={() => setShowDeleteAllDialog(true)}
+            className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
+          >
+            Borrar todo
+          </TapButton>
+        </div>
+      </div>
+
+      <div
+        {...bindBarDrag()}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isSettledOpen}
+        aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
+        className="fixed inset-x-0 bottom-0 z-30 flex touch-none flex-col overflow-hidden border-t border-border bg-bg-dark"
+        style={{ height: COLA_BAR_HEIGHT_PX }}
+      >
+        {isPeekMode && (
+          <div className="pointer-events-none flex shrink-0 justify-center pt-1.5 pb-0.5">
+            <div className="h-1 w-10 rounded-full bg-border" />
           </div>
+        )}
+
+        <div
+          className={`flex min-h-0 flex-1 items-center gap-2 px-4 ${
+            isPeekMode ? "pb-1.5" : "py-2"
+          }`}
+        >
+          <span className="shrink-0 text-sm font-semibold text-text-primary">
+            Cola
+          </span>
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
+            {pendientes}
+          </span>
+          {isPeekMode ? (
+            <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
+              Próxima: {proximaNombre ?? "—"}
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1" aria-hidden="true" />
+          )}
+          <ChevronUp
+            className={`pointer-events-none size-5 shrink-0 text-text-muted transition-transform duration-350 ${
+              isSettledOpen ? "rotate-180" : ""
+            }`}
+            style={{ transitionTimingFunction: "var(--transition-timing)" }}
+            aria-hidden="true"
+          />
         </div>
       </div>
 

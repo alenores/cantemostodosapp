@@ -213,7 +213,11 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           type="button"
           aria-label="Cerrar cola"
           className="absolute inset-x-0 top-0 z-10 bg-black/40"
-          style={{ bottom: COLA_BAR_HEIGHT_PX, opacity: drawerProgress }}
+          style={{
+            bottom: COLA_BAR_HEIGHT_PX,
+            opacity: drawerProgress,
+            pointerEvents: drawerProgress > 0.35 ? "auto" : "none",
+          }}
           onClick={() => closeDrawerRef.current()}
         />
       )}

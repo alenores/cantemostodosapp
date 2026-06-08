@@ -54,15 +54,16 @@ export default function ColaBottomSheet({
 }: ColaBottomSheetProps) {
   const [viewportHeight, setViewportHeight] = useState(800);
   const [expanded, setExpanded] = useState(false);
-  const [translateY, setTranslateY] = useState(400);
+  const [translateY, setTranslateY] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
-  const progress = contentHeight > 0 ? 1 - translateY / contentHeight : 0;
-  const isSettledOpen = translateY < contentHeight * (1 - SNAP_THRESHOLD);
-  const isPeekMode = translateY > contentHeight * PEEK_THRESHOLD;
+  const settledY = translateY ?? contentHeight;
+  const progress = contentHeight > 0 ? 1 - settledY / contentHeight : 0;
+  const isSettledOpen = settledY < contentHeight * (1 - SNAP_THRESHOLD);
+  const isPeekMode = settledY >= contentHeight * PEEK_THRESHOLD;
 
   useEffect(() => {
     function updateViewport() {
@@ -75,9 +76,14 @@ export default function ColaBottomSheet({
   }, []);
 
   useEffect(() => {
-    setTranslateY((current) =>
-      current < contentHeight * 0.5 ? 0 : contentHeight,
-    );
+    setTranslateY((current) => {
+      if (current === null) {
+        return contentHeight;
+      }
+
+      const wasOpen = current < contentHeight * (1 - SNAP_THRESHOLD);
+      return wasOpen ? 0 : contentHeight;
+    });
   }, [contentHeight]);
 
   useEffect(() => {
@@ -99,7 +105,7 @@ export default function ColaBottomSheet({
 
   const bindBarDrag = useDrag(
     ({ movement: [, my], last, first, memo }) => {
-      const startY = first ? translateY : (memo as number);
+      const startY = first ? settledY : (memo as number);
       const next = clamp(startY + my, 0, contentHeight);
       setTranslateY(next);
       setIsDragging(!last);
@@ -192,17 +198,17 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className="fixed inset-x-0 bottom-0 z-30 flex touch-none flex-col bg-bg-dark"
+        className="fixed inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden bg-bg-dark"
         style={{
           height: contentHeight + COLA_BAR_HEIGHT_PX,
-          transform: `translateY(${translateY}px)`,
+          transform: `translateY(${settledY}px)`,
           transition: sheetTransition,
         }}
       >
         <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
+          className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-t-2xl bg-bg-dark"
           style={{ height: contentHeight }}
-          aria-hidden={isPeekMode && !isDragging}
+          aria-hidden={isPeekMode}
         >
           <button
             type="button"
@@ -217,13 +223,15 @@ export default function ColaBottomSheet({
             <h2 className="text-base font-bold text-text-primary">
               Cola de la juntada
             </h2>
-            <TapButton
-              aria-label="Buscar canción"
-              onClick={onOpenBuscador}
-              className="flex size-10 items-center justify-center rounded-full bg-accent"
-            >
-              <Search className="size-5 text-white" aria-hidden="true" />
-            </TapButton>
+            {!isPeekMode && (
+              <TapButton
+                aria-label="Buscar canción"
+                onClick={onOpenBuscador}
+                className="flex size-10 items-center justify-center rounded-full bg-accent"
+              >
+                <Search className="size-5 text-white" aria-hidden="true" />
+              </TapButton>
+            )}
           </div>
 
           <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
@@ -290,7 +298,7 @@ export default function ColaBottomSheet({
 
         <div
           {...bindBarDrag()}
-          className="flex shrink-0 flex-col overflow-hidden border-t border-border bg-bg-dark"
+          className="flex shrink-0 touch-none flex-col overflow-hidden border-t border-border bg-bg-dark"
           style={{ height: COLA_BAR_HEIGHT_PX }}
         >
           {isPeekMode && (
@@ -314,15 +322,17 @@ export default function ColaBottomSheet({
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
               {pendientes}
             </span>
-            {isPeekMode && (
+            {isPeekMode ? (
               <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
                 Próxima: {proximaNombre ?? "—"}
               </span>
+            ) : (
+              <span className="min-w-0 flex-1" aria-hidden="true" />
             )}
             <ChevronUp
               className={`size-5 shrink-0 text-text-muted transition-transform duration-350 ${
                 isSettledOpen ? "rotate-180" : ""
-              } ${isPeekMode ? "" : "ml-auto"}`}
+              }`}
               style={{ transitionTimingFunction: "var(--transition-timing)" }}
               aria-hidden="true"
             />

@@ -1,19 +1,22 @@
 import { getColaVariant, type ColaVariant } from "@/lib/cola-logic";
 import type { ColaItem } from "@/types";
-import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 import { Bookmark, SkipForward, Trash2 } from "lucide-react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 type ColaItemProps = {
   item: ColaItem;
   items: ColaItem[];
   index: number;
-  dragHandleProps?: DraggableProvidedDragHandleProps | null;
   isDragging?: boolean;
   yaGuardada: boolean;
   onDelete: (id: number) => void;
   onSelect?: (id: number) => void;
   onFinalize?: (id: number) => void;
 };
+
+function stopDragPointer(event: ReactPointerEvent) {
+  event.stopPropagation();
+}
 
 function getTocadaOpacity(items: ColaItem[], index: number): number | null {
   const item = items[index];
@@ -39,29 +42,6 @@ function getTocadaOpacity(items: ColaItem[], index: number): number | null {
   }
 
   return 0.45;
-}
-
-function DragHandle({
-  dragHandleProps,
-}: {
-  dragHandleProps?: DraggableProvidedDragHandleProps | null;
-}) {
-  return (
-    <div
-      {...dragHandleProps}
-      className="grid shrink-0 grid-cols-2 gap-[3px] px-1 py-2"
-      aria-label="Arrastrar para reordenar"
-      onClick={(event) => event.stopPropagation()}
-    >
-      {Array.from({ length: 6 }).map((_, dotIndex) => (
-        <span
-          key={dotIndex}
-          className="size-[3px] rounded-full bg-text-muted"
-          aria-hidden="true"
-        />
-      ))}
-    </div>
-  );
 }
 
 function variantClasses(variant: ColaVariant): string {
@@ -94,7 +74,6 @@ export default function ColaItemCard({
   item,
   items,
   index,
-  dragHandleProps,
   isDragging = false,
   yaGuardada,
   onDelete,
@@ -111,7 +90,9 @@ export default function ColaItemCard({
     <div
       className={`flex items-stretch overflow-hidden rounded-[12px] border ${
         isActiva ? "min-h-[60px]" : "items-center py-2 px-3"
-      } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""}`}
+      } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""} ${
+        isPendiente ? "cursor-grab active:cursor-grabbing" : ""
+      }`}
       style={tocadaOpacity !== null ? { opacity: tocadaOpacity } : undefined}
     >
       {isActiva && (
@@ -130,13 +111,11 @@ export default function ColaItemCard({
 
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 ${
-          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : ""
+          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : isPendiente ? "gap-2" : ""
         }`}
       >
-        {isPendiente ? (
-          <DragHandle dragHandleProps={dragHandleProps} />
-        ) : (
-          !isActiva && <div className="w-6 shrink-0" aria-hidden="true" />
+        {!isActiva && !isPendiente && (
+          <div className="w-6 shrink-0" aria-hidden="true" />
         )}
 
         <button
@@ -194,6 +173,7 @@ export default function ColaItemCard({
               event.stopPropagation();
               onFinalize?.(item.id);
             }}
+            onPointerDown={stopDragPointer}
             className="flex size-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-letra-bg text-bg-darker shadow-sm active:scale-95"
           >
             <SkipForward
@@ -213,6 +193,7 @@ export default function ColaItemCard({
                 type="button"
                 aria-label="Guardar canción"
                 onClick={(event) => event.stopPropagation()}
+                onPointerDown={stopDragPointer}
                 className="flex size-11 items-center justify-center rounded-[10px] text-text-secondary"
               >
                 <Bookmark className="size-4" aria-hidden="true" />
@@ -225,6 +206,7 @@ export default function ColaItemCard({
                 event.stopPropagation();
                 onDelete(item.id);
               }}
+              onPointerDown={stopDragPointer}
               className="flex size-11 items-center justify-center rounded-[10px] text-text-secondary"
             >
               <Trash2 className="size-4" aria-hidden="true" />

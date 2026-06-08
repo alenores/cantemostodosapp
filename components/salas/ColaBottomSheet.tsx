@@ -296,22 +296,10 @@ export default function ColaBottomSheet({
             <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </button>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 px-4 pb-3">
+          <div className="flex shrink-0 items-center px-4 pb-3">
             <h2 className="min-w-0 flex-1 text-base font-bold text-text-primary">
               Lista de canciones
             </h2>
-            {!isPeekMode && (
-              <TapButton
-                aria-label="Agregar canción"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenBuscador();
-                }}
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent"
-              >
-                <Plus className="size-5 text-white" aria-hidden="true" />
-              </TapButton>
-            )}
           </div>
         </div>
 
@@ -350,16 +338,17 @@ export default function ColaBottomSheet({
                         <div
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
+                          {...(item.estado === "pendiente"
+                            ? draggableProvided.dragHandleProps
+                            : {})}
+                          className={
+                            item.estado === "pendiente" ? "touch-manipulation" : ""
+                          }
                         >
                           <ColaItemCard
                             item={item}
                             items={items}
                             index={index}
-                            dragHandleProps={
-                              item.estado === "pendiente"
-                                ? draggableProvided.dragHandleProps
-                                : null
-                            }
                             isDragging={snapshot.isDragging}
                             yaGuardada={guardadasKeys.has(
                               buildGuardadaKey(item.nombre, item.url_letra),
@@ -378,18 +367,6 @@ export default function ColaBottomSheet({
               )}
             </Droppable>
           </DragDropContext>
-
-          {!isPeekMode && (
-            <div className="shrink-0 border-t border-border/40 px-3 py-2">
-              <TapButton
-                aria-label="Borrar toda la cola"
-                onClick={() => setShowDeleteAllDialog(true)}
-                className="w-full rounded-md border border-border/60 bg-bg-cola-sheet/50 py-1.5 text-[11px] font-semibold text-text-muted"
-              >
-                Borrar todo
-              </TapButton>
-            </div>
-          )}
         </div>
       </div>
 
@@ -420,17 +397,39 @@ export default function ColaBottomSheet({
             {pendientes}
           </span>
           {isPeekMode ? (
-            <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
-              Próxima: {proximaNombre ?? "—"}
-            </span>
+            <>
+              <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
+                Próxima: {proximaNombre ?? "—"}
+              </span>
+              <ChevronUp
+                className="pointer-events-none size-5 shrink-0 text-text-muted"
+                aria-hidden="true"
+              />
+            </>
           ) : (
-            <span className="min-w-0 flex-1" aria-hidden="true" />
-          )}
-          {isPeekMode && (
-            <ChevronUp
-              className="pointer-events-none size-5 shrink-0 text-text-muted"
-              aria-hidden="true"
-            />
+            <>
+              <span className="min-w-0 flex-1" aria-hidden="true" />
+              <TapButton
+                aria-label="Borrar toda la cola"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowDeleteAllDialog(true);
+                }}
+                className="shrink-0 rounded-md border border-border/70 bg-bg-card/60 px-2.5 py-1 text-[11px] font-semibold text-text-secondary"
+              >
+                Borrar todo
+              </TapButton>
+              <TapButton
+                aria-label="Agregar canción"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenBuscador();
+                }}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent"
+              >
+                <Plus className="size-5 text-white" aria-hidden="true" />
+              </TapButton>
+            </>
           )}
         </div>
       </div>

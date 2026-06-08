@@ -165,7 +165,7 @@ export default function CancionActivaSection({
   if (contenido.mode === "texto") {
     return (
       <section
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-bg-app px-2 py-3"
         style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
       >
         {header}
@@ -176,7 +176,7 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 pt-3"
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-app px-2 pt-3"
       style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
     >
       {header}

@@ -7,6 +7,7 @@ import AddButton from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
   avanzarCancion,
+  applyColaReorder,
   buildReorderUpdates,
   deleteColaCompleta,
   deleteColaItem,
@@ -49,6 +50,7 @@ type ColaBottomSheetProps = {
   guardadasKeys: Set<string>;
   salaId: number;
   onColaChange: () => Promise<void>;
+  onItemsReordered: (items: ColaItem[]) => void;
   onOpenBuscador: () => void;
   avisoMensaje?: string | null;
   onProgressChange?: (progress: number) => void;
@@ -71,6 +73,7 @@ export default function ColaBottomSheet({
   guardadasKeys,
   salaId,
   onColaChange,
+  onItemsReordered,
   onOpenBuscador,
   avisoMensaje = null,
   onProgressChange,
@@ -279,6 +282,14 @@ export default function ColaBottomSheet({
   }
 
   async function handleDragEnd(result: DropResult) {
+    const reordered = applyColaReorder(items, result);
+
+    if (!reordered) {
+      return;
+    }
+
+    onItemsReordered(reordered);
+
     const updates = buildReorderUpdates(items, result);
 
     if (!updates) {

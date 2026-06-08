@@ -81,6 +81,11 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
   const [colaItems, setColaItems] = useState<ColaItem[]>([]);
   const [guardadasKeys, setGuardadasKeys] = useState<Set<string>>(new Set());
 
+  const handleColaItemsReordered = useCallback((items: ColaItem[]) => {
+    setColaItems(items);
+    setCancionActiva(deriveCancionActivaFromCola(items));
+  }, []);
+
   const loadColaCompleta = useCallback(async () => {
     const supabase = createClient();
     const [items, keys] = await Promise.all([
@@ -273,6 +278,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         guardadasKeys={guardadasKeys}
         salaId={salaId}
         onColaChange={loadColaCompleta}
+        onItemsReordered={handleColaItemsReordered}
         onOpenBuscador={() => setBuscadorOpen(true)}
         avisoMensaje={colaAviso}
         onProgressChange={handleDrawerProgressChange}

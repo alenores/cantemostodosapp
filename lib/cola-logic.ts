@@ -96,6 +96,26 @@ export function buildReorderUpdates(
   }));
 }
 
+export function applyColaReorder(
+  items: ColaItem[],
+  result: DropResult,
+): ColaItem[] | null {
+  const updates = buildReorderUpdates(items, result);
+
+  if (!updates) {
+    return null;
+  }
+
+  const ordenById = new Map(updates.map((update) => [update.id, update.orden]));
+
+  return [...items]
+    .map((item) => {
+      const orden = ordenById.get(item.id);
+      return orden === undefined ? item : { ...item, orden };
+    })
+    .sort((a, b) => a.orden - b.orden);
+}
+
 export async function persistColaOrden(
   supabase: SupabaseClient,
   updates: OrdenUpdate[],

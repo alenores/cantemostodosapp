@@ -67,10 +67,10 @@ function variantClasses(variant: ColaVariant): string {
       return "border-border-subtle bg-bg-card";
     case "activa":
       return "border-accent bg-accent shadow-[0_2px_12px_rgba(244,132,95,0.35)]";
-    case "proxima":
-      return "border-[#353535] border-l-[3px] border-l-accent bg-[#2A2A2A]";
     case "pendiente":
       return "border-border-card bg-bg-card";
+    case "proxima":
+      return "";
   }
 }
 
@@ -100,15 +100,123 @@ export default function ColaItemCard({
   const variant = getColaVariant(item, items);
   const isPendiente = item.estado === "pendiente";
   const isActiva = variant === "activa";
+  const isProxima = variant === "proxima";
   const showActions = isPendiente;
   const tocadaOpacity = getTocadaOpacity(items, index);
+  const pendienteTransition =
+    "transition-[background-color,border-color,box-shadow,opacity] duration-150 ease-out";
+
+  const titleBlock = (
+    <div
+      role={isPendiente ? "button" : undefined}
+      tabIndex={isPendiente ? 0 : undefined}
+      onClick={() => isPendiente && onSelect?.(item.id)}
+      onKeyDown={(event) => {
+        if (isPendiente && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onSelect?.(item.id);
+        }
+      }}
+      aria-label={isPendiente ? `Activar ${item.nombre}` : undefined}
+      className={`flex min-w-0 flex-1 items-center text-left ${
+        isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
+      } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
+    >
+      <span
+        className={`shrink-0 text-center font-bold ${
+          isActiva ? "w-5 text-base" : "w-4 text-[11px]"
+        } ${orderClasses(variant)}`}
+      >
+        {item.orden}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p
+          className={`truncate ${
+            isActiva
+              ? "text-[17px] font-bold leading-snug text-bg-darker"
+              : "text-[15px] font-semibold leading-snug text-text-primary"
+          }`}
+        >
+          {item.nombre}
+        </p>
+        {item.artista && (
+          <p
+            className={`truncate ${
+              isActiva
+                ? "text-[15px] font-semibold leading-snug text-bg-darker/75"
+                : "text-[13px] leading-snug text-text-muted"
+            }`}
+          >
+            {item.artista}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  const actionButtons = showActions ? (
+    <div className="flex shrink-0 items-center gap-2 px-1">
+      {!yaGuardada && (
+        <button
+          type="button"
+          aria-label="Guardar canción"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={stopDragPointer}
+          className="flex size-8 items-center justify-center text-text-secondary"
+        >
+          <Bookmark className="size-4" aria-hidden="true" />
+        </button>
+      )}
+      <button
+        type="button"
+        aria-label="Eliminar canción de la cola"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(item.id);
+        }}
+        onPointerDown={stopDragPointer}
+        className="flex size-8 items-center justify-center text-text-secondary"
+      >
+        <Trash2 className="size-4" aria-hidden="true" />
+      </button>
+    </div>
+  ) : null;
+
+  if (isProxima) {
+    return (
+      <div
+        className="flex overflow-hidden rounded-[10px]"
+        onContextMenu={(event) => event.preventDefault()}
+      >
+        <div
+          className="flex w-6 shrink-0 items-center justify-center bg-accent/85"
+          aria-hidden="true"
+        >
+          <span className="text-[8px] font-extrabold uppercase tracking-[0.5px] text-white [transform:rotate(180deg)] [writing-mode:vertical-rl]">
+            Próx
+          </span>
+        </div>
+
+        <div
+          className={`flex flex-1 items-center gap-3 rounded-r-[10px] border border-l-0 border-border-card bg-bg-card px-3 py-2.5 ${pendienteTransition} ${
+            isDragging ? "cola-item-dragging" : ""
+          }`}
+        >
+          <DragHandle />
+          {titleBlock}
+          {actionButtons}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className={`flex items-stretch overflow-hidden rounded-[12px] border ${
         isActiva ? "min-h-[68px]" : "items-center py-2.5 px-3"
       } ${variantClasses(variant)} ${
-        isPendiente ? "transition-[background-color,border-color,box-shadow,opacity] duration-150 ease-out" : ""
+        isPendiente ? pendienteTransition : ""
       } ${isDragging ? "cola-item-dragging" : ""}`}
       style={
         tocadaOpacity !== null && !isDragging
@@ -142,52 +250,7 @@ export default function ColaItemCard({
           !isActiva && <div className="w-6 shrink-0" aria-hidden="true" />
         )}
 
-        <div
-          role={isPendiente ? "button" : undefined}
-          tabIndex={isPendiente ? 0 : undefined}
-          onClick={() => isPendiente && onSelect?.(item.id)}
-          onKeyDown={(event) => {
-            if (isPendiente && (event.key === "Enter" || event.key === " ")) {
-              event.preventDefault();
-              onSelect?.(item.id);
-            }
-          }}
-          aria-label={isPendiente ? `Activar ${item.nombre}` : undefined}
-          className={`flex min-w-0 flex-1 items-center text-left ${
-            isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
-          } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
-        >
-          <span
-            className={`shrink-0 text-center font-bold ${
-              isActiva ? "w-5 text-base" : "w-4 text-[11px]"
-            } ${orderClasses(variant)}`}
-          >
-            {item.orden}
-          </span>
-
-          <div className="min-w-0 flex-1">
-            <p
-              className={`truncate ${
-                isActiva
-                  ? "text-[17px] font-bold leading-snug text-bg-darker"
-                  : "text-[15px] font-semibold leading-snug text-text-primary"
-              }`}
-            >
-              {item.nombre}
-            </p>
-            {item.artista && (
-              <p
-                className={`truncate ${
-                  isActiva
-                    ? "text-[15px] font-semibold leading-snug text-bg-darker/75"
-                    : "text-[13px] leading-snug text-text-muted"
-                }`}
-              >
-                {item.artista}
-              </p>
-            )}
-          </div>
-        </div>
+        {titleBlock}
 
         {variant === "tocada" && (
           <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">
@@ -216,33 +279,7 @@ export default function ColaItemCard({
           </button>
         )}
 
-        {showActions && (
-          <div className="flex shrink-0 items-center gap-2 px-1">
-            {!yaGuardada && (
-              <button
-                type="button"
-                aria-label="Guardar canción"
-                onClick={(event) => event.stopPropagation()}
-                onPointerDown={stopDragPointer}
-                className="flex size-8 items-center justify-center text-text-secondary"
-              >
-                <Bookmark className="size-4" aria-hidden="true" />
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label="Eliminar canción de la cola"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete(item.id);
-              }}
-              onPointerDown={stopDragPointer}
-              className="flex size-8 items-center justify-center text-text-secondary"
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-            </button>
-          </div>
-        )}
+        {actionButtons}
       </div>
     </div>
   );

@@ -381,11 +381,11 @@ export default function BuscadorModal({
                 </header>
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 pb-3 pt-2">
-                  <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-[#f8f8f8]">
                     Previsualización
                   </p>
                   <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <LetraViewer url={seleccionado.url} />
+                    <LetraViewer url={seleccionado.url} elevated />
                   </div>
                 </div>
 

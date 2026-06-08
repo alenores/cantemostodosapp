@@ -18,14 +18,14 @@ export default function LetraViewer({
   if (fill) {
     return (
       <div
-        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-letra-bg ${
+        className={`h-full w-full overflow-hidden bg-letra-bg ${
           edgeToEdge ? "" : "rounded-[12px]"
         }`}
       >
         <iframe
           src={url}
           title={title}
-          className="h-full w-full min-h-0 flex-1 border-0"
+          className="h-full w-full border-0"
           sandbox="allow-scripts allow-same-origin allow-popups"
           referrerPolicy="no-referrer-when-downgrade"
         />

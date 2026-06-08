@@ -127,7 +127,7 @@ export default function ColaItemCard({
 
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 ${
-          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : isPendiente ? "gap-0 pr-1" : ""
+          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : isPendiente ? "gap-0" : ""
         }`}
       >
         {isPendiente ? (
@@ -211,14 +211,14 @@ export default function ColaItemCard({
         )}
 
         {showActions && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-2 px-1">
             {!yaGuardada && (
               <button
                 type="button"
                 aria-label="Guardar canción"
                 onClick={(event) => event.stopPropagation()}
                 onPointerDown={stopDragPointer}
-                className="flex size-11 items-center justify-center rounded-[10px] text-text-secondary"
+                className="flex size-8 items-center justify-center text-text-secondary"
               >
                 <Bookmark className="size-4" aria-hidden="true" />
               </button>
@@ -231,7 +231,7 @@ export default function ColaItemCard({
                 onDelete(item.id);
               }}
               onPointerDown={stopDragPointer}
-              className="flex size-11 items-center justify-center rounded-[10px] text-text-secondary"
+              className="flex size-8 items-center justify-center text-text-secondary"
             >
               <Trash2 className="size-4" aria-hidden="true" />
             </button>

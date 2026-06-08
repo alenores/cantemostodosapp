@@ -6,18 +6,20 @@ import type { ButtonHTMLAttributes } from "react";
 
 type AddButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   ariaLabel: string;
-  size?: "md" | "sm" | "xs";
+  size?: "md" | "sm" | "bar" | "xs";
 };
 
 const sizeClasses = {
   md: "size-10",
   sm: "size-9",
+  bar: "size-7",
   xs: "size-5",
 } as const;
 
 const iconSizeClasses = {
   md: "size-5",
   sm: "size-5",
+  bar: "size-4",
   xs: "size-3",
 } as const;
 

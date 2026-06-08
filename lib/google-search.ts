@@ -1,260 +1,138 @@
-"use client";
-
 import type { ResultadoBusqueda } from "@/types";
 
-const BASE_URL = "https://acordes.lacuerda.net";
-const SEARCH_URL = `${BASE_URL}/busca.php`;
-const CORS_PROXY_PREFIX = "https://corsproxy.io/?";
+const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 const MAX_RESULTS = 8;
-const SHTML_URL_PATTERN = /['"]([^'"]+\.shtml(?:\?[^'"]*)?)['"]/i;
 
-function toLaCuerdaSlug(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
+const TITLE_SUFFIX_PATTERN =
+  /\s*[\|·]\s*(La Cuerda|Cifra Club|Ultimate Guitar).*$/i;
+const PARENTHETICAL_PATTERN = /\s*\([^)]*\)\s*$/;
 
-function normalizeSongUrl(rawUrl: string, artistSlug: string): string | null {
-  const trimmed = rawUrl.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed.split("#")[0];
-  }
-
-  if (trimmed.startsWith("/")) {
-    return `${BASE_URL}${trimmed.split("#")[0]}`;
-  }
-
-  if (trimmed.includes(".shtml")) {
-    if (trimmed.includes("/")) {
-      return `${BASE_URL}/${trimmed.replace(/^\/+/, "").split("#")[0]}`;
-    }
-
-    return `${BASE_URL}/${artistSlug}/${trimmed.split("#")[0]}`;
-  }
-
-  return null;
-}
-
-function extractArtistSlug(href: string): string | null {
-  try {
-    const url = new URL(href, BASE_URL);
-    const [slug] = url.pathname.split("/").filter(Boolean);
-
-    if (!slug || slug.includes(".") || slug === "busca") {
-      return null;
-    }
-
-    return slug;
-  } catch {
-    return null;
-  }
-}
-
-type SongAnchor = {
-  href: string;
-  onclick: string;
-  text: string;
+type BraveWebResult = {
+  title: string;
+  url: string;
 };
 
-function extractSongUrl(anchor: SongAnchor, artistSlug: string): string | null {
-  const href = anchor.href.trim();
+type BraveSearchResponse = {
+  web?: {
+    results?: BraveWebResult[];
+  };
+  message?: string;
+};
 
-  if (href.includes(".shtml")) {
-    return normalizeSongUrl(href, artistSlug);
+function getBraveApiKey(): string {
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("Falta BRAVE_SEARCH_API_KEY en el entorno");
   }
 
-  const onclickMatch = anchor.onclick.match(SHTML_URL_PATTERN);
-
-  if (onclickMatch) {
-    return normalizeSongUrl(onclickMatch[1], artistSlug);
-  }
-
-  const songName = anchor.text.trim();
-
-  if (
-    songName &&
-    (href.startsWith("javascript") || href === "#" || href === "")
-  ) {
-    const slug = toLaCuerdaSlug(songName);
-
-    if (slug) {
-      return `${BASE_URL}/${artistSlug}/${slug}.shtml`;
-    }
-  }
-
-  return null;
+  return apiKey;
 }
 
-function isNavigationLink(text: string, href: string): boolean {
-  const lowered = text.toLowerCase();
+export function extractSitio(url: string): string {
+  const hostname = new URL(url).hostname.replace(/^www\./i, "");
 
-  return (
-    !text ||
-    lowered === "pertinencia" ||
-    lowered === "canción" ||
-    lowered === "cancion" ||
-    lowered === "artista" ||
-    href.includes("javascript:s") ||
-    href.includes("javascript:S")
-  );
+  if (hostname.includes("lacuerda")) {
+    return "lacuerda";
+  }
+
+  if (hostname.includes("cifraclub")) {
+    return "cifraclub";
+  }
+
+  const parts = hostname.split(".");
+
+  if (parts.length >= 3 && parts[0].length <= 3) {
+    return parts[parts.length - 2];
+  }
+
+  return parts[0];
 }
 
-function readAnchor(anchor: HTMLAnchorElement): SongAnchor {
+export function parseTituloArtista(title: string): {
+  titulo: string;
+  artista: string;
+} {
+  let cleaned = title.trim();
+  cleaned = cleaned.replace(TITLE_SUFFIX_PATTERN, "");
+  cleaned = cleaned.replace(PARENTHETICAL_PATTERN, "").trim();
+
+  const byMatch = cleaned.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (byMatch) {
+    return {
+      titulo: byMatch[1].trim(),
+      artista: byMatch[2].trim(),
+    };
+  }
+
+  const dashParts = cleaned.split(/\s+-\s+/);
+  if (dashParts.length === 2) {
+    return {
+      titulo: dashParts[0].trim(),
+      artista: dashParts[1].trim(),
+    };
+  }
+
   return {
-    href: anchor.getAttribute("href") ?? "",
-    onclick:
-      anchor.getAttribute("onclick") ?? anchor.getAttribute("onClick") ?? "",
-    text: anchor.textContent?.trim() ?? "",
+    titulo: cleaned,
+    artista: "",
   };
 }
 
-export function parseLaCuerdaSearchHtml(html: string): ResultadoBusqueda[] {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const results: ResultadoBusqueda[] = [];
-  const seenUrls = new Set<string>();
-
-  for (const row of doc.querySelectorAll("table tr")) {
-    const artistLink = Array.from(row.querySelectorAll("a")).find((anchor) => {
-      const href = anchor.getAttribute("href") ?? "";
-      return Boolean(extractArtistSlug(href));
-    });
-
-    if (!artistLink) {
-      continue;
-    }
-
-    const artistHref = artistLink.getAttribute("href") ?? "";
-    const artistSlug = extractArtistSlug(artistHref);
-
-    if (!artistSlug) {
-      continue;
-    }
-
-    const artista = artistLink.textContent?.trim() ?? "";
-
-    for (const anchor of row.querySelectorAll("a")) {
-      if (results.length >= MAX_RESULTS) {
-        break;
-      }
-
-      if (anchor === artistLink) {
-        continue;
-      }
-
-      const { href, onclick, text } = readAnchor(anchor);
-
-      if (isNavigationLink(text, href)) {
-        continue;
-      }
-
-      const url = extractSongUrl({ href, onclick, text }, artistSlug);
-
-      if (!url || !url.includes(".shtml") || seenUrls.has(url)) {
-        continue;
-      }
-
-      seenUrls.add(url);
-      results.push({
-        titulo: text,
-        artista,
-        url,
-        sitio: "lacuerda",
-      });
-    }
-  }
-
-  if (results.length > 0) {
-    return results.slice(0, MAX_RESULTS);
-  }
-
-  for (const anchor of doc.querySelectorAll('a[href*=".shtml"]')) {
-    if (results.length >= MAX_RESULTS) {
-      break;
-    }
-
-    const href = anchor.getAttribute("href") ?? "";
-    const url = normalizeSongUrl(href, "");
-
-    if (!url || seenUrls.has(url)) {
-      continue;
-    }
-
-    const artistSlug = extractArtistSlug(url);
-
-    if (!artistSlug) {
-      continue;
-    }
-
-    const titulo = anchor.textContent?.trim() ?? "";
-
-    if (!titulo) {
-      continue;
-    }
-
-    seenUrls.add(url);
-    results.push({
-      titulo,
-      artista: "",
-      url,
-      sitio: "lacuerda",
-    });
-  }
-
-  return results.slice(0, MAX_RESULTS);
+function buildSearchQuery(query: string): string {
+  return `${query} site:lacuerda.net OR site:cifraclub.com`;
 }
 
-export function buildLaCuerdaProxyUrl(query: string): string {
-  const params = new URLSearchParams({ exp: query });
-  const targetUrl = `${SEARCH_URL}?${params.toString()}`;
-  return `${CORS_PROXY_PREFIX}${targetUrl}`;
-}
+function mapBraveResult(item: BraveWebResult): ResultadoBusqueda {
+  const { titulo, artista } = parseTituloArtista(item.title);
 
-function formatFetchError(error: unknown, query: string): string {
-  if (!(error instanceof Error)) {
-    return `Error de red al buscar "${query}" en La Cuerda`;
-  }
-
-  return error.message || `Error de red al buscar "${query}" en La Cuerda`;
+  return {
+    titulo,
+    artista,
+    url: item.url,
+    sitio: extractSitio(item.url),
+  };
 }
 
 export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> {
-  const proxyUrl = buildLaCuerdaProxyUrl(query);
+  const apiKey = getBraveApiKey();
 
-  let response: Response;
+  const params = new URLSearchParams({
+    q: buildSearchQuery(query),
+    count: String(MAX_RESULTS),
+    search_lang: "es",
+    country: "AR",
+  });
 
-  try {
-    response = await fetch(proxyUrl);
-  } catch (error) {
-    console.error("[lacuerda] fetch failed:", {
-      query,
-      url: proxyUrl,
-      error: error instanceof Error ? error.message : error,
-    });
-    throw new Error(formatFetchError(error, query));
-  }
+  const response = await fetch(`${BRAVE_SEARCH_URL}?${params.toString()}`, {
+    headers: {
+      Accept: "application/json",
+      "Accept-Encoding": "gzip",
+      "X-Subscription-Token": apiKey,
+    },
+    cache: "no-store",
+  });
 
   if (!response.ok) {
-    let detail = "";
+    let message = `Brave Search respondió con status ${response.status}`;
 
     try {
-      detail = await response.text();
+      const errorBody = (await response.json()) as BraveSearchResponse;
+      if (errorBody.message) {
+        message = errorBody.message;
+      }
     } catch {
-      // Ignorar error al leer el cuerpo.
+      // Mantener mensaje genérico si el cuerpo no es JSON.
     }
 
-    throw new Error(
-      `El proxy CORS respondió con status ${response.status} al buscar "${query}"${detail ? `: ${detail.slice(0, 120)}` : ""}`,
-    );
+    throw new Error(message);
   }
 
-  const html = await response.text();
-  return parseLaCuerdaSearchHtml(html);
+  const data = (await response.json()) as BraveSearchResponse;
+
+  if (!data.web?.results?.length) {
+    return [];
+  }
+
+  return data.web.results.slice(0, MAX_RESULTS).map(mapBraveResult);
 }

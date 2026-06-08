@@ -23,8 +23,15 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd";
 import { useDrag } from "@use-gesture/react";
-import { ChevronUp, Search } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronUp, Plus } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 
 const SNAP_THRESHOLD = 0.3;
 const PEEK_THRESHOLD = 0.92;
@@ -62,6 +69,7 @@ export default function ColaBottomSheet({
 
   const panelYRef = useRef(panelY);
   const contentHeightRef = useRef(400);
+  const listScrollRef = useRef<HTMLDivElement>(null);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
   contentHeightRef.current = contentHeight;
@@ -113,37 +121,90 @@ export default function ColaBottomSheet({
     }
   }, [snapPanelClosed, snapPanelOpen]);
 
-  const bindBarDrag = useDrag(
-    ({ movement: [, my], last, first, memo, tap }) => {
-      const height = contentHeightRef.current;
-      const startY = first ? panelYRef.current : (memo as number);
-
-      if (last && (tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX)) {
-        togglePanel();
-        return startY;
-      }
-
-      const next = clamp(startY + my, 0, height);
-      setPanelY(next);
-      setIsDragging(!last);
-
-      if (last) {
-        const dragProgress = 1 - next / height;
-        if (dragProgress >= SNAP_THRESHOLD) {
-          snapPanelOpen();
-        } else {
-          snapPanelClosed();
-        }
-      }
-
-      return startY;
-    },
-    {
-      axis: "y",
+  const sheetDragOptions = useMemo(
+    () => ({
+      axis: "y" as const,
       filterTaps: false,
-      pointer: { touch: true },
-    },
+      pointer: { touch: true as const },
+    }),
+    [],
   );
+
+  const sheetDragHandler = useCallback(
+  ({
+    movement: [, my],
+    last,
+    first,
+    memo,
+    tap,
+  }: {
+    movement: [number, number];
+    last: boolean;
+    first: boolean;
+    memo?: unknown;
+    tap?: boolean;
+    cancel?: () => void;
+  }) => {
+    const height = contentHeightRef.current;
+    const startY = first ? panelYRef.current : (memo as number);
+
+    if (last && (tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX)) {
+      togglePanel();
+      return startY;
+    }
+
+    const next = clamp(startY + my, 0, height);
+    setPanelY(next);
+    setIsDragging(!last);
+
+    if (last) {
+      const dragProgress = 1 - next / height;
+      if (dragProgress >= SNAP_THRESHOLD) {
+        snapPanelOpen();
+      } else {
+        snapPanelClosed();
+      }
+    }
+
+    return startY;
+  },
+  [snapPanelClosed, snapPanelOpen, togglePanel],
+  );
+
+  const listDragHandler = useCallback(
+    (state: Parameters<typeof sheetDragHandler>[0]) => {
+      const listEl = listScrollRef.current;
+
+      if (listEl && listEl.scrollTop > 4) {
+        state.cancel?.();
+        return state.memo;
+      }
+
+      if (state.first && listEl && listEl.scrollTop > 4) {
+        state.cancel?.();
+        return state.memo;
+      }
+
+      return sheetDragHandler(state);
+    },
+    [sheetDragHandler],
+  );
+
+  const bindBarDrag = useDrag(sheetDragHandler, sheetDragOptions);
+  const bindPanelDrag = useDrag(sheetDragHandler, sheetDragOptions);
+  const bindListDrag = useDrag(listDragHandler, sheetDragOptions);
+
+  function handleListTouchMove(event: ReactTouchEvent<HTMLDivElement>) {
+    const listEl = listScrollRef.current;
+
+    if (
+      listEl &&
+      listEl.scrollTop <= 0 &&
+      panelYRef.current < contentHeightRef.current * (1 - SNAP_THRESHOLD)
+    ) {
+      event.preventDefault();
+    }
+  }
 
   function handleToggleExpand() {
     triggerHaptic();
@@ -214,37 +275,47 @@ export default function ColaBottomSheet({
         }}
         aria-hidden={isPeekMode && !isDragging}
       >
-        <button
-          type="button"
-          onClick={handleToggleExpand}
-          aria-label={expanded ? "Contraer cola" : "Expandir cola"}
-          className="flex shrink-0 justify-center py-2"
-        >
-          <div className="h-1 w-10 rounded-full bg-border" />
-        </button>
+        <div {...bindPanelDrag()} className="shrink-0 touch-none">
+          <button
+            type="button"
+            onClick={handleToggleExpand}
+            aria-label={expanded ? "Contraer cola" : "Expandir cola"}
+            className="flex w-full shrink-0 justify-center py-2"
+          >
+            <div className="h-1 w-10 rounded-full bg-border" />
+          </button>
 
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3">
-          <h2 className="text-base font-bold text-text-primary">
-            Cola de la juntada
-          </h2>
-          {!isPeekMode && (
-            <TapButton
-              aria-label="Buscar canción"
-              onClick={onOpenBuscador}
-              className="flex size-10 items-center justify-center rounded-full bg-accent"
-            >
-              <Search className="size-5 text-white" aria-hidden="true" />
-            </TapButton>
-          )}
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-4 pb-3">
+            <h2 className="text-base font-bold text-text-primary">
+              Cola de la juntada
+            </h2>
+            {!isPeekMode && (
+              <TapButton
+                aria-label="Agregar canción"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenBuscador();
+                }}
+                className="flex size-10 items-center justify-center rounded-full bg-accent"
+              >
+                <Plus className="size-5 text-white" aria-hidden="true" />
+              </TapButton>
+            )}
+          </div>
         </div>
 
         <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
           <Droppable droppableId="cola-juntada">
             {(provided) => (
               <div
-                ref={provided.innerRef}
+                ref={(node) => {
+                  provided.innerRef(node);
+                  listScrollRef.current = node;
+                }}
                 {...provided.droppableProps}
-                className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3"
+                {...bindListDrag()}
+                onTouchMove={handleListTouchMove}
+                className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-4 py-3"
               >
                 {items.length === 0 ? (
                   <p className="py-8 text-center text-sm text-text-muted">
@@ -289,15 +360,6 @@ export default function ColaBottomSheet({
             )}
           </Droppable>
         </DragDropContext>
-
-        <div className="shrink-0 border-t border-border px-4 py-3">
-          <TapButton
-            onClick={() => setShowDeleteAllDialog(true)}
-            className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
-          >
-            Borrar todo
-          </TapButton>
-        </div>
       </div>
 
       <div
@@ -326,6 +388,16 @@ export default function ColaBottomSheet({
           <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
             {pendientes}
           </span>
+          <TapButton
+            aria-label="Borrar toda la cola"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowDeleteAllDialog(true);
+            }}
+            className="shrink-0 rounded-md border border-border px-2 py-0.5 text-[10px] font-semibold text-text-secondary"
+          >
+            Borrar todo
+          </TapButton>
           {isPeekMode ? (
             <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
               Próxima: {proximaNombre ?? "—"}

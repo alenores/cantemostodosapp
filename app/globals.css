@@ -73,6 +73,11 @@
   --font-sans: var(--font-app);
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 body {
   background: var(--bg-app);
   color: var(--text-primary);

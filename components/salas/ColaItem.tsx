@@ -107,15 +107,15 @@ export default function ColaItemCard({
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-[12px] border px-3 py-2 ${
-        variantClasses(variant)
-      } ${isDragging ? "shadow-lg" : ""} ${isActiva ? "py-2.5" : ""}`}
+      className={`flex items-center gap-2 rounded-[12px] border py-2 ${
+        isActiva ? "gap-1.5 pl-2 pr-2.5 py-2.5" : "px-3"
+      } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""}`}
       style={tocadaOpacity !== null ? { opacity: tocadaOpacity } : undefined}
     >
       {isPendiente ? (
         <DragHandle dragHandleProps={dragHandleProps} />
       ) : (
-        <div className="w-6 shrink-0" aria-hidden="true" />
+        !isActiva && <div className="w-6 shrink-0" aria-hidden="true" />
       )}
 
       <button
@@ -123,13 +123,13 @@ export default function ColaItemCard({
         disabled={!isPendiente}
         onClick={() => isPendiente && onSelect?.(item.id)}
         aria-label={isPendiente ? `Activar ${item.nombre}` : undefined}
-        className={`flex min-w-0 flex-1 items-center gap-2 text-left ${
-          isPendiente ? "cursor-pointer" : "cursor-default"
-        }`}
+        className={`flex min-w-0 flex-1 items-center text-left ${
+          isActiva ? "gap-1.5" : "gap-2"
+        } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
       >
         <span
-          className={`w-5 shrink-0 text-center font-bold ${
-            isActiva ? "text-sm" : "text-xs"
+          className={`shrink-0 text-center font-bold ${
+            isActiva ? "w-4 text-sm" : "w-5 text-xs"
           } ${orderClasses(variant)}`}
         >
           {item.orden}
@@ -164,7 +164,7 @@ export default function ColaItemCard({
       )}
 
       {variant === "activa" && (
-        <span className="shrink-0 rounded-full border border-bg-darker/20 bg-bg-darker/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bg-darker">
+        <span className="shrink-0 rounded-full bg-letra-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
           Activa
         </span>
       )}

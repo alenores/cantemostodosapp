@@ -6,7 +6,10 @@ import {
   resolveLetraContenido,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
-import { LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
+import {
+  LETRA_EMBED_HEIGHT_CSS,
+  LETRA_SECTION_BOTTOM_PADDING,
+} from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -144,10 +147,8 @@ export default function CancionActivaSection({
 
           {showEmbed && contenido.mode === "embed" && (
             <div
-              className="mt-3 min-h-0 flex-1"
-              style={{
-                height: `calc(100% - 2rem - ${LETRA_SECTION_BOTTOM_PADDING})`,
-              }}
+              className="mt-3 w-full shrink-0"
+              style={{ height: LETRA_EMBED_HEIGHT_CSS }}
             >
               <LetraViewer
                 url={contenido.url}

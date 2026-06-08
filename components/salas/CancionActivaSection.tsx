@@ -109,7 +109,7 @@ export default function CancionActivaSection({
       className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 py-3 ${
         showEmbed ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain"
       }`}
-      style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+      style={showEmbed ? undefined : { paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
     >
       {hasCancion ? (
         <>
@@ -143,7 +143,10 @@ export default function CancionActivaSection({
           )}
 
           {showEmbed && contenido.mode === "embed" && (
-            <div className="mt-3 flex min-h-0 flex-1 flex-col">
+            <div
+              className="mt-3 flex min-h-0 flex-1 flex-col"
+              style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+            >
               <LetraViewer
                 url={contenido.url}
                 title="Letra de la canción activa"

@@ -43,8 +43,10 @@ type ColaBottomSheetProps = {
   salaId: number;
   onColaChange: () => Promise<void>;
   onOpenBuscador: () => void;
+  avisoMensaje?: string | null;
   onProgressChange?: (progress: number) => void;
   onRegisterClose?: (close: () => void) => void;
+  onRegisterOpen?: (open: () => void) => void;
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -57,8 +59,10 @@ export default function ColaBottomSheet({
   salaId,
   onColaChange,
   onOpenBuscador,
+  avisoMensaje = null,
   onProgressChange,
   onRegisterClose,
+  onRegisterOpen,
 }: ColaBottomSheetProps) {
   const [viewportHeight, setViewportHeight] = useState(800);
   const [expanded, setExpanded] = useState(false);
@@ -109,6 +113,10 @@ export default function ColaBottomSheet({
   useEffect(() => {
     onRegisterClose?.(snapPanelClosed);
   }, [onRegisterClose, snapPanelClosed]);
+
+  useEffect(() => {
+    onRegisterOpen?.(snapPanelOpen);
+  }, [onRegisterOpen, snapPanelOpen]);
 
   const togglePanel = useCallback(() => {
     triggerHaptic();
@@ -422,6 +430,17 @@ export default function ColaBottomSheet({
         onCancel={() => setShowDeleteAllDialog(false)}
         onConfirm={() => void handleConfirmDeleteAll()}
       />
+
+      {avisoMensaje && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-4 z-40 mx-auto max-w-sm rounded-[12px] border border-accent/40 bg-bg-card px-4 py-3 text-center text-sm font-semibold text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          style={{ bottom: COLA_BAR_HEIGHT_PX + 12 }}
+        >
+          {avisoMensaje}
+        </div>
+      )}
     </>
   );
 }

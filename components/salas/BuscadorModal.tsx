@@ -6,7 +6,6 @@ import {
   agregarAGuardadas,
   type CancionInput,
 } from "@/lib/cola-logic";
-import { triggerHaptic } from "@/lib/haptic";
 import { buildGuardadaKey } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
 import type { ResultadoBusqueda } from "@/types";
@@ -34,6 +33,7 @@ type BuscadorModalProps = {
   salaId: number;
   guardadasKeys: Set<string>;
   onDataChange: () => Promise<void>;
+  onColaAdded?: () => void;
 };
 
 type Pantalla = "busqueda" | "preview";
@@ -52,6 +52,7 @@ export default function BuscadorModal({
   salaId,
   guardadasKeys,
   onDataChange,
+  onColaAdded,
 }: BuscadorModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pantalla, setPantalla] = useState<Pantalla>("busqueda");
@@ -64,15 +65,8 @@ export default function BuscadorModal({
   const [accionLoading, setAccionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
-  const [exitoMensaje, setExitoMensaje] = useState<string | null>(null);
-  const cierreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetState = useCallback(() => {
-    if (cierreTimerRef.current) {
-      clearTimeout(cierreTimerRef.current);
-      cierreTimerRef.current = null;
-    }
-
     setPantalla("busqueda");
     setQuery("");
     setResultados([]);
@@ -81,7 +75,6 @@ export default function BuscadorModal({
     setAccionLoading(false);
     setError(null);
     setBusquedaRealizada(false);
-    setExitoMensaje(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -97,14 +90,6 @@ export default function BuscadorModal({
       });
     }
   }, [open, resetState]);
-
-  useEffect(() => {
-    return () => {
-      if (cierreTimerRef.current) {
-        clearTimeout(cierreTimerRef.current);
-      }
-    };
-  }, []);
 
   function dismissKeyboard() {
     inputRef.current?.blur();
@@ -198,11 +183,8 @@ export default function BuscadorModal({
       await onDataChange();
 
       if (tipo === "cola") {
-        triggerHaptic();
-        setExitoMensaje("Se sumó a la fila");
-        cierreTimerRef.current = setTimeout(() => {
-          handleClose();
-        }, 1500);
+        onColaAdded?.();
+        handleClose();
         return;
       }
 
@@ -458,16 +440,6 @@ export default function BuscadorModal({
             )}
         </section>
       </div>
-
-      {exitoMensaje && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none fixed inset-x-4 bottom-8 z-[60] mx-auto max-w-sm rounded-[12px] border border-accent/40 bg-bg-card px-4 py-3 text-center text-sm font-semibold text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
-        >
-          {exitoMensaje}
-        </div>
-      )}
     </div>
   );
 }

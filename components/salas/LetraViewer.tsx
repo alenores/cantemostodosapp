@@ -17,7 +17,7 @@ export default function LetraViewer({
         edgeToEdge ? "" : "rounded-[12px]"
       } ${
         elevated
-          ? "border border-accent/80 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]"
+          ? "border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]"
           : ""
       }`}
     >

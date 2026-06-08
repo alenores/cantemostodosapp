@@ -14,6 +14,7 @@ import {
   type CancionActivaData,
 } from "@/lib/sala-data";
 import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
+import { triggerHaptic } from "@/lib/haptic";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -31,7 +32,10 @@ type SalaPageShellProps = {
 
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const closeDrawerRef = useRef<() => void>(() => {});
+  const openDrawerRef = useRef<() => void>(() => {});
+  const colaAvisoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawerProgress, setDrawerProgress] = useState(0);
+  const [colaAviso, setColaAviso] = useState<string | null>(null);
 
   const handleDrawerProgressChange = useCallback((progress: number) => {
     setDrawerProgress(progress);
@@ -39,6 +43,26 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
   const handleRegisterDrawerClose = useCallback((close: () => void) => {
     closeDrawerRef.current = close;
+  }, []);
+
+  const handleRegisterDrawerOpen = useCallback((open: () => void) => {
+    openDrawerRef.current = open;
+  }, []);
+
+  const handleColaAdded = useCallback(() => {
+    triggerHaptic();
+
+    if (colaAvisoTimerRef.current) {
+      clearTimeout(colaAvisoTimerRef.current);
+    }
+
+    openDrawerRef.current();
+    setColaAviso("Canción sumada a la lista");
+
+    colaAvisoTimerRef.current = setTimeout(() => {
+      setColaAviso(null);
+      colaAvisoTimerRef.current = null;
+    }, 2500);
   }, []);
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
@@ -155,6 +179,10 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       cancelled = true;
       subscription.unsubscribe();
 
+      if (colaAvisoTimerRef.current) {
+        clearTimeout(colaAvisoTimerRef.current);
+      }
+
       if (sesionChannel) {
         void supabase.removeChannel(sesionChannel);
       }
@@ -228,8 +256,10 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         salaId={salaId}
         onColaChange={loadColaCompleta}
         onOpenBuscador={() => setBuscadorOpen(true)}
+        avisoMensaje={colaAviso}
         onProgressChange={handleDrawerProgressChange}
         onRegisterClose={handleRegisterDrawerClose}
+        onRegisterOpen={handleRegisterDrawerOpen}
       />
 
       {buscadorOpen && (
@@ -239,6 +269,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           salaId={salaId}
           guardadasKeys={guardadasKeys}
           onDataChange={loadColaCompleta}
+          onColaAdded={handleColaAdded}
         />
       )}
     </div>

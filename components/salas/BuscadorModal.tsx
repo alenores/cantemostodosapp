@@ -398,17 +398,17 @@ export default function BuscadorModal({
                       type="button"
                       disabled={accionLoading}
                       onClick={() => void ejecutarAccion("cola")}
-                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-accent px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-accent px-2 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
                     >
                       <ListPlus className="size-4 shrink-0" aria-hidden="true" />
-                      + fila
+                      <span>+ fila</span>
                     </button>
 
                     <button
                       type="button"
                       disabled={accionLoading || yaGuardada}
                       onClick={() => void ejecutarAccion("guardar")}
-                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-xs font-semibold text-text-primary disabled:opacity-60"
+                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-sm font-semibold text-text-primary disabled:opacity-60"
                     >
                       <Bookmark className="size-4 shrink-0" aria-hidden="true" />
                       {yaGuardada ? "Ya guardada" : "Guardar"}
@@ -418,7 +418,7 @@ export default function BuscadorModal({
                       type="button"
                       disabled={accionLoading || yaGuardada}
                       onClick={() => void ejecutarAccion("ambas")}
-                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-xs font-semibold text-text-primary disabled:opacity-60"
+                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-sm font-semibold text-text-primary disabled:opacity-60"
                     >
                       {yaGuardada ? "Ya guardada" : "Ambas"}
                     </button>

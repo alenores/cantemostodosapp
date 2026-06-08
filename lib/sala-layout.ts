@@ -6,11 +6,8 @@ export const COLA_PANEL_CLOSED_EXTRA_PX = 32;
 /** Título + márgenes en la sección de letra activa (modo embed) */
 export const LETRA_ACTIVE_CHROME_PX = 88;
 
-/**
- * Margen bajo la letra (barra + panel + aire). Ajustado en inspector DevTools (~106px).
- * padding-bottom: calc(60px + safe-area + 106px)
- */
-export const LETRA_SCROLL_BOTTOM_EXTRA_PX = 106;
+/** Aire al final del scroll, además de la barra fija inferior */
+export const LETRA_SCROLL_BOTTOM_EXTRA_PX = 16;
 
 export const LETRA_SECTION_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + ${LETRA_SCROLL_BOTTOM_EXTRA_PX}px)`;
 

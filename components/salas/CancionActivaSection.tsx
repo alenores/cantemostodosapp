@@ -1,10 +1,8 @@
 "use client";
 
 import LetraViewer from "@/components/salas/LetraViewer";
-import {
-  COLA_BAR_HEIGHT_PX,
-  LETRA_ACTIVE_HEIGHT_CSS,
-} from "@/lib/sala-layout";
+import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
+import { isUsefulExtractedLetra } from "@/lib/letra-extract";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -25,7 +23,9 @@ export default function CancionActivaSection({
   const [loading, setLoading] = useState(false);
 
   const hasCancion = Boolean(cancionNombre);
-  const showExtractedLetra = Boolean(letra);
+  const usefulExtractedLetra =
+    letra !== null && isUsefulExtractedLetra(letra);
+  const showExtractedLetra = usefulExtractedLetra;
   const showEmbeddedLetra = Boolean(urlLetra) && !showExtractedLetra;
 
   useEffect(() => {
@@ -55,11 +55,11 @@ export default function CancionActivaSection({
           return;
         }
 
-        if (response.ok && data.letra) {
+        if (response.ok && data.letra && isUsefulExtractedLetra(data.letra)) {
           setLetra(data.letra);
         }
       } catch {
-        // Si falla el scrape server-side, el iframe muestra la letra en el browser.
+        // Si falla el scrape, el iframe muestra la letra en el browser.
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -76,8 +76,16 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
-      style={{ paddingBottom: LETRA_SCROLL_BOTTOM_PX }}
+      className={`flex min-h-0 flex-1 flex-col bg-bg-app ${
+        showEmbeddedLetra
+          ? "overflow-hidden px-2 pt-3"
+          : "overflow-y-auto px-2 py-3"
+      }`}
+      style={{
+        paddingBottom: showEmbeddedLetra
+          ? COLA_BAR_HEIGHT_PX + 8
+          : LETRA_SCROLL_BOTTOM_PX,
+      }}
     >
       {hasCancion ? (
         <>
@@ -100,7 +108,7 @@ export default function CancionActivaSection({
             </div>
           )}
 
-          {showExtractedLetra && (
+          {showExtractedLetra && letra && (
             <div
               className="mt-3 w-full rounded-[12px] bg-letra-bg px-2.5 py-5 text-letra-text whitespace-pre-wrap"
               style={{
@@ -114,20 +122,12 @@ export default function CancionActivaSection({
           )}
 
           {showEmbeddedLetra && urlLetra && (
-            <div className="mt-3 flex w-full flex-col">
+            <div className="mt-3 flex min-h-0 flex-1 flex-col">
               <LetraViewer
                 url={urlLetra}
                 title="Letra de la canción activa"
-                height={LETRA_ACTIVE_HEIGHT_CSS}
+                fill
               />
-              <a
-                href={urlLetra}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 self-center text-sm text-text-muted underline-offset-2 hover:underline"
-              >
-                Abrir en el sitio
-              </a>
             </div>
           )}
         </>

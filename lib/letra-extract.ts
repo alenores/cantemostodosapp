@@ -39,6 +39,29 @@ function cleanLetraText(text: string): string {
     .trim();
 }
 
+const MIN_USEFUL_LETRA_CHARS = 120;
+const MIN_USEFUL_LETRA_LINES = 4;
+
+/** Evita mostrar solo créditos/meta del scrape y forzar iframe en su lugar. */
+export function isUsefulExtractedLetra(text: string): boolean {
+  const cleaned = cleanLetraText(text);
+  const lines = cleaned.split("\n").filter((line) => line.trim().length > 0);
+
+  if (lines.length < MIN_USEFUL_LETRA_LINES) {
+    return false;
+  }
+
+  if (cleaned.length < MIN_USEFUL_LETRA_CHARS) {
+    return false;
+  }
+
+  if (/^\(?letra\s+y\s+m[uú]sica/i.test(lines[0] ?? "")) {
+    return lines.length > 1 && cleaned.length >= MIN_USEFUL_LETRA_CHARS;
+  }
+
+  return true;
+}
+
 function extractFromSelectors(
   $: cheerio.CheerioAPI,
   selectors: string[],

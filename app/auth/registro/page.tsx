@@ -13,6 +13,7 @@ const buttonClassName =
 
 export default function RegistroPage() {
   const router = useRouter();
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,9 @@ export default function RegistroPage() {
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: { nombre: nombre.trim() },
+      },
     });
 
     setLoading(false);
@@ -48,6 +52,19 @@ export default function RegistroPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <label htmlFor="nombre" className="sr-only">
+            Nombre
+          </label>
+          <input
+            id="nombre"
+            type="text"
+            required
+            autoComplete="name"
+            placeholder="Nombre"
+            value={nombre}
+            onChange={(event) => setNombre(event.target.value)}
+            className={inputClassName}
+          />
           <label htmlFor="email" className="sr-only">
             Email
           </label>

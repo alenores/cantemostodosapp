@@ -41,3 +41,10 @@ export type ResultadoBusqueda = {
   url: string;
   sitio: string;
 };
+
+export type UsuarioActivo = {
+  id: string;
+  nombre: string;
+  email: string;
+  avatar_url: string | null;
+};

@@ -1,4 +1,5 @@
 import SalasPageClient from "@/components/salas/SalasPageClient";
+import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -25,6 +26,7 @@ export default async function SalasPage() {
     <SalasPageClient
       salas={salas ?? []}
       errorMessage={salasError?.message ?? null}
+      usuario={mapUserToUsuarioActivo(user)}
     />
   );
 }

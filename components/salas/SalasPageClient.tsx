@@ -1,10 +1,12 @@
 "use client";
 
 import BuildVersionFooter from "@/components/BuildVersionFooter";
+import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
 import AddButton from "@/components/ui/AddButton";
-import type { Sala } from "@/types";
+import { TapLink } from "@/components/ui/TapFeedback";
+import type { Sala, UsuarioActivo } from "@/types";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,11 +14,13 @@ import { useState } from "react";
 type SalasPageClientProps = {
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
   errorMessage: string | null;
+  usuario: UsuarioActivo;
 };
 
 export default function SalasPageClient({
   salas,
   errorMessage,
+  usuario,
 }: SalasPageClientProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,9 +37,24 @@ export default function SalasPageClient({
             className="size-8 shrink-0 rounded-lg"
             aria-hidden="true"
           />
-          <h1 className="text-lg font-extrabold tracking-tight text-bg-darker">
+          <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-bg-darker">
             CantemosTodosApp
           </h1>
+          <TapLink
+            href="/perfil"
+            ariaLabel="Mi perfil"
+            className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-2"
+          >
+            <UserAvatar
+              nombre={usuario.nombre}
+              email={usuario.email}
+              avatarUrl={usuario.avatar_url}
+              size={32}
+            />
+            <span className="max-w-[7rem] truncate text-sm font-semibold text-bg-darker">
+              {usuario.nombre.trim() || "Mi perfil"}
+            </span>
+          </TapLink>
         </div>
       </header>
 

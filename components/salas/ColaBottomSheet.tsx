@@ -318,7 +318,7 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className={`fixed left-1.5 right-1.5 z-20 flex flex-col overflow-hidden rounded-t-2xl relative ${
+        className={`fixed left-1.5 right-1.5 z-20 flex flex-col overflow-hidden rounded-t-2xl ${
           isPeekMode && !isDragging
             ? "pointer-events-none shadow-none"
             : "shadow-[0_-6px_28px_rgba(0,0,0,0.45)]"

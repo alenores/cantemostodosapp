@@ -107,7 +107,9 @@ export default function ColaItemCard({
     <div
       className={`flex items-stretch overflow-hidden rounded-[12px] border ${
         isActiva ? "min-h-[68px]" : "items-center py-2.5 px-3"
-      } ${variantClasses(variant)} ${isDragging ? "cola-item-dragging" : ""}`}
+      } ${variantClasses(variant)} ${
+        isPendiente ? "transition-[background-color,border-color,box-shadow,opacity] duration-150 ease-out" : ""
+      } ${isDragging ? "cola-item-dragging" : ""}`}
       style={
         tocadaOpacity !== null && !isDragging
           ? { opacity: tocadaOpacity }

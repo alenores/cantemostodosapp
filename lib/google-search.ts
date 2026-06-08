@@ -1,8 +1,10 @@
+"use client";
+
 import type { ResultadoBusqueda } from "@/types";
-import * as cheerio from "cheerio";
 
 const BASE_URL = "https://acordes.lacuerda.net";
 const SEARCH_URL = `${BASE_URL}/busca.php`;
+const CORS_PROXY_PREFIX = "https://corsproxy.io/?";
 const MAX_RESULTS = 8;
 const SHTML_URL_PATTERN = /['"]([^'"]+\.shtml(?:\?[^'"]*)?)['"]/i;
 
@@ -69,8 +71,7 @@ function extractSongUrl(anchor: SongAnchor, artistSlug: string): string | null {
     return normalizeSongUrl(href, artistSlug);
   }
 
-  const onclick = anchor.onclick;
-  const onclickMatch = onclick.match(SHTML_URL_PATTERN);
+  const onclickMatch = anchor.onclick.match(SHTML_URL_PATTERN);
 
   if (onclickMatch) {
     return normalizeSongUrl(onclickMatch[1], artistSlug);
@@ -106,59 +107,58 @@ function isNavigationLink(text: string, href: string): boolean {
   );
 }
 
+function readAnchor(anchor: HTMLAnchorElement): SongAnchor {
+  return {
+    href: anchor.getAttribute("href") ?? "",
+    onclick:
+      anchor.getAttribute("onclick") ?? anchor.getAttribute("onClick") ?? "",
+    text: anchor.textContent?.trim() ?? "",
+  };
+}
+
 export function parseLaCuerdaSearchHtml(html: string): ResultadoBusqueda[] {
-  const $ = cheerio.load(html);
+  const doc = new DOMParser().parseFromString(html, "text/html");
   const results: ResultadoBusqueda[] = [];
   const seenUrls = new Set<string>();
 
-  $("table tr").each((_, row) => {
-    const $row = $(row);
-    const $artistLink = $row
-      .find(`a[href*="${BASE_URL}/"], a[href^="/"]`)
-      .filter((_, anchor) => {
-        const href = $(anchor).attr("href") ?? "";
-        return Boolean(extractArtistSlug(href));
-      })
-      .first();
+  for (const row of doc.querySelectorAll("table tr")) {
+    const artistLink = Array.from(row.querySelectorAll("a")).find((anchor) => {
+      const href = anchor.getAttribute("href") ?? "";
+      return Boolean(extractArtistSlug(href));
+    });
 
-    const artistHref = $artistLink.attr("href");
-
-    if (!artistHref) {
-      return;
+    if (!artistLink) {
+      continue;
     }
 
+    const artistHref = artistLink.getAttribute("href") ?? "";
     const artistSlug = extractArtistSlug(artistHref);
 
     if (!artistSlug) {
-      return;
+      continue;
     }
 
-    const artista = $artistLink.text().trim();
+    const artista = artistLink.textContent?.trim() ?? "";
 
-    $row.find("a").each((_, anchor) => {
+    for (const anchor of row.querySelectorAll("a")) {
       if (results.length >= MAX_RESULTS) {
-        return false;
+        break;
       }
 
-      const $anchor = $(anchor);
-      const href = $anchor.attr("href") ?? "";
-      const text = $anchor.text().trim();
-
-      if ($anchor.is($artistLink) || isNavigationLink(text, href)) {
-        return;
+      if (anchor === artistLink) {
+        continue;
       }
 
-      const url = extractSongUrl(
-        {
-          href,
-          onclick: $anchor.attr("onclick") ?? $anchor.attr("onClick") ?? "",
-          text,
-        },
-        artistSlug,
-      );
+      const { href, onclick, text } = readAnchor(anchor);
+
+      if (isNavigationLink(text, href)) {
+        continue;
+      }
+
+      const url = extractSongUrl({ href, onclick, text }, artistSlug);
 
       if (!url || !url.includes(".shtml") || seenUrls.has(url)) {
-        return;
+        continue;
       }
 
       seenUrls.add(url);
@@ -168,36 +168,35 @@ export function parseLaCuerdaSearchHtml(html: string): ResultadoBusqueda[] {
         url,
         sitio: "lacuerda",
       });
-    });
-  });
+    }
+  }
 
   if (results.length > 0) {
     return results.slice(0, MAX_RESULTS);
   }
 
-  $(`a[href*=".shtml"]`).each((_, anchor) => {
+  for (const anchor of doc.querySelectorAll('a[href*=".shtml"]')) {
     if (results.length >= MAX_RESULTS) {
-      return false;
+      break;
     }
 
-    const $anchor = $(anchor);
-    const href = $anchor.attr("href") ?? "";
+    const href = anchor.getAttribute("href") ?? "";
     const url = normalizeSongUrl(href, "");
 
     if (!url || seenUrls.has(url)) {
-      return;
+      continue;
     }
 
     const artistSlug = extractArtistSlug(url);
 
     if (!artistSlug) {
-      return;
+      continue;
     }
 
-    const titulo = $anchor.text().trim();
+    const titulo = anchor.textContent?.trim() ?? "";
 
     if (!titulo) {
-      return;
+      continue;
     }
 
     seenUrls.add(url);
@@ -207,75 +206,52 @@ export function parseLaCuerdaSearchHtml(html: string): ResultadoBusqueda[] {
       url,
       sitio: "lacuerda",
     });
-  });
+  }
 
   return results.slice(0, MAX_RESULTS);
 }
 
-const LA_CUERDA_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-  Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-  "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
-  Referer: `${BASE_URL}/`,
-  "Upgrade-Insecure-Requests": "1",
-  "Sec-Fetch-Dest": "document",
-  "Sec-Fetch-Mode": "navigate",
-  "Sec-Fetch-Site": "same-origin",
-  "Sec-Fetch-User": "?1",
-};
+export function buildLaCuerdaProxyUrl(query: string): string {
+  const params = new URLSearchParams({ exp: query });
+  const targetUrl = `${SEARCH_URL}?${params.toString()}`;
+  return `${CORS_PROXY_PREFIX}${targetUrl}`;
+}
 
 function formatFetchError(error: unknown, query: string): string {
   if (!(error instanceof Error)) {
     return `Error de red al buscar "${query}" en La Cuerda`;
   }
 
-  const cause = error.cause as { code?: string; message?: string } | undefined;
-  const code = cause?.code ?? "";
-
-  if (code === "UND_ERR_CONNECT_TIMEOUT" || code === "ETIMEDOUT") {
-    return `La Cuerda no respondió (timeout${code ? `: ${code}` : ""}). Posible bloqueo de IP de datacenter al buscar "${query}"`;
-  }
-
-  if (code === "ECONNREFUSED" || code === "UND_ERR_CONNECT") {
-    return `Conexión rechazada por La Cuerda (${code}) al buscar "${query}"`;
-  }
-
-  if (cause?.message) {
-    return `Error de red al buscar "${query}": ${cause.message}`;
-  }
-
   return error.message || `Error de red al buscar "${query}" en La Cuerda`;
 }
 
 export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> {
-  const params = new URLSearchParams({ exp: query });
-  const searchUrl = `${SEARCH_URL}?${params.toString()}`;
+  const proxyUrl = buildLaCuerdaProxyUrl(query);
 
   let response: Response;
 
   try {
-    response = await fetch(searchUrl, {
-      headers: LA_CUERDA_HEADERS,
-      cache: "no-store",
-    });
+    response = await fetch(proxyUrl);
   } catch (error) {
     console.error("[lacuerda] fetch failed:", {
       query,
-      url: searchUrl,
+      url: proxyUrl,
       error: error instanceof Error ? error.message : error,
-      cause:
-        error instanceof Error && error.cause
-          ? error.cause
-          : undefined,
     });
     throw new Error(formatFetchError(error, query));
   }
 
   if (!response.ok) {
+    let detail = "";
+
+    try {
+      detail = await response.text();
+    } catch {
+      // Ignorar error al leer el cuerpo.
+    }
+
     throw new Error(
-      `La Cuerda respondió con status ${response.status} al buscar "${query}"`,
+      `El proxy CORS respondió con status ${response.status} al buscar "${query}"${detail ? `: ${detail.slice(0, 120)}` : ""}`,
     );
   }
 

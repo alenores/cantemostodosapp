@@ -5,12 +5,8 @@ import LetraViewer from "@/components/salas/LetraViewer";
 import {
   resolveLetraContenido,
   shouldPreferTextExtract,
-  type LetraContenido,
 } from "@/lib/letra-display";
-import {
-  COLA_BAR_HEIGHT_PX,
-  LETRA_SECTION_BOTTOM_PADDING,
-} from "@/lib/sala-layout";
+import { LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,7 +14,6 @@ type CancionActivaSectionProps = {
   cancionNombre?: string | null;
   artista?: string | null;
   urlLetra?: string | null;
-  /** Letra manual (p. ej. canciones subidas a mano). Tiene prioridad sobre scrape/iframe. */
   letraTexto?: string | null;
 };
 
@@ -94,7 +89,7 @@ export default function CancionActivaSection({
 
   const waitingForExtract = needsExtract && loadingExtract;
 
-  const contenido: LetraContenido | null = useMemo(() => {
+  const contenido = useMemo(() => {
     if (needsExtract && loadingExtract) {
       return null;
     }
@@ -106,94 +101,61 @@ export default function CancionActivaSection({
     });
   }, [extractedText, letraTexto, loadingExtract, needsExtract, urlLetra]);
 
-  const isEmbed = contenido?.mode === "embed";
-
-  const header = (
-    <>
-      <h2 className="shrink-0 text-xl font-bold text-text-primary">
-        {cancionNombre}
-      </h2>
-      {artista && (
-        <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">{artista}</p>
-      )}
-    </>
-  );
-
-  if (!hasCancion) {
-    return (
-      <section className="flex min-h-0 flex-1 flex-col bg-bg-app px-2 py-3">
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-center text-sm text-text-muted">
-            Ninguna canción seleccionada aún
-          </p>
-        </div>
-      </section>
-    );
-  }
-
-  if (isEmbed) {
-    return (
-      <section
-        className="grid h-full min-h-0 flex-1 grid-rows-[min-content_minmax(0,1fr)] gap-3 overflow-hidden bg-bg-app px-2 pt-3"
-        style={{
-          paddingBottom: `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 4px)`,
-        }}
-      >
-        <div className="min-w-0 shrink-0">{header}</div>
-
-        {waitingForExtract && (
-          <div className="flex items-center gap-2 text-sm text-text-muted">
-            <Loader2
-              className="size-4 animate-spin text-accent"
-              aria-hidden="true"
-            />
-            <span>Cargando letra...</span>
-          </div>
-        )}
-
-        {!contenido && !waitingForExtract && (
-          <p className="text-center text-sm text-text-muted">
-            Esta canción no tiene letra disponible.
-          </p>
-        )}
-
-        {contenido?.mode === "embed" && (
-          <div className="h-full min-h-0 min-w-0 overflow-hidden">
-            <LetraViewer
-              url={contenido.url}
-              title="Letra de la canción activa"
-              fill
-            />
-          </div>
-        )}
-      </section>
-    );
-  }
+  const showTexto = contenido?.mode === "texto";
+  const showEmbed = contenido?.mode === "embed";
 
   return (
     <section
       className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
       style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
     >
-      {header}
+      {hasCancion ? (
+        <>
+          <h2 className="shrink-0 text-xl font-bold text-text-primary">
+            {cancionNombre}
+          </h2>
+          {artista && (
+            <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
+              {artista}
+            </p>
+          )}
 
-      {waitingForExtract && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
-          <Loader2
-            className="size-4 animate-spin text-accent"
-            aria-hidden="true"
-          />
-          <span>Cargando letra...</span>
+          {waitingForExtract && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+              <Loader2
+                className="size-4 animate-spin text-accent"
+                aria-hidden="true"
+              />
+              <span>Cargando letra...</span>
+            </div>
+          )}
+
+          {!contenido && !waitingForExtract && (
+            <p className="mt-6 text-center text-sm text-text-muted">
+              Esta canción no tiene letra disponible.
+            </p>
+          )}
+
+          {showTexto && contenido.mode === "texto" && (
+            <LetraTexto texto={contenido.texto} />
+          )}
+
+          {showEmbed && contenido.mode === "embed" && (
+            <div className="mt-3 w-full shrink-0">
+              <LetraViewer
+                url={contenido.url}
+                title="Letra de la canción activa"
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-center text-sm text-text-muted">
+            Ninguna canción seleccionada aún
+          </p>
         </div>
       )}
-
-      {!contenido && !waitingForExtract && (
-        <p className="mt-6 text-center text-sm text-text-muted">
-          Esta canción no tiene letra disponible.
-        </p>
-      )}
-
-      {contenido?.mode === "texto" && <LetraTexto texto={contenido.texto} />}
     </section>
   );
 }

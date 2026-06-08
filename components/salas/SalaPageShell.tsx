@@ -13,7 +13,7 @@ import {
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
-import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
+import { COLA_AVISO_SHOW_DELAY_MS, COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
@@ -33,7 +33,8 @@ type SalaPageShellProps = {
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
-  const colaAvisoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawerProgress, setDrawerProgress] = useState(0);
   const [colaAviso, setColaAviso] = useState<string | null>(null);
 
@@ -52,17 +53,26 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
 
-    if (colaAvisoTimerRef.current) {
-      clearTimeout(colaAvisoTimerRef.current);
+    if (colaAvisoShowTimerRef.current) {
+      clearTimeout(colaAvisoShowTimerRef.current);
     }
 
-    openDrawerRef.current();
-    setColaAviso("Canción sumada a la lista");
+    if (colaAvisoHideTimerRef.current) {
+      clearTimeout(colaAvisoHideTimerRef.current);
+    }
 
-    colaAvisoTimerRef.current = setTimeout(() => {
-      setColaAviso(null);
-      colaAvisoTimerRef.current = null;
-    }, 2500);
+    setColaAviso(null);
+    openDrawerRef.current();
+
+    colaAvisoShowTimerRef.current = setTimeout(() => {
+      setColaAviso("Canción sumada a la lista");
+      colaAvisoShowTimerRef.current = null;
+
+      colaAvisoHideTimerRef.current = setTimeout(() => {
+        setColaAviso(null);
+        colaAvisoHideTimerRef.current = null;
+      }, 2500);
+    }, COLA_AVISO_SHOW_DELAY_MS);
   }, []);
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
@@ -179,8 +189,12 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       cancelled = true;
       subscription.unsubscribe();
 
-      if (colaAvisoTimerRef.current) {
-        clearTimeout(colaAvisoTimerRef.current);
+      if (colaAvisoShowTimerRef.current) {
+        clearTimeout(colaAvisoShowTimerRef.current);
+      }
+
+      if (colaAvisoHideTimerRef.current) {
+        clearTimeout(colaAvisoHideTimerRef.current);
       }
 
       if (sesionChannel) {

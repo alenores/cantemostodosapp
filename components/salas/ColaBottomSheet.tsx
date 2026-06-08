@@ -70,6 +70,7 @@ export default function ColaBottomSheet({
   const [isDragging, setIsDragging] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [avisoEntered, setAvisoEntered] = useState(false);
 
   const panelYRef = useRef(panelY);
   const contentHeightRef = useRef(400);
@@ -117,6 +118,24 @@ export default function ColaBottomSheet({
   useEffect(() => {
     onRegisterOpen?.(snapPanelOpen);
   }, [onRegisterOpen, snapPanelOpen]);
+
+  useEffect(() => {
+    if (!avisoMensaje) {
+      setAvisoEntered(false);
+      return;
+    }
+
+    setAvisoEntered(false);
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setAvisoEntered(true);
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [avisoMensaje]);
 
   const togglePanel = useCallback(() => {
     triggerHaptic();
@@ -435,7 +454,11 @@ export default function ColaBottomSheet({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed inset-x-4 z-40 mx-auto max-w-sm rounded-[12px] border border-accent/40 bg-bg-card px-4 py-3 text-center text-sm font-semibold text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          className={`pointer-events-none fixed inset-x-4 z-40 mx-auto max-w-sm rounded-[12px] border border-accent/35 bg-bg-cola-aviso px-4 py-3 text-center text-sm font-semibold text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-all duration-300 ease-out ${
+            avisoEntered
+              ? "translate-y-0 opacity-100"
+              : "translate-y-2 opacity-0"
+          }`}
           style={{ bottom: COLA_BAR_HEIGHT_PX + 12 }}
         >
           {avisoMensaje}

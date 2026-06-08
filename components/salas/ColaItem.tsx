@@ -47,7 +47,7 @@ function getTocadaOpacity(items: ColaItem[], index: number): number | null {
 function DragHandle() {
   return (
     <div
-      className="pointer-events-none grid shrink-0 grid-cols-2 gap-[3px] px-1 py-2"
+      className="pointer-events-none grid shrink-0 grid-cols-2 gap-[2px] py-2 pl-0 pr-0.5"
       aria-hidden="true"
     >
       {Array.from({ length: 6 }).map((_, dotIndex) => (
@@ -106,7 +106,7 @@ export default function ColaItemCard({
   return (
     <div
       className={`flex items-stretch overflow-hidden rounded-[12px] border ${
-        isActiva ? "min-h-[60px]" : "items-center py-2 px-3"
+        isActiva ? "min-h-[62px]" : "items-center py-2.5 px-3"
       } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""}`}
       style={tocadaOpacity !== null ? { opacity: tocadaOpacity } : undefined}
       onContextMenu={isPendiente ? (event) => event.preventDefault() : undefined}
@@ -148,12 +148,12 @@ export default function ColaItemCard({
           }}
           aria-label={isPendiente ? `Activar ${item.nombre}` : undefined}
           className={`flex min-w-0 flex-1 items-center text-left ${
-            isActiva ? "gap-1.5" : "gap-2"
+            isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
           } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
         >
           <span
             className={`shrink-0 text-center font-bold ${
-              isActiva ? "w-4 text-sm" : "w-5 text-xs"
+              isActiva ? "w-4 text-sm" : "w-4 text-[11px]"
             } ${orderClasses(variant)}`}
           >
             {item.orden}
@@ -164,7 +164,7 @@ export default function ColaItemCard({
               className={`truncate ${
                 isActiva
                   ? "text-base font-bold text-bg-darker"
-                  : "text-sm font-semibold text-text-primary"
+                  : "text-[15px] font-semibold leading-snug text-text-primary"
               }`}
             >
               {item.nombre}
@@ -174,7 +174,7 @@ export default function ColaItemCard({
                 className={`truncate ${
                   isActiva
                     ? "text-sm font-semibold text-bg-darker/75"
-                    : "text-xs text-text-muted"
+                    : "text-[13px] leading-snug text-text-muted"
                 }`}
               >
                 {item.artista}

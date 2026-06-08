@@ -294,11 +294,13 @@ export default function ColaBottomSheet({
           </button>
 
           <div className="relative flex shrink-0 items-center px-4 pb-3">
-            <h2 className="w-full text-center text-lg font-bold text-text-primary">
+            <div className="size-8 shrink-0" aria-hidden="true" />
+
+            <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
               Lista de canciones
             </h2>
 
-            <div className="absolute right-4 top-1/2 z-20 -translate-y-1/2">
+            <div className="relative z-20 shrink-0">
               <TapButton
                 type="button"
                 aria-label="Borrar toda la lista"
@@ -307,9 +309,9 @@ export default function ColaBottomSheet({
                   event.stopPropagation();
                   setDeleteFabOpen((open) => !open);
                 }}
-                className="flex size-8 items-center justify-center rounded-full bg-[#d94a3d] shadow-[0_2px_8px_rgba(217,74,61,0.45)]"
+                className="flex size-8 items-center justify-center rounded-full bg-cola-sheet-pill text-text-secondary"
               >
-                <Trash2 className="size-4 text-white" aria-hidden="true" />
+                <Trash2 className="size-4" aria-hidden="true" />
               </TapButton>
 
               {deleteFabOpen && (
@@ -489,12 +491,10 @@ export default function ColaBottomSheet({
         <div
           role="status"
           aria-live="polite"
-          className={`pointer-events-none fixed inset-x-4 z-40 mx-auto max-w-sm rounded-[12px] border border-accent/35 bg-bg-cola-aviso px-4 py-3 text-center text-sm font-semibold text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-all duration-300 ease-out ${
-            avisoEntered
-              ? "translate-y-0 opacity-100"
-              : "translate-y-2 opacity-0"
+          className={`pointer-events-none fixed left-1/2 z-40 w-fit max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-[10px] border border-accent/30 bg-bg-cola-aviso px-3.5 py-2 text-center text-sm font-semibold whitespace-nowrap text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.38)] transition-[opacity,transform] duration-300 ease-out ${
+            avisoEntered ? "opacity-100" : "translate-y-2 opacity-0"
           }`}
-          style={{ bottom: COLA_BAR_HEIGHT_PX + 12 }}
+          style={{ bottom: COLA_BAR_HEIGHT_PX + 72 }}
         >
           {avisoMensaje}
         </div>

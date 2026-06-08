@@ -192,6 +192,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         <CancionActivaSection
           cancionNombre={cancionActiva?.nombre ?? null}
           artista={cancionActiva?.artista ?? null}
+          urlLetra={cancionActiva?.url_letra ?? null}
         />
       </div>
 

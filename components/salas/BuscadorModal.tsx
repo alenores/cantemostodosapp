@@ -244,7 +244,7 @@ export default function BuscadorModal({
                     aria-hidden="true"
                   />
                   <p className="text-sm text-text-secondary">
-                    Buscando en lacuerda y cifraclub...
+                    Buscando en acordesdcanciones y cifraclub...
                   </p>
                 </div>
               )}

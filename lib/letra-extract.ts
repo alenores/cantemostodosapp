@@ -2,7 +2,12 @@ import * as cheerio from "cheerio";
 
 const FETCH_TIMEOUT_MS = 15_000;
 
-const ALLOWED_HOST_SUFFIXES = ["lacuerda.net", "cifraclub.com", "cifraclub.com.br"];
+const ALLOWED_HOST_SUFFIXES = [
+  "acordesdcanciones.com",
+  "lacuerda.net",
+  "cifraclub.com",
+  "cifraclub.com.br",
+];
 
 const FETCH_HEADERS: Record<string, string> = {
   Accept: "text/html,application/xhtml+xml",
@@ -27,6 +32,9 @@ function cleanLetraText(text: string): string {
   return text
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -50,6 +58,25 @@ function extractFromSelectors(
   }
 
   return null;
+}
+
+function paragraphToText(
+  $: cheerio.CheerioAPI,
+  paragraph: ReturnType<cheerio.CheerioAPI>,
+): string {
+  const clone = paragraph.clone();
+  clone.find("script, style").remove();
+  clone.find("br").replaceWith("\n");
+
+  return clone
+    .text()
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/\s+$/g, "")
+        .replace(/^\s+/g, (spaces) => (spaces.length > 8 ? "" : spaces)),
+    )
+    .join("\n");
 }
 
 function extractLaCuerdaLetra($: cheerio.CheerioAPI): string | null {
@@ -78,9 +105,69 @@ function extractCifraClubLetra($: cheerio.CheerioAPI): string | null {
   ]);
 }
 
+function extractAcordesDeCancionesLetra($: cheerio.CheerioAPI): string | null {
+  const content = $(".entry-content.single-content").first();
+
+  if (content.length === 0) {
+    return null;
+  }
+
+  const heading = content
+    .find("h2")
+    .filter((_, el) => /letra\s+y\s+acordes/i.test($(el).text()))
+    .first();
+
+  if (heading.length === 0) {
+    return null;
+  }
+
+  const blocks: string[] = [];
+  let node = heading.next();
+
+  while (node.length > 0) {
+    const tag = node.prop("tagName")?.toLowerCase();
+
+    if (tag === "h4") {
+      break;
+    }
+
+    if (tag === "div") {
+      const text = node.text().trim();
+      if (/letra\s+y\s+música/i.test(text)) {
+        blocks.push(text);
+      }
+    }
+
+    if (tag === "p") {
+      const text = paragraphToText($, node);
+      if (text.trim()) {
+        blocks.push(text);
+      }
+    }
+
+    node = node.next();
+  }
+
+  if (blocks.length === 0) {
+    return null;
+  }
+
+  let letra = blocks.join("\n\n");
+  letra = letra.replace(
+    /Transcripción x .+ para acordesdcanciones\.com\n*/gi,
+    "",
+  );
+
+  return cleanLetraText(letra);
+}
+
 function extractLetraFromHtml(html: string, url: string): string | null {
   const $ = cheerio.load(html);
   const hostname = new URL(url).hostname.toLowerCase();
+
+  if (hostname.includes("acordesdcanciones")) {
+    return extractAcordesDeCancionesLetra($);
+  }
 
   if (hostname.includes("lacuerda")) {
     return extractLaCuerdaLetra($);
@@ -90,7 +177,11 @@ function extractLetraFromHtml(html: string, url: string): string | null {
     return extractCifraClubLetra($);
   }
 
-  return extractLaCuerdaLetra($) ?? extractCifraClubLetra($);
+  return (
+    extractAcordesDeCancionesLetra($) ??
+    extractLaCuerdaLetra($) ??
+    extractCifraClubLetra($)
+  );
 }
 
 export async function obtenerLetraDesdeUrl(url: string): Promise<string> {

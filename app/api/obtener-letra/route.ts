@@ -26,7 +26,10 @@ export async function GET(request: Request) {
 
   if (!isAllowedLetraUrl(url)) {
     return NextResponse.json(
-      { error: "URL no permitida. Solo lacuerda.net y cifraclub.com." },
+      {
+        error:
+          "URL no permitida. Solo acordesdcanciones.com y cifraclub.com.",
+      },
       { status: 403 },
     );
   }

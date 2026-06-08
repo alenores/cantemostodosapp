@@ -4,7 +4,7 @@ const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 const MAX_RESULTS = 8;
 
 const TITLE_SUFFIX_PATTERN =
-  /\s*[\|·]\s*(La Cuerda|Cifra Club|Ultimate Guitar).*$/i;
+  /\s*[\|·]\s*(La Cuerda|Cifra Club|Acordes de Canciones|Ultimate Guitar).*$/i;
 const PARENTHETICAL_PATTERN = /\s*\([^)]*\)\s*$/;
 
 type BraveWebResult = {
@@ -32,8 +32,8 @@ function getBraveApiKey(): string {
 export function extractSitio(url: string): string {
   const hostname = new URL(url).hostname.replace(/^www\./i, "");
 
-  if (hostname.includes("lacuerda")) {
-    return "lacuerda";
+  if (hostname.includes("acordesdcanciones")) {
+    return "acordesdcanciones";
   }
 
   if (hostname.includes("cifraclub")) {
@@ -80,7 +80,7 @@ export function parseTituloArtista(title: string): {
 }
 
 function buildSearchQuery(query: string): string {
-  return `${query} site:lacuerda.net OR site:cifraclub.com`;
+  return `${query} site:acordesdcanciones.com OR site:cifraclub.com`;
 }
 
 function mapBraveResult(item: BraveWebResult): ResultadoBusqueda {

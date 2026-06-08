@@ -11,9 +11,10 @@ const inputClassName =
 const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
 
-export default function LoginPage() {
+export default function RegistroPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +24,15 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
-      password: "",
+      password,
     });
 
     setLoading(false);
 
-    if (signInError) {
-      setError("Email no registrado");
+    if (signUpError) {
+      setError(signUpError.message);
       return;
     }
 
@@ -59,13 +60,26 @@ export default function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             className={inputClassName}
           />
+          <label htmlFor="password" className="sr-only">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            autoComplete="new-password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className={inputClassName}
+          />
           <button
             type="submit"
             disabled={loading}
             className={buttonClassName}
             style={{ transitionTimingFunction: "var(--transition-timing)" }}
           >
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? "Registrando..." : "Registrarse"}
           </button>
           {error && (
             <p className="text-center text-sm text-accent" role="alert">
@@ -75,9 +89,9 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-text-secondary">
-          ¿No tenés cuenta?{" "}
-          <Link href="/auth/registro" className="text-accent underline">
-            Registrate
+          ¿Ya tenés cuenta?{" "}
+          <Link href="/auth/login" className="text-accent underline">
+            Iniciá sesión
           </Link>
         </p>
       </div>

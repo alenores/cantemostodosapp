@@ -69,7 +69,7 @@ export default function CancionActivaSection({
   }, [urlLetra]);
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-4 py-4">
+    <section className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-4 py-4 pb-6">
       {hasCancion ? (
         <>
           <h2 className="shrink-0 text-xl font-extrabold text-text-primary">
@@ -93,7 +93,7 @@ export default function CancionActivaSection({
 
           {showExtractedLetra && (
             <div
-              className="mt-4 min-h-0 flex-1 rounded-[12px] bg-letra-bg px-[18px] py-5 text-letra-text whitespace-pre-wrap"
+              className="mt-4 rounded-[12px] bg-letra-bg px-[18px] py-5 text-letra-text whitespace-pre-wrap"
               style={{
                 fontSize: "var(--letra-size)",
                 lineHeight: "var(--letra-line-height)",
@@ -105,7 +105,7 @@ export default function CancionActivaSection({
           )}
 
           {showEmbeddedLetra && urlLetra && (
-            <div className="mt-4 flex min-h-0 flex-1 flex-col">
+            <div className="mt-4 flex flex-col">
               <LetraViewer url={urlLetra} title="Letra de la canción activa" />
               <a
                 href={urlLetra}

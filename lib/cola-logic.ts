@@ -2,6 +2,12 @@ import type { ColaItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DropResult } from "@hello-pangea/dnd";
 
+export type CancionInput = {
+  nombre: string;
+  artista: string | null;
+  url_letra: string;
+};
+
 export type ColaVariant = "tocada" | "activa" | "proxima" | "pendiente";
 
 export type OrdenUpdate = {
@@ -237,5 +243,71 @@ export async function avanzarCancion(
 
   if (insertError) {
     throw insertError;
+  }
+}
+
+export async function agregarACola(
+  supabase: SupabaseClient,
+  salaId: number,
+  cancion: CancionInput,
+): Promise<void> {
+  const { data: lastItem, error: lastError } = await supabase
+    .from("cola_juntada")
+    .select("orden")
+    .eq("sala_id", salaId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  const nextOrden = (lastItem?.orden ?? 0) + 1;
+
+  const { error } = await supabase.from("cola_juntada").insert({
+    sala_id: salaId,
+    nombre: cancion.nombre,
+    artista: cancion.artista,
+    url_letra: cancion.url_letra,
+    estado: "pendiente",
+    orden: nextOrden,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function agregarAGuardadas(
+  supabase: SupabaseClient,
+  salaId: number,
+  cancion: CancionInput,
+): Promise<void> {
+  const { data: existing, error: existingError } = await supabase
+    .from("canciones_guardadas")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("nombre", cancion.nombre)
+    .eq("url_letra", cancion.url_letra)
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existing) {
+    return;
+  }
+
+  const { error } = await supabase.from("canciones_guardadas").insert({
+    sala_id: salaId,
+    nombre: cancion.nombre,
+    artista: cancion.artista,
+    url_letra: cancion.url_letra,
+  });
+
+  if (error) {
+    throw error;
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import BarraCola from "@/components/salas/BarraCola";
+import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaJuntadaSection from "@/components/salas/ColaJuntadaSection";
 import {
@@ -32,6 +33,7 @@ const emptyColaResumen: ColaResumen = {
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
   );
@@ -173,6 +175,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           <button
             type="button"
             aria-label="Buscar canción"
+            onClick={() => setBuscadorOpen(true)}
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent"
           >
             <Search className="size-5 text-white" aria-hidden="true" />
@@ -227,6 +230,16 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           })
         }
       />
+
+      {buscadorOpen && (
+        <BuscadorModal
+          open={buscadorOpen}
+          onClose={() => setBuscadorOpen(false)}
+          salaId={salaId}
+          guardadasKeys={guardadasKeys}
+          onDataChange={loadColaCompleta}
+        />
+      )}
     </div>
   );
 }

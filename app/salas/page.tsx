@@ -2,6 +2,8 @@ import SalaCard from "@/components/salas/SalaCard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+export const revalidate = 0;
+
 export default async function SalasPage() {
   const supabase = await createClient();
 

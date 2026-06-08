@@ -106,7 +106,7 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain bg-bg-app px-2 py-3"
       style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
     >
       {hasCancion ? (

@@ -6,11 +6,15 @@ export const COLA_PANEL_CLOSED_EXTRA_PX = 32;
 /** Título + márgenes en la sección de letra activa (modo embed) */
 export const LETRA_ACTIVE_CHROME_PX = 88;
 
-export const LETRA_EMBED_HEIGHT_CSS = `calc(100dvh - ${
-  SALA_HEADER_HEIGHT_PX + COLA_BAR_HEIGHT_PX + LETRA_ACTIVE_CHROME_PX
-}px)`;
+/**
+ * Margen bajo la letra (barra + panel + aire). Ajustado en inspector DevTools (~106px).
+ * padding-bottom: calc(60px + safe-area + 106px)
+ */
+export const LETRA_SCROLL_BOTTOM_EXTRA_PX = 106;
 
-export const LETRA_SECTION_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 16px)`;
+export const LETRA_SECTION_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + ${LETRA_SCROLL_BOTTOM_EXTRA_PX}px)`;
+
+export const LETRA_EMBED_HEIGHT_CSS = `calc(100dvh - ${SALA_HEADER_HEIGHT_PX}px - ${LETRA_ACTIVE_CHROME_PX}px - ${COLA_BAR_HEIGHT_PX}px - ${LETRA_SCROLL_BOTTOM_EXTRA_PX}px - env(safe-area-inset-bottom, 0px))`;
 
 export function getColaOpenHeight(
   viewportHeight: number,

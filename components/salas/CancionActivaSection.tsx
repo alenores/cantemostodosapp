@@ -6,7 +6,10 @@ import {
   resolveLetraContenido,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
-import { COLA_BAR_HEIGHT_PX, LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
+import {
+  LETRA_EMBED_HEIGHT_CSS,
+  LETRA_SECTION_BOTTOM_PADDING,
+} from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -103,14 +106,16 @@ export default function CancionActivaSection({
 
   const header = (
     <>
-      <h2 className="text-xl font-bold text-text-primary">{cancionNombre}</h2>
+      <h2 className="shrink-0 text-xl font-bold text-text-primary">
+        {cancionNombre}
+      </h2>
       {artista && (
-        <p className="mt-0.5 text-[13px] text-text-muted">{artista}</p>
+        <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">{artista}</p>
       )}
     </>
   );
 
-  const embedBottomPadding = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 4px)`;
+  const sectionStyle = { paddingBottom: LETRA_SECTION_BOTTOM_PADDING };
 
   if (!hasCancion) {
     return (
@@ -125,11 +130,14 @@ export default function CancionActivaSection({
   if (contenido?.mode === "embed") {
     return (
       <section
-        className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
-        style={{ paddingBottom: embedBottomPadding }}
+        className="min-h-0 flex-1 overflow-y-auto bg-bg-app px-2 py-3"
+        style={sectionStyle}
       >
-        <div className="shrink-0">{header}</div>
-        <div className="mt-3 min-h-0 flex-1 overflow-hidden">
+        {header}
+        <div
+          className="mt-3 w-full shrink-0 overflow-hidden rounded-[12px]"
+          style={{ height: LETRA_EMBED_HEIGHT_CSS, minHeight: 320 }}
+        >
           <LetraViewer
             url={contenido.url}
             title="Letra de la canción activa"
@@ -143,7 +151,7 @@ export default function CancionActivaSection({
   return (
     <section
       className="min-h-0 flex-1 overflow-y-auto bg-bg-app px-2 py-3"
-      style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+      style={sectionStyle}
     >
       {header}
 

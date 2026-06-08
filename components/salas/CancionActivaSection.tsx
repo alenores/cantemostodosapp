@@ -6,7 +6,7 @@ import {
   resolveLetraContenido,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
-import { LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
+import { COLA_BAR_HEIGHT_PX, LETRA_SECTION_BOTTOM_PADDING } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -101,61 +101,69 @@ export default function CancionActivaSection({
     });
   }, [extractedText, letraTexto, loadingExtract, needsExtract, urlLetra]);
 
-  const showTexto = contenido?.mode === "texto";
-  const showEmbed = contenido?.mode === "embed";
+  const header = (
+    <>
+      <h2 className="text-xl font-bold text-text-primary">{cancionNombre}</h2>
+      {artista && (
+        <p className="mt-0.5 text-[13px] text-text-muted">{artista}</p>
+      )}
+    </>
+  );
+
+  const embedBottomPadding = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 4px)`;
+
+  if (!hasCancion) {
+    return (
+      <section className="flex min-h-0 flex-1 items-center justify-center bg-bg-app px-2 py-3">
+        <p className="text-center text-sm text-text-muted">
+          Ninguna canción seleccionada aún
+        </p>
+      </section>
+    );
+  }
+
+  if (contenido?.mode === "embed") {
+    return (
+      <section
+        className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
+        style={{ paddingBottom: embedBottomPadding }}
+      >
+        <div className="shrink-0">{header}</div>
+        <div className="mt-3 min-h-0 flex-1 overflow-hidden">
+          <LetraViewer
+            url={contenido.url}
+            title="Letra de la canción activa"
+            fill
+          />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3"
+      className="min-h-0 flex-1 overflow-y-auto bg-bg-app px-2 py-3"
       style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
     >
-      {hasCancion ? (
-        <>
-          <h2 className="shrink-0 text-xl font-bold text-text-primary">
-            {cancionNombre}
-          </h2>
-          {artista && (
-            <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
-              {artista}
-            </p>
-          )}
+      {header}
 
-          {waitingForExtract && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
-              <Loader2
-                className="size-4 animate-spin text-accent"
-                aria-hidden="true"
-              />
-              <span>Cargando letra...</span>
-            </div>
-          )}
-
-          {!contenido && !waitingForExtract && (
-            <p className="mt-6 text-center text-sm text-text-muted">
-              Esta canción no tiene letra disponible.
-            </p>
-          )}
-
-          {showTexto && contenido.mode === "texto" && (
-            <LetraTexto texto={contenido.texto} />
-          )}
-
-          {showEmbed && contenido.mode === "embed" && (
-            <div className="mt-3 w-full shrink-0">
-              <LetraViewer
-                url={contenido.url}
-                title="Letra de la canción activa"
-              />
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-center text-sm text-text-muted">
-            Ninguna canción seleccionada aún
-          </p>
+      {waitingForExtract && (
+        <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+          <Loader2
+            className="size-4 animate-spin text-accent"
+            aria-hidden="true"
+          />
+          <span>Cargando letra...</span>
         </div>
       )}
+
+      {!contenido && !waitingForExtract && (
+        <p className="mt-6 text-center text-sm text-text-muted">
+          Esta canción no tiene letra disponible.
+        </p>
+      )}
+
+      {contenido?.mode === "texto" && <LetraTexto texto={contenido.texto} />}
     </section>
   );
 }

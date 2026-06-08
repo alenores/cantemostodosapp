@@ -7,17 +7,38 @@ export default async function SalasPage() {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  console.log("[salas] auth:", {
+    userId: user?.id ?? null,
+    hasSession: Boolean(session),
+    userError: userError?.message ?? null,
+    sessionError: sessionError?.message ?? null,
+  });
 
   if (!user) {
     redirect("/auth/login");
   }
 
-  const { data: salas } = await supabase
+  const { data: salas, error: salasError, count } = await supabase
     .from("salas")
-    .select("id, nombre, descripcion")
+    .select("id, nombre, descripcion", { count: "exact" })
     .eq("visible", true)
     .order("nombre");
+
+  console.log("[salas] query:", {
+    count,
+    rows: salas?.length ?? 0,
+    data: salas,
+    error: salasError?.message ?? null,
+    code: salasError?.code ?? null,
+  });
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
@@ -32,7 +53,11 @@ export default async function SalasPage() {
           Salas disponibles
         </p>
 
-        {salas && salas.length > 0 ? (
+        {salasError ? (
+          <p className="text-sm text-accent" role="alert">
+            No se pudieron cargar las salas: {salasError.message}
+          </p>
+        ) : salas && salas.length > 0 ? (
           <div className="flex flex-col gap-3">
             {salas.map((sala) => (
               <SalaCard key={sala.id} sala={sala} />

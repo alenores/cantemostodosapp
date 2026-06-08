@@ -36,6 +36,7 @@ export default function RegistroPage() {
       return;
     }
 
+    router.refresh();
     router.push("/salas");
   }
 

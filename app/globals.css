@@ -89,3 +89,10 @@ body {
   color: var(--text-primary);
   font-family: var(--font-app), system-ui, sans-serif;
 }
+
+.cola-draggable-item {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}

@@ -3,9 +3,9 @@
 import BuildVersionFooter from "@/components/BuildVersionFooter";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
-import { TapButton } from "@/components/ui/TapFeedback";
+import AddButton from "@/components/ui/AddButton";
 import type { Sala } from "@/types";
-import { Plus } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -24,9 +24,19 @@ export default function SalasPageClient({
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
       <header className="border-b border-accent/40 bg-accent px-4 py-3">
-        <h1 className="text-lg font-extrabold tracking-tight text-bg-darker">
-          CantemosTodosApp
-        </h1>
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/logo.svg"
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 shrink-0 rounded-lg"
+            aria-hidden="true"
+          />
+          <h1 className="text-lg font-extrabold tracking-tight text-bg-darker">
+            CantemosTodosApp
+          </h1>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
@@ -53,13 +63,11 @@ export default function SalasPageClient({
 
       <BuildVersionFooter />
 
-      <TapButton
-        aria-label="Crear sala"
+      <AddButton
+        ariaLabel="Crear sala"
         onClick={() => setModalOpen(true)}
-        className="fixed bottom-6 right-4 z-40 flex size-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_4px_20px_rgba(244,132,95,0.45)]"
-      >
-        <Plus className="size-6" aria-hidden="true" />
-      </TapButton>
+        className="fixed bottom-6 right-4 z-40"
+      />
 
       <CrearSalaModal
         open={modalOpen}

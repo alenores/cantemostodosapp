@@ -44,6 +44,23 @@ function getTocadaOpacity(items: ColaItem[], index: number): number | null {
   return 0.45;
 }
 
+function DragHandle() {
+  return (
+    <div
+      className="pointer-events-none grid shrink-0 grid-cols-2 gap-[3px] px-1 py-2"
+      aria-hidden="true"
+    >
+      {Array.from({ length: 6 }).map((_, dotIndex) => (
+        <span
+          key={dotIndex}
+          className="size-[3px] rounded-full bg-text-muted"
+          aria-hidden="true"
+        />
+      ))}
+    </div>
+  );
+}
+
 function variantClasses(variant: ColaVariant): string {
   switch (variant) {
     case "tocada":
@@ -90,10 +107,9 @@ export default function ColaItemCard({
     <div
       className={`flex items-stretch overflow-hidden rounded-[12px] border ${
         isActiva ? "min-h-[60px]" : "items-center py-2 px-3"
-      } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""} ${
-        isPendiente ? "cursor-grab active:cursor-grabbing" : ""
-      }`}
+      } ${variantClasses(variant)} ${isDragging ? "shadow-lg" : ""}`}
       style={tocadaOpacity !== null ? { opacity: tocadaOpacity } : undefined}
+      onContextMenu={isPendiente ? (event) => event.preventDefault() : undefined}
     >
       {isActiva && (
         <div
@@ -111,17 +127,25 @@ export default function ColaItemCard({
 
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 ${
-          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : isPendiente ? "gap-2" : ""
+          isActiva ? "gap-1.5 py-3.5 pl-2 pr-2" : isPendiente ? "gap-0 pr-1" : ""
         }`}
       >
-        {!isActiva && !isPendiente && (
-          <div className="w-6 shrink-0" aria-hidden="true" />
+        {isPendiente ? (
+          <DragHandle />
+        ) : (
+          !isActiva && <div className="w-6 shrink-0" aria-hidden="true" />
         )}
 
-        <button
-          type="button"
-          disabled={!isPendiente}
+        <div
+          role={isPendiente ? "button" : undefined}
+          tabIndex={isPendiente ? 0 : undefined}
           onClick={() => isPendiente && onSelect?.(item.id)}
+          onKeyDown={(event) => {
+            if (isPendiente && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              onSelect?.(item.id);
+            }
+          }}
           aria-label={isPendiente ? `Activar ${item.nombre}` : undefined}
           className={`flex min-w-0 flex-1 items-center text-left ${
             isActiva ? "gap-1.5" : "gap-2"
@@ -157,7 +181,7 @@ export default function ColaItemCard({
               </p>
             )}
           </div>
-        </button>
+        </div>
 
         {variant === "tocada" && (
           <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">

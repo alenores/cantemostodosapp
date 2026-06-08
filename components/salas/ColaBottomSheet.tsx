@@ -3,6 +3,7 @@
 import ColaItemCard from "@/components/salas/ColaItem";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
+import AddButton from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
   avanzarCancion,
@@ -24,14 +25,12 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd";
 import { useDrag } from "@use-gesture/react";
-import { ChevronUp, Plus } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type TouchEvent as ReactTouchEvent,
 } from "react";
 
 const SNAP_THRESHOLD = 0.3;
@@ -172,40 +171,8 @@ export default function ColaBottomSheet({
   [snapPanelClosed, snapPanelOpen, togglePanel],
   );
 
-  const listDragHandler = useCallback(
-    (state: Parameters<typeof sheetDragHandler>[0]) => {
-      const listEl = listScrollRef.current;
-
-      if (listEl && listEl.scrollTop > 4) {
-        state.cancel?.();
-        return state.memo;
-      }
-
-      if (state.first && listEl && listEl.scrollTop > 4) {
-        state.cancel?.();
-        return state.memo;
-      }
-
-      return sheetDragHandler(state);
-    },
-    [sheetDragHandler],
-  );
-
   const bindBarDrag = useDrag(sheetDragHandler, sheetDragOptions);
   const bindPanelDrag = useDrag(sheetDragHandler, sheetDragOptions);
-  const bindListDrag = useDrag(listDragHandler, sheetDragOptions);
-
-  function handleListTouchMove(event: ReactTouchEvent<HTMLDivElement>) {
-    const listEl = listScrollRef.current;
-
-    if (
-      listEl &&
-      listEl.scrollTop <= 0 &&
-      panelYRef.current < contentHeightRef.current * (1 - SNAP_THRESHOLD)
-    ) {
-      event.preventDefault();
-    }
-  }
 
   function handleToggleExpand() {
     triggerHaptic();
@@ -296,8 +263,8 @@ export default function ColaBottomSheet({
             <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </button>
 
-          <div className="flex shrink-0 items-center px-4 pb-3">
-            <h2 className="min-w-0 flex-1 text-base font-bold text-text-primary">
+          <div className="flex shrink-0 justify-center px-4 pb-3">
+            <h2 className="text-center text-lg font-bold text-text-primary">
               Lista de canciones
             </h2>
           </div>
@@ -318,8 +285,6 @@ export default function ColaBottomSheet({
                     listScrollRef.current = node;
                   }}
                   {...provided.droppableProps}
-                  {...bindListDrag()}
-                  onTouchMove={handleListTouchMove}
                   className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-3 py-3"
                 >
                 {items.length === 0 ? (
@@ -342,7 +307,14 @@ export default function ColaBottomSheet({
                             ? draggableProvided.dragHandleProps
                             : {})}
                           className={
-                            item.estado === "pendiente" ? "touch-manipulation" : ""
+                            item.estado === "pendiente"
+                              ? "cola-draggable-item cursor-grab active:cursor-grabbing"
+                              : undefined
+                          }
+                          onContextMenu={
+                            item.estado === "pendiente"
+                              ? (event) => event.preventDefault()
+                              : undefined
                           }
                         >
                           <ColaItemCard
@@ -397,15 +369,9 @@ export default function ColaBottomSheet({
             {pendientes}
           </span>
           {isPeekMode ? (
-            <>
-              <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
-                Próxima: {proximaNombre ?? "—"}
-              </span>
-              <ChevronUp
-                className="pointer-events-none size-5 shrink-0 text-text-muted"
-                aria-hidden="true"
-              />
-            </>
+            <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
+              Próxima: {proximaNombre ?? "—"}
+            </span>
           ) : (
             <>
               <span className="min-w-0 flex-1" aria-hidden="true" />
@@ -419,16 +385,14 @@ export default function ColaBottomSheet({
               >
                 Borrar todo
               </TapButton>
-              <TapButton
-                aria-label="Agregar canción"
+              <AddButton
+                ariaLabel="Agregar canción"
+                size="sm"
                 onClick={(event) => {
                   event.stopPropagation();
                   onOpenBuscador();
                 }}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent"
-              >
-                <Plus className="size-5 text-white" aria-hidden="true" />
-              </TapButton>
+              />
             </>
           )}
         </div>

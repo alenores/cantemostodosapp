@@ -1,3 +1,4 @@
+import BuildVersionFooter from "@/components/BuildVersionFooter";
 import SalaCard from "@/components/salas/SalaCard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -50,6 +51,8 @@ export default async function SalasPage() {
           </p>
         )}
       </main>
+
+      <BuildVersionFooter />
     </div>
   );
 }

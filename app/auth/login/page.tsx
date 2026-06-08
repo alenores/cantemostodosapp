@@ -14,6 +14,7 @@ const buttonClassName =
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,13 +26,13 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
-      password: "",
+      password,
     });
 
     setLoading(false);
 
     if (signInError) {
-      setError("Email no registrado");
+      setError("Email o contraseña incorrectos");
       return;
     }
 
@@ -57,6 +58,19 @@ export default function LoginPage() {
             placeholder="tu@email.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            className={inputClassName}
+          />
+          <label htmlFor="password" className="sr-only">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
             className={inputClassName}
           />
           <button

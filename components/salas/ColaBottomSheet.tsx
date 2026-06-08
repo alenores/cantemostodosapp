@@ -274,7 +274,7 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className="fixed inset-x-0 z-20 flex flex-col overflow-hidden rounded-t-2xl bg-bg-cola-sheet"
+        className="fixed left-1.5 right-1.5 z-20 flex flex-col overflow-hidden rounded-t-2xl shadow-[0_-6px_28px_rgba(0,0,0,0.45)]"
         style={{
           bottom: COLA_BAR_HEIGHT_PX,
           height: contentHeight,
@@ -283,7 +283,10 @@ export default function ColaBottomSheet({
         }}
         aria-hidden={isPeekMode && !isDragging}
       >
-        <div {...bindPanelDrag()} className="shrink-0 touch-none">
+        <div
+          {...bindPanelDrag()}
+          className="shrink-0 touch-none bg-bg-cola-sheet"
+        >
           <button
             type="button"
             onClick={handleToggleExpand}
@@ -293,50 +296,44 @@ export default function ColaBottomSheet({
             <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </button>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 pb-3">
+          <div className="flex shrink-0 items-center justify-between gap-3 px-4 pb-3">
             <h2 className="min-w-0 flex-1 text-base font-bold text-text-primary">
               Lista de canciones
             </h2>
             {!isPeekMode && (
-              <div className="flex shrink-0 items-center gap-2">
-                <TapButton
-                  aria-label="Borrar toda la cola"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setShowDeleteAllDialog(true);
-                  }}
-                  className="rounded-md border border-border/70 bg-bg-card/60 px-2.5 py-1 text-[11px] font-semibold text-text-secondary"
-                >
-                  Borrar todo
-                </TapButton>
-                <TapButton
-                  aria-label="Agregar canción"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpenBuscador();
-                  }}
-                  className="flex size-10 items-center justify-center rounded-full bg-accent"
-                >
-                  <Plus className="size-5 text-white" aria-hidden="true" />
-                </TapButton>
-              </div>
+              <TapButton
+                aria-label="Agregar canción"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenBuscador();
+                }}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent"
+              >
+                <Plus className="size-5 text-white" aria-hidden="true" />
+              </TapButton>
             )}
           </div>
         </div>
 
-        <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
-          <Droppable droppableId="cola-juntada">
-            {(provided) => (
-              <div
-                ref={(node) => {
-                  provided.innerRef(node);
-                  listScrollRef.current = node;
-                }}
-                {...provided.droppableProps}
-                {...bindListDrag()}
-                onTouchMove={handleListTouchMove}
-                className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-4 py-3"
-              >
+        <div
+          className="mx-3 h-px shrink-0 bg-border/70"
+          aria-hidden="true"
+        />
+
+        <div className="flex min-h-0 flex-1 flex-col bg-bg-cola-list">
+          <DragDropContext onDragEnd={(result) => void handleDragEnd(result)}>
+            <Droppable droppableId="cola-juntada">
+              {(provided) => (
+                <div
+                  ref={(node) => {
+                    provided.innerRef(node);
+                    listScrollRef.current = node;
+                  }}
+                  {...provided.droppableProps}
+                  {...bindListDrag()}
+                  onTouchMove={handleListTouchMove}
+                  className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-3 py-3"
+                >
                 {items.length === 0 ? (
                   <p className="py-8 text-center text-sm text-text-muted">
                     La cola está vacía
@@ -376,11 +373,24 @@ export default function ColaBottomSheet({
                     </Draggable>
                   ))
                 )}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+
+          {!isPeekMode && (
+            <div className="shrink-0 border-t border-border/40 px-3 py-2">
+              <TapButton
+                aria-label="Borrar toda la cola"
+                onClick={() => setShowDeleteAllDialog(true)}
+                className="w-full rounded-md border border-border/60 bg-bg-cola-sheet/50 py-1.5 text-[11px] font-semibold text-text-muted"
+              >
+                Borrar todo
+              </TapButton>
+            </div>
+          )}
+        </div>
       </div>
 
       <div

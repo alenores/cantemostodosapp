@@ -32,6 +32,14 @@ type SalaPageShellProps = {
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const closeDrawerRef = useRef<() => void>(() => {});
   const [drawerProgress, setDrawerProgress] = useState(0);
+
+  const handleDrawerProgressChange = useCallback((progress: number) => {
+    setDrawerProgress(progress);
+  }, []);
+
+  const handleRegisterDrawerClose = useCallback((close: () => void) => {
+    closeDrawerRef.current = close;
+  }, []);
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
@@ -216,10 +224,8 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         salaId={salaId}
         onColaChange={loadColaCompleta}
         onOpenBuscador={() => setBuscadorOpen(true)}
-        onProgressChange={setDrawerProgress}
-        onRegisterClose={(close) => {
-          closeDrawerRef.current = close;
-        }}
+        onProgressChange={handleDrawerProgressChange}
+        onRegisterClose={handleRegisterDrawerClose}
       />
 
       {buscadorOpen && (

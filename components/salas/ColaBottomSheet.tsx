@@ -24,10 +24,11 @@ import {
 } from "@hello-pangea/dnd";
 import { useDrag } from "@use-gesture/react";
 import { ChevronUp, Search } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const SNAP_THRESHOLD = 0.3;
 const PEEK_THRESHOLD = 0.92;
+const TAP_MOVE_THRESHOLD_PX = 12;
 
 type ColaBottomSheetProps = {
   items: ColaItem[];
@@ -59,8 +60,15 @@ export default function ColaBottomSheet({
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
+  const translateYRef = useRef(0);
+  const contentHeightRef = useRef(0);
+
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
+  contentHeightRef.current = contentHeight;
+
   const settledY = translateY ?? contentHeight;
+  translateYRef.current = settledY;
+
   const progress = contentHeight > 0 ? 1 - settledY / contentHeight : 0;
   const isSettledOpen = settledY < contentHeight * (1 - SNAP_THRESHOLD);
   const isPeekMode = settledY >= contentHeight * PEEK_THRESHOLD;
@@ -81,8 +89,16 @@ export default function ColaBottomSheet({
         return contentHeight;
       }
 
-      const wasOpen = current < contentHeight * (1 - SNAP_THRESHOLD);
-      return wasOpen ? 0 : contentHeight;
+      if (current <= contentHeight * (1 - SNAP_THRESHOLD)) {
+        return 0;
+      }
+
+      if (current >= contentHeight * PEEK_THRESHOLD) {
+        return contentHeight;
+      }
+
+      const openProgress = 1 - current / contentHeight;
+      return contentHeight * (1 - openProgress);
     });
   }, [contentHeight]);
 
@@ -95,23 +111,42 @@ export default function ColaBottomSheet({
   }, []);
 
   const snapClosed = useCallback(() => {
-    setTranslateY(contentHeight);
+    setTranslateY(contentHeightRef.current);
     setExpanded(false);
-  }, [contentHeight]);
+  }, []);
 
   useEffect(() => {
     onRegisterClose?.(snapClosed);
   }, [onRegisterClose, snapClosed]);
 
+  const toggleSheet = useCallback(() => {
+    triggerHaptic();
+    const height = contentHeightRef.current;
+    const currentY = translateYRef.current;
+
+    if (currentY < height * (1 - SNAP_THRESHOLD)) {
+      snapClosed();
+    } else {
+      snapOpen();
+    }
+  }, [snapClosed, snapOpen]);
+
   const bindBarDrag = useDrag(
-    ({ movement: [, my], last, first, memo }) => {
-      const startY = first ? settledY : (memo as number);
-      const next = clamp(startY + my, 0, contentHeight);
+    ({ movement: [, my], last, first, memo, tap }) => {
+      const height = contentHeightRef.current;
+      const startY = first ? translateYRef.current : (memo as number);
+
+      if (last && (tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX)) {
+        toggleSheet();
+        return startY;
+      }
+
+      const next = clamp(startY + my, 0, height);
       setTranslateY(next);
       setIsDragging(!last);
 
       if (last) {
-        const dragProgress = 1 - next / contentHeight;
+        const dragProgress = 1 - next / height;
         if (dragProgress >= SNAP_THRESHOLD) {
           snapOpen();
         } else {
@@ -123,20 +158,10 @@ export default function ColaBottomSheet({
     },
     {
       axis: "y",
-      filterTaps: true,
+      filterTaps: false,
       pointer: { touch: true },
     },
   );
-
-  function handleBarTap() {
-    triggerHaptic();
-
-    if (isSettledOpen) {
-      snapClosed();
-    } else {
-      snapOpen();
-    }
-  }
 
   function handleToggleExpand() {
     triggerHaptic();
@@ -298,20 +323,20 @@ export default function ColaBottomSheet({
 
         <div
           {...bindBarDrag()}
+          role="button"
+          tabIndex={0}
+          aria-expanded={isSettledOpen}
+          aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
           className="flex shrink-0 touch-none flex-col overflow-hidden border-t border-border bg-bg-dark"
           style={{ height: COLA_BAR_HEIGHT_PX }}
         >
           {isPeekMode && (
-            <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
+            <div className="pointer-events-none flex shrink-0 justify-center pt-1.5 pb-0.5">
               <div className="h-1 w-10 rounded-full bg-border" />
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleBarTap}
-            aria-expanded={isSettledOpen}
-            aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
+          <div
             className={`flex min-h-0 flex-1 items-center gap-2 px-4 ${
               isPeekMode ? "pb-1.5" : "py-2"
             }`}
@@ -323,20 +348,20 @@ export default function ColaBottomSheet({
               {pendientes}
             </span>
             {isPeekMode ? (
-              <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
+              <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
                 Próxima: {proximaNombre ?? "—"}
               </span>
             ) : (
               <span className="min-w-0 flex-1" aria-hidden="true" />
             )}
             <ChevronUp
-              className={`size-5 shrink-0 text-text-muted transition-transform duration-350 ${
+              className={`pointer-events-none size-5 shrink-0 text-text-muted transition-transform duration-350 ${
                 isSettledOpen ? "rotate-180" : ""
               }`}
               style={{ transitionTimingFunction: "var(--transition-timing)" }}
               aria-hidden="true"
             />
-          </button>
+          </div>
         </div>
       </div>
 

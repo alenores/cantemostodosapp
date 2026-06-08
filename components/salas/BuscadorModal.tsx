@@ -87,6 +87,14 @@ export default function BuscadorModal({
     }
   }, [open, resetState]);
 
+  function dismissKeyboard() {
+    inputRef.current?.blur();
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }
+
   async function handleSearch(event?: FormEvent) {
     event?.preventDefault();
 
@@ -95,6 +103,8 @@ export default function BuscadorModal({
     if (!trimmed) {
       return;
     }
+
+    dismissKeyboard();
 
     setLoading(true);
     setError(null);

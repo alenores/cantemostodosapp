@@ -25,6 +25,7 @@
   /* Acento — naranja escenario */
   --accent: #f4845f;
   --accent-dim: rgba(244, 132, 95, 0.12);
+  --preview-frame-bg: #3a332e;
 
   /* Letra activa — siempre blanco/negro */
   --letra-bg: #ffffff;
@@ -72,6 +73,7 @@
   --color-border-card: var(--border-card);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
+  --color-preview-frame: var(--preview-frame-bg);
   --color-letra-bg: var(--letra-bg);
   --color-letra-text: var(--letra-text);
   --color-cola-proxima-bg: var(--cola-proxima-bg);

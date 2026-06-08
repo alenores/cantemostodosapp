@@ -11,7 +11,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { ResultadoBusqueda } from "@/types";
 import {
   ArrowLeft,
+  Bookmark,
   ChevronRight,
+  ListPlus,
   Loader2,
   Music,
   Search,
@@ -378,13 +380,13 @@ export default function BuscadorModal({
                   </div>
                 </header>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-2">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 py-3">
                   <LetraViewer url={seleccionado.url} />
                 </div>
 
                 <footer className="shrink-0 border-t border-border bg-bg-darker px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
-                    ¿Qué hacemos con esto?
+                  <p className="mb-2 text-center text-sm font-semibold text-text-secondary">
+                    ¿Confirmás esta canción?
                   </p>
 
                   {error && (
@@ -396,17 +398,19 @@ export default function BuscadorModal({
                       type="button"
                       disabled={accionLoading}
                       onClick={() => void ejecutarAccion("cola")}
-                      className="min-h-11 rounded-[10px] bg-accent px-3 text-sm font-semibold text-white disabled:opacity-60"
+                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-accent px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                     >
-                      A la cola
+                      <ListPlus className="size-4 shrink-0" aria-hidden="true" />
+                      + fila
                     </button>
 
                     <button
                       type="button"
                       disabled={accionLoading || yaGuardada}
                       onClick={() => void ejecutarAccion("guardar")}
-                      className="min-h-11 rounded-[10px] border border-border bg-bg-card px-3 text-sm font-semibold text-text-primary disabled:opacity-60"
+                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-xs font-semibold text-text-primary disabled:opacity-60"
                     >
+                      <Bookmark className="size-4 shrink-0" aria-hidden="true" />
                       {yaGuardada ? "Ya guardada" : "Guardar"}
                     </button>
 
@@ -414,7 +418,7 @@ export default function BuscadorModal({
                       type="button"
                       disabled={accionLoading || yaGuardada}
                       onClick={() => void ejecutarAccion("ambas")}
-                      className="min-h-11 rounded-[10px] border border-border bg-bg-card px-3 text-sm font-semibold text-text-primary disabled:opacity-60"
+                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-xs font-semibold text-text-primary disabled:opacity-60"
                     >
                       {yaGuardada ? "Ya guardada" : "Ambas"}
                     </button>

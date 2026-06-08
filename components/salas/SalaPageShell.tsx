@@ -237,8 +237,8 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         </div>
       </header>
 
-      <div
-        className="relative flex h-full min-h-0 flex-1 flex-col transition-opacity duration-150"
+      <main
+        className="relative grid min-h-0 flex-1 grid-rows-1 overflow-hidden transition-opacity duration-150"
         style={{
           opacity: lyricsDimmed ? 1 - drawerProgress * 0.6 : 1,
         }}
@@ -248,7 +248,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           artista={cancionActiva?.artista ?? null}
           urlLetra={cancionActiva?.url_letra ?? null}
         />
-      </div>
+      </main>
 
       {lyricsDimmed && (
         <button

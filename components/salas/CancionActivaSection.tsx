@@ -2,11 +2,6 @@
 
 import LetraViewer from "@/components/salas/LetraViewer";
 import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
-import { isUsefulExtractedLetra } from "@/lib/letra-extract";
-import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-
-const LETRA_SCROLL_BOTTOM_PX = COLA_BAR_HEIGHT_PX + 16;
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -19,125 +14,62 @@ export default function CancionActivaSection({
   artista = null,
   urlLetra = null,
 }: CancionActivaSectionProps) {
-  const [letra, setLetra] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
   const hasCancion = Boolean(cancionNombre);
-  const usefulExtractedLetra =
-    letra !== null && isUsefulExtractedLetra(letra);
-  const showExtractedLetra = usefulExtractedLetra;
-  const showEmbeddedLetra = Boolean(urlLetra) && !showExtractedLetra;
+  const hasLetraEmbed = Boolean(urlLetra);
 
-  useEffect(() => {
-    if (!urlLetra) {
-      setLetra(null);
-      setLoading(false);
-      return;
-    }
-
-    const letraUrl = urlLetra;
-    let cancelled = false;
-
-    async function loadLetra() {
-      setLoading(true);
-      setLetra(null);
-
-      try {
-        const response = await fetch(
-          `/api/obtener-letra?url=${encodeURIComponent(letraUrl)}`,
-        );
-        const data = (await response.json()) as {
-          letra?: string;
-          error?: string;
-        };
-
-        if (cancelled) {
-          return;
-        }
-
-        if (response.ok && data.letra && isUsefulExtractedLetra(data.letra)) {
-          setLetra(data.letra);
-        }
-      } catch {
-        // Si falla el scrape, el iframe muestra la letra en el browser.
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadLetra();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [urlLetra]);
-
-  return (
-    <section
-      className={`flex min-h-0 flex-1 flex-col bg-bg-app ${
-        showEmbeddedLetra
-          ? "overflow-hidden px-2 pt-3"
-          : "overflow-y-auto px-2 py-3"
-      }`}
-      style={{
-        paddingBottom: showEmbeddedLetra
-          ? COLA_BAR_HEIGHT_PX + 8
-          : LETRA_SCROLL_BOTTOM_PX,
-      }}
-    >
-      {hasCancion ? (
-        <>
-          <h2 className="shrink-0 text-xl font-bold text-text-primary">
-            {cancionNombre}
-          </h2>
-          {artista && (
-            <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
-              {artista}
-            </p>
-          )}
-
-          {loading && !showExtractedLetra && !showEmbeddedLetra && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
-              <Loader2
-                className="size-4 animate-spin text-accent"
-                aria-hidden="true"
-              />
-              <span>Cargando letra...</span>
-            </div>
-          )}
-
-          {showExtractedLetra && letra && (
-            <div
-              className="mt-3 w-full rounded-[12px] bg-letra-bg px-2.5 py-5 text-letra-text whitespace-pre-wrap"
-              style={{
-                fontSize: "var(--letra-size)",
-                lineHeight: "var(--letra-line-height)",
-                fontWeight: "var(--letra-weight)",
-              }}
-            >
-              {letra}
-            </div>
-          )}
-
-          {showEmbeddedLetra && urlLetra && (
-            <div className="mt-3 flex min-h-0 flex-1 flex-col">
-              <LetraViewer
-                url={urlLetra}
-                title="Letra de la canción activa"
-                fill
-              />
-            </div>
-          )}
-        </>
-      ) : (
+  if (!hasCancion) {
+    return (
+      <section className="flex min-h-0 flex-1 flex-col bg-bg-app px-2 py-3">
         <div className="flex flex-1 items-center justify-center">
           <p className="text-center text-sm text-text-muted">
             Ninguna canción seleccionada aún
           </p>
         </div>
-      )}
+      </section>
+    );
+  }
+
+  if (!hasLetraEmbed) {
+    return (
+      <section className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app px-2 py-3">
+        <h2 className="shrink-0 text-xl font-bold text-text-primary">
+          {cancionNombre}
+        </h2>
+        {artista && (
+          <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
+            {artista}
+          </p>
+        )}
+        <p className="mt-6 text-center text-sm text-text-muted">
+          Esta canción no tiene enlace de letra.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className="grid h-full min-h-0 flex-1 grid-rows-[min-content_minmax(0,1fr)] gap-3 overflow-hidden bg-bg-app px-2 pt-3"
+      style={{
+        paddingBottom: `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + 8px)`,
+      }}
+    >
+      <div className="min-w-0 shrink-0">
+        <h2 className="truncate text-xl font-bold text-text-primary">
+          {cancionNombre}
+        </h2>
+        {artista && (
+          <p className="mt-0.5 truncate text-[13px] text-text-muted">
+            {artista}
+          </p>
+        )}
+      </div>
+
+      <LetraViewer
+        url={urlLetra!}
+        title="Letra de la canción activa"
+        fill
+      />
     </section>
   );
 }

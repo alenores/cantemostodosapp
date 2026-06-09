@@ -1,7 +1,9 @@
 import type { ResultadoBusqueda } from "@/types";
 
 const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
-const MAX_RESULTS = 8;
+const MAX_RESULTS_TOTAL = 8;
+const MAX_ACORDES_RESULTS = 5;
+const MAX_CIFRA_RESULTS = 4;
 
 const TITLE_SUFFIX_PATTERN =
   /\s*[\|·]\s*(La Cuerda|Cifra Club|Acordes de Canciones|Ultimate Guitar).*$/i;
@@ -79,10 +81,6 @@ export function parseTituloArtista(title: string): {
   };
 }
 
-function buildSearchQuery(query: string): string {
-  return `${query} site:acordesdcanciones.com OR site:cifraclub.com`;
-}
-
 function mapBraveResult(item: BraveWebResult): ResultadoBusqueda {
   const { titulo, artista } = parseTituloArtista(item.title);
 
@@ -94,12 +92,38 @@ function mapBraveResult(item: BraveWebResult): ResultadoBusqueda {
   };
 }
 
-export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> {
-  const apiKey = getBraveApiKey();
+function mergeResultados(
+  acordes: ResultadoBusqueda[],
+  cifra: ResultadoBusqueda[],
+): ResultadoBusqueda[] {
+  const seen = new Set<string>();
+  const merged: ResultadoBusqueda[] = [];
 
+  for (const item of [...acordes, ...cifra]) {
+    if (seen.has(item.url)) {
+      continue;
+    }
+
+    seen.add(item.url);
+    merged.push(item);
+
+    if (merged.length >= MAX_RESULTS_TOTAL) {
+      break;
+    }
+  }
+
+  return merged;
+}
+
+async function buscarEnSitio(
+  query: string,
+  site: string,
+  count: number,
+  apiKey: string,
+): Promise<ResultadoBusqueda[]> {
   const params = new URLSearchParams({
-    q: buildSearchQuery(query),
-    count: String(MAX_RESULTS),
+    q: `${query} site:${site}`,
+    count: String(count),
     search_lang: "es",
     country: "AR",
   });
@@ -134,5 +158,34 @@ export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> 
     return [];
   }
 
-  return data.web.results.slice(0, MAX_RESULTS).map(mapBraveResult);
+  return data.web.results.slice(0, count).map(mapBraveResult);
+}
+
+export async function buscarLetras(query: string): Promise<ResultadoBusqueda[]> {
+  const apiKey = getBraveApiKey();
+
+  const [acordesSettled, cifraSettled] = await Promise.allSettled([
+    buscarEnSitio(
+      query,
+      "acordesdcanciones.com",
+      MAX_ACORDES_RESULTS,
+      apiKey,
+    ),
+    buscarEnSitio(query, "cifraclub.com", MAX_CIFRA_RESULTS, apiKey),
+  ]);
+
+  const acordes =
+    acordesSettled.status === "fulfilled" ? acordesSettled.value : [];
+  const cifra =
+    cifraSettled.status === "fulfilled" ? cifraSettled.value : [];
+
+  if (
+    acordesSettled.status === "rejected" &&
+    cifraSettled.status === "rejected"
+  ) {
+    const reason = acordesSettled.reason;
+    throw reason instanceof Error ? reason : new Error("Error al buscar letras");
+  }
+
+  return mergeResultados(acordes, cifra);
 }

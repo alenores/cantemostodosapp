@@ -93,24 +93,21 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
   };
 }
 
-const RESULTADO_ICONO_COLOR: Record<ResultadoIconoTipo, string> = {
-  cancionero: "#7BC9A8",
-  link: "#8BA4C4",
-  acordes: "#5BB5A0",
-  cifra: "var(--accent)",
+const RESULTADO_ICONO_STYLE: Record<
+  ResultadoIconoTipo,
+  { sizeClass: string; color: string }
+> = {
+  cancionero: { sizeClass: "size-6", color: "#9AE0C8" },
+  acordes: { sizeClass: "size-5", color: "#4A9388" },
+  cifra: { sizeClass: "size-5", color: "var(--accent)" },
 };
 
 function ResultadoIcono({ tipo }: { tipo: ResultadoIconoTipo }) {
-  const className = "size-5 shrink-0";
-  const color = RESULTADO_ICONO_COLOR[tipo];
+  const { sizeClass, color } = RESULTADO_ICONO_STYLE[tipo];
+  const className = `${sizeClass} shrink-0`;
 
   switch (tipo) {
     case "cancionero":
-      return (
-        <FileText className={className} style={{ color }} aria-hidden="true" />
-      );
-    case "link":
-      return <Link2 className={className} style={{ color }} aria-hidden="true" />;
     case "acordes":
       return (
         <FileText className={className} style={{ color }} aria-hidden="true" />
@@ -128,6 +125,7 @@ function ResultadoItem({
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
 }) {
   const esCancionero = resultado.fuente === "cancionero";
+  const esLinkGuardado = resultado.fuente === "link-guardado";
   const iconoTipo = getResultadoIconoTipo(resultado);
   const { nombre, artista } = resolverNombreArtistaDisplay(
     resultado.titulo,
@@ -152,9 +150,21 @@ function ResultadoItem({
         )}
       </div>
       {!esCancionero && (
-        <span className="shrink-0 rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-          {resultado.sitio}
-        </span>
+        <div
+          className={`flex shrink-0 flex-col items-end self-stretch ${
+            esLinkGuardado ? "justify-between py-0.5" : "justify-center"
+          }`}
+        >
+          {esLinkGuardado && (
+            <Link2
+              className="size-3.5 shrink-0 text-[#8BA4C4]"
+              aria-hidden="true"
+            />
+          )}
+          <span className="rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+            {resultado.sitio}
+          </span>
+        </div>
       )}
     </button>
   );

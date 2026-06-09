@@ -25,6 +25,21 @@ export function filterCancionesCancionero(
   });
 }
 
+export async function countCancionesCancionero(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("canciones_guardadas")
+    .select("id", { count: "exact", head: true })
+    .is("sala_id", null);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export async function fetchCancionesCancionero(
   supabase: SupabaseClient,
 ): Promise<CancionCancionero[]> {

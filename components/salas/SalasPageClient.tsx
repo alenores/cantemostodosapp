@@ -8,7 +8,7 @@ import AddButton from "@/components/ui/AddButton";
 import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import type { Sala, UsuarioActivo } from "@/types";
-import { Guitar } from "lucide-react";
+import { BookOpen, ChevronRight, Guitar } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -21,12 +21,14 @@ const AVISO_MENSAJES: Record<string, string> = {
 
 type SalasPageClientProps = {
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+  cancioneroTotal: number;
   errorMessage: string | null;
   usuario: UsuarioActivo;
 };
 
 export default function SalasPageClient({
   salas,
+  cancioneroTotal,
   errorMessage,
   usuario,
 }: SalasPageClientProps) {
@@ -79,6 +81,30 @@ export default function SalasPageClient({
             {avisoMensaje}
           </p>
         )}
+
+        <TapLink
+          href="/cancionero"
+          ariaLabel="Ir a canciones guardadas"
+          className="flex min-h-11 items-center gap-3 rounded-[14px] border border-border bg-bg-dark px-4 py-3"
+        >
+          <BookOpen
+            className="size-8 shrink-0 text-accent"
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-bold text-text-primary">
+              Canciones guardadas
+            </p>
+            <p className="text-sm text-text-muted">Repertorio compartido</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-white">
+            {cancioneroTotal}
+          </span>
+          <ChevronRight
+            className="size-5 shrink-0 text-text-muted"
+            aria-hidden="true"
+          />
+        </TapLink>
 
         <div className="flex items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3">
           <Guitar

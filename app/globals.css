@@ -55,6 +55,10 @@
   /* Transiciones */
   --transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
   --transition-duration: 350ms;
+
+  /* Afinador */
+  --tuner-in-tune: #54c864;
+  --tuner-flat-sharp: #e05555;
 }
 
 @theme inline {

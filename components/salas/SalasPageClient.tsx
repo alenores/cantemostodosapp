@@ -5,8 +5,10 @@ import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
 import AddButton from "@/components/ui/AddButton";
-import { TapLink } from "@/components/ui/TapFeedback";
+import AfinadorModal from "@/components/ui/AfinadorModal";
+import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import type { Sala, UsuarioActivo } from "@/types";
+import { Guitar } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -31,6 +33,7 @@ export default function SalasPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [modalOpen, setModalOpen] = useState(false);
+  const [afinadorOpen, setAfinadorOpen] = useState(false);
   const aviso = searchParams.get("aviso");
   const avisoMensaje = aviso ? AVISO_MENSAJES[aviso] : null;
 
@@ -77,6 +80,24 @@ export default function SalasPageClient({
           </p>
         )}
 
+        <div className="flex items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3">
+          <Guitar
+            className="size-8 shrink-0 text-accent"
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-bold text-text-primary">Afinador</p>
+            <p className="text-sm text-text-muted">Afinador cromático</p>
+          </div>
+          <TapButton
+            aria-label="Activar afinador"
+            onClick={() => setAfinadorOpen(true)}
+            className="shrink-0 rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-white"
+          >
+            Activar
+          </TapButton>
+        </div>
+
         <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
           Salas disponibles
         </p>
@@ -110,6 +131,11 @@ export default function SalasPageClient({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={() => router.refresh()}
+      />
+
+      <AfinadorModal
+        open={afinadorOpen}
+        onClose={() => setAfinadorOpen(false)}
       />
     </div>
   );

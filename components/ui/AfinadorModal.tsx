@@ -102,24 +102,39 @@ export default function AfinadorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg-darker">
-      <header className="shrink-0 border-b border-border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <h2 className="min-w-0 flex-1 text-base font-extrabold text-text-primary">
-            Afinador cromático
-          </h2>
-          <button
-            type="button"
-            aria-label="Cerrar afinador"
-            onClick={onClose}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-          >
-            <X className="size-5 text-text-primary" aria-hidden="true" />
-          </button>
-        </div>
-      </header>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
+      <button
+        type="button"
+        aria-label="Cerrar afinador"
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="afinador-titulo"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-darker shadow-xl"
+      >
+        <header className="shrink-0 border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <h2
+              id="afinador-titulo"
+              className="min-w-0 flex-1 text-base font-extrabold text-text-primary"
+            >
+              Afinador cromático
+            </h2>
+            <button
+              type="button"
+              aria-label="Cerrar afinador"
+              onClick={onClose}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <X className="size-5 text-text-primary" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-4 py-8">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-6">
         {micError ? (
           <p className="max-w-sm text-center text-sm text-text-secondary" role="alert">
             {micError}
@@ -175,6 +190,7 @@ export default function AfinadorModal({
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

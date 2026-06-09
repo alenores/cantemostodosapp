@@ -142,22 +142,20 @@ function ResultadoItem({
     >
       <ResultadoIcono tipo={iconoTipo} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-text-primary">
+        <p className="truncate text-[17px] font-semibold text-text-primary">
           {nombre}
         </p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          {artista && (
-            <span className="truncate text-[12px] text-text-muted">
-              {artista}
-            </span>
-          )}
-          {!esCancionero && (
-            <span className="rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-              {resultado.sitio}
-            </span>
-          )}
-        </div>
+        {artista && (
+          <p className="mt-0.5 truncate text-[14px] text-text-muted">
+            {artista}
+          </p>
+        )}
       </div>
+      {!esCancionero && (
+        <span className="shrink-0 rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+          {resultado.sitio}
+        </span>
+      )}
     </button>
   );
 }

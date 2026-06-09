@@ -7,6 +7,7 @@ export type CancionInput = {
   nombre: string;
   artista: string | null;
   url_letra: string;
+  letra_texto?: string | null;
 };
 
 export type ColaVariant = "tocada" | "activa" | "proxima" | "pendiente";
@@ -384,11 +385,14 @@ export async function agregarACola(
   const nextOrden = (lastItem?.orden ?? 0) + 1;
   const agregado = await fetchColaAgregadoSnapshot(supabase);
 
+  const letraTexto = cancion.letra_texto?.trim() || null;
+
   const { error } = await supabase.from("cola_juntada").insert({
     sala_id: salaId,
     nombre: cancion.nombre,
     artista: cancion.artista,
     url_letra: cancion.url_letra,
+    letra_texto: letraTexto,
     estado: "pendiente",
     orden: nextOrden,
     ...(agregado ?? {}),

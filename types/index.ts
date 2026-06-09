@@ -52,6 +52,14 @@ export type ResultadoBusqueda = {
   sitio: string;
 };
 
+export type FuenteBusqueda = "cancionero" | "link-guardado" | "internet";
+
+export type ResultadoBusquedaBuscador = ResultadoBusqueda & {
+  fuente: FuenteBusqueda;
+  id?: number;
+  letra?: string | null;
+};
+
 export type UsuarioActivo = {
   id: string;
   nombre: string;

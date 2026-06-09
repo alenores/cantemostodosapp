@@ -9,7 +9,6 @@ import {
   deriveColaResumen,
   fetchColaCompleta,
   fetchColaItemById,
-  fetchGuardadasKeys,
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
@@ -79,7 +78,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     null,
   );
   const [colaItems, setColaItems] = useState<ColaItem[]>([]);
-  const [guardadasKeys, setGuardadasKeys] = useState<Set<string>>(new Set());
 
   const handleColaItemsReordered = useCallback((items: ColaItem[]) => {
     setColaItems(items);
@@ -88,13 +86,9 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
   const loadColaCompleta = useCallback(async () => {
     const supabase = createClient();
-    const [items, keys] = await Promise.all([
-      fetchColaCompleta(supabase, salaId),
-      fetchGuardadasKeys(supabase, salaId),
-    ]);
+    const items = await fetchColaCompleta(supabase, salaId);
 
     setColaItems(items);
-    setGuardadasKeys(keys);
     setCancionActiva(deriveCancionActivaFromCola(items));
   }, [salaId]);
 
@@ -290,7 +284,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
           open={buscadorOpen}
           onClose={() => setBuscadorOpen(false)}
           salaId={salaId}
-          guardadasKeys={guardadasKeys}
           onDataChange={loadColaCompleta}
           onColaAdded={handleColaAdded}
         />

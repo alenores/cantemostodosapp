@@ -109,6 +109,95 @@ export async function deleteCancionCancionero(
   }
 }
 
+export async function guardarLinkEnCancionero(
+  supabase: SupabaseClient,
+  data: {
+    nombre: string;
+    artista: string | null;
+    url_letra: string;
+  },
+): Promise<void> {
+  const { data: existing, error: existingError } = await supabase
+    .from("canciones_guardadas")
+    .select("id")
+    .is("sala_id", null)
+    .eq("url_letra", data.url_letra)
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existing) {
+    return;
+  }
+
+  const { error } = await supabase.from("canciones_guardadas").insert({
+    sala_id: null,
+    nombre: data.nombre.trim(),
+    artista: data.artista?.trim() || null,
+    letra: null,
+    url_letra: data.url_letra,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function guardarLetraEnCancionero(
+  supabase: SupabaseClient,
+  data: {
+    nombre: string;
+    artista: string | null;
+    letra: string;
+    url_letra?: string;
+  },
+): Promise<void> {
+  const trimmedLetra = data.letra.trim();
+  const urlLetra = data.url_letra?.trim() ?? "";
+
+  const { data: existing, error: existingError } = await supabase
+    .from("canciones_guardadas")
+    .select("id")
+    .is("sala_id", null)
+    .eq("nombre", data.nombre.trim())
+    .eq("url_letra", urlLetra)
+    .maybeSingle();
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from("canciones_guardadas")
+      .update({
+        artista: data.artista?.trim() || null,
+        letra: trimmedLetra,
+      })
+      .eq("id", existing.id);
+
+    if (error) {
+      throw error;
+    }
+
+    return;
+  }
+
+  const { error } = await supabase.from("canciones_guardadas").insert({
+    sala_id: null,
+    nombre: data.nombre.trim(),
+    artista: data.artista?.trim() || null,
+    letra: trimmedLetra,
+    url_letra: urlLetra,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function agregarCancioneroACola(
   supabase: SupabaseClient,
   salaId: number,

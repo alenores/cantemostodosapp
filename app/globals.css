@@ -98,6 +98,36 @@ body {
   background: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-app), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]) {
+  transition:
+    transform 100ms var(--transition-timing),
+    opacity 100ms ease-out,
+    filter 100ms ease-out,
+    box-shadow 100ms ease-out;
+}
+
+button:not(:disabled).is-tap-pressed,
+a[href].is-tap-pressed,
+[role="button"]:not([aria-disabled="true"]).is-tap-pressed {
+  transform: scale(0.965);
+  opacity: 0.88;
+  filter: brightness(1.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled).is-tap-pressed,
+  a[href].is-tap-pressed,
+  [role="button"]:not([aria-disabled="true"]).is-tap-pressed {
+    transform: none;
+    filter: none;
+    opacity: 0.92;
+  }
 }
 
 input[type="search"]::placeholder,

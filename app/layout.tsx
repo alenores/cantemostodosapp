@@ -1,4 +1,5 @@
 import SplashScreen from "@/components/SplashScreen";
+import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -42,8 +43,10 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col">
-        <SplashScreen />
-        {children}
+        <TapFeedbackProvider>
+          <SplashScreen />
+          {children}
+        </TapFeedbackProvider>
       </body>
     </html>
   );

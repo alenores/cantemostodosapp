@@ -1,15 +1,7 @@
 "use client";
 
-import { triggerHaptic } from "@/lib/haptic";
 import Link from "next/link";
-import {
-  type ButtonHTMLAttributes,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
-
-const tapClassName =
-  "transition-transform duration-150 ease-out active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100";
+import { type ButtonHTMLAttributes, type ReactNode } from "react";
 
 type TapButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -19,21 +11,10 @@ export function TapButton({
   children,
   className = "",
   type = "button",
-  onClick,
   ...props
 }: TapButtonProps) {
-  function handleClick(event: MouseEvent<HTMLButtonElement>) {
-    triggerHaptic();
-    onClick?.(event);
-  }
-
   return (
-    <button
-      type={type}
-      {...props}
-      onClick={handleClick}
-      className={`${tapClassName} ${className}`.trim()}
-    >
+    <button type={type} {...props} className={className.trim()}>
       {children}
     </button>
   );
@@ -53,12 +34,7 @@ export function TapLink({
   ariaLabel,
 }: TapLinkProps) {
   return (
-    <Link
-      href={href}
-      aria-label={ariaLabel}
-      onClick={() => triggerHaptic()}
-      className={`${tapClassName} ${className}`.trim()}
-    >
+    <Link href={href} aria-label={ariaLabel} className={className.trim()}>
       {children}
     </Link>
   );

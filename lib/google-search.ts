@@ -6,8 +6,21 @@ const MAX_ACORDES_RESULTS = 5;
 const MAX_CIFRA_RESULTS = 4;
 
 const TITLE_SUFFIX_PATTERN =
-  /\s*[\|·]\s*(La Cuerda|Cifra Club|Acordes de Canciones|Ultimate Guitar).*$/i;
+  /\s*[\|·]\s*(La Cuerda|Cifra Club|Acordes de Canciones|Acordes D Canciones|Ultimate Guitar).*$/i;
 const PARENTHETICAL_PATTERN = /\s*\([^)]*\)\s*$/;
+const EM_DASH_DELIMITER = /\s+[–—]\s+/;
+const HYPHEN_DELIMITER = /\s+-\s+/;
+
+const TITLE_SUFFIX_PATTERNS = [
+  /\s*-\s*Cifra\s+Club\s*$/i,
+  /\s*[\|·]\s*Todas\s+las\s+canciones\s*$/i,
+  /\s*\(letra\s+da\s+m[uú]sica\)\s*$/i,
+  /\s*\(letra\s+de\s+la\s+canci[oó]n\)\s*$/i,
+] as const;
+
+const FRAGMENT_SITE_SUFFIX =
+  /\s*[-–—|]\s*(?:Acordes\s+D\s+Canciones|Acordes\s+de\s+Canciones)\s*$/i;
+const FRAGMENT_TRAILING_NOISE = /\s+(?:acordes|guitarra|letra|cifra)\s*$/i;
 
 type BraveWebResult = {
   title: string;
@@ -51,32 +64,69 @@ export function extractSitio(url: string): string {
   return parts[0];
 }
 
+function stripTitleSuffixes(title: string): string {
+  let cleaned = title.trim();
+
+  for (const pattern of TITLE_SUFFIX_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+
+  cleaned = cleaned.replace(TITLE_SUFFIX_PATTERN, "");
+  cleaned = cleaned.replace(PARENTHETICAL_PATTERN, "");
+
+  return cleaned.trim();
+}
+
+function cleanParsedFragment(fragment: string): string {
+  let cleaned = fragment.trim();
+  cleaned = cleaned.replace(FRAGMENT_SITE_SUFFIX, "");
+  cleaned = cleaned.replace(FRAGMENT_TRAILING_NOISE, "");
+
+  return cleaned.trim();
+}
+
 export function parseTituloArtista(title: string): {
   titulo: string;
   artista: string;
 } {
-  let cleaned = title.trim();
-  cleaned = cleaned.replace(TITLE_SUFFIX_PATTERN, "");
-  cleaned = cleaned.replace(PARENTHETICAL_PATTERN, "").trim();
+  const cleaned = stripTitleSuffixes(title);
+
+  if (EM_DASH_DELIMITER.test(cleaned)) {
+    const parts = cleaned
+      .split(EM_DASH_DELIMITER)
+      .map(cleanParsedFragment)
+      .filter(Boolean);
+
+    if (parts.length >= 2) {
+      return {
+        artista: parts[0],
+        titulo: parts[1],
+      };
+    }
+  }
 
   const byMatch = cleaned.match(/^(.+?)\s+by\s+(.+)$/i);
   if (byMatch) {
     return {
-      titulo: byMatch[1].trim(),
-      artista: byMatch[2].trim(),
+      titulo: cleanParsedFragment(byMatch[1]),
+      artista: cleanParsedFragment(byMatch[2]),
     };
   }
 
-  const dashParts = cleaned.split(/\s+-\s+/);
-  if (dashParts.length === 2) {
+  const dashParts = cleaned
+    .split(HYPHEN_DELIMITER)
+    .map(cleanParsedFragment)
+    .filter(Boolean);
+
+  if (dashParts.length >= 2) {
     return {
-      titulo: dashParts[0].trim(),
-      artista: dashParts[1].trim(),
+      titulo: dashParts[0],
+      artista: dashParts[1],
     };
   }
 
   return {
-    titulo: cleaned,
+    titulo: cleanParsedFragment(cleaned),
     artista: "",
   };
 }

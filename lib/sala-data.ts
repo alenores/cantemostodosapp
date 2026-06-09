@@ -40,6 +40,7 @@ export function deriveCancionActivaFromCola(
     nombre: activa.nombre,
     artista: activa.artista,
     url_letra: activa.url_letra,
+    letra_texto: activa.letra_texto ?? null,
   };
 }
 
@@ -84,7 +85,7 @@ export async function fetchColaItemById(
 ): Promise<CancionActivaData | null> {
   const { data, error } = await supabase
     .from("cola_juntada")
-    .select("nombre, artista, url_letra")
+    .select("nombre, artista, url_letra, letra_texto")
     .eq("id", colaItemId)
     .single();
 

@@ -8,12 +8,18 @@ export type Sala = {
 
 export type CancionGuardada = {
   id: number;
-  sala_id: number;
+  sala_id: number | null;
   nombre: string;
   artista: string | null;
   url_letra: string;
+  letra: string | null;
   created_at: string;
 };
+
+export type CancionCancionero = Pick<
+  CancionGuardada,
+  "id" | "nombre" | "artista" | "letra"
+>;
 
 export type EstadoCola = "pendiente" | "activa" | "tocada";
 
@@ -23,6 +29,7 @@ export type ColaItem = {
   nombre: string;
   artista: string | null;
   url_letra: string;
+  letra_texto?: string | null;
   estado: EstadoCola;
   orden: number;
   created_at: string;

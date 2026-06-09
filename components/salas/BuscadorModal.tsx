@@ -2,6 +2,7 @@
 
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
+import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
   esAcordesDeCanciones,
@@ -13,6 +14,7 @@ import { agregarACola, type CancionInput } from "@/lib/cola-logic";
 import {
   guardarLetraEnCancionero,
   guardarLinkEnCancionero,
+  type CancioneroFormData,
 } from "@/lib/cancionero";
 import {
   buscarEnCancionero,
@@ -57,6 +59,13 @@ type ResultadosAgrupados = {
 };
 
 type ConfirmacionGuardado = "letra" | "link" | null;
+
+type GuardarLetraModalState = {
+  nombre: string;
+  artista: string;
+  letra: string;
+  url: string;
+};
 
 const CONFIRMACION_MS = 1500;
 
@@ -178,6 +187,9 @@ export default function BuscadorModal({
   const [error, setError] = useState<string | null>(null);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionGuardado>(null);
+  const [fabGuardarAbierto, setFabGuardarAbierto] = useState(false);
+  const [guardarLetraModal, setGuardarLetraModal] =
+    useState<GuardarLetraModalState | null>(null);
 
   const totalResultados =
     resultados.cancionero.length +
@@ -200,6 +212,8 @@ export default function BuscadorModal({
     setError(null);
     setBusquedaRealizada(false);
     setConfirmacion(null);
+    setFabGuardarAbierto(false);
+    setGuardarLetraModal(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -330,6 +344,7 @@ export default function BuscadorModal({
     dismissKeyboard();
     setSeleccionado(resultado);
     setConfirmacion(null);
+    setFabGuardarAbierto(false);
     setPantalla("preview");
   }
 
@@ -337,6 +352,7 @@ export default function BuscadorModal({
     setPantalla("busqueda");
     setSeleccionado(null);
     setConfirmacion(null);
+    setFabGuardarAbierto(false);
     setError(null);
   }
 
@@ -383,6 +399,7 @@ export default function BuscadorModal({
         url_letra: seleccionado.url,
       });
       await onDataChange();
+      setFabGuardarAbierto(false);
       mostrarConfirmacion("link");
     } catch (actionError) {
       setError(
@@ -395,6 +412,21 @@ export default function BuscadorModal({
     }
   }
 
+  async function handleGuardarLetraDesdeModal(form: CancioneroFormData) {
+    if (!guardarLetraModal) {
+      return;
+    }
+
+    const supabase = createClient();
+
+    await guardarLetraEnCancionero(supabase, {
+      nombre: form.nombre,
+      artista: form.artista,
+      letra: form.letra,
+      url_letra: guardarLetraModal.url,
+    });
+  }
+
   async function handleGuardarLetraCompleta() {
     if (!seleccionado || accionLoading) {
       return;
@@ -402,8 +434,6 @@ export default function BuscadorModal({
 
     setAccionLoading(true);
     setError(null);
-
-    const supabase = createClient();
 
     try {
       const response = await fetch(
@@ -420,14 +450,13 @@ export default function BuscadorModal({
         );
       }
 
-      await guardarLetraEnCancionero(supabase, {
+      setGuardarLetraModal({
         nombre: seleccionado.titulo,
-        artista: seleccionado.artista || null,
+        artista: seleccionado.artista || "",
         letra: data.letra,
-        url_letra: seleccionado.url,
+        url: seleccionado.url,
       });
-      await onDataChange();
-      mostrarConfirmacion("letra");
+      setFabGuardarAbierto(false);
     } catch (actionError) {
       setError(
         actionError instanceof Error
@@ -439,20 +468,50 @@ export default function BuscadorModal({
     }
   }
 
-  const esPreviewInternet = seleccionado?.fuente === "internet";
-  const esAcordes =
+  const esCancioneroPreview = seleccionado?.fuente === "cancionero";
+  const esLinkGuardadoPreview = seleccionado?.fuente === "link-guardado";
+  const esInternetPreview = seleccionado?.fuente === "internet";
+  const esAcordesSitio =
     seleccionado &&
-    esPreviewInternet &&
     esAcordesDeCanciones(seleccionado.sitio, seleccionado.url);
-  const esCifra =
-    seleccionado &&
-    esPreviewInternet &&
-    esCifraClub(seleccionado.sitio, seleccionado.url);
-  const mostrarGuardar =
-    esPreviewInternet && (esAcordes || esCifra);
+  const esCifraSitio =
+    seleccionado && esCifraClub(seleccionado.sitio, seleccionado.url);
+
+  const guardarDeshabilitado = Boolean(
+    esCancioneroPreview || (esLinkGuardadoPreview && esCifraSitio),
+  );
+
+  const guardarAccionDirecta = Boolean(esInternetPreview && esCifraSitio);
+
+  const guardarAbreFab = Boolean(
+    (esInternetPreview && esAcordesSitio) ||
+      (esLinkGuardadoPreview && esAcordesSitio),
+  );
+
+  const fabMuestraLink = Boolean(esInternetPreview && esAcordesSitio);
+  const fabMuestraCancion = Boolean(
+    (esInternetPreview && esAcordesSitio) ||
+      (esLinkGuardadoPreview && esAcordesSitio),
+  );
+
   const previewConLetraLocal =
     seleccionado?.fuente === "cancionero" &&
     Boolean(seleccionado.letra?.trim());
+
+  function handleGuardarTap() {
+    if (!seleccionado || guardarDeshabilitado || accionLoading) {
+      return;
+    }
+
+    if (guardarAccionDirecta) {
+      void handleGuardarLink();
+      return;
+    }
+
+    if (guardarAbreFab) {
+      setFabGuardarAbierto((abierto) => !abierto);
+    }
+  }
 
   if (!open) {
     return null;
@@ -638,27 +697,45 @@ export default function BuscadorModal({
                   )}
                 </div>
 
-                {esAcordes && (
-                  <div className="absolute bottom-4 right-3 z-20 flex flex-col gap-2">
-                    <TapButton
-                      aria-label="Guardar letra completa"
-                      disabled={accionLoading}
-                      onClick={() => void handleGuardarLetraCompleta()}
-                      className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
-                    >
-                      <Bookmark className="size-4 shrink-0 text-accent" />
-                      Guardar letra completa
-                    </TapButton>
-                    <TapButton
-                      aria-label="Guardar link"
-                      disabled={accionLoading}
-                      onClick={() => void handleGuardarLink()}
-                      className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
-                    >
-                      <Link2 className="size-4 shrink-0 text-accent" />
-                      Guardar link
-                    </TapButton>
-                  </div>
+                {fabGuardarAbierto && fabMuestraCancion && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Cerrar opciones de guardado"
+                      className="absolute inset-0 z-10"
+                      onClick={() => setFabGuardarAbierto(false)}
+                    />
+                    <div className="absolute bottom-4 right-3 z-20 flex flex-col gap-2">
+                      <TapButton
+                        aria-label={
+                          esLinkGuardadoPreview
+                            ? "Guardar canción"
+                            : "Guardar letra completa"
+                        }
+                        disabled={accionLoading}
+                        onClick={() => void handleGuardarLetraCompleta()}
+                        className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
+                      >
+                        <Bookmark className="size-4 shrink-0 text-accent" />
+                        {accionLoading
+                          ? "Cargando letra..."
+                          : esLinkGuardadoPreview
+                            ? "Guardar canción"
+                            : "Guardar letra completa"}
+                      </TapButton>
+                      {fabMuestraLink && (
+                        <TapButton
+                          aria-label="Guardar link"
+                          disabled={accionLoading}
+                          onClick={() => void handleGuardarLink()}
+                          className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
+                        >
+                          <Link2 className="size-4 shrink-0 text-accent" />
+                          Guardar link
+                        </TapButton>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 {confirmacion && (
@@ -700,13 +777,7 @@ export default function BuscadorModal({
                   <p className="mb-2 text-sm text-accent">{error}</p>
                 )}
 
-                <div
-                  className={
-                    mostrarGuardar && esCifra
-                      ? "grid grid-cols-2 gap-2"
-                      : "grid grid-cols-1 gap-2"
-                  }
-                >
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     disabled={accionLoading}
@@ -717,23 +788,40 @@ export default function BuscadorModal({
                     <span className="text-center leading-tight">Sumar a fila</span>
                   </button>
 
-                  {esCifra && (
-                    <button
-                      type="button"
-                      disabled={accionLoading}
-                      onClick={() => void handleGuardarLink()}
-                      className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-sm font-semibold text-text-primary disabled:opacity-60"
-                    >
-                      <Link2 className="size-4 shrink-0" aria-hidden="true" />
-                      <span className="text-center leading-tight">Guardar</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={accionLoading || guardarDeshabilitado}
+                    onClick={handleGuardarTap}
+                    className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-sm font-semibold text-text-primary disabled:opacity-60"
+                  >
+                    <Bookmark className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="text-center leading-tight">Guardar</span>
+                  </button>
                 </div>
               </footer>
             </>
           )}
         </section>
       </div>
+
+      {guardarLetraModal && (
+        <CancioneroFormModal
+          open
+          title="Guardar en cancionero"
+          initialValues={{
+            nombre: guardarLetraModal.nombre,
+            artista: guardarLetraModal.artista,
+            letra: guardarLetraModal.letra,
+          }}
+          onSubmit={handleGuardarLetraDesdeModal}
+          onClose={() => setGuardarLetraModal(null)}
+          onSaved={() => {
+            void onDataChange();
+            mostrarConfirmacion("letra");
+            setGuardarLetraModal(null);
+          }}
+        />
+      )}
     </div>
   );
 }

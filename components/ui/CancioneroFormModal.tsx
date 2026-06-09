@@ -25,6 +25,10 @@ type CancioneroFormModalProps = {
   onClose: () => void;
   onSaved: () => void;
   cancion?: CancionCancionero | null;
+  initialValues?: CancioneroFormData | null;
+  onSubmit?: (form: CancioneroFormData) => Promise<void>;
+  title?: string;
+  submitLabel?: string;
 };
 
 function toFormState(cancion?: CancionCancionero | null) {
@@ -40,6 +44,10 @@ export default function CancioneroFormModal({
   onClose,
   onSaved,
   cancion = null,
+  initialValues = null,
+  onSubmit,
+  title,
+  submitLabel,
 }: CancioneroFormModalProps) {
   const isEditing = cancion !== null;
   const [nombre, setNombre] = useState("");
@@ -60,7 +68,13 @@ export default function CancioneroFormModal({
 
   useEffect(() => {
     if (open) {
-      const form = toFormState(cancion);
+      const form = cancion
+        ? toFormState(cancion)
+        : {
+            nombre: initialValues?.nombre ?? "",
+            artista: initialValues?.artista ?? "",
+            letra: initialValues?.letra ?? "",
+          };
       setNombre(form.nombre);
       setArtista(form.artista);
       setLetra(form.letra);
@@ -68,7 +82,13 @@ export default function CancioneroFormModal({
       setFieldErrors({});
       setLoading(false);
     }
-  }, [open, cancion]);
+  }, [
+    open,
+    cancion,
+    initialValues?.nombre,
+    initialValues?.artista,
+    initialValues?.letra,
+  ]);
 
   function validateFields() {
     const errors: {
@@ -116,7 +136,9 @@ export default function CancioneroFormModal({
     const supabase = createClient();
 
     try {
-      if (isEditing && cancion) {
+      if (onSubmit) {
+        await onSubmit(formData);
+      } else if (isEditing && cancion) {
         await updateCancionCancionero(supabase, cancion.id, formData);
       } else {
         await insertCancionCancionero(supabase, formData);
@@ -145,7 +167,7 @@ export default function CancioneroFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-8 sm:items-center">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center px-4 pb-8 sm:items-center">
       <button
         type="button"
         aria-label="Cerrar"
@@ -167,7 +189,7 @@ export default function CancioneroFormModal({
               id="cancionero-form-titulo"
               className="mt-1 text-lg font-extrabold text-text-primary"
             >
-              {isEditing ? "Editar canción" : "Nueva canción"}
+              {title ?? (isEditing ? "Editar canción" : "Nueva canción")}
             </h2>
           </div>
           <TapButton
@@ -272,7 +294,10 @@ export default function CancioneroFormModal({
             disabled={loading || !isFormValid}
             className="min-h-11 w-full rounded-[10px] bg-accent text-base font-semibold text-white disabled:opacity-60"
           >
-            {loading ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar"}
+            {loading
+              ? "Guardando..."
+              : (submitLabel ??
+                (isEditing ? "Guardar cambios" : "Guardar"))}
           </TapButton>
         </form>
       </div>

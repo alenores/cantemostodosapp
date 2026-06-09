@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "CantemosTodos",
+    title: "CanToApp",
     statusBarStyle: "black-translucent",
   },
 };

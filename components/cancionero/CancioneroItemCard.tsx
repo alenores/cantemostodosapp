@@ -3,7 +3,7 @@
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
-import { FileText, Pencil, Trash2 } from "lucide-react";
+import { Bookmark, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, type MouseEvent } from "react";
 
 const LONG_PRESS_MS = 500;
@@ -27,7 +27,6 @@ export default function CancioneroItemCard({
   onEditar,
   onEliminar,
 }: CancioneroItemCardProps) {
-  const tieneLetra = Boolean(cancion.letra?.trim());
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClickRef = useRef(false);
 
@@ -102,20 +101,16 @@ export default function CancioneroItemCard({
       onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-center gap-3">
+        <Bookmark
+          className="size-5 shrink-0"
+          style={{ color: "var(--tuner-in-tune)" }}
+          aria-hidden="true"
+        />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-base font-bold text-text-primary">
-              {cancion.nombre}
-            </p>
-            {tieneLetra && (
-              <FileText
-                className="size-4 shrink-0"
-                style={{ color: "var(--tuner-in-tune)" }}
-                aria-label="Tiene letra guardada"
-              />
-            )}
-          </div>
+          <p className="truncate text-base font-bold text-text-primary">
+            {cancion.nombre}
+          </p>
           {cancion.artista && (
             <p className="mt-0.5 truncate text-sm text-text-muted">
               {cancion.artista}

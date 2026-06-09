@@ -1,6 +1,6 @@
 {
   "name": "CantemosTodos",
-  "short_name": "CantemosTodos",
+  "short_name": "CanToApp",
   "description": "Letras en tiempo real para reuniones musicales con amigos",
   "start_url": "/",
   "display": "standalone",

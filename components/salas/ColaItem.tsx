@@ -1,5 +1,9 @@
 import UserAvatar from "@/components/perfil/UserAvatar";
-import { resolverNombreArtistaDisplay } from "@/lib/buscador";
+import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
+import {
+  getColaItemIconoTipo,
+  resolverNombreArtistaDisplay,
+} from "@/lib/buscador";
 import { getColaVariant, type ColaVariant } from "@/lib/cola-logic";
 import type { ColaItem } from "@/types";
 import { SkipForward, Trash2 } from "lucide-react";
@@ -75,19 +79,6 @@ function variantClasses(variant: ColaVariant): string {
   }
 }
 
-function orderClasses(variant: ColaVariant): string {
-  switch (variant) {
-    case "activa":
-      return "text-bg-darker";
-    case "proxima":
-      return "text-accent";
-    case "pendiente":
-      return "text-text-faint";
-    default:
-      return "text-text-muted";
-  }
-}
-
 export default function ColaItemCard({
   item,
   items,
@@ -98,6 +89,7 @@ export default function ColaItemCard({
   onFinalize,
 }: ColaItemProps) {
   const variant = getColaVariant(item, items);
+  const iconoTipo = getColaItemIconoTipo(item);
   const { nombre, artista } = resolverNombreArtistaDisplay(
     item.nombre,
     item.artista,
@@ -126,20 +118,14 @@ export default function ColaItemCard({
         isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
       } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
     >
-      <span
-        className={`shrink-0 text-center font-bold ${
-          isActiva ? "w-5 text-base" : "w-4 text-[11px]"
-        } ${orderClasses(variant)}`}
-      >
-        {item.orden}
-      </span>
+      <LetraFuenteIcon tipo={iconoTipo} compact />
 
       <div className="min-w-0 flex-1">
         <p
           className={`truncate ${
             isActiva
-              ? "text-[17px] font-bold leading-snug text-bg-darker"
-              : "text-[15px] font-semibold leading-snug text-text-primary"
+              ? "text-[18px] font-bold leading-snug text-bg-darker"
+              : "text-[16px] font-semibold leading-snug text-text-primary"
           }`}
         >
           {nombre}

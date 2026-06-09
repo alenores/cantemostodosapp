@@ -1,5 +1,6 @@
 "use client";
 
+import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
@@ -11,7 +12,6 @@ import {
   mapCancionLocalAResultado,
   resolverNombreArtistaDisplay,
   resultadoKey,
-  type ResultadoIconoTipo,
 } from "@/lib/buscador";
 import { agregarACola, type CancionInput } from "@/lib/cola-logic";
 import {
@@ -30,8 +30,6 @@ import {
   ArrowLeft,
   Bookmark,
   Check,
-  FileText,
-  Globe2,
   Link2,
   ListPlus,
   Loader2,
@@ -93,30 +91,6 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
   };
 }
 
-const RESULTADO_ICONO_STYLE: Record<
-  ResultadoIconoTipo,
-  { sizeClass: string; color: string }
-> = {
-  cancionero: { sizeClass: "size-6", color: "#9AE0C8" },
-  acordes: { sizeClass: "size-5", color: "#4A9388" },
-  cifra: { sizeClass: "size-5", color: "var(--accent)" },
-};
-
-function ResultadoIcono({ tipo }: { tipo: ResultadoIconoTipo }) {
-  const { sizeClass, color } = RESULTADO_ICONO_STYLE[tipo];
-  const className = `${sizeClass} shrink-0`;
-
-  switch (tipo) {
-    case "cancionero":
-    case "acordes":
-      return (
-        <FileText className={className} style={{ color }} aria-hidden="true" />
-      );
-    case "cifra":
-      return <Globe2 className={className} style={{ color }} aria-hidden="true" />;
-  }
-}
-
 function ResultadoItem({
   resultado,
   onSelect,
@@ -136,10 +110,28 @@ function ResultadoItem({
     <button
       type="button"
       onClick={() => onSelect(resultado)}
-      className="flex w-full items-center gap-3 rounded-[12px] border border-border-card bg-bg-card px-3 py-3 text-left"
+      className={`relative flex w-full items-start gap-3 overflow-hidden rounded-[12px] border bg-bg-card px-3 py-3 text-left ${
+        esCancionero
+          ? "border-[var(--tuner-in-tune)]/35"
+          : "border-border-card"
+      }`}
     >
-      <ResultadoIcono tipo={iconoTipo} />
-      <div className="min-w-0 flex-1">
+      {esCancionero && (
+        <>
+          <span
+            className="absolute inset-y-0 left-0 w-1 bg-[var(--tuner-in-tune)]"
+            aria-hidden="true"
+          />
+          <span
+            className="absolute inset-y-0 right-0 w-1 bg-[var(--tuner-in-tune)]"
+            aria-hidden="true"
+          />
+        </>
+      )}
+      <LetraFuenteIcon tipo={iconoTipo} />
+      <div
+        className={`min-w-0 flex-1 ${!esCancionero ? "pb-5" : ""}`}
+      >
         <p className="truncate text-[17px] font-semibold text-text-primary">
           {nombre}
         </p>
@@ -149,22 +141,16 @@ function ResultadoItem({
           </p>
         )}
       </div>
+      {esLinkGuardado && (
+        <Link2
+          className="absolute top-2 right-2 size-3.5 shrink-0 text-[#8BA4C4]"
+          aria-hidden="true"
+        />
+      )}
       {!esCancionero && (
-        <div
-          className={`flex shrink-0 flex-col items-end self-stretch ${
-            esLinkGuardado ? "justify-between py-0.5" : "justify-center"
-          }`}
-        >
-          {esLinkGuardado && (
-            <Link2
-              className="size-3.5 shrink-0 text-[#8BA4C4]"
-              aria-hidden="true"
-            />
-          )}
-          <span className="rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-            {resultado.sitio}
-          </span>
-        </div>
+        <span className="absolute bottom-2 right-2 rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+          {resultado.sitio}
+        </span>
       )}
     </button>
   );

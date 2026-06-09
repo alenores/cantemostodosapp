@@ -87,3 +87,24 @@ export function getResultadoIconoTipo(
 
   return "cifra";
 }
+
+export function getColaItemIconoTipo(item: {
+  url_letra: string;
+  letra_texto?: string | null;
+}): ResultadoIconoTipo {
+  if (item.letra_texto?.trim()) {
+    return "cancionero";
+  }
+
+  const url = item.url_letra?.trim() ?? "";
+
+  if (!url) {
+    return "cancionero";
+  }
+
+  if (esAcordesDeCanciones(extractSitio(url), url)) {
+    return "acordes";
+  }
+
+  return "cifra";
+}

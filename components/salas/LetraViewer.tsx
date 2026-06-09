@@ -26,7 +26,7 @@ export default function LetraViewer({
           src={url}
           title={title}
           className="h-full w-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-popups"
+          sandbox="allow-scripts allow-same-origin"
           referrerPolicy="no-referrer-when-downgrade"
         />
       </div>

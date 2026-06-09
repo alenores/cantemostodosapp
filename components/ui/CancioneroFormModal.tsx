@@ -11,11 +11,14 @@ import type { CancionCancionero } from "@/types";
 import { X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
+const labelClassName =
+  "mb-1.5 block text-sm font-medium text-text-secondary";
+
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-11 w-full rounded-[10px] border border-border bg-bg-app px-4 text-base text-text-primary placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
 const textareaClassName =
-  "min-h-[200px] w-full resize-y rounded-[10px] border border-border bg-bg-card px-4 py-3 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-[200px] w-full resize-y rounded-[10px] border border-border bg-bg-app px-4 py-3 text-base text-text-primary placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
 type CancioneroFormModalProps = {
   open: boolean;
@@ -44,6 +47,16 @@ export default function CancioneroFormModal({
   const [letra, setLetra] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    nombre?: string;
+    artista?: string;
+    letra?: string;
+  }>({});
+
+  const isFormValid =
+    nombre.trim().length > 0 &&
+    artista.trim().length > 0 &&
+    letra.trim().length > 0;
 
   useEffect(() => {
     if (open) {
@@ -52,9 +65,33 @@ export default function CancioneroFormModal({
       setArtista(form.artista);
       setLetra(form.letra);
       setError(null);
+      setFieldErrors({});
       setLoading(false);
     }
   }, [open, cancion]);
+
+  function validateFields() {
+    const errors: {
+      nombre?: string;
+      artista?: string;
+      letra?: string;
+    } = {};
+
+    if (!nombre.trim()) {
+      errors.nombre = "Completá el nombre de la canción.";
+    }
+
+    if (!artista.trim()) {
+      errors.artista = "Completá el artista.";
+    }
+
+    if (!letra.trim()) {
+      errors.letra = "Completá la letra y acordes.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   if (!open) {
     return null;
@@ -63,9 +100,7 @@ export default function CancioneroFormModal({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmedNombre = nombre.trim();
-
-    if (!trimmedNombre) {
+    if (!validateFields()) {
       return;
     }
 
@@ -73,9 +108,9 @@ export default function CancioneroFormModal({
     setError(null);
 
     const formData: CancioneroFormData = {
-      nombre: trimmedNombre,
-      artista: artista.trim() || null,
-      letra: letra.trim() || null,
+      nombre: nombre.trim(),
+      artista: artista.trim(),
+      letra: letra.trim(),
     };
 
     const supabase = createClient();
@@ -146,10 +181,7 @@ export default function CancioneroFormModal({
 
         <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
           <div>
-            <label
-              htmlFor="cancionero-nombre"
-              className="mb-1.5 block text-xs font-medium text-text-muted"
-            >
+            <label htmlFor="cancionero-nombre" className={labelClassName}>
               Nombre
             </label>
             <input
@@ -160,44 +192,73 @@ export default function CancioneroFormModal({
               maxLength={120}
               placeholder="Nombre de la canción"
               value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
+              onChange={(event) => {
+                setNombre(event.target.value);
+                if (fieldErrors.nombre) {
+                  setFieldErrors((current) => ({ ...current, nombre: undefined }));
+                }
+              }}
               className={inputClassName}
+              aria-invalid={Boolean(fieldErrors.nombre)}
             />
+            {fieldErrors.nombre && (
+              <p className="mt-1.5 text-xs text-accent" role="alert">
+                {fieldErrors.nombre}
+              </p>
+            )}
           </div>
 
           <div>
-            <label
-              htmlFor="cancionero-artista"
-              className="mb-1.5 block text-xs font-medium text-text-muted"
-            >
-              Artista (opcional)
+            <label htmlFor="cancionero-artista" className={labelClassName}>
+              Artista
             </label>
             <input
               id="cancionero-artista"
               type="text"
+              required
               maxLength={120}
               placeholder="Artista o banda"
               value={artista}
-              onChange={(event) => setArtista(event.target.value)}
+              onChange={(event) => {
+                setArtista(event.target.value);
+                if (fieldErrors.artista) {
+                  setFieldErrors((current) => ({ ...current, artista: undefined }));
+                }
+              }}
               className={inputClassName}
+              aria-invalid={Boolean(fieldErrors.artista)}
             />
+            {fieldErrors.artista && (
+              <p className="mt-1.5 text-xs text-accent" role="alert">
+                {fieldErrors.artista}
+              </p>
+            )}
           </div>
 
           <div>
-            <label
-              htmlFor="cancionero-letra"
-              className="mb-1.5 block text-xs font-medium text-text-muted"
-            >
-              Letra y acordes (opcional)
+            <label htmlFor="cancionero-letra" className={labelClassName}>
+              Letra y acordes
             </label>
             <textarea
               id="cancionero-letra"
               rows={10}
+              required
               placeholder="Pegá acá la letra limpia con acordes..."
               value={letra}
-              onChange={(event) => setLetra(event.target.value)}
+              onChange={(event) => {
+                setLetra(event.target.value);
+                if (fieldErrors.letra) {
+                  setFieldErrors((current) => ({ ...current, letra: undefined }));
+                }
+              }}
               className={textareaClassName}
+              aria-invalid={Boolean(fieldErrors.letra)}
             />
+            {fieldErrors.letra && (
+              <p className="mt-1.5 text-xs text-accent" role="alert">
+                {fieldErrors.letra}
+              </p>
+            )}
           </div>
 
           {error && (
@@ -208,7 +269,7 @@ export default function CancioneroFormModal({
 
           <TapButton
             type="submit"
-            disabled={loading || !nombre.trim()}
+            disabled={loading || !isFormValid}
             className="min-h-11 w-full rounded-[10px] bg-accent text-base font-semibold text-white disabled:opacity-60"
           >
             {loading ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar"}

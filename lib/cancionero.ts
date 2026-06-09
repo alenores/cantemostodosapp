@@ -3,8 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CancioneroFormData = {
   nombre: string;
-  artista: string | null;
-  letra: string | null;
+  artista: string;
+  letra: string;
 };
 
 export function filterCancionesCancionero(
@@ -63,8 +63,8 @@ export async function insertCancionCancionero(
   const { error } = await supabase.from("canciones_guardadas").insert({
     sala_id: null,
     nombre: form.nombre.trim(),
-    artista: form.artista?.trim() || null,
-    letra: form.letra?.trim() || null,
+    artista: form.artista.trim(),
+    letra: form.letra.trim(),
     url_letra: "",
   });
 
@@ -82,8 +82,8 @@ export async function updateCancionCancionero(
     .from("canciones_guardadas")
     .update({
       nombre: form.nombre.trim(),
-      artista: form.artista?.trim() || null,
-      letra: form.letra?.trim() || null,
+      artista: form.artista.trim(),
+      letra: form.letra.trim(),
     })
     .eq("id", id)
     .is("sala_id", null);

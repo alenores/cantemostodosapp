@@ -1,6 +1,7 @@
 "use client";
 
 import UserAvatar from "@/components/perfil/UserAvatar";
+import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
@@ -36,6 +37,7 @@ export default function PerfilPageClient({
   usuarioInicial,
 }: PerfilPageClientProps) {
   const router = useRouter();
+  const startNavigation = useStartNavigation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nombre, setNombre] = useState(usuarioInicial.nombre);
   const [email, setEmail] = useState(usuarioInicial.email);
@@ -177,6 +179,7 @@ export default function PerfilPageClient({
 
     router.refresh();
     const aviso = emailCambiado ? "email-pendiente" : "perfil-actualizado";
+    startNavigation();
     router.push(`/salas?aviso=${aviso}`);
   }
 

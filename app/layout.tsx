@@ -1,7 +1,9 @@
 import SplashScreen from "@/components/SplashScreen";
+import NavigationProgressProvider from "@/components/ui/NavigationProgress";
 import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 
 const font = Plus_Jakarta_Sans({
@@ -44,8 +46,12 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <TapFeedbackProvider>
-          <SplashScreen />
-          {children}
+          <Suspense fallback={null}>
+            <NavigationProgressProvider>
+              <SplashScreen />
+              {children}
+            </NavigationProgressProvider>
+          </Suspense>
         </TapFeedbackProvider>
       </body>
     </html>

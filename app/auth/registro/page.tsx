@@ -1,5 +1,6 @@
 "use client";
 
+import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ const buttonClassName =
 
 export default function RegistroPage() {
   const router = useRouter();
+  const startNavigation = useStartNavigation();
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +43,7 @@ export default function RegistroPage() {
     }
 
     router.refresh();
+    startNavigation();
     router.push("/salas");
   }
 

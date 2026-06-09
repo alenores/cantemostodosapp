@@ -1,5 +1,5 @@
 import type { ResultadoIconoTipo } from "@/lib/buscador";
-import { ExternalLink, FileText } from "lucide-react";
+import { FileText, Globe2 } from "lucide-react";
 
 const ICONO_STYLE: Record<
   ResultadoIconoTipo,
@@ -25,7 +25,7 @@ export default function LetraFuenteIcon({
 
   if (tipo === "cifra") {
     return (
-      <ExternalLink
+      <Globe2
         className={className}
         style={{ color: base.color }}
         aria-hidden="true"

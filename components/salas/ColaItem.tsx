@@ -118,7 +118,7 @@ export default function ColaItemCard({
         isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
       } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
     >
-      <LetraFuenteIcon tipo={iconoTipo} compact />
+      <LetraFuenteIcon tipo={iconoTipo} />
 
       <div className="min-w-0 flex-1">
         <p

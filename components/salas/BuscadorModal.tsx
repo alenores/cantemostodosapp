@@ -110,7 +110,7 @@ function ResultadoItem({
     <button
       type="button"
       onClick={() => onSelect(resultado)}
-      className={`relative flex w-full items-start gap-3 overflow-hidden rounded-[12px] border bg-bg-card px-3 py-3 text-left ${
+      className={`relative flex w-full items-center gap-3 overflow-hidden rounded-[12px] border bg-bg-card px-3 py-3 text-left ${
         esCancionero
           ? "border-[var(--tuner-in-tune)]/35"
           : "border-border-card"
@@ -129,16 +129,25 @@ function ResultadoItem({
         </>
       )}
       <LetraFuenteIcon tipo={iconoTipo} />
-      <div
-        className={`min-w-0 flex-1 ${!esCancionero ? "pb-5" : ""}`}
-      >
+      <div className="min-w-0 flex-1">
         <p className="truncate text-[17px] font-semibold text-text-primary">
           {nombre}
         </p>
-        {artista && (
-          <p className="mt-0.5 truncate text-[14px] text-text-muted">
-            {artista}
-          </p>
+        {(artista || !esCancionero) && (
+          <div className="mt-0.5 flex min-w-0 items-center gap-2">
+            {artista ? (
+              <p className="min-w-0 flex-1 truncate text-[14px] text-text-muted">
+                {artista}
+              </p>
+            ) : (
+              <span className="min-w-0 flex-1" aria-hidden="true" />
+            )}
+            {!esCancionero && (
+              <span className="shrink-0 rounded-full bg-accent-dim px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
+                {resultado.sitio}
+              </span>
+            )}
+          </div>
         )}
       </div>
       {esLinkGuardado && (
@@ -146,11 +155,6 @@ function ResultadoItem({
           className="absolute top-2 right-2 size-3.5 shrink-0 text-[#8BA4C4]"
           aria-hidden="true"
         />
-      )}
-      {!esCancionero && (
-        <span className="absolute bottom-2 right-2 rounded-full bg-accent-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-          {resultado.sitio}
-        </span>
       )}
     </button>
   );
@@ -198,6 +202,7 @@ export default function BuscadorModal({
   onColaAdded,
 }: BuscadorModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const pantallaRef = useRef<Pantalla>("busqueda");
   const confirmacionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -238,6 +243,7 @@ export default function BuscadorModal({
       confirmacionTimerRef.current = null;
     }
 
+    pantallaRef.current = "busqueda";
     setPantalla("busqueda");
     setQuery("");
     setResultados({ cancionero: [], linksGuardados: [], internet: [] });
@@ -283,6 +289,10 @@ export default function BuscadorModal({
       }
     };
   }, []);
+
+  useEffect(() => {
+    pantallaRef.current = pantalla;
+  }, [pantalla]);
 
   function dismissKeyboard() {
     inputRef.current?.blur();
@@ -384,7 +394,7 @@ export default function BuscadorModal({
         internet,
       }));
     } catch (searchError) {
-      if (!error) {
+      if (pantallaRef.current === "busqueda") {
         setError(
           searchError instanceof Error
             ? searchError.message
@@ -401,10 +411,13 @@ export default function BuscadorModal({
     setSeleccionado(resultado);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
+    setError(null);
+    pantallaRef.current = "preview";
     setPantalla("preview");
   }
 
   function handleVolver() {
+    pantallaRef.current = "busqueda";
     setPantalla("busqueda");
     setSeleccionado(null);
     setConfirmacion(null);
@@ -588,7 +601,8 @@ export default function BuscadorModal({
   );
 
   const previewConLetraLocal =
-    seleccionado?.fuente === "cancionero" &&
+    (seleccionado?.fuente === "cancionero" ||
+      seleccionado?.fuente === "link-guardado") &&
     Boolean(seleccionado.letra?.trim());
 
   function handleGuardarTap() {
@@ -874,7 +888,7 @@ export default function BuscadorModal({
                   ¿Confirmás la canción?
                 </p>
 
-                {error && (
+                {error && !previewConLetraLocal && (
                   <p className="mb-2 text-sm text-accent">{error}</p>
                 )}
 

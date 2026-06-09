@@ -29,8 +29,15 @@ export default function TapFeedbackProvider({
   children: ReactNode;
 }) {
   useEffect(() => {
-    function clearPressed(element: HTMLElement) {
-      element.classList.remove("is-tap-pressed");
+    let pressedElement: HTMLElement | null = null;
+
+    function clearPressed() {
+      if (!pressedElement) {
+        return;
+      }
+
+      pressedElement.classList.remove("is-tap-pressed");
+      pressedElement = null;
     }
 
     function onPointerDown(event: PointerEvent) {
@@ -44,20 +51,27 @@ export default function TapFeedbackProvider({
         return;
       }
 
+      clearPressed();
       triggerHaptic();
+      pressedElement = tapTarget;
       tapTarget.classList.add("is-tap-pressed");
+    }
 
-      const cleanup = () => clearPressed(tapTarget);
-
-      tapTarget.addEventListener("pointerup", cleanup, { once: true });
-      tapTarget.addEventListener("pointercancel", cleanup, { once: true });
-      tapTarget.addEventListener("pointerleave", cleanup, { once: true });
+    function onPointerEnd() {
+      clearPressed();
     }
 
     document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    document.addEventListener("pointerup", onPointerEnd, { capture: true });
+    document.addEventListener("pointercancel", onPointerEnd, { capture: true });
 
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, { capture: true });
+      document.removeEventListener("pointerup", onPointerEnd, { capture: true });
+      document.removeEventListener("pointercancel", onPointerEnd, {
+        capture: true,
+      });
+      clearPressed();
     };
   }, []);
 

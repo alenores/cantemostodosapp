@@ -105,19 +105,31 @@ button:not(:disabled),
 a[href],
 [role="button"]:not([aria-disabled="true"]) {
   transition:
-    transform 100ms var(--transition-timing),
-    opacity 100ms ease-out,
-    filter 100ms ease-out,
-    box-shadow 100ms ease-out;
+    transform 70ms var(--transition-timing),
+    opacity 70ms ease-out,
+    filter 70ms ease-out,
+    box-shadow 70ms ease-out,
+    background-color 70ms ease-out;
 }
 
 button:not(:disabled).is-tap-pressed,
 a[href].is-tap-pressed,
 [role="button"]:not([aria-disabled="true"]).is-tap-pressed {
-  transform: scale(0.965);
-  opacity: 0.88;
-  filter: brightness(1.12);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  transform: scale(0.93);
+  opacity: 0.78;
+  filter: brightness(1.28) saturate(1.08);
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, 0.22),
+    0 0 0 3px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+button:not(:disabled).is-tap-pressed {
+  background-color: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+a[href].is-tap-pressed,
+[role="button"]:not([aria-disabled="true"]).is-tap-pressed {
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -126,13 +138,36 @@ a[href].is-tap-pressed,
   [role="button"]:not([aria-disabled="true"]).is-tap-pressed {
     transform: none;
     filter: none;
-    opacity: 0.92;
+    opacity: 0.85;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
   }
 }
 
 input[type="search"]::placeholder,
 input[inputmode="search"]::placeholder {
   font-style: italic;
+}
+
+@keyframes nav-progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(420%);
+  }
+}
+
+.nav-progress-bar {
+  animation: nav-progress-slide 1.1s var(--transition-timing) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress-bar {
+    animation: none;
+    width: 100%;
+    opacity: 0.65;
+  }
 }
 
 .cola-draggable-item {

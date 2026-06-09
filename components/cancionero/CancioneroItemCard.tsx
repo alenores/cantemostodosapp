@@ -1,5 +1,6 @@
 "use client";
 
+import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
@@ -89,10 +90,10 @@ export default function CancioneroItemCard({
 
   return (
     <article
-      className={`relative cursor-pointer rounded-[12px] border bg-bg-card px-4 py-3 select-none ${
+      className={`relative cursor-pointer rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
         actionsOpen
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
-          : "border-border"
+          : "border-border-card"
       }`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerEnd}
@@ -102,21 +103,22 @@ export default function CancioneroItemCard({
       onClick={handleClick}
     >
       <div className="flex items-center gap-3">
-        <Bookmark
-          className="size-5 shrink-0"
-          style={{ color: "var(--tuner-in-tune)" }}
-          aria-hidden="true"
-        />
+        <LetraFuenteIcon tipo="cancionero" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-bold text-text-primary">
+          <p className="truncate text-[17px] font-semibold text-text-primary">
             {cancion.nombre}
           </p>
           {cancion.artista && (
-            <p className="mt-0.5 truncate text-sm text-text-muted">
+            <p className="mt-0.5 truncate text-[14px] text-text-muted">
               {cancion.artista}
             </p>
           )}
         </div>
+        <Bookmark
+          className="size-3.5 shrink-0"
+          style={{ color: "var(--tuner-in-tune)" }}
+          aria-hidden="true"
+        />
       </div>
 
       {actionsOpen && (

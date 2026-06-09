@@ -43,6 +43,7 @@ import {
 } from "react";
 
 const SNAP_THRESHOLD = 0.3;
+const DRAG_COMMIT_THRESHOLD = 0.2;
 const PEEK_THRESHOLD = 0.92;
 const TAP_MOVE_THRESHOLD_PX = 12;
 
@@ -212,11 +213,19 @@ export default function ColaBottomSheet({
     setIsDragging(!last);
 
     if (last) {
-      const dragProgress = 1 - next / height;
-      if (dragProgress >= SNAP_THRESHOLD) {
+      const dragCommitPx = closedY * DRAG_COMMIT_THRESHOLD;
+
+      if (my <= -dragCommitPx) {
         snapPanelOpen();
-      } else {
+      } else if (my >= dragCommitPx) {
         snapPanelClosed();
+      } else {
+        const dragProgress = 1 - next / height;
+        if (dragProgress >= SNAP_THRESHOLD) {
+          snapPanelOpen();
+        } else {
+          snapPanelClosed();
+        }
       }
     }
 

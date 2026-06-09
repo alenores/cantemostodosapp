@@ -158,15 +158,96 @@ input[inputmode="search"]::placeholder {
   }
 }
 
+@keyframes splash-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes splash-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 0.75;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes splash-eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
 .nav-progress-bar {
   animation: nav-progress-slide 1.1s var(--transition-timing) infinite;
 }
 
+.splash-logo-wrap {
+  width: 10rem;
+  height: 10rem;
+}
+
+.splash-logo {
+  animation: splash-breathe 2.2s ease-in-out infinite;
+}
+
+.splash-glow {
+  position: absolute;
+  inset: -1.25rem;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+    transparent 70%
+  );
+  animation: splash-glow-pulse 2.2s ease-in-out infinite;
+}
+
+.splash-eq-bar {
+  display: block;
+  width: 0.25rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--accent);
+  transform-origin: bottom center;
+  animation: splash-eq-bounce 0.9s ease-in-out infinite;
+}
+
+.splash-progress-bar {
+  animation: nav-progress-slide 1.1s var(--transition-timing) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .nav-progress-bar {
+  .nav-progress-bar,
+  .splash-progress-bar {
     animation: none;
     width: 100%;
     opacity: 0.65;
+  }
+
+  .splash-logo,
+  .splash-glow {
+    animation: none;
+  }
+
+  .splash-eq-bar {
+    animation: none;
+    transform: scaleY(0.55);
   }
 }
 

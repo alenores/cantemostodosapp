@@ -4,12 +4,11 @@ import BuildVersionFooter from "@/components/BuildVersionFooter";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
-import AddButton from "@/components/ui/AddButton";
 import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useAfinador } from "@/hooks/useAfinador";
 import type { Sala, UsuarioActivo } from "@/types";
-import { BookOpen, ChevronRight, Guitar } from "lucide-react";
+import { BookOpen, Gauge, Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -90,54 +89,61 @@ export default function SalasPageClient({
           </p>
         )}
 
-        <TapLink
-          href="/cancionero"
-          ariaLabel="Ir a canciones guardadas"
-          className="flex min-h-11 items-center gap-3 rounded-[14px] border border-border bg-bg-dark px-4 py-3"
-        >
-          <BookOpen
-            className="size-8 shrink-0 text-accent"
-            aria-hidden="true"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-bold text-text-primary">
+        <div className="grid grid-cols-2 gap-[10px]">
+          <div className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4">
+            <p className="text-center text-[13px] font-bold text-text-primary">
               Canciones guardadas
             </p>
-            <p className="text-sm text-text-muted">Repertorio compartido</p>
+            <div className="flex flex-1 items-center justify-center">
+              <BookOpen
+                className="size-16 text-accent"
+                aria-hidden="true"
+              />
+            </div>
+            <TapLink
+              href="/cancionero"
+              ariaLabel="Ver canciones guardadas"
+              className="w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white"
+            >
+              <span className="font-bold">Ver </span>
+              <span className="font-normal opacity-70">
+                ({cancioneroTotal})
+              </span>
+            </TapLink>
           </div>
-          <span className="shrink-0 rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-white">
-            {cancioneroTotal}
-          </span>
-          <ChevronRight
-            className="size-5 shrink-0 text-text-muted"
-            aria-hidden="true"
-          />
-        </TapLink>
 
-        <div className="flex items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3">
-          <Guitar
-            className="size-8 shrink-0 text-accent"
-            aria-hidden="true"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-bold text-text-primary">Afinador</p>
-            <p className="text-sm text-text-muted">Afinador cromático</p>
+          <div className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4">
+            <p className="text-center text-[13px] font-bold text-text-primary">
+              Afinador
+            </p>
+            <div className="flex flex-1 items-center justify-center">
+              <Gauge className="size-16 text-accent" aria-hidden="true" />
+            </div>
+            <TapButton
+              aria-label="Abrir afinador"
+              onClick={() => {
+                void startAfinador();
+                setAfinadorOpen(true);
+              }}
+              className="w-full rounded-lg bg-accent px-3 py-[9px] text-sm font-bold text-white"
+            >
+              Abrir
+            </TapButton>
           </div>
-          <TapButton
-            aria-label="Activar afinador"
-            onClick={() => {
-              void startAfinador();
-              setAfinadorOpen(true);
-            }}
-            className="shrink-0 rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-white"
-          >
-            Activar
-          </TapButton>
         </div>
 
-        <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
-          Salas disponibles
-        </p>
+        <div className="flex items-center gap-1.5">
+          <TapButton
+            aria-label="Crear sala"
+            onClick={() => setModalOpen(true)}
+            className="flex size-[18px] shrink-0 items-center justify-center rounded-full border border-border text-text-faint"
+          >
+            <Plus className="size-2.5" strokeWidth={2.5} aria-hidden="true" />
+          </TapButton>
+          <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
+            Salas disponibles
+          </p>
+        </div>
 
         {errorMessage ? (
           <p className="text-sm text-accent" role="alert">
@@ -157,12 +163,6 @@ export default function SalasPageClient({
       </main>
 
       <BuildVersionFooter />
-
-      <AddButton
-        ariaLabel="Crear sala"
-        onClick={() => setModalOpen(true)}
-        className="fixed bottom-6 right-4 z-40"
-      />
 
       <CrearSalaModal
         open={modalOpen}

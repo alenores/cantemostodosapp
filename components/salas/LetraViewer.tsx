@@ -50,7 +50,7 @@ export default function LetraViewer({
         src={url}
         title={title}
         className="size-full min-h-[320px] flex-1 border-0"
-        sandbox="allow-scripts allow-same-origin allow-popups"
+        sandbox="allow-scripts allow-same-origin"
         referrerPolicy="no-referrer-when-downgrade"
       />
     </div>

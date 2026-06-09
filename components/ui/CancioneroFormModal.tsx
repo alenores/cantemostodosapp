@@ -1,6 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
   getDuplicadoCancioneroNivel,
@@ -107,6 +108,15 @@ export default function CancioneroFormModal({
     initialValues?.artista,
     initialValues?.letra,
   ]);
+
+  useHardwareBack(open, () => {
+    if (confirmarDuplicadoAbierto) {
+      setConfirmarDuplicadoAbierto(false);
+      return;
+    }
+
+    onClose();
+  });
 
   function validateFields() {
     const errors: {

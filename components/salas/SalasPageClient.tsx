@@ -7,6 +7,7 @@ import SalaCard from "@/components/salas/SalaCard";
 import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useAfinador } from "@/hooks/useAfinador";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import type { Sala, UsuarioActivo } from "@/types";
 import { BookOpen, Gauge, Plus } from "lucide-react";
 import Image from "next/image";
@@ -45,6 +46,15 @@ export default function SalasPageClient({
   } = useAfinador();
   const aviso = searchParams.get("aviso");
   const avisoMensaje = aviso ? AVISO_MENSAJES[aviso] : null;
+
+  useHardwareBack(afinadorOpen, () => {
+    stopAfinador();
+    setAfinadorOpen(false);
+  });
+
+  useHardwareBack(modalOpen && !afinadorOpen, () => {
+    setModalOpen(false);
+  });
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">

@@ -7,7 +7,7 @@ import {
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
 import {
-  LETRA_EMBED_HEIGHT_CSS,
+  LETRA_EMBED_BOTTOM_PADDING,
   LETRA_SECTION_BOTTOM_PADDING,
 } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
@@ -109,10 +109,16 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 py-3 ${
-        showEmbed ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain"
+      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 pt-3 ${
+        showEmbed
+          ? "overflow-hidden pb-0"
+          : "overflow-y-auto overscroll-y-contain pb-3"
       }`}
-      style={showEmbed ? undefined : { paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+      style={{
+        paddingBottom: showEmbed
+          ? LETRA_EMBED_BOTTOM_PADDING
+          : LETRA_SECTION_BOTTOM_PADDING,
+      }}
     >
       {hasCancion ? (
         <>
@@ -146,13 +152,11 @@ export default function CancionActivaSection({
           )}
 
           {showEmbed && contenido.mode === "embed" && (
-            <div
-              className="mt-3 w-full shrink-0"
-              style={{ height: LETRA_EMBED_HEIGHT_CSS }}
-            >
+            <div className="mt-2 min-h-0 w-full flex-1">
               <LetraViewer
                 url={contenido.url}
                 title="Letra de la canción activa"
+                flushBottom
                 fill
               />
             </div>

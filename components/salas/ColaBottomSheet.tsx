@@ -15,6 +15,7 @@ import {
   finalizarCancionActiva,
   persistColaOrden,
 } from "@/lib/cola-logic";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_BAR_HEIGHT_PX,
@@ -46,6 +47,7 @@ const SNAP_THRESHOLD = 0.3;
 const DRAG_COMMIT_THRESHOLD = 0.2;
 const PEEK_THRESHOLD = 0.92;
 const TAP_MOVE_THRESHOLD_PX = 12;
+const COLA_DRAG_LONG_PRESS_MS = 500;
 
 type ColaBottomSheetProps = {
   items: ColaItem[];
@@ -57,6 +59,7 @@ type ColaBottomSheetProps = {
   onProgressChange?: (progress: number) => void;
   onRegisterClose?: (close: () => void) => void;
   onRegisterOpen?: (open: () => void) => void;
+  onSettledOpenChange?: (open: boolean) => void;
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -79,6 +82,7 @@ export default function ColaBottomSheet({
   onProgressChange,
   onRegisterClose,
   onRegisterOpen,
+  onSettledOpenChange,
 }: ColaBottomSheetProps) {
   const [viewportHeight, setViewportHeight] = useState(800);
   const [expanded, setExpanded] = useState(false);
@@ -90,8 +94,11 @@ export default function ColaBottomSheet({
   const [deleteFabOpen, setDeleteFabOpen] = useState(false);
   const [avisoEntered, setAvisoEntered] = useState(false);
   const [isColaReordering, setIsColaReordering] = useState(false);
+  const [dragReadyId, setDragReadyId] = useState<number | null>(null);
 
   const panelYRef = useRef(panelY);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressItemRef = useRef<number | null>(null);
   const contentHeightRef = useRef(400);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const listScrollLockedRef = useRef(false);
@@ -128,6 +135,10 @@ export default function ColaBottomSheet({
     onProgressChange?.(progress);
   }, [progress, onProgressChange]);
 
+  useEffect(() => {
+    onSettledOpenChange?.(isSettledOpen);
+  }, [isSettledOpen, onSettledOpenChange]);
+
   const snapPanelOpen = useCallback(() => {
     setPanelY(0);
   }, []);
@@ -137,6 +148,30 @@ export default function ColaBottomSheet({
     setExpanded(false);
     setDeleteFabOpen(false);
   }, []);
+
+  useHardwareBack(isSettledOpen, () => {
+    if (showDeleteAllDialog) {
+      setShowDeleteAllDialog(false);
+      return;
+    }
+
+    if (deleteItemId !== null) {
+      setDeleteItemId(null);
+      return;
+    }
+
+    if (advanceItemId !== null) {
+      setAdvanceItemId(null);
+      return;
+    }
+
+    if (deleteFabOpen) {
+      setDeleteFabOpen(false);
+      return;
+    }
+
+    snapPanelClosed();
+  });
 
   useEffect(() => {
     onRegisterClose?.(snapPanelClosed);
@@ -369,6 +404,36 @@ export default function ColaBottomSheet({
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
   const panelTranslateY = panelY > 0 ? panelY : 0;
 
+  function clearColaLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    longPressItemRef.current = null;
+  }
+
+  function handleColaRowPointerDown(itemId: number) {
+    clearColaLongPress();
+    longPressItemRef.current = itemId;
+    longPressTimerRef.current = setTimeout(() => {
+      setDragReadyId(itemId);
+      triggerHaptic();
+      longPressTimerRef.current = null;
+    }, COLA_DRAG_LONG_PRESS_MS);
+  }
+
+  function handleColaRowPointerEnd(itemId: number) {
+    if (longPressTimerRef.current) {
+      clearColaLongPress();
+      return;
+    }
+
+    if (dragReadyId === itemId && !isColaReorderingRef.current) {
+      setDragReadyId(null);
+    }
+  }
+
   function renderColaDraggableRow(
     item: ColaItem,
     index: number,
@@ -379,15 +444,26 @@ export default function ColaBottomSheet({
     const isDraggingVisual =
       snapshot.isDragging && !snapshot.isDropAnimating;
 
+    const dragHabilitado = isPendiente && dragReadyId === item.id;
+
     return (
       <div
         ref={draggableProvided.innerRef}
         {...draggableProvided.draggableProps}
-        {...(isPendiente ? draggableProvided.dragHandleProps : {})}
+        {...(dragHabilitado ? draggableProvided.dragHandleProps : {})}
         className={
           isPendiente
-            ? "cola-draggable-item cursor-grab active:cursor-grabbing"
+            ? `cola-draggable-item ${dragHabilitado ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`
             : undefined
+        }
+        onPointerDown={
+          isPendiente ? () => handleColaRowPointerDown(item.id) : undefined
+        }
+        onPointerUp={
+          isPendiente ? () => handleColaRowPointerEnd(item.id) : undefined
+        }
+        onPointerCancel={
+          isPendiente ? () => handleColaRowPointerEnd(item.id) : undefined
         }
         onContextMenu={
           isPendiente ? (event) => event.preventDefault() : undefined
@@ -508,6 +584,8 @@ export default function ColaBottomSheet({
             onDragEnd={(result) => {
               isColaReorderingRef.current = false;
               setIsColaReordering(false);
+              setDragReadyId(null);
+              clearColaLongPress();
               void handleDragEnd(result);
             }}
           >
@@ -531,7 +609,9 @@ export default function ColaBottomSheet({
                       key={item.id}
                       draggableId={String(item.id)}
                       index={index}
-                      isDragDisabled={item.estado !== "pendiente"}
+                      isDragDisabled={
+                        item.estado !== "pendiente" || dragReadyId !== item.id
+                      }
                     >
                       {(draggableProvided, snapshot) =>
                         renderColaDraggableRow(

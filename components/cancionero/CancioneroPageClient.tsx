@@ -6,6 +6,7 @@ import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapLink } from "@/components/ui/TapFeedback";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
   deleteCancionCancionero,
   fetchCancionesCancionero,
@@ -110,6 +111,17 @@ export default function CancioneroPageClient({
     setCancionAEliminar(null);
     setActionError(null);
   }
+
+  useHardwareBack(cancionViendo !== null && !formOpen, () => {
+    setCancionViendo(null);
+  });
+
+  useHardwareBack(
+    cancionAEliminar !== null && !formOpen && cancionViendo === null,
+    () => {
+      handleCancelEliminar();
+    },
+  );
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">

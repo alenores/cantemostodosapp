@@ -13,6 +13,7 @@ import {
   resolverNombreArtistaDisplay,
   resultadoKey,
 } from "@/lib/buscador";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { agregarACola, type CancionInput } from "@/lib/cola-logic";
 import {
   getDuplicadoCancioneroNivel,
@@ -269,6 +270,25 @@ export default function BuscadorModal({
     resetState();
     onClose();
   }, [onClose, resetState]);
+
+  useHardwareBack(open, () => {
+    if (fabGuardarAbierto) {
+      setFabGuardarAbierto(false);
+      return;
+    }
+
+    if (confirmacion) {
+      setConfirmacion(null);
+      return;
+    }
+
+    if (pantallaRef.current === "preview") {
+      handleVolver();
+      return;
+    }
+
+    handleClose();
+  });
 
   useEffect(() => {
     if (open) {

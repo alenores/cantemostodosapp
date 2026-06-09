@@ -102,7 +102,41 @@ export default function ColaItemCard({
   const pendienteTransition =
     "transition-[background-color,border-color,box-shadow,opacity] duration-150 ease-out";
 
-  const titleBlock = (
+  const songText = (
+    <div className="min-w-0 flex-1">
+      <p
+        className={`truncate ${
+          isActiva
+            ? "text-[18px] font-bold leading-snug text-bg-darker"
+            : "text-[16px] font-semibold leading-snug text-text-primary"
+        }`}
+      >
+        {nombre}
+      </p>
+      {artista && (
+        <p
+          className={`truncate ${
+            isActiva
+              ? "text-[15px] font-semibold leading-snug text-bg-darker/75"
+              : "text-[13px] leading-snug text-text-muted"
+          }`}
+        >
+          {artista}
+        </p>
+      )}
+    </div>
+  );
+
+  const songIcon = (
+    <div
+      className="flex size-5 shrink-0 items-center justify-center self-center"
+      aria-hidden="true"
+    >
+      <LetraFuenteIcon tipo={iconoTipo} uniform />
+    </div>
+  );
+
+  const songContent = (
     <div
       role={isPendiente ? "button" : undefined}
       tabIndex={isPendiente ? 0 : undefined}
@@ -114,34 +148,12 @@ export default function ColaItemCard({
         }
       }}
       aria-label={isPendiente ? `Activar ${nombre}` : undefined}
-      className={`flex min-w-0 flex-1 items-center text-left ${
-        isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
-      } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
+      className={`flex min-w-0 flex-1 items-center gap-2 text-left ${
+        isPendiente ? "cursor-pointer" : "cursor-default"
+      }`}
     >
-      <LetraFuenteIcon tipo={iconoTipo} />
-
-      <div className="min-w-0 flex-1">
-        <p
-          className={`truncate ${
-            isActiva
-              ? "text-[18px] font-bold leading-snug text-bg-darker"
-              : "text-[16px] font-semibold leading-snug text-text-primary"
-          }`}
-        >
-          {nombre}
-        </p>
-        {artista && (
-          <p
-            className={`truncate ${
-              isActiva
-                ? "text-[15px] font-semibold leading-snug text-bg-darker/75"
-                : "text-[13px] leading-snug text-text-muted"
-            }`}
-          >
-            {artista}
-          </p>
-        )}
-      </div>
+      {songIcon}
+      {songText}
     </div>
   );
 
@@ -199,7 +211,7 @@ export default function ColaItemCard({
           }`}
         >
           <DragHandle />
-          {titleBlock}
+          {songContent}
           {actionButtons}
         </div>
       </div>
@@ -235,17 +247,16 @@ export default function ColaItemCard({
       )}
 
       <div
-        className={`flex min-w-0 flex-1 items-center gap-2 ${
-          isActiva ? "gap-2 py-4 pl-2 pr-2" : isPendiente ? "gap-0" : ""
+        className={`flex min-w-0 flex-1 items-center ${
+          isActiva ? "gap-2 py-4 pl-2 pr-2" : isPendiente ? "gap-2" : "gap-2"
         }`}
       >
-        {isPendiente ? (
-          <DragHandle />
-        ) : (
-          !isActiva && <div className="w-6 shrink-0" aria-hidden="true" />
-        )}
+        {isPendiente ? <DragHandle /> : null}
+        {!isPendiente && !isActiva ? (
+          <div className="w-6 shrink-0" aria-hidden="true" />
+        ) : null}
 
-        {titleBlock}
+        {songContent}
 
         {variant === "tocada" && (
           <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">

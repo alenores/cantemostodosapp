@@ -2,25 +2,43 @@ type LetraViewerProps = {
   url: string;
   title?: string;
   edgeToEdge?: boolean;
+  /** Solo redondea arriba; abajo recto (canción activa contra la barra de cola). */
+  flushBottom?: boolean;
   elevated?: boolean;
   minHeight?: string;
   fill?: boolean;
 };
 
+function containerRadiusClass(
+  edgeToEdge: boolean,
+  flushBottom: boolean,
+): string {
+  if (edgeToEdge) {
+    return "";
+  }
+
+  if (flushBottom) {
+    return "rounded-t-[12px]";
+  }
+
+  return "rounded-[12px]";
+}
+
 export default function LetraViewer({
   url,
   title = "Previsualización de letra",
   edgeToEdge = false,
+  flushBottom = false,
   elevated = false,
   minHeight,
   fill = false,
 }: LetraViewerProps) {
+  const radiusClass = containerRadiusClass(edgeToEdge, flushBottom);
+
   if (fill) {
     return (
       <div
-        className={`h-full w-full overflow-hidden bg-letra-bg ${
-          edgeToEdge ? "" : "rounded-[12px]"
-        } ${
+        className={`h-full w-full overflow-hidden bg-letra-bg ${radiusClass} ${
           elevated
             ? "border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]"
             : ""
@@ -42,9 +60,7 @@ export default function LetraViewer({
   return (
     <div
       style={containerStyle}
-      className={`flex min-h-0 flex-col overflow-hidden bg-letra-bg ${
-        edgeToEdge ? "" : "rounded-[12px]"
-      } ${elevated ? "h-full min-h-0 flex-1" : "min-h-[320px]"} ${
+      className={`flex min-h-0 flex-col overflow-hidden bg-letra-bg ${radiusClass} ${elevated ? "h-full min-h-0 flex-1" : "min-h-[320px]"} ${
         elevated
           ? "border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]"
           : ""

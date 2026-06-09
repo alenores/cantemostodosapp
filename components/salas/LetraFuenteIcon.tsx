@@ -13,14 +13,17 @@ const ICONO_STYLE: Record<
 type LetraFuenteIconProps = {
   tipo: ResultadoIconoTipo;
   compact?: boolean;
+  /** Mismo tamaño (size-5) para hoja y web — p. ej. cards de cola. */
+  uniform?: boolean;
 };
 
 export default function LetraFuenteIcon({
   tipo,
   compact = false,
+  uniform = false,
 }: LetraFuenteIconProps) {
   const base = ICONO_STYLE[tipo];
-  const sizeClass = compact ? "size-4" : base.sizeClass;
+  const sizeClass = compact ? "size-4" : uniform ? "size-5" : base.sizeClass;
   const className = `${sizeClass} shrink-0`;
 
   if (tipo === "cifra") {

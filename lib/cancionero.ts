@@ -8,6 +8,53 @@ export type CancioneroFormData = {
   letra: string;
 };
 
+export type DuplicadoCancioneroNivel = "ninguno" | "nombre" | "nombre-artista";
+
+export function normalizeCancioneroText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function getDuplicadoCancioneroNivel(
+  canciones: Pick<CancionCancionero, "id" | "nombre" | "artista">[],
+  nombre: string,
+  artista: string,
+  excludeId?: number,
+): DuplicadoCancioneroNivel {
+  const nombreNorm = normalizeCancioneroText(nombre);
+
+  if (!nombreNorm) {
+    return "ninguno";
+  }
+
+  const artistaNorm = normalizeCancioneroText(artista);
+  const candidatas =
+    excludeId != null
+      ? canciones.filter((cancion) => cancion.id !== excludeId)
+      : canciones;
+
+  const coincideNombre = candidatas.some(
+    (cancion) => normalizeCancioneroText(cancion.nombre) === nombreNorm,
+  );
+
+  if (!coincideNombre) {
+    return "ninguno";
+  }
+
+  if (artistaNorm) {
+    const coincideAmbos = candidatas.some(
+      (cancion) =>
+        normalizeCancioneroText(cancion.nombre) === nombreNorm &&
+        normalizeCancioneroText(cancion.artista ?? "") === artistaNorm,
+    );
+
+    if (coincideAmbos) {
+      return "nombre-artista";
+    }
+  }
+
+  return "nombre";
+}
+
 export function filterCancionesCancionero(
   canciones: CancionCancionero[],
   query: string,

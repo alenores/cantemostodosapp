@@ -7,11 +7,14 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import {
   esAcordesDeCanciones,
   esCifraClub,
+  getResultadoIconoTipo,
   mapCancionLocalAResultado,
   resultadoKey,
+  type ResultadoIconoTipo,
 } from "@/lib/buscador";
 import { agregarACola, type CancionInput } from "@/lib/cola-logic";
 import {
+  getDuplicadoCancioneroNivel,
   guardarLetraEnCancionero,
   guardarLinkEnCancionero,
   type CancioneroFormData,
@@ -21,12 +24,13 @@ import {
   fetchCancioneroBusqueda,
 } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
-import type { ResultadoBusquedaBuscador } from "@/types";
+import type { CancionCancionero, ResultadoBusquedaBuscador } from "@/types";
 import {
   ArrowLeft,
   Bookmark,
   Check,
   ChevronRight,
+  FileText,
   Link2,
   ListPlus,
   Loader2,
@@ -38,6 +42,7 @@ import {
   FormEvent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -82,6 +87,33 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
   };
 }
 
+const RESULTADO_ICONO_COLOR: Record<ResultadoIconoTipo, string> = {
+  cancionero: "var(--tuner-in-tune)",
+  link: "#8BA4C4",
+  acordes: "#5BB5A0",
+  cifra: "var(--accent)",
+};
+
+function ResultadoIcono({ tipo }: { tipo: ResultadoIconoTipo }) {
+  const className = "size-5 shrink-0";
+  const color = RESULTADO_ICONO_COLOR[tipo];
+
+  switch (tipo) {
+    case "cancionero":
+      return (
+        <Bookmark className={className} style={{ color }} aria-hidden="true" />
+      );
+    case "link":
+      return <Link2 className={className} style={{ color }} aria-hidden="true" />;
+    case "acordes":
+      return (
+        <FileText className={className} style={{ color }} aria-hidden="true" />
+      );
+    case "cifra":
+      return <Music className={className} style={{ color }} aria-hidden="true" />;
+  }
+}
+
 function ResultadoItem({
   resultado,
   onSelect,
@@ -90,6 +122,7 @@ function ResultadoItem({
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
 }) {
   const esCancionero = resultado.fuente === "cancionero";
+  const iconoTipo = getResultadoIconoTipo(resultado);
 
   return (
     <button
@@ -97,15 +130,7 @@ function ResultadoItem({
       onClick={() => onSelect(resultado)}
       className="flex w-full items-center gap-3 rounded-[12px] border border-border-card bg-bg-card px-3 py-3 text-left"
     >
-      {esCancionero ? (
-        <Bookmark
-          className="size-5 shrink-0"
-          style={{ color: "var(--tuner-in-tune)" }}
-          aria-hidden="true"
-        />
-      ) : (
-        <Music className="size-5 shrink-0 text-accent" aria-hidden="true" />
-      )}
+      <ResultadoIcono tipo={iconoTipo} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold text-text-primary">
           {resultado.titulo}
@@ -190,6 +215,9 @@ export default function BuscadorModal({
   const [fabGuardarAbierto, setFabGuardarAbierto] = useState(false);
   const [guardarLetraModal, setGuardarLetraModal] =
     useState<GuardarLetraModalState | null>(null);
+  const [cancionesCancionero, setCancionesCancionero] = useState<
+    CancionCancionero[]
+  >([]);
 
   const totalResultados =
     resultados.cancionero.length +
@@ -214,6 +242,13 @@ export default function BuscadorModal({
     setConfirmacion(null);
     setFabGuardarAbierto(false);
     setGuardarLetraModal(null);
+    setCancionesCancionero([]);
+  }, []);
+
+  const cargarCancionesCancionero = useCallback(async () => {
+    const supabase = createClient();
+    const canciones = await fetchCancioneroBusqueda(supabase);
+    setCancionesCancionero(canciones);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -224,11 +259,14 @@ export default function BuscadorModal({
   useEffect(() => {
     if (open) {
       resetState();
+      void cargarCancionesCancionero().catch(() => {
+        // La búsqueda local sigue funcionando aunque falle esta carga.
+      });
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
     }
-  }, [open, resetState]);
+  }, [open, resetState, cargarCancionesCancionero]);
 
   useEffect(() => {
     return () => {
@@ -279,6 +317,7 @@ export default function BuscadorModal({
     try {
       const supabase = createClient();
       const canciones = await fetchCancioneroBusqueda(supabase);
+      setCancionesCancionero(canciones);
 
       const paso1 = buscarEnCancionero(trimmed, canciones, { conLetra: true });
       const paso2 = buscarEnCancionero(trimmed, canciones, { soloLink: true });
@@ -477,8 +516,24 @@ export default function BuscadorModal({
   const esCifraSitio =
     seleccionado && esCifraClub(seleccionado.sitio, seleccionado.url);
 
+  const duplicadoCompletoEnPreview = useMemo(() => {
+    if (!seleccionado) {
+      return false;
+    }
+
+    return (
+      getDuplicadoCancioneroNivel(
+        cancionesCancionero,
+        seleccionado.titulo,
+        seleccionado.artista ?? "",
+      ) === "nombre-artista"
+    );
+  }, [seleccionado, cancionesCancionero]);
+
   const guardarDeshabilitado = Boolean(
-    esCancioneroPreview || (esLinkGuardadoPreview && esCifraSitio),
+    esCancioneroPreview ||
+      (esLinkGuardadoPreview && esCifraSitio) ||
+      duplicadoCompletoEnPreview,
   );
 
   const guardarAccionDirecta = Boolean(esInternetPreview && esCifraSitio);
@@ -657,7 +712,7 @@ export default function BuscadorModal({
         >
           {seleccionado && (
             <>
-              <header className="shrink-0 border-b border-border px-4 py-2">
+              <header className="shrink-0 border-b border-border px-4 py-1.5">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -683,8 +738,8 @@ export default function BuscadorModal({
                 </div>
               </header>
 
-              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 pb-3 pt-2">
-                <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-[#f8f8f8]">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 pt-1.5 pb-0">
+                <p className="mb-1 shrink-0 text-xs font-semibold uppercase tracking-wide text-[#f8f8f8]">
                   Previsualización
                 </p>
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -693,7 +748,7 @@ export default function BuscadorModal({
                       <LetraTexto texto={seleccionado.letra!} />
                     </div>
                   ) : (
-                    <LetraViewer url={seleccionado.url} elevated />
+                    <LetraViewer url={seleccionado.url} elevated fill />
                   )}
                 </div>
 
@@ -768,8 +823,8 @@ export default function BuscadorModal({
                 )}
               </div>
 
-              <footer className="shrink-0 border-t border-border bg-bg-darker px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-                <p className="mb-2 text-center text-base font-bold text-accent">
+              <footer className="shrink-0 border-t border-border bg-bg-darker px-4 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+                <p className="mb-1 text-center text-sm font-bold text-accent">
                   ¿Confirmás la canción?
                 </p>
 
@@ -777,12 +832,12 @@ export default function BuscadorModal({
                   <p className="mb-2 text-sm text-accent">{error}</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     disabled={accionLoading}
                     onClick={() => void handleAgregarACola()}
-                    className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-accent px-2 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                    className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-2 py-1 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     <ListPlus className="size-4 shrink-0" aria-hidden="true" />
                     <span className="text-center leading-tight">Sumar a fila</span>
@@ -792,7 +847,7 @@ export default function BuscadorModal({
                     type="button"
                     disabled={accionLoading || guardarDeshabilitado}
                     onClick={handleGuardarTap}
-                    className="flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-[10px] border border-border bg-bg-card px-2 py-1.5 text-sm font-semibold text-text-primary disabled:opacity-60"
+                    className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-2 py-1 text-sm font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
                   >
                     <Bookmark className="size-4 shrink-0" aria-hidden="true" />
                     <span className="text-center leading-tight">Guardar</span>
@@ -808,6 +863,7 @@ export default function BuscadorModal({
         <CancioneroFormModal
           open
           title="Guardar en cancionero"
+          cancionesExistentes={cancionesCancionero}
           initialValues={{
             nombre: guardarLetraModal.nombre,
             artista: guardarLetraModal.artista,
@@ -817,6 +873,7 @@ export default function BuscadorModal({
           onClose={() => setGuardarLetraModal(null)}
           onSaved={() => {
             void onDataChange();
+            void cargarCancionesCancionero();
             mostrarConfirmacion("letra");
             setGuardarLetraModal(null);
           }}

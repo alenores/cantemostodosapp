@@ -47,3 +47,23 @@ export function esAcordesDeCanciones(sitio: string, url: string): boolean {
 export function esCifraClub(sitio: string, url: string): boolean {
   return sitio === "cifraclub" || url.includes("cifraclub");
 }
+
+export type ResultadoIconoTipo = "cancionero" | "link" | "acordes" | "cifra";
+
+export function getResultadoIconoTipo(
+  resultado: ResultadoBusquedaBuscador,
+): ResultadoIconoTipo {
+  if (resultado.fuente === "cancionero") {
+    return "cancionero";
+  }
+
+  if (resultado.fuente === "link-guardado") {
+    return "link";
+  }
+
+  if (esAcordesDeCanciones(resultado.sitio, resultado.url)) {
+    return "acordes";
+  }
+
+  return "cifra";
+}

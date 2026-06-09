@@ -6,6 +6,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   deleteConfirm?: boolean;
+  zIndex?: number;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -16,6 +17,7 @@ export default function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   deleteConfirm = false,
+  zIndex = 50,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -24,7 +26,10 @@ export default function ConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center px-4"
+      style={{ zIndex }}
+    >
       <button
         type="button"
         aria-label="Cerrar diálogo"

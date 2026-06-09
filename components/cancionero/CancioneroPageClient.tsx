@@ -200,6 +200,7 @@ export default function CancioneroPageClient({
         }}
         onSaved={() => void reloadCanciones()}
         cancion={cancionEditando}
+        cancionesExistentes={canciones}
       />
 
       <CancioneroVerModal

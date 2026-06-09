@@ -20,6 +20,10 @@ export default function LetraViewer({
       <div
         className={`h-full w-full overflow-hidden bg-letra-bg ${
           edgeToEdge ? "" : "rounded-[12px]"
+        } ${
+          elevated
+            ? "border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]"
+            : ""
         }`}
       >
         <iframe

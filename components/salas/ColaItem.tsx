@@ -1,6 +1,7 @@
+import UserAvatar from "@/components/perfil/UserAvatar";
 import { getColaVariant, type ColaVariant } from "@/lib/cola-logic";
 import type { ColaItem } from "@/types";
-import { Bookmark, SkipForward, Trash2 } from "lucide-react";
+import { SkipForward, Trash2 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 type ColaItemProps = {
@@ -8,7 +9,6 @@ type ColaItemProps = {
   items: ColaItem[];
   index: number;
   isDragging?: boolean;
-  yaGuardada: boolean;
   onDelete: (id: number) => void;
   onSelect?: (id: number) => void;
   onFinalize?: (id: number) => void;
@@ -92,7 +92,6 @@ export default function ColaItemCard({
   items,
   index,
   isDragging = false,
-  yaGuardada,
   onDelete,
   onSelect,
   onFinalize,
@@ -157,17 +156,22 @@ export default function ColaItemCard({
 
   const actionButtons = showActions ? (
     <div className="flex shrink-0 items-center gap-2 px-1">
-      {!yaGuardada && (
-        <button
-          type="button"
-          aria-label="Guardar canción"
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={stopDragPointer}
-          className="flex size-8 items-center justify-center text-text-secondary"
-        >
-          <Bookmark className="size-4" aria-hidden="true" />
-        </button>
-      )}
+      <div
+        className="pointer-events-none flex size-8 shrink-0 items-center justify-center"
+        aria-label={
+          item.agregado_nombre
+            ? `Agregada por ${item.agregado_nombre}`
+            : "Agregada por usuario desconocido"
+        }
+        title={item.agregado_nombre ?? undefined}
+      >
+        <UserAvatar
+          nombre={item.agregado_nombre ?? ""}
+          email=""
+          avatarUrl={item.agregado_avatar_url ?? null}
+          size={28}
+        />
+      </div>
       <button
         type="button"
         aria-label="Eliminar canción de la cola"

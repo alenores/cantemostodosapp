@@ -33,6 +33,9 @@ export type ColaItem = {
   estado: EstadoCola;
   orden: number;
   created_at: string;
+  agregado_por?: string | null;
+  agregado_nombre?: string | null;
+  agregado_avatar_url?: string | null;
 };
 
 export type SesionSala = {

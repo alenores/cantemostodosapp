@@ -1,4 +1,5 @@
 import type { CancionCancionero } from "@/types";
+import { fetchColaAgregadoSnapshot } from "@/lib/usuario";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CancioneroFormData = {
@@ -127,6 +128,7 @@ export async function agregarCancioneroACola(
 
   const nextOrden = (lastItem?.orden ?? 0) + 1;
   const letraTexto = cancion.letra?.trim() || null;
+  const agregado = await fetchColaAgregadoSnapshot(supabase);
 
   const { error } = await supabase.from("cola_juntada").insert({
     sala_id: salaId,
@@ -136,6 +138,7 @@ export async function agregarCancioneroACola(
     letra_texto: letraTexto,
     estado: "pendiente",
     orden: nextOrden,
+    ...(agregado ?? {}),
   });
 
   if (error) {

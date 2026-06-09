@@ -21,7 +21,6 @@ import {
   getColaOpenHeight,
   getColaPanelClosedY,
 } from "@/lib/sala-layout";
-import { buildGuardadaKey } from "@/lib/sala-data";
 import { createClient } from "@/lib/supabase/client";
 import type { ColaItem } from "@/types";
 import {
@@ -48,7 +47,6 @@ const TAP_MOVE_THRESHOLD_PX = 12;
 
 type ColaBottomSheetProps = {
   items: ColaItem[];
-  guardadasKeys: Set<string>;
   salaId: number;
   onColaChange: () => Promise<void>;
   onItemsReordered: (items: ColaItem[]) => void;
@@ -71,7 +69,6 @@ function isColaDraggableTarget(target: EventTarget | null): boolean {
 
 export default function ColaBottomSheet({
   items,
-  guardadasKeys,
   salaId,
   onColaChange,
   onItemsReordered,
@@ -389,9 +386,6 @@ export default function ColaBottomSheet({
             items={items}
             index={index}
             isDragging={isDraggingVisual}
-            yaGuardada={guardadasKeys.has(
-              buildGuardadaKey(item.nombre, item.url_letra),
-            )}
             onDelete={setDeleteItemId}
             onSelect={(itemId) => setAdvanceItemId(itemId)}
             onFinalize={() => void handleFinalize()}

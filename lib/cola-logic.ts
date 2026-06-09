@@ -1,6 +1,7 @@
 import type { ColaItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DropResult } from "@hello-pangea/dnd";
+import { fetchColaAgregadoSnapshot } from "@/lib/usuario";
 
 export type CancionInput = {
   nombre: string;
@@ -381,6 +382,7 @@ export async function agregarACola(
   }
 
   const nextOrden = (lastItem?.orden ?? 0) + 1;
+  const agregado = await fetchColaAgregadoSnapshot(supabase);
 
   const { error } = await supabase.from("cola_juntada").insert({
     sala_id: salaId,
@@ -389,6 +391,7 @@ export async function agregarACola(
     url_letra: cancion.url_letra,
     estado: "pendiente",
     orden: nextOrden,
+    ...(agregado ?? {}),
   });
 
   if (error) {

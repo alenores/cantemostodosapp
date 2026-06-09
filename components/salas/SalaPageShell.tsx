@@ -275,7 +275,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
       <ColaBottomSheet
         items={colaItems}
-        guardadasKeys={guardadasKeys}
         salaId={salaId}
         onColaChange={loadColaCompleta}
         onItemsReordered={handleColaItemsReordered}

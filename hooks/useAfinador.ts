@@ -7,17 +7,21 @@ import {
 } from "@/lib/afinador";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type UseAfinadorOptions = {
-  active: boolean;
+const MIC_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
 };
 
 type UseAfinadorResult = {
   detection: NoteDetection | null;
   micError: string | null;
   micReady: boolean;
+  start: () => Promise<void>;
+  stop: () => void;
 };
 
-export function useAfinador({ active }: UseAfinadorOptions): UseAfinadorResult {
+export function useAfinador(): UseAfinadorResult {
   const [detection, setDetection] = useState<NoteDetection | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [micReady, setMicReady] = useState(false);
@@ -27,8 +31,12 @@ export function useAfinador({ active }: UseAfinadorOptions): UseAfinadorResult {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const dataBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const runningRef = useRef(false);
+  const lastFrequencyRef = useRef<number | null>(null);
 
   const stopAudio = useCallback(() => {
+    runningRef.current = false;
+
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -44,99 +52,109 @@ export function useAfinador({ active }: UseAfinadorOptions): UseAfinadorResult {
 
     analyserRef.current = null;
     dataBufferRef.current = null;
+    lastFrequencyRef.current = null;
     setDetection(null);
     setMicReady(false);
   }, []);
 
-  useEffect(() => {
-    if (!active) {
-      stopAudio();
-      setMicError(null);
+  const start = useCallback(async () => {
+    if (runningRef.current) {
       return;
     }
 
-    let cancelled = false;
+    setMicError(null);
+    setMicReady(false);
+    setDetection(null);
+    lastFrequencyRef.current = null;
 
-    async function startAudio() {
-      setMicError(null);
-      setMicReady(false);
-      setDetection(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: MIC_AUDIO_CONSTRAINTS,
+      });
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
 
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
+      if (!AudioContextClass) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error("AudioContext no disponible en este navegador");
+      }
+
+      const audioContext = new AudioContextClass();
+
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
+
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0;
+
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      mediaStreamRef.current = stream;
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      dataBufferRef.current = new Float32Array(
+        new ArrayBuffer(analyser.fftSize * Float32Array.BYTES_PER_ELEMENT),
+      );
+      runningRef.current = true;
+      setMicReady(true);
+
+      const updatePitch = () => {
+        if (!runningRef.current) {
           return;
         }
 
-        mediaStreamRef.current = stream;
+        const currentAnalyser = analyserRef.current;
+        const buffer = dataBufferRef.current;
+        const context = audioContextRef.current;
 
-        const AudioContextClass =
-          window.AudioContext ||
-          (window as Window & { webkitAudioContext?: typeof AudioContext })
-            .webkitAudioContext;
-
-        if (!AudioContextClass) {
-          throw new Error("AudioContext no disponible en este navegador");
+        if (!currentAnalyser || !buffer || !context) {
+          animationFrameRef.current = requestAnimationFrame(updatePitch);
+          return;
         }
 
-        const audioContext = new AudioContextClass();
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;
+        currentAnalyser.getFloatTimeDomainData(buffer);
+        const frequency = autoCorrelate(buffer, context.sampleRate);
 
-        const source = audioContext.createMediaStreamSource(stream);
-        source.connect(analyser);
-
-        audioContextRef.current = audioContext;
-        analyserRef.current = analyser;
-        dataBufferRef.current = new Float32Array(
-          new ArrayBuffer(analyser.fftSize * Float32Array.BYTES_PER_ELEMENT),
-        );
-        setMicReady(true);
-
-        const updatePitch = () => {
-          const currentAnalyser = analyserRef.current;
-          const buffer = dataBufferRef.current;
-
-          if (!currentAnalyser || !buffer) {
-            return;
-          }
-
-          currentAnalyser.getFloatTimeDomainData(buffer);
-          const frequency = autoCorrelate(buffer, audioContext.sampleRate);
-
-          if (frequency === null) {
+        if (frequency === null) {
+          if (lastFrequencyRef.current !== null) {
+            lastFrequencyRef.current = null;
             setDetection(null);
-          } else {
-            setDetection(frequencyToNote(frequency));
           }
-
-          animationFrameRef.current = requestAnimationFrame(updatePitch);
-        };
+        } else if (
+          lastFrequencyRef.current === null ||
+          Math.abs(frequency - lastFrequencyRef.current) > 0.5
+        ) {
+          lastFrequencyRef.current = frequency;
+          setDetection(frequencyToNote(frequency));
+        }
 
         animationFrameRef.current = requestAnimationFrame(updatePitch);
-      } catch {
-        if (!cancelled) {
-          setMicError(
-            "Permiso de micrófono necesario para usar el afinador",
-          );
-          setMicReady(false);
-        }
-      }
+      };
+
+      animationFrameRef.current = requestAnimationFrame(updatePitch);
+    } catch {
+      stopAudio();
+      setMicError("Permiso de micrófono necesario para usar el afinador");
     }
+  }, [stopAudio]);
 
-    void startAudio();
-
+  useEffect(() => {
     return () => {
-      cancelled = true;
       stopAudio();
     };
-  }, [active, stopAudio]);
+  }, [stopAudio]);
 
   return {
     detection,
     micError,
     micReady,
+    start,
+    stop: stopAudio,
   };
 }

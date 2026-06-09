@@ -38,80 +38,62 @@ export type TunerStatus = "in-tune" | "flat" | "sharp" | "silent";
 const A4_FREQUENCY = 440;
 const IN_TUNE_THRESHOLD_CENTS = 5;
 const FLAT_SHARP_THRESHOLD_CENTS = 15;
+const MIN_DETECTABLE_HZ = 60;
+const MAX_DETECTABLE_HZ = 1200;
+const MIN_RMS = 0.002;
+
+export function computeBufferRms(buffer: Float32Array): number {
+  let sum = 0;
+
+  for (let index = 0; index < buffer.length; index += 1) {
+    sum += buffer[index] * buffer[index];
+  }
+
+  return Math.sqrt(sum / buffer.length);
+}
 
 export function autoCorrelate(
   buffer: Float32Array,
   sampleRate: number,
 ): number | null {
   const bufferLength = buffer.length;
-  let rms = 0;
+  const rms = computeBufferRms(buffer);
 
-  for (let index = 0; index < bufferLength; index += 1) {
-    rms += buffer[index] * buffer[index];
-  }
-
-  rms = Math.sqrt(rms / bufferLength);
-
-  if (rms < 0.01) {
+  if (rms < MIN_RMS) {
     return null;
   }
 
-  let start = 0;
-  let end = bufferLength - 1;
-  const threshold = 0.2;
+  const minLag = Math.floor(sampleRate / MAX_DETECTABLE_HZ);
+  const maxLag = Math.ceil(sampleRate / MIN_DETECTABLE_HZ);
 
-  for (let index = 0; index < bufferLength / 2; index += 1) {
-    if (Math.abs(buffer[index]) < threshold) {
-      start = index;
-      break;
-    }
-  }
+  const correlations = new Float32Array(maxLag + 1);
 
-  for (let index = 1; index < bufferLength / 2; index += 1) {
-    if (Math.abs(buffer[bufferLength - index]) < threshold) {
-      end = bufferLength - index;
-      break;
-    }
-  }
-
-  const trimmed = buffer.subarray(start, end);
-  const size = trimmed.length;
-  const correlations = new Float32Array(size);
-
-  for (let lag = 0; lag < size; lag += 1) {
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
     let sum = 0;
 
-    for (let index = 0; index < size - lag; index += 1) {
-      sum += trimmed[index] * trimmed[index + lag];
+    for (let index = 0; index < bufferLength - lag; index += 1) {
+      sum += buffer[index] * buffer[index + lag];
     }
 
     correlations[lag] = sum;
   }
 
-  let peakLag = 0;
+  let peakLag = minLag;
 
-  while (peakLag + 1 < size && correlations[peakLag] <= correlations[peakLag + 1]) {
-    peakLag += 1;
-  }
-
-  let maxLag = peakLag;
-  let maxValue = correlations[peakLag];
-
-  for (let lag = peakLag; lag < size; lag += 1) {
-    if (correlations[lag] > maxValue) {
-      maxValue = correlations[lag];
-      maxLag = lag;
+  for (let lag = minLag + 1; lag <= maxLag; lag += 1) {
+    if (correlations[lag] > correlations[peakLag]) {
+      peakLag = lag;
     }
   }
 
-  if (maxLag <= 0) {
+  if (correlations[peakLag] <= 0) {
     return null;
   }
 
-  let refinedLag = maxLag;
-  const previous = correlations[maxLag - 1] ?? correlations[maxLag];
-  const current = correlations[maxLag];
-  const next = correlations[maxLag + 1] ?? correlations[maxLag];
+  let refinedLag = peakLag;
+  const previous = correlations[peakLag - 1] ?? correlations[peakLag];
+  const current = correlations[peakLag];
+  const next = correlations[peakLag + 1] ?? correlations[peakLag];
   const denominator = 2 * current - previous - next;
 
   if (denominator !== 0) {
@@ -120,7 +102,7 @@ export function autoCorrelate(
 
   const frequency = sampleRate / refinedLag;
 
-  if (frequency < 60 || frequency > 1200) {
+  if (frequency < MIN_DETECTABLE_HZ || frequency > MAX_DETECTABLE_HZ) {
     return null;
   }
 

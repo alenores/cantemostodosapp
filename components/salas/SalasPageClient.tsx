@@ -7,6 +7,7 @@ import SalaCard from "@/components/salas/SalaCard";
 import AddButton from "@/components/ui/AddButton";
 import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import { useAfinador } from "@/hooks/useAfinador";
 import type { Sala, UsuarioActivo } from "@/types";
 import { BookOpen, ChevronRight, Guitar } from "lucide-react";
 import Image from "next/image";
@@ -36,6 +37,13 @@ export default function SalasPageClient({
   const searchParams = useSearchParams();
   const [modalOpen, setModalOpen] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
+  const {
+    detection: afinadorDetection,
+    micError: afinadorMicError,
+    micReady: afinadorMicReady,
+    start: startAfinador,
+    stop: stopAfinador,
+  } = useAfinador();
   const aviso = searchParams.get("aviso");
   const avisoMensaje = aviso ? AVISO_MENSAJES[aviso] : null;
 
@@ -117,7 +125,10 @@ export default function SalasPageClient({
           </div>
           <TapButton
             aria-label="Activar afinador"
-            onClick={() => setAfinadorOpen(true)}
+            onClick={() => {
+              void startAfinador();
+              setAfinadorOpen(true);
+            }}
             className="shrink-0 rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-white"
           >
             Activar
@@ -161,7 +172,13 @@ export default function SalasPageClient({
 
       <AfinadorModal
         open={afinadorOpen}
-        onClose={() => setAfinadorOpen(false)}
+        detection={afinadorDetection}
+        micError={afinadorMicError}
+        micReady={afinadorMicReady}
+        onClose={() => {
+          stopAfinador();
+          setAfinadorOpen(false);
+        }}
       />
     </div>
   );

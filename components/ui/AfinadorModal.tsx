@@ -1,18 +1,21 @@
 "use client";
 
-import { useAfinador } from "@/hooks/useAfinador";
 import {
   centsToNeedleAngle,
   getClosestStringIndex,
   getStatusLabel,
   getTunerStatus,
   GUITAR_STRINGS,
+  type NoteDetection,
 } from "@/lib/afinador";
 import { X } from "lucide-react";
 
 type AfinadorModalProps = {
   open: boolean;
   onClose: () => void;
+  detection: NoteDetection | null;
+  micError: string | null;
+  micReady: boolean;
 };
 
 function TunerDial({
@@ -84,8 +87,13 @@ function TunerDial({
   );
 }
 
-export default function AfinadorModal({ open, onClose }: AfinadorModalProps) {
-  const { detection, micError, micReady } = useAfinador({ active: open });
+export default function AfinadorModal({
+  open,
+  onClose,
+  detection,
+  micError,
+  micReady,
+}: AfinadorModalProps) {
   const status = getTunerStatus(detection?.cents ?? 0, detection !== null);
   const closestStringIndex = getClosestStringIndex(detection?.frequency ?? null);
 

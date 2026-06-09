@@ -9,6 +9,7 @@ import {
   esCifraClub,
   getResultadoIconoTipo,
   mapCancionLocalAResultado,
+  resolverNombreArtistaDisplay,
   resultadoKey,
   type ResultadoIconoTipo,
 } from "@/lib/buscador";
@@ -29,8 +30,8 @@ import {
   ArrowLeft,
   Bookmark,
   Check,
-  ChevronRight,
   FileText,
+  Globe2,
   Link2,
   ListPlus,
   Loader2,
@@ -45,6 +46,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
 type BuscadorModalProps = {
@@ -77,10 +79,14 @@ const CONFIRMACION_MS = 1500;
 function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
   const letraTexto =
     resultado.fuente === "cancionero" ? resultado.letra?.trim() || null : null;
+  const { nombre, artista } = resolverNombreArtistaDisplay(
+    resultado.titulo,
+    resultado.artista,
+  );
 
   return {
-    nombre: resultado.titulo,
-    artista: resultado.artista || null,
+    nombre,
+    artista: artista || null,
     url_letra:
       resultado.fuente === "cancionero" ? "" : resultado.url,
     letra_texto: letraTexto,
@@ -88,7 +94,7 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
 }
 
 const RESULTADO_ICONO_COLOR: Record<ResultadoIconoTipo, string> = {
-  cancionero: "var(--tuner-in-tune)",
+  cancionero: "#7BC9A8",
   link: "#8BA4C4",
   acordes: "#5BB5A0",
   cifra: "var(--accent)",
@@ -101,7 +107,7 @@ function ResultadoIcono({ tipo }: { tipo: ResultadoIconoTipo }) {
   switch (tipo) {
     case "cancionero":
       return (
-        <Bookmark className={className} style={{ color }} aria-hidden="true" />
+        <FileText className={className} style={{ color }} aria-hidden="true" />
       );
     case "link":
       return <Link2 className={className} style={{ color }} aria-hidden="true" />;
@@ -110,7 +116,7 @@ function ResultadoIcono({ tipo }: { tipo: ResultadoIconoTipo }) {
         <FileText className={className} style={{ color }} aria-hidden="true" />
       );
     case "cifra":
-      return <Music className={className} style={{ color }} aria-hidden="true" />;
+      return <Globe2 className={className} style={{ color }} aria-hidden="true" />;
   }
 }
 
@@ -123,6 +129,10 @@ function ResultadoItem({
 }) {
   const esCancionero = resultado.fuente === "cancionero";
   const iconoTipo = getResultadoIconoTipo(resultado);
+  const { nombre, artista } = resolverNombreArtistaDisplay(
+    resultado.titulo,
+    resultado.artista,
+  );
 
   return (
     <button
@@ -133,12 +143,12 @@ function ResultadoItem({
       <ResultadoIcono tipo={iconoTipo} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold text-text-primary">
-          {resultado.titulo}
+          {nombre}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          {resultado.artista && (
+          {artista && (
             <span className="truncate text-[12px] text-text-muted">
-              {resultado.artista}
+              {artista}
             </span>
           )}
           {!esCancionero && (
@@ -148,20 +158,18 @@ function ResultadoItem({
           )}
         </div>
       </div>
-      <ChevronRight
-        className="size-5 shrink-0 text-text-faint"
-        aria-hidden="true"
-      />
     </button>
   );
 }
 
 function SeccionResultados({
   label,
+  icon,
   resultados,
   onSelect,
 }: {
   label: string;
+  icon?: ReactNode;
   resultados: ResultadoBusquedaBuscador[];
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
 }) {
@@ -171,9 +179,12 @@ function SeccionResultados({
 
   return (
     <div className="mb-4">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
-        {label}
-      </p>
+      <div className="mb-2 flex items-center gap-1.5">
+        {icon}
+        <p className="text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
+          {label}
+        </p>
+      </div>
       <ul className="flex flex-col gap-2">
         {resultados.map((resultado) => (
           <li key={resultadoKey(resultado)}>
@@ -219,10 +230,13 @@ export default function BuscadorModal({
     CancionCancionero[]
   >([]);
 
+  const resultadosEnInternet = useMemo(
+    () => [...resultados.linksGuardados, ...resultados.internet],
+    [resultados.linksGuardados, resultados.internet],
+  );
+
   const totalResultados =
-    resultados.cancionero.length +
-    resultados.linksGuardados.length +
-    resultados.internet.length;
+    resultados.cancionero.length + resultadosEnInternet.length;
 
   const resetState = useCallback(() => {
     if (confirmacionTimerRef.current) {
@@ -357,10 +371,19 @@ export default function BuscadorModal({
         );
       }
 
-      const internet = (Array.isArray(data) ? data : []).map((item) => ({
-        ...item,
-        fuente: "internet" as const,
-      }));
+      const internet = (Array.isArray(data) ? data : []).map((item) => {
+        const { nombre, artista } = resolverNombreArtistaDisplay(
+          item.titulo,
+          item.artista,
+        );
+
+        return {
+          ...item,
+          titulo: nombre,
+          artista,
+          fuente: "internet" as const,
+        };
+      });
 
       setResultados((current) => ({
         ...current,
@@ -432,9 +455,14 @@ export default function BuscadorModal({
     const supabase = createClient();
 
     try {
+      const { nombre, artista } = resolverNombreArtistaDisplay(
+        seleccionado.titulo,
+        seleccionado.artista,
+      );
+
       await guardarLinkEnCancionero(supabase, {
-        nombre: seleccionado.titulo,
-        artista: seleccionado.artista || null,
+        nombre,
+        artista: artista || null,
         url_letra: seleccionado.url,
       });
       await onDataChange();
@@ -489,9 +517,14 @@ export default function BuscadorModal({
         );
       }
 
+      const { nombre, artista } = resolverNombreArtistaDisplay(
+        seleccionado.titulo,
+        seleccionado.artista,
+      );
+
       setGuardarLetraModal({
-        nombre: seleccionado.titulo,
-        artista: seleccionado.artista || "",
+        nombre,
+        artista,
         letra: data.letra,
         url: seleccionado.url,
       });
@@ -516,19 +549,30 @@ export default function BuscadorModal({
   const esCifraSitio =
     seleccionado && esCifraClub(seleccionado.sitio, seleccionado.url);
 
-  const duplicadoCompletoEnPreview = useMemo(() => {
+  const seleccionadoDisplay = useMemo(() => {
     if (!seleccionado) {
+      return null;
+    }
+
+    return resolverNombreArtistaDisplay(
+      seleccionado.titulo,
+      seleccionado.artista,
+    );
+  }, [seleccionado]);
+
+  const duplicadoCompletoEnPreview = useMemo(() => {
+    if (!seleccionadoDisplay) {
       return false;
     }
 
     return (
       getDuplicadoCancioneroNivel(
         cancionesCancionero,
-        seleccionado.titulo,
-        seleccionado.artista ?? "",
+        seleccionadoDisplay.nombre,
+        seleccionadoDisplay.artista,
       ) === "nombre-artista"
     );
-  }, [seleccionado, cancionesCancionero]);
+  }, [seleccionadoDisplay, cancionesCancionero]);
 
   const guardarDeshabilitado = Boolean(
     esCancioneroPreview ||
@@ -674,17 +718,25 @@ export default function BuscadorModal({
               <>
                 <SeccionResultados
                   label="Del cancionero"
+                  icon={
+                    <Bookmark
+                      className="size-3.5 shrink-0"
+                      style={{ color: "var(--tuner-in-tune)" }}
+                      aria-hidden="true"
+                    />
+                  }
                   resultados={resultados.cancionero}
                   onSelect={handleSelectResultado}
                 />
                 <SeccionResultados
-                  label="Links guardados"
-                  resultados={resultados.linksGuardados}
-                  onSelect={handleSelectResultado}
-                />
-                <SeccionResultados
                   label="En internet"
-                  resultados={resultados.internet}
+                  icon={
+                    <Link2
+                      className="size-3.5 shrink-0 text-[#8BA4C4]"
+                      aria-hidden="true"
+                    />
+                  }
+                  resultados={resultadosEnInternet}
                   onSelect={handleSelectResultado}
                 />
               </>
@@ -727,11 +779,11 @@ export default function BuscadorModal({
                   </button>
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate text-base font-extrabold text-text-primary">
-                      {seleccionado.titulo}
+                      {seleccionadoDisplay?.nombre ?? seleccionado.titulo}
                     </h2>
                     <p className="truncate text-[12px] text-text-muted">
-                      {seleccionado.artista
-                        ? `${seleccionado.artista} · ${seleccionado.sitio}`
+                      {seleccionadoDisplay?.artista
+                        ? `${seleccionadoDisplay.artista} · ${seleccionado.sitio}`
                         : seleccionado.sitio}
                     </p>
                   </div>

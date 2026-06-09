@@ -5,6 +5,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
 import AddButton from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { resolverNombreArtistaDisplay } from "@/lib/buscador";
 import {
   avanzarCancion,
   applyColaReorder,
@@ -342,8 +343,17 @@ export default function ColaBottomSheet({
   }
 
   const pendientes = items.filter((item) => item.estado === "pendiente").length;
-  const proximaNombre =
-    items.find((item) => item.estado === "pendiente")?.nombre ?? null;
+  const proximaItem = items.find((item) => item.estado === "pendiente");
+  const proximaNombre = proximaItem
+    ? (() => {
+        const { nombre, artista } = resolverNombreArtistaDisplay(
+          proximaItem.nombre,
+          proximaItem.artista,
+        );
+
+        return artista ? `${nombre} · ${artista}` : nombre;
+      })()
+    : null;
 
   const panelTransition = isDragging
     ? "none"

@@ -1,6 +1,25 @@
-import { extractSitio } from "@/lib/google-search";
+import { extractSitio, parseTituloArtista } from "@/lib/google-search";
 import type { CancionBusquedaLocal } from "@/lib/sala-data";
 import type { FuenteBusqueda, ResultadoBusquedaBuscador } from "@/types";
+
+export function resolverNombreArtistaDisplay(
+  nombre: string,
+  artista?: string | null,
+): { nombre: string; artista: string } {
+  const nombreTrim = nombre.trim();
+  const artistaTrim = artista?.trim() ?? "";
+
+  if (artistaTrim) {
+    return { nombre: nombreTrim, artista: artistaTrim };
+  }
+
+  const parsed = parseTituloArtista(nombreTrim);
+
+  return {
+    nombre: parsed.titulo,
+    artista: parsed.artista,
+  };
+}
 
 export function mapCancionLocalAResultado(
   cancion: CancionBusquedaLocal,
@@ -11,10 +30,15 @@ export function mapCancionLocalAResultado(
       ? `cancionero://${cancion.id}`
       : cancion.url_letra;
 
+  const { nombre, artista } = resolverNombreArtistaDisplay(
+    cancion.nombre,
+    cancion.artista,
+  );
+
   return {
     id: cancion.id,
-    titulo: cancion.nombre,
-    artista: cancion.artista ?? "",
+    titulo: nombre,
+    artista,
     url,
     sitio:
       fuente === "cancionero"

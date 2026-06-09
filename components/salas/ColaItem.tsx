@@ -1,4 +1,5 @@
 import UserAvatar from "@/components/perfil/UserAvatar";
+import { resolverNombreArtistaDisplay } from "@/lib/buscador";
 import { getColaVariant, type ColaVariant } from "@/lib/cola-logic";
 import type { ColaItem } from "@/types";
 import { SkipForward, Trash2 } from "lucide-react";
@@ -97,6 +98,10 @@ export default function ColaItemCard({
   onFinalize,
 }: ColaItemProps) {
   const variant = getColaVariant(item, items);
+  const { nombre, artista } = resolverNombreArtistaDisplay(
+    item.nombre,
+    item.artista,
+  );
   const isPendiente = item.estado === "pendiente";
   const isActiva = variant === "activa";
   const isProxima = variant === "proxima";
@@ -116,7 +121,7 @@ export default function ColaItemCard({
           onSelect?.(item.id);
         }
       }}
-      aria-label={isPendiente ? `Activar ${item.nombre}` : undefined}
+      aria-label={isPendiente ? `Activar ${nombre}` : undefined}
       className={`flex min-w-0 flex-1 items-center text-left ${
         isActiva ? "gap-1.5" : isPendiente ? "gap-1" : "gap-2"
       } ${isPendiente ? "cursor-pointer" : "cursor-default"}`}
@@ -137,9 +142,9 @@ export default function ColaItemCard({
               : "text-[15px] font-semibold leading-snug text-text-primary"
           }`}
         >
-          {item.nombre}
+          {nombre}
         </p>
-        {item.artista && (
+        {artista && (
           <p
             className={`truncate ${
               isActiva
@@ -147,7 +152,7 @@ export default function ColaItemCard({
                 : "text-[13px] leading-snug text-text-muted"
             }`}
           >
-            {item.artista}
+            {artista}
           </p>
         )}
       </div>

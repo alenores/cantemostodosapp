@@ -64,17 +64,17 @@ export default function SalasPageClient({
           <TapLink
             href="/perfil"
             ariaLabel="Mi perfil"
-            className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-2"
+            className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1"
           >
+            <span className="max-w-[7rem] truncate text-sm font-semibold text-bg-darker">
+              {usuario.nombre.trim() || "Mi perfil"}
+            </span>
             <UserAvatar
               nombre={usuario.nombre}
               email={usuario.email}
               avatarUrl={usuario.avatar_url}
               size={32}
             />
-            <span className="max-w-[7rem] truncate text-sm font-semibold text-bg-darker">
-              {usuario.nombre.trim() || "Mi perfil"}
-            </span>
           </TapLink>
         </div>
       </header>
@@ -90,7 +90,11 @@ export default function SalasPageClient({
         )}
 
         <div className="grid grid-cols-2 gap-[10px]">
-          <div className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4">
+          <TapLink
+            href="/cancionero"
+            ariaLabel="Ver canciones guardadas"
+            className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
+          >
             <p className="text-center text-[13px] font-bold text-text-primary">
               Canciones guardadas
             </p>
@@ -100,36 +104,32 @@ export default function SalasPageClient({
                 aria-hidden="true"
               />
             </div>
-            <TapLink
-              href="/cancionero"
-              ariaLabel="Ver canciones guardadas"
-              className="w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white"
-            >
+            <div className="w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white">
               <span className="font-bold">Ver </span>
               <span className="font-normal opacity-70">
                 ({cancioneroTotal})
               </span>
-            </TapLink>
-          </div>
+            </div>
+          </TapLink>
 
-          <div className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4">
+          <TapButton
+            aria-label="Abrir afinador"
+            onClick={() => {
+              void startAfinador();
+              setAfinadorOpen(true);
+            }}
+            className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
+          >
             <p className="text-center text-[13px] font-bold text-text-primary">
               Afinador
             </p>
             <div className="flex flex-1 items-center justify-center">
               <Gauge className="size-16 text-accent" aria-hidden="true" />
             </div>
-            <TapButton
-              aria-label="Abrir afinador"
-              onClick={() => {
-                void startAfinador();
-                setAfinadorOpen(true);
-              }}
-              className="w-full rounded-lg bg-accent px-3 py-[9px] text-sm font-bold text-white"
-            >
+            <span className="w-full rounded-lg bg-accent px-3 py-[9px] text-center text-sm font-bold text-white">
               Abrir
-            </TapButton>
-          </div>
+            </span>
+          </TapButton>
         </div>
 
         <div className="flex items-center gap-1.5">

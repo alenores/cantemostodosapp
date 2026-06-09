@@ -19,12 +19,12 @@ export type GuitarString = {
 };
 
 export const GUITAR_STRINGS: GuitarString[] = [
-  { label: "E2", frequency: 82.41 },
-  { label: "A2", frequency: 110.0 },
-  { label: "D3", frequency: 146.83 },
-  { label: "G3", frequency: 196.0 },
-  { label: "B3", frequency: 246.94 },
-  { label: "E4", frequency: 329.63 },
+  { label: "Mi", frequency: 82.41 },
+  { label: "La", frequency: 110.0 },
+  { label: "Re", frequency: 146.83 },
+  { label: "Sol", frequency: 196.0 },
+  { label: "Si", frequency: 246.94 },
+  { label: "Mi", frequency: 329.63 },
 ];
 
 export type NoteDetection = {
@@ -151,7 +151,7 @@ export function getStatusLabel(status: TunerStatus): string {
     case "sharp":
       return "Muy alta";
     default:
-      return "Escuchá una nota...";
+      return "Escuchando...";
   }
 }
 

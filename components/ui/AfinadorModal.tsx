@@ -113,15 +113,15 @@ export default function AfinadorModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="afinador-titulo"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-darker shadow-xl"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
-        <header className="shrink-0 border-b border-border px-4 py-3">
+        <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
           <div className="flex items-center gap-3">
             <h2
               id="afinador-titulo"
-              className="min-w-0 flex-1 text-base font-extrabold text-text-primary"
+              className="min-w-0 flex-1 text-lg font-extrabold text-accent"
             >
-              Afinador cromático
+              Afinador
             </h2>
             <button
               type="button"
@@ -156,7 +156,7 @@ export default function AfinadorModal({
             <TunerDial cents={detection?.cents ?? 0} status={status} />
 
             <p
-              className="text-base font-semibold"
+              className={`text-base font-semibold ${status === "silent" ? "italic" : ""}`}
               style={{
                 color:
                   status === "in-tune"
@@ -176,7 +176,7 @@ export default function AfinadorModal({
 
                 return (
                   <span
-                    key={string.label}
+                    key={index}
                     className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
                       isClosest
                         ? "border-accent bg-accent text-white"

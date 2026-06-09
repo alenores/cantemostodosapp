@@ -5,6 +5,7 @@ type ConfirmDialogProps = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  deleteConfirm?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -14,6 +15,7 @@ export default function ConfirmDialog({
   message,
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
+  deleteConfirm = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -39,7 +41,9 @@ export default function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
+            className={`min-h-11 flex-1 rounded-[10px] border border-border text-sm font-semibold text-text-primary ${
+              deleteConfirm ? "bg-[#323232]" : "bg-bg-card"
+            }`}
           >
             {cancelLabel}
           </button>

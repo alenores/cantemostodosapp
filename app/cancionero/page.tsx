@@ -27,20 +27,9 @@ export default async function CancioneroPage() {
       error instanceof Error ? error.message : "Error al cargar canciones";
   }
 
-  const { data: salas, error: salasError } = await supabase
-    .from("salas")
-    .select("id, nombre, descripcion")
-    .eq("visible", true)
-    .order("nombre");
-
-  if (salasError && !errorMessage) {
-    errorMessage = salasError.message;
-  }
-
   return (
     <CancioneroPageClient
       cancionesIniciales={canciones}
-      salas={salas ?? []}
       errorMessage={errorMessage}
     />
   );

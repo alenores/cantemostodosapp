@@ -1,43 +1,31 @@
 "use client";
 
-import AgregarSalaModal from "@/components/cancionero/AgregarSalaModal";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
+import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapLink } from "@/components/ui/TapFeedback";
 import {
-  agregarCancioneroACola,
   deleteCancionCancionero,
   fetchCancionesCancionero,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
 import { createClient } from "@/lib/supabase/client";
-import type { CancionCancionero, Sala } from "@/types";
+import type { CancionCancionero } from "@/types";
 import { ArrowLeft, Music, Search } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
 type CancioneroPageClientProps = {
   cancionesIniciales: CancionCancionero[];
-  salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
   errorMessage: string | null;
 };
 
-type PendingConfirm =
-  | { type: "eliminar"; cancion: CancionCancionero }
-  | {
-      type: "agregar";
-      cancion: CancionCancionero;
-      salaId: number;
-      salaNombre: string;
-    };
-
 export default function CancioneroPageClient({
   cancionesIniciales,
-  salas,
   errorMessage,
 }: CancioneroPageClientProps) {
   const [canciones, setCanciones] = useState(cancionesIniciales);
@@ -46,15 +34,15 @@ export default function CancioneroPageClient({
   const [cancionEditando, setCancionEditando] = useState<CancionCancionero | null>(
     null,
   );
-  const [agregarSalaOpen, setAgregarSalaOpen] = useState(false);
-  const [cancionParaSala, setCancionParaSala] = useState<CancionCancionero | null>(
+  const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
   );
-  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
+  const [cancionAEliminar, setCancionAEliminar] = useState<CancionCancionero | null>(
     null,
   );
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activeCardId, setActiveCardId] = useState<number | null>(null);
 
   const cancionesFiltradas = useMemo(
     () => filterCancionesCancionero(canciones, query),
@@ -77,37 +65,16 @@ export default function CancioneroPageClient({
     setFormOpen(true);
   }
 
-  function handleAgregarSala(cancion: CancionCancionero) {
-    setCancionParaSala(cancion);
-    setAgregarSalaOpen(true);
-  }
-
-  function handleSelectSala(salaId: number) {
-    if (!cancionParaSala) {
-      return;
-    }
-
-    const sala = salas.find((item) => item.id === salaId);
-
-    if (!sala) {
-      return;
-    }
-
-    setAgregarSalaOpen(false);
-    setPendingConfirm({
-      type: "agregar",
-      cancion: cancionParaSala,
-      salaId: sala.id,
-      salaNombre: sala.nombre,
-    });
+  function handleVer(cancion: CancionCancionero) {
+    setCancionViendo(cancion);
   }
 
   function handleEliminar(cancion: CancionCancionero) {
-    setPendingConfirm({ type: "eliminar", cancion });
+    setCancionAEliminar(cancion);
   }
 
-  async function handleConfirm() {
-    if (!pendingConfirm || actionLoading) {
+  async function handleConfirmEliminar() {
+    if (!cancionAEliminar || actionLoading) {
       return;
     }
 
@@ -117,45 +84,32 @@ export default function CancioneroPageClient({
     const supabase = createClient();
 
     try {
-      if (pendingConfirm.type === "eliminar") {
-        await deleteCancionCancionero(supabase, pendingConfirm.cancion.id);
-        await reloadCanciones();
-      } else {
-        await agregarCancioneroACola(
-          supabase,
-          pendingConfirm.salaId,
-          pendingConfirm.cancion,
-        );
-      }
+      await deleteCancionCancionero(supabase, cancionAEliminar.id);
+      await reloadCanciones();
+      setCancionAEliminar(null);
 
-      setPendingConfirm(null);
-      setCancionParaSala(null);
+      if (cancionViendo?.id === cancionAEliminar.id) {
+        setCancionViendo(null);
+      }
     } catch (confirmError) {
       setActionError(
         confirmError instanceof Error
           ? confirmError.message
-          : "No se pudo completar la acción",
+          : "No se pudo eliminar la canción",
       );
     } finally {
       setActionLoading(false);
     }
   }
 
-  function handleCancelConfirm() {
+  function handleCancelEliminar() {
     if (actionLoading) {
       return;
     }
 
-    setPendingConfirm(null);
+    setCancionAEliminar(null);
     setActionError(null);
   }
-
-  const confirmMessage =
-    pendingConfirm?.type === "eliminar"
-      ? "¿Eliminar esta canción del cancionero?"
-      : pendingConfirm?.type === "agregar"
-        ? `¿Agregar "${pendingConfirm.cancion.nombre}" a la cola de "${pendingConfirm.salaNombre}"?`
-        : "";
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
@@ -187,7 +141,10 @@ export default function CancioneroPageClient({
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActiveCardId(null);
+            }}
             placeholder="Buscar por nombre o artista..."
             autoCorrect="off"
             autoCapitalize="off"
@@ -223,7 +180,10 @@ export default function CancioneroPageClient({
               <CancioneroItemCard
                 key={cancion.id}
                 cancion={cancion}
-                onAgregarSala={handleAgregarSala}
+                actionsOpen={activeCardId === cancion.id}
+                onOpenActions={() => setActiveCardId(cancion.id)}
+                onCloseActions={() => setActiveCardId(null)}
+                onVer={handleVer}
                 onEditar={handleEditar}
                 onEliminar={handleEliminar}
               />
@@ -242,23 +202,19 @@ export default function CancioneroPageClient({
         cancion={cancionEditando}
       />
 
-      <AgregarSalaModal
-        open={agregarSalaOpen}
-        cancionNombre={cancionParaSala?.nombre ?? ""}
-        salas={salas}
-        onSelectSala={handleSelectSala}
-        onClose={() => {
-          setAgregarSalaOpen(false);
-          setCancionParaSala(null);
-        }}
+      <CancioneroVerModal
+        open={cancionViendo !== null}
+        cancion={cancionViendo}
+        onClose={() => setCancionViendo(null)}
       />
 
       <ConfirmDialog
-        open={pendingConfirm !== null}
-        message={confirmMessage}
-        confirmLabel={actionLoading ? "Procesando..." : "Confirmar"}
-        onConfirm={() => void handleConfirm()}
-        onCancel={handleCancelConfirm}
+        open={cancionAEliminar !== null}
+        message="¿Eliminar esta canción del cancionero?"
+        confirmLabel={actionLoading ? "Eliminando..." : "Eliminar"}
+        deleteConfirm
+        onConfirm={() => void handleConfirmEliminar()}
+        onCancel={handleCancelEliminar}
       />
     </div>
   );

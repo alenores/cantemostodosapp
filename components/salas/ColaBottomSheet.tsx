@@ -87,6 +87,7 @@ export default function ColaBottomSheet({
   const [isDragging, setIsDragging] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
   const [deleteFabOpen, setDeleteFabOpen] = useState(false);
   const [avisoEntered, setAvisoEntered] = useState(false);
   const [isColaReordering, setIsColaReordering] = useState(false);
@@ -302,17 +303,14 @@ export default function ColaBottomSheet({
     await onColaChange();
   }
 
-  async function handleDeleteItem(itemId: number) {
-    const confirmed = window.confirm(
-      "¿Eliminar esta canción de la cola?",
-    );
-
-    if (!confirmed) {
+  async function handleConfirmDeleteItem() {
+    if (deleteItemId === null) {
       return;
     }
 
     const supabase = createClient();
-    await deleteColaItem(supabase, itemId);
+    await deleteColaItem(supabase, deleteItemId);
+    setDeleteItemId(null);
     await onColaChange();
   }
 
@@ -394,7 +392,7 @@ export default function ColaBottomSheet({
             yaGuardada={guardadasKeys.has(
               buildGuardadaKey(item.nombre, item.url_letra),
             )}
-            onDelete={(itemId) => void handleDeleteItem(itemId)}
+            onDelete={setDeleteItemId}
             onSelect={(itemId) => setAdvanceItemId(itemId)}
             onFinalize={() => void handleFinalize()}
           />
@@ -614,8 +612,16 @@ export default function ColaBottomSheet({
       />
 
       <DoubleConfirmDialog
+        open={deleteItemId !== null}
+        step1Message="¿Eliminar esta canción de la cola?"
+        step2Message="¿Estás seguro? Esta acción no se puede deshacer."
+        onCancel={() => setDeleteItemId(null)}
+        onConfirm={() => void handleConfirmDeleteItem()}
+      />
+
+      <DoubleConfirmDialog
         open={showDeleteAllDialog}
-        step1Message="¿Querés borrar toda la cola?"
+        step1Message="¿Querés borrar TODA la fila de canciones?"
         step2Message="¿Estás seguro? Esta acción no se puede deshacer."
         onCancel={() => setShowDeleteAllDialog(false)}
         onConfirm={() => void handleConfirmDeleteAll()}

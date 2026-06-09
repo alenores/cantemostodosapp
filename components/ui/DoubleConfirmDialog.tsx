@@ -65,14 +65,16 @@ export default function DoubleConfirmDialog({
           <button
             type="button"
             onClick={handleCancel}
-            className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
+            className="min-h-11 flex-1 rounded-[10px] border border-border bg-[#323232] text-sm font-semibold text-text-primary"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={handlePrimary}
-            className="min-h-11 flex-1 rounded-[10px] bg-accent text-sm font-semibold text-white"
+            className={`min-h-11 flex-1 rounded-[10px] text-sm font-semibold text-white ${
+              step === 1 ? "bg-[#e87070]" : "bg-accent"
+            }`}
           >
             {primaryLabel}
           </button>

@@ -229,8 +229,8 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
             <ArrowLeft className="size-5" aria-hidden="true" />
           </TapLink>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase leading-tight tracking-[1.5px] text-accent">
-              Sala activa
+            <p className="text-[9px] font-semibold leading-tight text-accent">
+              sala
               {SHOW_BUILD_SHA && (
                 <span className="normal-case tracking-normal text-text-muted">
                   {" "}

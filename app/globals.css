@@ -100,6 +100,11 @@ body {
   font-family: var(--font-app), system-ui, sans-serif;
 }
 
+input[type="search"]::placeholder,
+input[inputmode="search"]::placeholder {
+  font-style: italic;
+}
+
 .cola-draggable-item {
   -webkit-touch-callout: none;
   -webkit-user-select: none;

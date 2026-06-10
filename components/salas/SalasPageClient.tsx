@@ -12,7 +12,7 @@ import { useHardwareBack } from "@/hooks/useHardwareBack";
 import type { Sala, UsuarioActivo } from "@/types";
 import { BookOpen, Gauge, Plus } from "lucide-react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const AVISO_MENSAJES: Record<string, string> = {
@@ -26,6 +26,7 @@ type SalasPageClientProps = {
   cancioneroTotal: number;
   errorMessage: string | null;
   usuario: UsuarioActivo;
+  avisoInicial?: string | null;
 };
 
 export default function SalasPageClient({
@@ -33,9 +34,9 @@ export default function SalasPageClient({
   cancioneroTotal,
   errorMessage,
   usuario,
+  avisoInicial = null,
 }: SalasPageClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [modalOpen, setModalOpen] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const {
@@ -45,8 +46,7 @@ export default function SalasPageClient({
     start: startAfinador,
     stop: stopAfinador,
   } = useAfinador();
-  const aviso = searchParams.get("aviso");
-  const avisoMensaje = aviso ? AVISO_MENSAJES[aviso] : null;
+  const avisoMensaje = avisoInicial ? AVISO_MENSAJES[avisoInicial] : null;
 
   useHardwareBack(afinadorOpen, () => {
     stopAfinador();

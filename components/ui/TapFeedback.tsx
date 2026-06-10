@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { Loader2 } from "lucide-react";
-import { type ButtonHTMLAttributes, type ReactNode } from "react";
+import { Suspense, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 type TapButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -59,7 +59,9 @@ export function TapLink({
       aria-label={ariaLabel}
       className={`relative ${className}`.trim()}
     >
-      <TapLinkContent>{children}</TapLinkContent>
+      <Suspense fallback={children}>
+        <TapLinkContent>{children}</TapLinkContent>
+      </Suspense>
     </Link>
   );
 }

@@ -6,7 +6,11 @@ import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
-export default async function SalasPage() {
+type SalasPageProps = {
+  searchParams: Promise<{ aviso?: string }>;
+};
+
+export default async function SalasPage({ searchParams }: SalasPageProps) {
   const supabase = await createClient();
 
   const {
@@ -26,12 +30,15 @@ export default async function SalasPage() {
     countCancionesCancionero(supabase).catch(() => 0),
   ]);
 
+  const { aviso = null } = await searchParams;
+
   return (
     <SalasPageClient
       salas={salas ?? []}
       cancioneroTotal={cancioneroTotal}
       errorMessage={salasError?.message ?? null}
       usuario={mapUserToUsuarioActivo(user)}
+      avisoInicial={aviso}
     />
   );
 }

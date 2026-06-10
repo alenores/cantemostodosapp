@@ -13,8 +13,16 @@ import { useEffect, useState } from "react";
 
 const INLINE_SPLASH_ID = "inline-splash";
 
-function removeInlineSplash() {
-  document.getElementById(INLINE_SPLASH_ID)?.remove();
+/** Oculta el splash del layout sin sacarlo del DOM (remove() rompe la reconciliación de React). */
+function hideInlineSplash() {
+  const inlineSplash = document.getElementById(INLINE_SPLASH_ID);
+
+  if (!inlineSplash) {
+    return;
+  }
+
+  inlineSplash.style.display = "none";
+  inlineSplash.setAttribute("aria-hidden", "true");
 }
 
 function isSettledRoute(pathname: string): boolean {
@@ -27,7 +35,7 @@ export default function SplashScreen() {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    removeInlineSplash();
+    hideInlineSplash();
     document.documentElement.classList.add("splash-active");
 
     return () => {

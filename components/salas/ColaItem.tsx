@@ -5,15 +5,23 @@ import {
   resolverNombreArtistaDisplay,
 } from "@/lib/buscador";
 import { getColaVariant, type ColaVariant } from "@/lib/cola-logic";
+import {
+  estimateColaCenterDistance,
+  getColaRollerStyle,
+  getColaRollerTransform,
+  shouldShowTocadaChip,
+  type ColaCenterDistance,
+} from "@/lib/cola-roller";
 import type { ColaItem } from "@/types";
 import ColaSiguienteButton from "@/components/salas/ColaSiguienteButton";
 import { Trash2 } from "lucide-react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 type ColaItemProps = {
   item: ColaItem;
   items: ColaItem[];
   index: number;
+  centerDistance?: ColaCenterDistance;
   isDragging?: boolean;
   onDelete: (id: number) => void;
   onSelect?: (id: number) => void;
@@ -22,32 +30,6 @@ type ColaItemProps = {
 
 function stopDragPointer(event: ReactPointerEvent) {
   event.stopPropagation();
-}
-
-function getTocadaOpacity(items: ColaItem[], index: number): number | null {
-  const item = items[index];
-
-  if (item.estado !== "tocada") {
-    return null;
-  }
-
-  const tocadaIndices = items
-    .map((colaItem, itemIndex) =>
-      colaItem.estado === "tocada" ? itemIndex : -1,
-    )
-    .filter((itemIndex) => itemIndex >= 0);
-
-  const rank = tocadaIndices.indexOf(index);
-
-  if (rank === 0) {
-    return 0.22;
-  }
-
-  if (rank === 1) {
-    return 0.4;
-  }
-
-  return 0.45;
 }
 
 function DragHandle() {
@@ -70,9 +52,9 @@ function DragHandle() {
 function variantClasses(variant: ColaVariant): string {
   switch (variant) {
     case "tocada":
-      return "border-border-subtle bg-bg-card";
+      return "border-border-subtle/60 bg-bg-card";
     case "activa":
-      return "border-accent bg-accent shadow-[0_2px_12px_rgba(244,132,95,0.35)]";
+      return "border-accent bg-accent shadow-[0_4px_18px_rgba(244,132,95,0.42)]";
     case "pendiente":
       return "border-border-card bg-bg-card";
     case "proxima":
@@ -80,10 +62,33 @@ function variantClasses(variant: ColaVariant): string {
   }
 }
 
+function buildRollerStyle(
+  items: ColaItem[],
+  index: number,
+  centerDistance: ColaCenterDistance,
+  isDragging: boolean,
+): CSSProperties | undefined {
+  if (isDragging) {
+    return undefined;
+  }
+
+  const roller = getColaRollerStyle(items, index, centerDistance);
+
+  return {
+    transform: getColaRollerTransform(roller),
+    transformOrigin: roller.transformOrigin,
+    opacity: roller.opacity,
+    filter: roller.filter,
+    marginBottom: roller.marginBottom,
+    zIndex: roller.zIndex,
+  };
+}
+
 export default function ColaItemCard({
   item,
   items,
   index,
+  centerDistance,
   isDragging = false,
   onDelete,
   onSelect,
@@ -99,9 +104,16 @@ export default function ColaItemCard({
   const isActiva = variant === "activa";
   const isProxima = variant === "proxima";
   const showActions = isPendiente;
-  const tocadaOpacity = getTocadaOpacity(items, index);
-  const pendienteTransition =
-    "transition-[background-color,border-color,box-shadow,opacity] duration-150 ease-out";
+  const showTocadaChip = shouldShowTocadaChip(items, index);
+  const resolvedCenterDistance =
+    centerDistance ?? estimateColaCenterDistance(items, index);
+  const rollerStyle = buildRollerStyle(
+    items,
+    index,
+    resolvedCenterDistance,
+    isDragging,
+  );
+  const rollerClass = isDragging ? "cola-roller-item--dragging" : "cola-roller-item";
 
   const songText = (
     <div className="min-w-0 flex-1">
@@ -194,26 +206,31 @@ export default function ColaItemCard({
   if (isProxima) {
     return (
       <div
-        className="flex overflow-hidden rounded-[10px]"
-        onContextMenu={(event) => event.preventDefault()}
+        className={`${rollerClass} overflow-visible`}
+        style={rollerStyle}
       >
         <div
-          className="flex w-6 shrink-0 items-center justify-center bg-accent/85"
-          aria-hidden="true"
+          className="flex overflow-hidden rounded-[10px]"
+          onContextMenu={(event) => event.preventDefault()}
         >
-          <span className="text-[8px] font-extrabold uppercase tracking-[0.5px] text-white [transform:rotate(180deg)] [writing-mode:vertical-rl]">
-            Próx
-          </span>
-        </div>
+          <div
+            className="flex w-6 shrink-0 items-center justify-center bg-accent/85"
+            aria-hidden="true"
+          >
+            <span className="text-[8px] font-extrabold uppercase tracking-[0.5px] text-white [transform:rotate(180deg)] [writing-mode:vertical-rl]">
+              Próx
+            </span>
+          </div>
 
-        <div
-          className={`flex flex-1 items-center gap-3 rounded-r-[10px] border border-l-0 border-border-card bg-bg-card px-3 py-2.5 ${pendienteTransition} ${
-            isDragging ? "cola-item-dragging" : ""
-          }`}
-        >
-          <DragHandle />
-          {songContent}
-          {actionButtons}
+          <div
+            className={`flex flex-1 items-center gap-3 rounded-r-[10px] border border-l-0 border-border-card bg-bg-card px-3 py-2.5 ${
+              isDragging ? "cola-item-dragging" : ""
+            }`}
+          >
+            <DragHandle />
+            {songContent}
+            {actionButtons}
+          </div>
         </div>
       </div>
     );
@@ -221,18 +238,17 @@ export default function ColaItemCard({
 
   return (
     <div
-      className={`flex items-stretch overflow-hidden rounded-[12px] border ${
-        isActiva ? "min-h-[68px]" : "items-center py-2.5 px-3"
-      } ${variantClasses(variant)} ${
-        isPendiente ? pendienteTransition : ""
-      } ${isDragging ? "cola-item-dragging" : ""}`}
-      style={
-        tocadaOpacity !== null && !isDragging
-          ? { opacity: tocadaOpacity }
-          : undefined
-      }
-      onContextMenu={isPendiente ? (event) => event.preventDefault() : undefined}
+      className={`${rollerClass} overflow-visible`}
+      style={rollerStyle}
     >
+      <div
+        className={`flex items-stretch overflow-hidden rounded-[12px] border ${
+          isActiva ? "min-h-[68px]" : "items-center py-2.5 px-3"
+        } ${variantClasses(variant)} ${
+          isDragging ? "cola-item-dragging" : ""
+        }`}
+        onContextMenu={isPendiente ? (event) => event.preventDefault() : undefined}
+      >
       {isActiva && (
         <div
           className="flex w-6 shrink-0 items-center justify-center self-stretch bg-letra-bg"
@@ -259,8 +275,11 @@ export default function ColaItemCard({
 
         {songContent}
 
-        {variant === "tocada" && (
-          <span className="shrink-0 rounded-full border border-border-subtle px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">
+        {showTocadaChip && (
+          <span
+            className="shrink-0 rounded-full border border-transparent px-1.5 py-px text-[8px] text-text-muted/35"
+            aria-label="Canción ya tocada"
+          >
             Tocada
           </span>
         )}
@@ -277,6 +296,7 @@ export default function ColaItemCard({
 
         {actionButtons}
       </div>
+    </div>
     </div>
   );
 }

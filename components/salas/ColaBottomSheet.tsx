@@ -17,6 +17,8 @@ import {
   persistColaOrden,
 } from "@/lib/cola-logic";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useColaRollerDistances } from "@/hooks/useColaRollerDistances";
+import { estimateColaCenterDistance } from "@/lib/cola-roller";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_BAR_EXTRA_HEIGHT_PX,
@@ -48,8 +50,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
-  type PointerEvent,
+  type TransitionEvent,
 } from "react";
 
 const SNAP_THRESHOLD = 0.3;
@@ -79,11 +80,20 @@ function getInitialClosedPanelY(viewportHeight: number): number {
   return getColaPanelClosedY(getColaOpenHeight(viewportHeight, false));
 }
 
-function isColaDraggableTarget(target: EventTarget | null): boolean {
+function isBarInteractiveTarget(target: EventTarget | null): boolean {
   return (
-    target instanceof Element && Boolean(target.closest(".cola-draggable-item"))
+    target instanceof Element &&
+    Boolean(
+      target.closest("button, a, [role='button'], input, textarea, select"),
+    )
   );
 }
+
+type ListDragMemo =
+  | { kind: "undecided"; startY: number }
+  | { kind: "sheet"; startY: number }
+  | { kind: "scroll" }
+  | { kind: "reorder" };
 
 export default function ColaBottomSheet({
   items,
@@ -101,6 +111,7 @@ export default function ColaBottomSheet({
   const [expanded, setExpanded] = useState(false);
   const [panelY, setPanelY] = useState(() => getInitialClosedPanelY(800));
   const [isDragging, setIsDragging] = useState(false);
+  const [isSnapping, setIsSnapping] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
@@ -110,17 +121,18 @@ export default function ColaBottomSheet({
   const [dragReadyId, setDragReadyId] = useState<number | null>(null);
 
   const panelYRef = useRef(panelY);
+  const dragReadyIdRef = useRef<number | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressItemRef = useRef<number | null>(null);
   const contentHeightRef = useRef(400);
   const listScrollRef = useRef<HTMLDivElement>(null);
-  const listScrollLockedRef = useRef(false);
   const isColaReorderingRef = useRef(false);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
   const closedPanelY = getColaPanelClosedY(contentHeight);
   contentHeightRef.current = contentHeight;
   panelYRef.current = panelY;
+  dragReadyIdRef.current = dragReadyId;
 
   const progress =
     contentHeight > 0
@@ -142,6 +154,7 @@ export default function ColaBottomSheet({
   useEffect(() => {
     const closedY = getColaPanelClosedY(contentHeight);
     setPanelY((current) => (current < contentHeight * 0.5 ? 0 : closedY));
+    setIsSnapping(false);
   }, [contentHeight]);
 
   useEffect(() => {
@@ -153,14 +166,46 @@ export default function ColaBottomSheet({
   }, [isSettledOpen, onSettledOpenChange]);
 
   const snapPanelOpen = useCallback(() => {
+    if (panelYRef.current === 0) {
+      setIsSnapping(false);
+      setPanelY(0);
+      return;
+    }
+
+    setIsSnapping(true);
     setPanelY(0);
   }, []);
 
   const snapPanelClosed = useCallback(() => {
-    setPanelY(getColaPanelClosedY(contentHeightRef.current));
+    const closedY = getColaPanelClosedY(contentHeightRef.current);
+
+    if (panelYRef.current >= closedY * PEEK_THRESHOLD) {
+      setIsSnapping(false);
+      setPanelY(closedY);
+      setExpanded(false);
+      setDeleteFabOpen(false);
+      return;
+    }
+
+    setIsSnapping(true);
+    setPanelY(closedY);
     setExpanded(false);
     setDeleteFabOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (!isSnapping) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsSnapping(false);
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isSnapping, panelY]);
 
   useHardwareBack(isSettledOpen, () => {
     if (showDeleteAllDialog) {
@@ -262,21 +307,17 @@ export default function ColaBottomSheet({
 
     if (last) {
       const dragCommitPx = closedY * DRAG_COMMIT_THRESHOLD;
-      const startedClosed = startY >= closedY * PEEK_THRESHOLD;
+      const dragProgress = 1 - next / height;
+      const startedOpen = startY < height * (1 - SNAP_THRESHOLD);
 
-      if (my <= -dragCommitPx) {
+      if (my <= -dragCommitPx || dragProgress >= SNAP_THRESHOLD) {
         snapPanelOpen();
       } else if (my >= dragCommitPx) {
         snapPanelClosed();
+      } else if (startedOpen) {
+        snapPanelOpen();
       } else {
-        const dragProgress = 1 - next / height;
-        if (dragProgress >= SNAP_THRESHOLD) {
-          snapPanelOpen();
-        } else if (startedClosed && my < -TAP_MOVE_THRESHOLD_PX) {
-          snapPanelOpen();
-        } else {
-          snapPanelClosed();
-        }
+        snapPanelClosed();
       }
     }
 
@@ -299,26 +340,121 @@ export default function ColaBottomSheet({
       const isOpen = panelYRef.current < height * (1 - SNAP_THRESHOLD);
 
       if (!isOpen) {
-        listScrollLockedRef.current = false;
         return panelYRef.current;
       }
 
       if (isColaReorderingRef.current) {
-        return state.first ? panelYRef.current : (state.memo as number);
-      }
-
-      if (state.first) {
-        if (isColaDraggableTarget(state.event?.target ?? null)) {
-          listScrollLockedRef.current = true;
+        if (state.first) {
           state.cancel?.();
-          return panelYRef.current;
         }
 
-        listScrollLockedRef.current =
-          (listScrollRef.current?.scrollTop ?? 0) > 0;
+        return { kind: "reorder" as const };
       }
 
-      if (listScrollLockedRef.current) {
+      const scrollEl = listScrollRef.current;
+      const scrollTop = scrollEl?.scrollTop ?? 0;
+      const maxScroll = scrollEl
+        ? Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight)
+        : 0;
+      const [, my] = state.movement;
+
+      if (state.first) {
+        const readyId = dragReadyIdRef.current;
+
+        if (readyId !== null) {
+          const target = state.event?.target;
+
+          if (
+            target instanceof Element &&
+            target.closest(`[data-cola-id="${readyId}"]`)
+          ) {
+            state.cancel?.();
+            return { kind: "reorder" as const };
+          }
+        }
+
+        if (scrollTop > 0) {
+          state.cancel?.();
+          return { kind: "scroll" as const };
+        }
+
+        return { kind: "undecided" as const, startY: panelYRef.current };
+      }
+
+      const memo = state.memo as ListDragMemo | undefined;
+
+      if (memo?.kind === "reorder") {
+        return memo;
+      }
+
+      if (memo?.kind === "scroll") {
+        if (scrollEl && my < 0) {
+          scrollEl.scrollTop = Math.min(maxScroll, -my);
+        }
+
+        return memo;
+      }
+
+      if (memo?.kind === "sheet") {
+        sheetDragHandler({
+          ...state,
+          memo: memo.startY,
+          first: false,
+        });
+
+        return memo;
+      }
+
+      if (memo?.kind === "undecided") {
+        if (Math.abs(my) < TAP_MOVE_THRESHOLD_PX) {
+          return memo;
+        }
+
+        if (dragReadyIdRef.current !== null) {
+          state.cancel?.();
+          return { kind: "reorder" as const };
+        }
+
+        if (my < 0) {
+          if (scrollEl) {
+            scrollEl.scrollTop = Math.min(maxScroll, -my);
+          }
+
+          return { kind: "scroll" as const };
+        }
+
+        const sheetMemo = { kind: "sheet" as const, startY: memo.startY };
+
+        sheetDragHandler({
+          ...state,
+          memo: memo.startY,
+          first: false,
+        });
+
+        return sheetMemo;
+      }
+
+      return panelYRef.current;
+    },
+    [sheetDragHandler],
+  );
+
+  const barDragHandler = useCallback(
+    (state: {
+      movement: [number, number];
+      last: boolean;
+      first: boolean;
+      memo?: unknown;
+      tap?: boolean;
+      event?: Event;
+    }) => {
+      const [, my] = state.movement;
+
+      if (
+        state.last &&
+        (state.tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX) &&
+        isBarInteractiveTarget(state.event?.target ?? null)
+      ) {
         return state.first ? panelYRef.current : (state.memo as number);
       }
 
@@ -327,7 +463,7 @@ export default function ColaBottomSheet({
     [sheetDragHandler],
   );
 
-  const bindBarDrag = useDrag(sheetDragHandler, sheetDragOptions);
+  const bindBarDrag = useDrag(barDragHandler, sheetDragOptions);
   const bindPanelDrag = useDrag(sheetDragHandler, sheetDragOptions);
 
   useDrag(listPanelDragHandler, {
@@ -413,8 +549,41 @@ export default function ColaBottomSheet({
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
   const panelTranslateY = panelY > 0 ? panelY : 0;
-  /** Barra inferior solo con la sheet comprimida; abierta → desaparece (el + queda en la cabecera). */
-  const showPeekBar = !isSettledOpen;
+  /** Barra gris inferior: solo con la sheet comprimida en reposo (no abierta, no animando). */
+  const showPeekBar =
+    contentHeight > 0 &&
+    panelY >= contentHeight * (1 - SNAP_THRESHOLD) &&
+    !isSnapping &&
+    !isDragging;
+  const panelHidden = isPeekMode && !isDragging && !isSnapping;
+
+  const activeIndex = items.findIndex((item) => item.estado === "activa");
+  const rollerRefreshKey = `${items.length}-${isSettledOpen}-${expanded}-${activeIndex}`;
+  const {
+    distances: rollerDistances,
+    setRowRef: setRollerRowRef,
+    scheduleUpdate: scheduleRollerUpdate,
+  } = useColaRollerDistances(
+    items.length,
+    activeIndex,
+    listScrollRef,
+    rollerRefreshKey,
+  );
+
+  useEffect(() => {
+    if (isSettledOpen) {
+      scheduleRollerUpdate();
+    }
+  }, [isSettledOpen, isSnapping, items, scheduleRollerUpdate]);
+
+  function handlePanelTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
+    if (event.propertyName !== "transform" || event.target !== event.currentTarget) {
+      return;
+    }
+
+    setIsSnapping(false);
+    scheduleRollerUpdate();
+  }
 
   function clearColaLongPress() {
     if (longPressTimerRef.current) {
@@ -460,12 +629,18 @@ export default function ColaBottomSheet({
 
     return (
       <div
-        ref={draggableProvided.innerRef}
+        ref={(node) => {
+          draggableProvided.innerRef(node);
+          setRollerRowRef(index, node);
+        }}
         {...draggableProvided.draggableProps}
-        {...(dragHabilitado ? draggableProvided.dragHandleProps : {})}
+        {...(isPendiente ? draggableProvided.dragHandleProps : {})}
+        data-cola-id={item.id}
         className={
           isPendiente
-            ? `cola-draggable-item ${dragHabilitado ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`
+            ? `cola-draggable-item${
+                dragHabilitado ? " cola-draggable-item--reorder-ready" : ""
+              } ${dragHabilitado ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`
             : undefined
         }
         onPointerDown={
@@ -492,6 +667,9 @@ export default function ColaBottomSheet({
             item={item}
             items={items}
             index={index}
+            centerDistance={
+              rollerDistances[index] ?? estimateColaCenterDistance(items, index)
+            }
             isDragging={isDraggingVisual}
             onDelete={setDeleteItemId}
             onSelect={(itemId) => setAdvanceItemId(itemId)}
@@ -502,23 +680,20 @@ export default function ColaBottomSheet({
     );
   }
 
-  function handleOpenBuscador(
-    event: MouseEvent<HTMLButtonElement> | PointerEvent<HTMLButtonElement>,
-  ) {
-    event.stopPropagation();
+  function handleOpenBuscador() {
     onOpenBuscador();
   }
 
-  function handleTogglePanelClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
+  function handleTogglePanelClick() {
     togglePanel();
   }
 
   return (
     <>
       <div
+        onTransitionEnd={handlePanelTransitionEnd}
         className={`fixed z-20 flex flex-col overflow-hidden rounded-t-2xl ${
-          isPeekMode && !isDragging
+          panelHidden
             ? "pointer-events-none shadow-none"
             : "shadow-[0_-6px_28px_rgba(0,0,0,0.45)]"
         }`}
@@ -528,14 +703,13 @@ export default function ColaBottomSheet({
           height: showPeekBar
             ? contentHeight
             : getColaPanelOpenHeightCss(contentHeight),
-          transform:
-            panelTranslateY > 0 && !isColaReordering
-              ? `translateY(${panelTranslateY}px)`
-              : undefined,
+          transform: !isColaReordering
+            ? `translateY(${panelTranslateY}px)`
+            : undefined,
           transition: panelTransition,
-          visibility: isPeekMode && !isDragging ? "hidden" : "visible",
+          visibility: panelHidden ? "hidden" : "visible",
         }}
-        aria-hidden={isPeekMode && !isDragging}
+        aria-hidden={panelHidden}
       >
         {deleteFabOpen && (
           <button
@@ -560,18 +734,7 @@ export default function ColaBottomSheet({
           </button>
 
           <div className="relative flex shrink-0 items-center gap-2 px-4 pb-3">
-            <AddButton
-              ariaLabel="Agregar canción"
-              size={COLA_ADD_BUTTON_SIZE}
-              onPointerDown={handleOpenBuscador}
-              onClick={handleOpenBuscador}
-            />
-
-            <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
-              Fila de canciones
-            </h2>
-
-            <div className="relative z-30 shrink-0">
+            <div className="relative z-30 flex size-9 shrink-0 items-center justify-center">
               <TapButton
                 type="button"
                 aria-label="Borrar toda la lista"
@@ -580,9 +743,9 @@ export default function ColaBottomSheet({
                   event.stopPropagation();
                   setDeleteFabOpen((open) => !open);
                 }}
-                className="flex size-8 items-center justify-center rounded-full bg-cola-sheet-pill text-text-secondary"
+                className="flex size-7 items-center justify-center rounded-full text-text-muted/50 active:text-text-secondary"
               >
-                <Trash2 className="size-4" aria-hidden="true" />
+                <Trash2 className="size-3.5" aria-hidden="true" />
               </TapButton>
 
               {deleteFabOpen && (
@@ -594,12 +757,23 @@ export default function ColaBottomSheet({
                     setDeleteFabOpen(false);
                     setShowDeleteAllDialog(true);
                   }}
-                  className="absolute right-0 top-[calc(100%+0.5rem)] whitespace-nowrap rounded-full bg-[#d94a3d] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]"
+                  className="absolute left-0 top-[calc(100%+0.5rem)] whitespace-nowrap rounded-full bg-[#d94a3d] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]"
                 >
                   Borrar toda la lista
                 </TapButton>
               )}
             </div>
+
+            <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
+              Fila de canciones
+            </h2>
+
+            <AddButton
+              ariaLabel="Agregar canción"
+              size={COLA_ADD_BUTTON_SIZE}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={handleOpenBuscador}
+            />
           </div>
         </div>
 
@@ -629,7 +803,7 @@ export default function ColaBottomSheet({
                     listScrollRef.current = node;
                   }}
                   {...provided.droppableProps}
-                  className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-3 py-3"
+                  className="cola-list-roller min-h-0 flex-1 touch-pan-y space-y-2 overflow-x-visible overflow-y-auto overscroll-none px-3 py-3"
                   style={
                     !showPeekBar
                       ? { paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }
@@ -666,16 +840,12 @@ export default function ColaBottomSheet({
               )}
             </Droppable>
           </DragDropContext>
-
-          <div
-            className="cola-list-fade-bottom pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-36"
-            aria-hidden="true"
-          />
         </div>
       </div>
 
       {showPeekBar && (
       <div
+        {...bindBarDrag()}
         data-no-tap-feedback
         role="group"
         aria-roledescription="sheet"
@@ -691,7 +861,7 @@ export default function ColaBottomSheet({
           height: COLA_BAR_TOTAL_HEIGHT_CSS,
         }}
       >
-        <div {...bindBarDrag()} className="flex shrink-0 touch-none flex-col">
+        <div className="flex shrink-0 flex-col">
           {isPeekMode && (
             <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
               <div
@@ -745,7 +915,6 @@ export default function ColaBottomSheet({
             <AddButton
               ariaLabel="Agregar canción"
               size={COLA_ADD_BUTTON_SIZE}
-              onPointerDown={handleOpenBuscador}
               onClick={handleOpenBuscador}
             />
           </div>

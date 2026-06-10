@@ -265,7 +265,28 @@ html.splash-active body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  touch-action: pan-y;
+}
+
+.cola-draggable-item--reorder-ready {
   touch-action: none;
+}
+
+.cola-list-roller {
+  perspective: 900px;
+}
+
+.cola-roller-item {
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    filter 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    margin-bottom 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.cola-roller-item--dragging {
+  transition: none;
 }
 
 .cola-item-dragging {
@@ -294,15 +315,4 @@ html.splash-active body {
   border: 2px dashed color-mix(in srgb, var(--accent) 42%, var(--border-subtle));
   border-radius: 12px;
   background: color-mix(in srgb, var(--bg-card) 72%, transparent);
-}
-
-.cola-list-fade-bottom {
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    color-mix(in srgb, var(--bg-cola-list) 18%, transparent) 28%,
-    color-mix(in srgb, var(--bg-cola-list) 45%, transparent) 52%,
-    color-mix(in srgb, var(--bg-cola-list) 78%, transparent) 78%,
-    var(--bg-cola-list) 100%
-  );
 }

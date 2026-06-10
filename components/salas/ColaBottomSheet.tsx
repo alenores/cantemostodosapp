@@ -90,9 +90,9 @@ function isBarInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 type ListDragMemo =
-  | { kind: "undecided"; startY: number }
+  | { kind: "undecided"; startY: number; startScrollTop: number }
   | { kind: "sheet"; startY: number }
-  | { kind: "scroll" }
+  | { kind: "scroll"; startScrollTop: number }
   | { kind: "reorder" };
 
 export default function ColaBottomSheet({
@@ -374,11 +374,14 @@ export default function ColaBottomSheet({
         }
 
         if (scrollTop > 0) {
-          state.cancel?.();
-          return { kind: "scroll" as const };
+          return { kind: "scroll" as const, startScrollTop: scrollTop };
         }
 
-        return { kind: "undecided" as const, startY: panelYRef.current };
+        return {
+          kind: "undecided" as const,
+          startY: panelYRef.current,
+          startScrollTop: scrollTop,
+        };
       }
 
       const memo = state.memo as ListDragMemo | undefined;
@@ -388,8 +391,8 @@ export default function ColaBottomSheet({
       }
 
       if (memo?.kind === "scroll") {
-        if (scrollEl && my < 0) {
-          scrollEl.scrollTop = Math.min(maxScroll, -my);
+        if (scrollEl) {
+          scrollEl.scrollTop = clamp(memo.startScrollTop - my, 0, maxScroll);
         }
 
         return memo;
@@ -417,10 +420,13 @@ export default function ColaBottomSheet({
 
         if (my < 0) {
           if (scrollEl) {
-            scrollEl.scrollTop = Math.min(maxScroll, -my);
+            scrollEl.scrollTop = clamp(memo.startScrollTop - my, 0, maxScroll);
           }
 
-          return { kind: "scroll" as const };
+          return {
+            kind: "scroll" as const,
+            startScrollTop: memo.startScrollTop,
+          };
         }
 
         const sheetMemo = { kind: "sheet" as const, startY: memo.startY };

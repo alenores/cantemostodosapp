@@ -920,35 +920,35 @@ export default function ColaBottomSheet({
 
             <div className="min-h-0 flex-1" aria-hidden="true" />
 
-            <div className="flex shrink-0 items-center gap-2 pb-2">
+            <div className="flex shrink-0 items-stretch gap-2.5 pb-2">
               <ColaBarSiguientePreview
                 showSiguiente={Boolean(activaItem)}
                 proximaDisplay={proximaDisplay}
                 onSiguiente={() => void handleFinalize()}
               />
               <div
-                className="h-8 w-px shrink-0 bg-border/60"
+                className="w-px shrink-0 self-stretch bg-border/60"
                 aria-hidden="true"
               />
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1">
+                <AddButton
+                  ariaLabel="Agregar canción"
+                  size={COLA_ADD_BUTTON_SIZE}
+                  onClick={handleOpenBuscador}
+                />
                 <TapButton
                   type="button"
                   aria-label="Abrir fila de canciones"
                   onClick={handleTogglePanelClick}
-                  className="flex shrink-0 items-center rounded-full border border-border/50 bg-black/20 px-2.5 py-1.5"
+                  className="flex w-full items-center justify-center rounded-full border border-border/50 bg-black/20 px-2 py-1"
                 >
-                  <span className="whitespace-nowrap text-sm font-semibold text-text-primary">
+                  <span className="whitespace-nowrap text-xs font-semibold text-text-primary">
                     Fila{" "}
                     <span className="font-normal text-text-secondary">
                       · {pendientes}
                     </span>
                   </span>
                 </TapButton>
-                <AddButton
-                  ariaLabel="Agregar canción"
-                  size={COLA_ADD_BUTTON_SIZE}
-                  onClick={handleOpenBuscador}
-                />
               </div>
             </div>
           </div>

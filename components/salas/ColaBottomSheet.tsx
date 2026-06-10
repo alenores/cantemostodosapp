@@ -588,9 +588,10 @@ export default function ColaBottomSheet({
   const isMostlyClosed = panelY >= contentHeight * (1 - SNAP_THRESHOLD);
   /** Misma geometría del panel abierto mientras arrastrás o animás (evita saltos al cruzar el umbral). */
   const panelUsesOpenLayout = isDragging || isSnapping || !isMostlyClosed;
-  /** Barra colapsada: persiste todo el arrastre (no desmontar bajo el dedo); oculta al abrir en reposo. */
+  /** Barra colapsada: persiste todo el arrastre; nunca junto al panel abierto. */
   const showPeekBar =
     contentHeight > 0 &&
+    !panelUsesOpenLayout &&
     (isDragging || (!isSnapping && isMostlyClosed && !isSettledOpen));
   const panelHidden = isPeekMode && !isDragging && !isSnapping;
 

@@ -33,7 +33,6 @@ type SalaPageShellProps = {
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
-  const pendingOpenDrawerRef = useRef(false);
   const drawerWasOpenBeforeBuscadorRef = useRef(false);
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +63,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     }
 
     setColaAviso(null);
-    pendingOpenDrawerRef.current = true;
 
     colaAvisoShowTimerRef.current = setTimeout(() => {
       setColaAviso("Canción sumada a la lista");
@@ -85,12 +83,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
   const settleDrawerAfterBuscadorClose = useCallback(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (pendingOpenDrawerRef.current) {
-          pendingOpenDrawerRef.current = false;
-          openDrawerRef.current();
-          return;
-        }
-
         if (drawerWasOpenBeforeBuscadorRef.current) {
           openDrawerRef.current();
           return;

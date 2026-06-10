@@ -19,7 +19,13 @@ import {
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { triggerHaptic } from "@/lib/haptic";
 import {
+  COLA_BAR_EXTRA_HEIGHT_PX,
+  COLA_BAR_CONTROLS_BOTTOM_PADDING,
   COLA_BAR_HEIGHT_PX,
+  COLA_BAR_STACK_OFFSET_CSS,
+  COLA_BAR_TOTAL_HEIGHT_CSS,
+  COLA_SHEET_HORIZONTAL_STYLE,
+  getColaPanelOpenHeightCss,
   COLA_FINALIZE_BUTTON_MS,
   getColaOpenHeight,
   getColaPanelClosedY,
@@ -405,6 +411,8 @@ export default function ColaBottomSheet({
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
   const panelTranslateY = panelY > 0 ? panelY : 0;
+  /** Barra peek separada: comprimida o mientras se arrastra. Abierta → la sheet ocupa ese ancho. */
+  const showPeekBar = isPeekMode || isDragging;
 
   function clearColaLongPress() {
     if (longPressTimerRef.current) {
@@ -495,14 +503,17 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className={`fixed left-2 right-2 z-20 flex flex-col overflow-hidden rounded-t-2xl ${
+        className={`fixed z-20 flex flex-col overflow-hidden rounded-t-2xl ${
           isPeekMode && !isDragging
             ? "pointer-events-none shadow-none"
             : "shadow-[0_-6px_28px_rgba(0,0,0,0.45)]"
         }`}
         style={{
-          bottom: COLA_BAR_HEIGHT_PX,
-          height: contentHeight,
+          ...COLA_SHEET_HORIZONTAL_STYLE,
+          bottom: showPeekBar ? COLA_BAR_STACK_OFFSET_CSS : 0,
+          height: showPeekBar
+            ? contentHeight
+            : getColaPanelOpenHeightCss(contentHeight),
           transform:
             panelTranslateY > 0 && !isColaReordering
               ? `translateY(${panelTranslateY}px)`
@@ -600,6 +611,11 @@ export default function ColaBottomSheet({
                   }}
                   {...provided.droppableProps}
                   className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-3 py-3"
+                  style={
+                    !showPeekBar
+                      ? { paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }
+                      : undefined
+                  }
                 >
                 {items.length === 0 ? (
                   <p className="py-8 text-center text-sm text-text-muted">
@@ -639,6 +655,7 @@ export default function ColaBottomSheet({
         </div>
       </div>
 
+      {showPeekBar && (
       <div
         {...bindBarDrag()}
         data-no-tap-feedback
@@ -650,8 +667,11 @@ export default function ColaBottomSheet({
             ? "Cola de canciones abierta. Deslizá hacia abajo para cerrar."
             : "Cola de canciones. Deslizá hacia arriba para abrir."
         }
-        className="fixed bottom-0 left-2 right-2 z-30 flex touch-none flex-col overflow-hidden rounded-t-[12px] border-t border-border/60 bg-bg-cola-sheet"
-        style={{ height: COLA_BAR_HEIGHT_PX }}
+        className="fixed bottom-0 z-30 flex touch-none flex-col overflow-hidden rounded-t-[12px] border-t border-border/60 bg-bg-cola-sheet"
+        style={{
+          ...COLA_SHEET_HORIZONTAL_STYLE,
+          height: COLA_BAR_TOTAL_HEIGHT_CSS,
+        }}
       >
         {isPeekMode && (
           <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
@@ -663,8 +683,14 @@ export default function ColaBottomSheet({
         )}
 
         <div
-          className={`flex min-h-0 flex-1 items-center gap-2 px-4 ${
-            isPeekMode ? "pb-1.5" : "py-2"
+          className="shrink-0 bg-bg-cola-sheet"
+          style={{ height: COLA_BAR_EXTRA_HEIGHT_PX }}
+          aria-hidden="true"
+        />
+
+        <div
+          className={`mt-auto flex shrink-0 items-center gap-2 px-4 ${
+            isPeekMode ? "" : "pt-2"
           }`}
         >
           {isPeekMode ? (
@@ -699,7 +725,14 @@ export default function ColaBottomSheet({
             />
           </div>
         </div>
+
+        <div
+          className="shrink-0 bg-bg-cola-sheet"
+          style={{ height: COLA_BAR_CONTROLS_BOTTOM_PADDING }}
+          aria-hidden="true"
+        />
       </div>
+      )}
 
       <ConfirmDialog
         open={advanceItemId !== null}
@@ -731,7 +764,9 @@ export default function ColaBottomSheet({
           className={`pointer-events-none fixed left-1/2 z-40 w-fit max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-[10px] border border-accent/30 bg-bg-cola-aviso px-3.5 py-2 text-center text-sm font-semibold whitespace-nowrap text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.38)] transition-[opacity,transform] duration-300 ease-out ${
             avisoEntered ? "opacity-100" : "translate-y-2 opacity-0"
           }`}
-          style={{ bottom: COLA_BAR_HEIGHT_PX + 72 }}
+          style={{
+            bottom: `calc(${COLA_BAR_HEIGHT_PX + 72}px + env(safe-area-inset-bottom, 0px))`,
+          }}
         >
           {avisoMensaje}
         </div>

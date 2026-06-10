@@ -21,7 +21,6 @@ import { useColaRollerDistances } from "@/hooks/useColaRollerDistances";
 import { estimateColaCenterDistance } from "@/lib/cola-roller";
 import { triggerHaptic } from "@/lib/haptic";
 import {
-  COLA_BAR_EXTRA_HEIGHT_PX,
   COLA_BAR_CONTROLS_BOTTOM_PADDING,
   COLA_BAR_HEIGHT_PX,
   COLA_BAR_STACK_OFFSET_CSS,
@@ -53,8 +52,8 @@ import {
   type TransitionEvent,
 } from "react";
 
-const SNAP_THRESHOLD = 0.3;
-const DRAG_COMMIT_THRESHOLD = 0.2;
+/** Fracción del recorrido (dedo o posición) para abrir/cerrar del todo; debajo vuelve al inicio. */
+const SNAP_THRESHOLD = 0.2;
 const PEEK_THRESHOLD = 0.92;
 const TAP_MOVE_THRESHOLD_PX = 12;
 const COLA_DRAG_LONG_PRESS_MS = 500;
@@ -296,8 +295,14 @@ export default function ColaBottomSheet({
     const closedY = getColaPanelClosedY(height);
     const startY = first ? panelYRef.current : (memo as number);
 
+    const startedOpen = startY < height * (1 - SNAP_THRESHOLD);
+
     if (last && (tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX)) {
-      togglePanel();
+      if (startedOpen) {
+        snapPanelOpen();
+      } else {
+        snapPanelClosed();
+      }
       return startY;
     }
 
@@ -306,11 +311,9 @@ export default function ColaBottomSheet({
     setIsDragging(!last);
 
     if (last) {
-      const dragCommitPx = closedY * DRAG_COMMIT_THRESHOLD;
-      const dragProgress = 1 - next / height;
-      const startedOpen = startY < height * (1 - SNAP_THRESHOLD);
+      const dragCommitPx = closedY * SNAP_THRESHOLD;
 
-      if (my <= -dragCommitPx || dragProgress >= SNAP_THRESHOLD) {
+      if (my <= -dragCommitPx) {
         snapPanelOpen();
       } else if (my >= dragCommitPx) {
         snapPanelClosed();
@@ -323,7 +326,7 @@ export default function ColaBottomSheet({
 
     return startY;
   },
-  [snapPanelClosed, snapPanelOpen, togglePanel],
+  [snapPanelClosed, snapPanelOpen],
   );
 
   const listPanelDragHandler = useCallback(
@@ -469,8 +472,32 @@ export default function ColaBottomSheet({
     [sheetDragHandler],
   );
 
+  const panelDragHandler = useCallback(
+    (state: {
+      movement: [number, number];
+      last: boolean;
+      first: boolean;
+      memo?: unknown;
+      tap?: boolean;
+      event?: Event;
+    }) => {
+      const [, my] = state.movement;
+
+      if (
+        state.last &&
+        (state.tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX) &&
+        isBarInteractiveTarget(state.event?.target ?? null)
+      ) {
+        return state.first ? panelYRef.current : (state.memo as number);
+      }
+
+      return sheetDragHandler(state);
+    },
+    [sheetDragHandler],
+  );
+
   const bindBarDrag = useDrag(barDragHandler, sheetDragOptions);
-  const bindPanelDrag = useDrag(sheetDragHandler, sheetDragOptions);
+  const bindPanelDrag = useDrag(panelDragHandler, sheetDragOptions);
 
   useDrag(listPanelDragHandler, {
     ...sheetDragOptions,
@@ -555,12 +582,13 @@ export default function ColaBottomSheet({
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
   const panelTranslateY = panelY > 0 ? panelY : 0;
-  /** Barra gris inferior: solo con la sheet comprimida en reposo (no abierta, no animando). */
+  const isMostlyClosed = panelY >= contentHeight * (1 - SNAP_THRESHOLD);
+  /** Misma geometría del panel abierto mientras arrastrás o animás (evita saltos al cruzar el umbral). */
+  const panelUsesOpenLayout = isDragging || isSnapping || !isMostlyClosed;
+  /** Barra colapsada: persiste todo el arrastre (no desmontar bajo el dedo); oculta al abrir en reposo. */
   const showPeekBar =
     contentHeight > 0 &&
-    panelY >= contentHeight * (1 - SNAP_THRESHOLD) &&
-    !isSnapping &&
-    !isDragging;
+    (isDragging || (!isSnapping && isMostlyClosed && !isSettledOpen));
   const panelHidden = isPeekMode && !isDragging && !isSnapping;
 
   const activeIndex = items.findIndex((item) => item.estado === "activa");
@@ -705,10 +733,10 @@ export default function ColaBottomSheet({
         }`}
         style={{
           ...COLA_SHEET_HORIZONTAL_STYLE,
-          bottom: showPeekBar ? COLA_BAR_STACK_OFFSET_CSS : 0,
-          height: showPeekBar
-            ? contentHeight
-            : getColaPanelOpenHeightCss(contentHeight),
+          bottom: panelUsesOpenLayout ? 0 : COLA_BAR_STACK_OFFSET_CSS,
+          height: panelUsesOpenLayout
+            ? getColaPanelOpenHeightCss(contentHeight)
+            : contentHeight,
           transform: !isColaReordering
             ? `translateY(${panelTranslateY}px)`
             : undefined,
@@ -728,58 +756,66 @@ export default function ColaBottomSheet({
 
         <div
           {...bindPanelDrag()}
-          className="relative z-20 shrink-0 touch-none border-b border-border bg-bg-cola-sheet"
+          data-no-tap-feedback
+          className="relative z-20 shrink-0 touch-none select-none border-b border-border bg-bg-cola-sheet"
         >
-          <button
-            type="button"
-            onClick={handleToggleExpand}
-            aria-label={expanded ? "Contraer cola" : "Expandir cola"}
-            className="flex w-full shrink-0 justify-center py-2"
-          >
-            <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
-          </button>
-
-          <div className="relative flex shrink-0 items-center gap-2 px-4 pb-3">
-            <div className="relative z-30 flex size-9 shrink-0 items-center justify-center">
+          <div className="flex flex-col px-4 pt-1.5 pb-3">
+            <div className="flex shrink-0 justify-center pb-2">
               <TapButton
                 type="button"
-                aria-label="Borrar toda la lista"
-                aria-expanded={deleteFabOpen}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setDeleteFabOpen((open) => !open);
-                }}
-                className="flex size-7 items-center justify-center rounded-full text-text-muted/50 active:text-text-secondary"
+                onClick={handleToggleExpand}
+                aria-label={expanded ? "Contraer cola" : "Expandir cola"}
+                className="flex items-center justify-center rounded-full px-4 py-1"
               >
-                <Trash2 className="size-3.5" aria-hidden="true" />
+                <div
+                  className="h-1 w-10 rounded-full bg-cola-sheet-pill"
+                  aria-hidden="true"
+                />
               </TapButton>
-
-              {deleteFabOpen && (
-                <TapButton
-                  type="button"
-                  aria-label="Confirmar borrar toda la lista"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setDeleteFabOpen(false);
-                    setShowDeleteAllDialog(true);
-                  }}
-                  className="absolute left-0 top-[calc(100%+0.5rem)] whitespace-nowrap rounded-full bg-[#d94a3d] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]"
-                >
-                  Borrar toda la lista
-                </TapButton>
-              )}
             </div>
 
-            <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
-              Fila de canciones
-            </h2>
+            <div className="relative flex shrink-0 items-center gap-2">
+              <div className="relative z-30 flex size-9 shrink-0 items-center justify-center">
+                <TapButton
+                  type="button"
+                  aria-label="Borrar toda la lista"
+                  aria-expanded={deleteFabOpen}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setDeleteFabOpen((open) => !open);
+                  }}
+                  className="flex size-7 items-center justify-center rounded-full text-text-muted/50 active:text-text-secondary"
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                </TapButton>
 
-            <AddButton
-              ariaLabel="Agregar canción"
-              size={COLA_ADD_BUTTON_SIZE}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={handleOpenBuscador}
-            />
+                {deleteFabOpen && (
+                  <TapButton
+                    type="button"
+                    aria-label="Confirmar borrar toda la lista"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setDeleteFabOpen(false);
+                      setShowDeleteAllDialog(true);
+                    }}
+                    className="absolute left-0 top-[calc(100%+0.5rem)] whitespace-nowrap rounded-full bg-[#d94a3d] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]"
+                  >
+                    Borrar toda la lista
+                  </TapButton>
+                )}
+              </div>
+
+              <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
+                Fila de canciones
+              </h2>
+
+              <AddButton
+                ariaLabel="Agregar canción"
+                size={COLA_ADD_BUTTON_SIZE}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={handleOpenBuscador}
+              />
+            </div>
           </div>
         </div>
 
@@ -850,47 +886,30 @@ export default function ColaBottomSheet({
       </div>
 
       {showPeekBar && (
-      <div
-        {...bindBarDrag()}
-        data-no-tap-feedback
-        role="group"
-        aria-roledescription="sheet"
-        aria-expanded={isSettledOpen}
-        aria-label={
-          isSettledOpen
-            ? "Cola de canciones abierta. Deslizá hacia abajo para cerrar."
-            : "Cola de canciones. Deslizá hacia arriba para abrir."
-        }
-        className="fixed bottom-0 z-30 flex touch-none flex-col overflow-hidden rounded-t-[12px] border-t border-border/60 bg-bg-cola-sheet"
-        style={{
-          ...COLA_SHEET_HORIZONTAL_STYLE,
-          height: COLA_BAR_TOTAL_HEIGHT_CSS,
-        }}
-      >
-        <div className="flex shrink-0 flex-col">
-          {isPeekMode && (
-            <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
-              <div
-                className="h-1 w-10 rounded-full bg-cola-sheet-pill"
-                aria-hidden="true"
-              />
-            </div>
-          )}
-
-          <div
-            className="shrink-0 bg-bg-cola-sheet"
-            style={{ height: COLA_BAR_EXTRA_HEIGHT_PX }}
-            aria-hidden="true"
-          />
-        </div>
-
         <div
-          className={`mt-auto flex shrink-0 items-center gap-2 px-4 ${
-            isPeekMode ? "" : "pt-2"
-          }`}
+          {...bindBarDrag()}
+          data-no-tap-feedback
+          role="group"
+          aria-roledescription="sheet"
+          aria-expanded={false}
+          aria-label="Cola de canciones. Deslizá hacia arriba para abrir."
+          className="fixed bottom-0 z-30 flex touch-none flex-col overflow-hidden rounded-t-2xl bg-bg-cola-sheet"
+          style={{
+            ...COLA_SHEET_HORIZONTAL_STYLE,
+            height: COLA_BAR_TOTAL_HEIGHT_CSS,
+          }}
         >
-          {isPeekMode ? (
-            <>
+          <div className="flex min-h-0 flex-1 flex-col px-4 pt-1.5">
+            <div
+              className="flex shrink-0 justify-center pb-2"
+              aria-hidden="true"
+            >
+              <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
+            </div>
+
+            <div className="min-h-0 flex-1" aria-hidden="true" />
+
+            <div className="flex shrink-0 items-center gap-2 pb-2">
               <ColaBarSiguientePreview
                 showSiguiente={Boolean(activaItem)}
                 proximaDisplay={proximaDisplay}
@@ -900,38 +919,35 @@ export default function ColaBottomSheet({
                 className="h-8 w-px shrink-0 bg-border/60"
                 aria-hidden="true"
               />
-            </>
-          ) : (
-            <span className="min-w-0 flex-1" aria-hidden="true" />
-          )}
-          <div className="flex shrink-0 items-center gap-2">
-            <TapButton
-              type="button"
-              aria-label="Abrir fila de canciones"
-              onClick={handleTogglePanelClick}
-              className="flex shrink-0 items-center rounded-full border border-border/50 bg-black/20 px-2.5 py-1.5"
-            >
-              <span className="whitespace-nowrap text-sm font-semibold text-text-primary">
-                Fila{" "}
-                <span className="font-normal text-text-secondary">
-                  · {pendientes}
-                </span>
-              </span>
-            </TapButton>
-            <AddButton
-              ariaLabel="Agregar canción"
-              size={COLA_ADD_BUTTON_SIZE}
-              onClick={handleOpenBuscador}
-            />
+              <div className="flex shrink-0 items-center gap-2">
+                <TapButton
+                  type="button"
+                  aria-label="Abrir fila de canciones"
+                  onClick={handleTogglePanelClick}
+                  className="flex shrink-0 items-center rounded-full border border-border/50 bg-black/20 px-2.5 py-1.5"
+                >
+                  <span className="whitespace-nowrap text-sm font-semibold text-text-primary">
+                    Fila{" "}
+                    <span className="font-normal text-text-secondary">
+                      · {pendientes}
+                    </span>
+                  </span>
+                </TapButton>
+                <AddButton
+                  ariaLabel="Agregar canción"
+                  size={COLA_ADD_BUTTON_SIZE}
+                  onClick={handleOpenBuscador}
+                />
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div
-          className="shrink-0 bg-bg-cola-sheet"
-          style={{ height: COLA_BAR_CONTROLS_BOTTOM_PADDING }}
-          aria-hidden="true"
-        />
-      </div>
+          <div
+            className="shrink-0"
+            style={{ height: COLA_BAR_CONTROLS_BOTTOM_PADDING }}
+            aria-hidden="true"
+          />
+        </div>
       )}
 
       <ConfirmDialog

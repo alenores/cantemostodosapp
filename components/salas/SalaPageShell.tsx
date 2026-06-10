@@ -33,6 +33,8 @@ type SalaPageShellProps = {
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
+  const pendingOpenDrawerRef = useRef(false);
+  const drawerWasOpenBeforeBuscadorRef = useRef(false);
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawerProgress, setDrawerProgress] = useState(0);
@@ -62,7 +64,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     }
 
     setColaAviso(null);
-    openDrawerRef.current();
+    pendingOpenDrawerRef.current = true;
 
     colaAvisoShowTimerRef.current = setTimeout(() => {
       setColaAviso("Canción sumada a la lista");
@@ -74,6 +76,36 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       }, 2500);
     }, COLA_AVISO_SHOW_DELAY_MS);
   }, []);
+
+  const handleOpenBuscador = useCallback(() => {
+    drawerWasOpenBeforeBuscadorRef.current = drawerProgress > 0.05;
+    setBuscadorOpen(true);
+  }, [drawerProgress]);
+
+  const settleDrawerAfterBuscadorClose = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (pendingOpenDrawerRef.current) {
+          pendingOpenDrawerRef.current = false;
+          openDrawerRef.current();
+          return;
+        }
+
+        if (drawerWasOpenBeforeBuscadorRef.current) {
+          openDrawerRef.current();
+          return;
+        }
+
+        closeDrawerRef.current();
+      });
+    });
+  }, []);
+
+  const handleBuscadorClose = useCallback(() => {
+    setBuscadorOpen(false);
+    settleDrawerAfterBuscadorClose();
+  }, [settleDrawerAfterBuscadorClose]);
+
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
@@ -274,7 +306,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         salaId={salaId}
         onColaChange={loadColaCompleta}
         onItemsReordered={handleColaItemsReordered}
-        onOpenBuscador={() => setBuscadorOpen(true)}
+        onOpenBuscador={handleOpenBuscador}
         avisoMensaje={colaAviso}
         onProgressChange={handleDrawerProgressChange}
         onRegisterClose={handleRegisterDrawerClose}
@@ -284,7 +316,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       {buscadorOpen && (
         <BuscadorModal
           open={buscadorOpen}
-          onClose={() => setBuscadorOpen(false)}
+          onClose={handleBuscadorClose}
           salaId={salaId}
           onDataChange={loadColaCompleta}
           onColaAdded={handleColaAdded}

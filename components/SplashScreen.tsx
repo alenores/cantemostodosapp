@@ -1,56 +1,82 @@
 "use client";
 
+import {
+  APP_READY_EVENT,
+  APP_SHELL_BG,
+  SPLASH_FADE_OUT_MS,
+  SPLASH_MAX_VISIBLE_MS,
+  SPLASH_MIN_VISIBLE_MS,
+} from "@/lib/splash-theme";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const MIN_VISIBLE_MS = 800;
-const MAX_VISIBLE_MS = 5000;
-const FADE_OUT_MS = 300;
+const INLINE_SPLASH_ID = "inline-splash";
+
+function removeInlineSplash() {
+  document.getElementById(INLINE_SPLASH_ID)?.remove();
+}
+
+function isSettledRoute(pathname: string): boolean {
+  return pathname !== "/" && pathname !== "";
+}
 
 export default function SplashScreen() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    let ready = document.readyState === "complete";
-    let minElapsed = false;
+    removeInlineSplash();
+    document.documentElement.classList.add("splash-active");
+
+    return () => {
+      document.documentElement.classList.remove("splash-active");
+    };
+  }, []);
+
+  useEffect(() => {
     let dismissed = false;
+    let minElapsed = false;
+    let appReady = false;
 
     const dismiss = () => {
-      if (dismissed || !ready || !minElapsed) {
+      if (dismissed || !minElapsed || !appReady || !isSettledRoute(pathname)) {
         return;
       }
 
       dismissed = true;
       setFadeOut(true);
-      window.setTimeout(() => setVisible(false), FADE_OUT_MS);
+      window.setTimeout(() => {
+        setVisible(false);
+        document.documentElement.classList.remove("splash-active");
+      }, SPLASH_FADE_OUT_MS);
+    };
+
+    const onAppReady = () => {
+      appReady = true;
+      dismiss();
     };
 
     const minTimer = window.setTimeout(() => {
       minElapsed = true;
       dismiss();
-    }, MIN_VISIBLE_MS);
+    }, SPLASH_MIN_VISIBLE_MS);
 
     const maxTimer = window.setTimeout(() => {
-      ready = true;
+      appReady = true;
+      minElapsed = true;
       dismiss();
-    }, MAX_VISIBLE_MS);
+    }, SPLASH_MAX_VISIBLE_MS);
 
-    const onLoad = () => {
-      ready = true;
-      dismiss();
-    };
-
-    if (!ready) {
-      window.addEventListener("load", onLoad);
-    }
+    window.addEventListener(APP_READY_EVENT, onAppReady);
 
     return () => {
       window.clearTimeout(minTimer);
       window.clearTimeout(maxTimer);
-      window.removeEventListener("load", onLoad);
+      window.removeEventListener(APP_READY_EVENT, onAppReady);
     };
-  }, []);
+  }, [pathname]);
 
   if (!visible) {
     return null;
@@ -58,9 +84,10 @@ export default function SplashScreen() {
 
   return (
     <div
-      className={`splash-screen fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#232323] transition-opacity duration-300 ${
+      className={`splash-screen fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-300 ${
         fadeOut ? "opacity-0" : "opacity-100"
       }`}
+      style={{ backgroundColor: APP_SHELL_BG }}
       role="status"
       aria-live="polite"
       aria-label="Cargando CantemosTodos"
@@ -79,7 +106,10 @@ export default function SplashScreen() {
           />
         </div>
 
-        <div className="splash-eq flex items-end justify-center gap-1.5" aria-hidden="true">
+        <div
+          className="splash-eq flex items-end justify-center gap-1.5"
+          aria-hidden="true"
+        >
           {[0, 1, 2, 3, 4].map((index) => (
             <span
               key={index}

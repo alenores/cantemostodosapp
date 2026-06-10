@@ -1,5 +1,6 @@
 "use client";
 
+import ColaBarSiguientePreview from "@/components/salas/ColaBarSiguientePreview";
 import ColaItemCard from "@/components/salas/ColaItem";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
@@ -66,6 +67,10 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function getInitialClosedPanelY(viewportHeight: number): number {
+  return getColaPanelClosedY(getColaOpenHeight(viewportHeight, false));
+}
+
 function isColaDraggableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element && Boolean(target.closest(".cola-draggable-item"))
@@ -86,7 +91,7 @@ export default function ColaBottomSheet({
 }: ColaBottomSheetProps) {
   const [viewportHeight, setViewportHeight] = useState(800);
   const [expanded, setExpanded] = useState(false);
-  const [panelY, setPanelY] = useState(400);
+  const [panelY, setPanelY] = useState(() => getInitialClosedPanelY(800));
   const [isDragging, setIsDragging] = useState(false);
   const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -213,7 +218,7 @@ export default function ColaBottomSheet({
   const sheetDragOptions = useMemo(
     () => ({
       axis: "y" as const,
-      filterTaps: false,
+      filterTaps: true,
       pointer: { touch: true as const },
     }),
     [],
@@ -249,6 +254,7 @@ export default function ColaBottomSheet({
 
     if (last) {
       const dragCommitPx = closedY * DRAG_COMMIT_THRESHOLD;
+      const startedClosed = startY >= closedY * PEEK_THRESHOLD;
 
       if (my <= -dragCommitPx) {
         snapPanelOpen();
@@ -257,6 +263,8 @@ export default function ColaBottomSheet({
       } else {
         const dragProgress = 1 - next / height;
         if (dragProgress >= SNAP_THRESHOLD) {
+          snapPanelOpen();
+        } else if (startedClosed && my < -TAP_MOVE_THRESHOLD_PX) {
           snapPanelOpen();
         } else {
           snapPanelClosed();
@@ -387,16 +395,10 @@ export default function ColaBottomSheet({
   }
 
   const pendientes = items.filter((item) => item.estado === "pendiente").length;
+  const activaItem = items.find((item) => item.estado === "activa");
   const proximaItem = items.find((item) => item.estado === "pendiente");
-  const proximaNombre = proximaItem
-    ? (() => {
-        const { nombre, artista } = resolverNombreArtistaDisplay(
-          proximaItem.nombre,
-          proximaItem.artista,
-        );
-
-        return artista ? `${nombre} · ${artista}` : nombre;
-      })()
+  const proximaDisplay = proximaItem
+    ? resolverNombreArtistaDisplay(proximaItem.nombre, proximaItem.artista)
     : null;
 
   const panelTransition = isDragging
@@ -493,7 +495,7 @@ export default function ColaBottomSheet({
   return (
     <>
       <div
-        className={`fixed left-1.5 right-1.5 z-20 flex flex-col overflow-hidden rounded-t-2xl ${
+        className={`fixed left-2 right-2 z-20 flex flex-col overflow-hidden rounded-t-2xl ${
           isPeekMode && !isDragging
             ? "pointer-events-none shadow-none"
             : "shadow-[0_-6px_28px_rgba(0,0,0,0.45)]"
@@ -639,16 +641,24 @@ export default function ColaBottomSheet({
 
       <div
         {...bindBarDrag()}
-        role="button"
-        tabIndex={0}
+        data-no-tap-feedback
+        role="group"
+        aria-roledescription="sheet"
         aria-expanded={isSettledOpen}
-        aria-label={isSettledOpen ? "Cerrar cola" : "Abrir cola"}
-        className="fixed inset-x-0 bottom-0 z-30 flex touch-none flex-col overflow-hidden border-t border-border/60 bg-bg-cola-sheet"
+        aria-label={
+          isSettledOpen
+            ? "Cola de canciones abierta. Deslizá hacia abajo para cerrar."
+            : "Cola de canciones. Deslizá hacia arriba para abrir."
+        }
+        className="fixed bottom-0 left-2 right-2 z-30 flex touch-none flex-col overflow-hidden rounded-t-[12px] border-t border-border/60 bg-bg-cola-sheet"
         style={{ height: COLA_BAR_HEIGHT_PX }}
       >
         {isPeekMode && (
-          <div className="pointer-events-none flex shrink-0 justify-center pt-1.5 pb-0.5">
-            <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
+          <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
+            <div
+              className="h-1 w-10 rounded-full bg-cola-sheet-pill"
+              aria-hidden="true"
+            />
           </div>
         )}
 
@@ -657,43 +667,37 @@ export default function ColaBottomSheet({
             isPeekMode ? "pb-1.5" : "py-2"
           }`}
         >
-          <span className="shrink-0 text-sm font-semibold text-text-primary">
-            En fila
-          </span>
-          <span
-            className={`flex shrink-0 items-center justify-center rounded-full bg-cola-badge-bg font-bold text-bg-darker ${
-              isPeekMode ? "size-5 text-[10px]" : "size-7 text-[11px]"
-            }`}
-          >
-            {pendientes}
-          </span>
           {isPeekMode ? (
             <>
-              <span className="pointer-events-none min-w-0 flex-1 truncate text-sm text-text-secondary">
-                Próxima: {proximaNombre ?? "—"}
-              </span>
-              <AddButton
-                ariaLabel="Agregar canción"
-                size="xs"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenBuscador();
-                }}
+              <ColaBarSiguientePreview
+                showSiguiente={Boolean(activaItem)}
+                proximaDisplay={proximaDisplay}
+                onSiguiente={() => void handleFinalize()}
+              />
+              <div
+                className="h-8 w-px shrink-0 bg-border/60"
+                aria-hidden="true"
               />
             </>
           ) : (
-            <>
-              <span className="min-w-0 flex-1" aria-hidden="true" />
-              <AddButton
-                ariaLabel="Agregar canción"
-                size="bar"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onOpenBuscador();
-                }}
-              />
-            </>
+            <span className="min-w-0 flex-1" aria-hidden="true" />
           )}
+          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-black/20 py-0.5 pl-2.5 pr-1">
+            <span className="whitespace-nowrap text-sm font-semibold text-text-primary">
+              Fila{" "}
+              <span className="font-normal text-text-secondary">
+                · {pendientes}
+              </span>
+            </span>
+            <AddButton
+              ariaLabel="Agregar canción"
+              size={isPeekMode ? "xs" : "bar"}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenBuscador();
+              }}
+            />
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import AppReadyMarker from "@/components/AppReadyMarker";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
@@ -12,14 +13,12 @@ import {
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
-import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { COLA_AVISO_SHOW_DELAY_MS, COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const GIT_COMMIT_SHA = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA ?? "dev";
@@ -32,7 +31,6 @@ type SalaPageShellProps = {
 };
 
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
-  const router = useRouter();
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,7 +75,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
     }, COLA_AVISO_SHOW_DELAY_MS);
   }, []);
   const [buscadorOpen, setBuscadorOpen] = useState(false);
-  const [colaAbierta, setColaAbierta] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
   );
@@ -212,15 +209,12 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
 
   const lyricsDimmed = drawerProgress > 0.05;
 
-  useHardwareBack(!buscadorOpen && !colaAbierta, () => {
-    router.push("/salas");
-  });
-
   return (
     <div
       className="relative flex flex-col overflow-hidden overscroll-none bg-bg-app"
       style={{ height: "100dvh" }}
     >
+      <AppReadyMarker />
       <header className="shrink-0 border-b border-accent/35 bg-accent-dim px-2 py-1.5">
         <div className="flex items-center gap-1">
           <TapLink
@@ -285,7 +279,6 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         onProgressChange={handleDrawerProgressChange}
         onRegisterClose={handleRegisterDrawerClose}
         onRegisterOpen={handleRegisterDrawerOpen}
-        onSettledOpenChange={setColaAbierta}
       />
 
       {buscadorOpen && (

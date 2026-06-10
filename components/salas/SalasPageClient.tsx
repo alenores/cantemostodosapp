@@ -1,5 +1,6 @@
 "use client";
 
+import AppReadyMarker from "@/components/AppReadyMarker";
 import BuildVersionFooter from "@/components/BuildVersionFooter";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
@@ -58,6 +59,7 @@ export default function SalasPageClient({
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
+      <AppReadyMarker />
       <header className="border-b border-accent/40 bg-accent px-4 py-3">
         <div className="flex items-center gap-2.5">
           <Image

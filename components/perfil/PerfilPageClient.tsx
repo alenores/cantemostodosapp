@@ -1,5 +1,6 @@
 "use client";
 
+import AppReadyMarker from "@/components/AppReadyMarker";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
@@ -188,6 +189,7 @@ export default function PerfilPageClient({
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+      <AppReadyMarker />
       <header className="border-b border-accent/40 bg-accent px-4 py-3">
         <div className="flex items-center gap-2">
           <TapLink

@@ -2,7 +2,7 @@
 
 :root {
   /* Base */
-  --bg-app: #2c2c2c;
+  --bg-app: #232323;
   --bg-dark: #1e1e1e;
   --bg-darker: #141414;
   --bg-card: #252525;
@@ -195,6 +195,16 @@ input[inputmode="search"]::placeholder {
 
 .nav-progress-bar {
   animation: nav-progress-slide 1.1s var(--transition-timing) infinite;
+}
+
+html.splash-active,
+html.splash-active body {
+  overflow: hidden;
+  background-color: #232323;
+}
+
+.splash-screen {
+  background-color: #232323;
 }
 
 .splash-logo-wrap {

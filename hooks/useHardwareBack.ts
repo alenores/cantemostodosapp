@@ -12,9 +12,11 @@ const consumedIds = new Set<string>();
 let listenerReady = false;
 let suppressNextPop = false;
 
-function handlePopState() {
+function handlePopState(event: PopStateEvent) {
   if (suppressNextPop) {
     suppressNextPop = false;
+    // Evita que Next.js interprete el history.back() de cleanup como navegación.
+    event.stopImmediatePropagation();
     return;
   }
 
@@ -34,7 +36,7 @@ function ensureListener() {
   }
 
   listenerReady = true;
-  window.addEventListener("popstate", handlePopState);
+  window.addEventListener("popstate", handlePopState, { capture: true });
 }
 
 /**

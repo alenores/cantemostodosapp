@@ -2,7 +2,7 @@
   "name": "CantemosTodos",
   "short_name": "CanToApp",
   "description": "Letras en tiempo real para reuniones musicales con amigos",
-  "start_url": "/",
+  "start_url": "/salas",
   "display": "standalone",
   "background_color": "#232323",
   "theme_color": "#232323",

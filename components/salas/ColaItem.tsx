@@ -6,7 +6,8 @@ import {
 } from "@/lib/buscador";
 import { getColaVariant, type ColaVariant } from "@/lib/cola-logic";
 import type { ColaItem } from "@/types";
-import { SkipForward, Trash2 } from "lucide-react";
+import ColaSiguienteButton from "@/components/salas/ColaSiguienteButton";
+import { Trash2 } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 type ColaItemProps = {
@@ -265,24 +266,13 @@ export default function ColaItemCard({
         )}
 
         {isActiva && (
-          <button
-            type="button"
-            aria-label="Finalizar y pasar a la siguiente"
+          <ColaSiguienteButton
             onClick={(event) => {
               event.stopPropagation();
               onFinalize?.(item.id);
             }}
             onPointerDown={stopDragPointer}
-            className="flex size-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-[10px] bg-letra-bg text-bg-darker shadow-sm active:scale-95"
-          >
-            <SkipForward
-              className="size-5 fill-bg-darker text-bg-darker"
-              aria-hidden="true"
-            />
-            <span className="text-[8px] font-bold uppercase leading-none tracking-wide">
-              Sig.
-            </span>
-          </button>
+          />
         )}
 
         {actionButtons}

@@ -1,4 +1,6 @@
-export const COLA_BAR_HEIGHT_PX = 60;
+export const COLA_BAR_HEIGHT_PX = 66;
+/** Cuánto la barra «En fila» se superpone al borde inferior del embed */
+export const COLA_BAR_WEBVIEW_OVERLAP_PX = 6;
 export const COLA_AVISO_SHOW_DELAY_MS = 400;
 /** Pausa tras tap en Sig. antes de cerrar la cola y mostrar la letra */
 export const COLA_FINALIZE_BUTTON_MS = 180;
@@ -13,8 +15,8 @@ export const LETRA_SCROLL_BOTTOM_EXTRA_PX = 16;
 
 export const LETRA_SECTION_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + ${LETRA_SCROLL_BOTTOM_EXTRA_PX}px)`;
 
-/** Solo la barra «En fila» — el iframe llega hasta ahí sin margen extra */
-export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))`;
+/** Reserva espacio para la barra; el overlap deja que tape sutilmente el borde del iframe */
+export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - COLA_BAR_WEBVIEW_OVERLAP_PX}px + env(safe-area-inset-bottom, 0px))`;
 
 /** @deprecated Usar flex-1 + LETRA_EMBED_BOTTOM_PADDING en CancionActivaSection */
 export const LETRA_EMBED_HEIGHT_CSS = `calc(100dvh - ${SALA_HEADER_HEIGHT_PX}px - ${LETRA_ACTIVE_CHROME_PX}px - ${COLA_BAR_HEIGHT_PX}px - env(safe-area-inset-bottom, 0px))`;

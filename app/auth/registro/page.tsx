@@ -1,5 +1,6 @@
 "use client";
 
+import AppReadyMarker from "@/components/AppReadyMarker";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -49,6 +50,7 @@ export default function RegistroPage() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-bg-app px-6">
+      <AppReadyMarker />
       <div className="w-full max-w-sm">
         <h1 className="mb-10 text-center text-2xl font-extrabold text-text-primary">
           CantemosTodosApp

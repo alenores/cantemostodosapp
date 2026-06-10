@@ -1,3 +1,5 @@
+import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
+
 function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
     <div
@@ -58,8 +60,8 @@ export function SalaLoadingSkeleton() {
       </main>
 
       <div
-        className="shrink-0 border-t border-border/60 bg-bg-cola-sheet px-4 py-2"
-        style={{ height: 60 }}
+        className="mx-2 shrink-0 rounded-t-[12px] border-t border-border/60 bg-bg-cola-sheet px-4 py-2"
+        style={{ height: COLA_BAR_HEIGHT_PX }}
       >
         <div className="flex items-center gap-2">
           <SkeletonBlock className="h-4 w-14" />

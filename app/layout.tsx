@@ -1,6 +1,7 @@
 import SplashScreen from "@/components/SplashScreen";
 import NavigationProgressProvider from "@/components/ui/NavigationProgress";
 import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
+import { APP_SHELL_BG } from "@/lib/splash-theme";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Suspense } from "react";
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#232323",
+  themeColor: APP_SHELL_BG,
 };
 
 export default function RootLayout({
@@ -37,14 +38,62 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${font.variable} h-full antialiased`}>
+    <html
+      lang="es"
+      className={`${font.variable} splash-active h-full antialiased`}
+      style={{ backgroundColor: APP_SHELL_BG }}
+    >
       <head>
         <meta
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
       </head>
-      <body className="flex min-h-full flex-col">
+      <body
+        className="flex min-h-full flex-col"
+        style={{ backgroundColor: APP_SHELL_BG }}
+      >
+        <div
+          id="inline-splash"
+          className="splash-screen fixed inset-0 z-[100] flex flex-col items-center justify-center"
+          style={{ backgroundColor: APP_SHELL_BG }}
+          role="status"
+          aria-live="polite"
+          aria-label="Cargando CantemosTodos"
+        >
+          <div className="flex flex-col items-center gap-8">
+            <div className="splash-logo-wrap relative flex items-center justify-center">
+              <div className="splash-glow" aria-hidden="true" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.svg"
+                alt=""
+                width={160}
+                height={160}
+                className="splash-logo relative z-10 size-40"
+                fetchPriority="high"
+              />
+            </div>
+            <div
+              className="splash-eq flex items-end justify-center gap-1.5"
+              aria-hidden="true"
+            >
+              {[0, 1, 2, 3, 4].map((index) => (
+                <span
+                  key={index}
+                  className="splash-eq-bar"
+                  style={{ animationDelay: `${index * 0.12}s` }}
+                />
+              ))}
+            </div>
+          </div>
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-accent/20"
+            aria-hidden="true"
+          >
+            <div className="splash-progress-bar h-full w-1/3 bg-accent" />
+          </div>
+        </div>
         <TapFeedbackProvider>
           <Suspense fallback={null}>
             <NavigationProgressProvider>

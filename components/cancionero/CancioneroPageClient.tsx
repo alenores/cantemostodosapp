@@ -1,5 +1,6 @@
 "use client";
 
+import AppReadyMarker from "@/components/AppReadyMarker";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
@@ -125,6 +126,7 @@ export default function CancioneroPageClient({
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
+      <AppReadyMarker />
       <header className="border-b border-border bg-bg-darker px-4 py-3">
         <div className="flex items-center gap-3">
           <TapLink

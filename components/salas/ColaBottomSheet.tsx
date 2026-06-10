@@ -18,7 +18,10 @@ import {
 } from "@/lib/cola-logic";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useColaRollerDistances } from "@/hooks/useColaRollerDistances";
-import { estimateColaCenterDistance } from "@/lib/cola-roller";
+import {
+  estimateColaCenterDistance,
+  getColaFocalRowIndex,
+} from "@/lib/cola-roller";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_BAR_CONTROLS_BOTTOM_PADDING,
@@ -604,6 +607,11 @@ export default function ColaBottomSheet({
     rollerRefreshKey,
   );
 
+  const focalRowIndex = useMemo(
+    () => getColaFocalRowIndex(rollerDistances, items.length, activeIndex),
+    [rollerDistances, items.length, activeIndex],
+  );
+
   useEffect(() => {
     if (isSettledOpen) {
       scheduleRollerUpdate();
@@ -704,6 +712,7 @@ export default function ColaBottomSheet({
             centerDistance={
               rollerDistances[index] ?? estimateColaCenterDistance(items, index)
             }
+            isFocalRow={index === focalRowIndex}
             isDragging={isDraggingVisual}
             onDelete={setDeleteItemId}
             onSelect={(itemId) => setAdvanceItemId(itemId)}

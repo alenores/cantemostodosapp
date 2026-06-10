@@ -59,14 +59,42 @@ export function estimateColaCenterDistance(
   return clamp((index - activeIndex) * 0.24, -1, 1);
 }
 
+/** Fila más cercana al eje focal (única que recibe el boost de tamaño al scrollear). */
+export function getColaFocalRowIndex(
+  distances: Record<number, ColaCenterDistance>,
+  itemCount: number,
+  fallbackIndex = -1,
+): number {
+  let focalIndex = fallbackIndex;
+  let bestAbs = Infinity;
+
+  for (let rowIndex = 0; rowIndex < itemCount; rowIndex += 1) {
+    const dist = distances[rowIndex];
+
+    if (dist === undefined) {
+      continue;
+    }
+
+    const abs = Math.abs(dist);
+
+    if (abs < bestAbs) {
+      bestAbs = abs;
+      focalIndex = rowIndex;
+    }
+  }
+
+  return focalIndex;
+}
+
 /**
  * Rodillo con eje calibrado en la activa (scroll arriba) y distancia por viewport al scrollear.
- * Escala simétrica 1=5, 2=4; el realce de tamaño lo tiene quien está en el eje visual (fila 3).
+ * Escala simétrica 1=5, 2=4; el realce de tamaño solo en la fila más cercana al eje.
  */
 export function getColaRollerStyle(
   items: ColaItem[],
   index: number,
   centerDistance: ColaCenterDistance,
+  isFocalRow = false,
 ): ColaRollerStyle {
   const item = items[index];
   const dist = clamp(centerDistance, -1, 1);
@@ -89,7 +117,7 @@ export function getColaRollerStyle(
   let transformOrigin = "center center";
   let zIndex: number | undefined;
 
-  if (viewportAbs < CENTER_ROW_ZONE) {
+  if (isFocalRow && viewportAbs < CENTER_ROW_ZONE) {
     const boost = lerp(CENTER_ROW_BOOST, 1, viewportAbs / CENTER_ROW_ZONE);
     scale = Math.min(boost, Math.max(scale, 1));
     zIndex = 2;

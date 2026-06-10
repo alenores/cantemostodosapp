@@ -22,6 +22,7 @@ type ColaItemProps = {
   items: ColaItem[];
   index: number;
   centerDistance?: ColaCenterDistance;
+  isFocalRow?: boolean;
   isDragging?: boolean;
   onDelete: (id: number) => void;
   onSelect?: (id: number) => void;
@@ -67,12 +68,13 @@ function buildRollerStyle(
   index: number,
   centerDistance: ColaCenterDistance,
   isDragging: boolean,
+  isFocalRow: boolean,
 ): CSSProperties | undefined {
   if (isDragging) {
     return undefined;
   }
 
-  const roller = getColaRollerStyle(items, index, centerDistance);
+  const roller = getColaRollerStyle(items, index, centerDistance, isFocalRow);
 
   return {
     transform: getColaRollerTransform(roller),
@@ -89,6 +91,7 @@ export default function ColaItemCard({
   items,
   index,
   centerDistance,
+  isFocalRow = false,
   isDragging = false,
   onDelete,
   onSelect,
@@ -112,6 +115,7 @@ export default function ColaItemCard({
     index,
     resolvedCenterDistance,
     isDragging,
+    isFocalRow,
   );
   const rollerClass = isDragging ? "cola-roller-item--dragging" : "cola-roller-item";
 

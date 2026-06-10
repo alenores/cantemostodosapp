@@ -600,6 +600,7 @@ export default function ColaBottomSheet({
     distances: rollerDistances,
     setRowRef: setRollerRowRef,
     scheduleUpdate: scheduleRollerUpdate,
+    useViewportScaleOnly: rollerUseViewportScaleOnly,
   } = useColaRollerDistances(
     items.length,
     activeIndex,
@@ -713,6 +714,7 @@ export default function ColaBottomSheet({
               rollerDistances[index] ?? estimateColaCenterDistance(items, index)
             }
             isFocalRow={index === focalRowIndex}
+            useViewportScaleOnly={rollerUseViewportScaleOnly}
             isDragging={isDraggingVisual}
             onDelete={setDeleteItemId}
             onSelect={(itemId) => setAdvanceItemId(itemId)}

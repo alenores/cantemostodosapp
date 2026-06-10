@@ -95,6 +95,7 @@ export function getColaRollerStyle(
   index: number,
   centerDistance: ColaCenterDistance,
   isFocalRow = false,
+  useViewportScaleOnly = false,
 ): ColaRollerStyle {
   const item = items[index];
   const dist = clamp(centerDistance, -1, 1);
@@ -103,11 +104,11 @@ export function getColaRollerStyle(
   const activeIndex = items.findIndex((colaItem) => colaItem.estado === "activa");
   let absDistForScale = viewportAbs;
 
-  if (activeIndex >= 0) {
+  if (activeIndex >= 0 && !useViewportScaleOnly) {
     const indexAbs = Math.abs(
       clamp((index - activeIndex) * ROW_INDEX_STEP, -1, 1),
     );
-    // Evita que arriba se midan más cerca del eje que su par abajo (1>5, 2>4).
+    // Con scroll arriba: simetría 1=5, 2=4 por índice respecto de la activa.
     absDistForScale = Math.max(viewportAbs, indexAbs);
   }
 

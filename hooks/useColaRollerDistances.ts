@@ -64,6 +64,8 @@ export function useColaRollerDistances(
   const [distances, setDistances] = useState<Record<number, ColaCenterDistance>>(
     {},
   );
+  /** Con scroll: escala solo por posición en pantalla (achique progresivo en todas las filas). */
+  const [useViewportScaleOnly, setUseViewportScaleOnly] = useState(false);
 
   const setRowRef = useCallback((index: number, element: HTMLElement | null) => {
     rowRefs.current[index] = element;
@@ -112,6 +114,11 @@ export function useColaRollerDistances(
       next[index] = clamp((rowCenter - focalCenterY) / halfHeight, -1, 1);
     }
 
+    const scrolled = scrollTop > SCROLL_TOP_CALIBRATION_PX;
+
+    setUseViewportScaleOnly((previous) =>
+      previous === scrolled ? previous : scrolled,
+    );
     setDistances((previous) =>
       distancesChanged(previous, next) ? next : previous,
     );
@@ -160,5 +167,5 @@ export function useColaRollerDistances(
     };
   }, [scrollRef, scheduleUpdate, itemCount]);
 
-  return { distances, setRowRef, scheduleUpdate };
+  return { distances, setRowRef, scheduleUpdate, useViewportScaleOnly };
 }

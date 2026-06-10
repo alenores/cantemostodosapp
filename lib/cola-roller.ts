@@ -1,4 +1,3 @@
-import { getColaVariant } from "@/lib/cola-logic";
 import type { ColaItem } from "@/types";
 
 export type ColaRollerStyle = {
@@ -17,8 +16,12 @@ export type ColaCenterDistance = number;
 const ROLLER_CARD_EST_HEIGHT_PX = 56;
 const MIN_SCALE = 0.86;
 const SCALE_RANGE = 0.14;
-const ACTIVE_CENTER_BOOST = 1.025;
-const ACTIVE_CENTER_ZONE = 0.35;
+const CENTER_ROW_BOOST = 1.025;
+const CENTER_ROW_ZONE = 0.35;
+/** Paso entre filas para simetría 1=5, 2=4 respecto de la activa (fila 3). */
+const ROW_INDEX_STEP = 0.24;
+/** Extra de ancho uniforme (todas iguales; 1.03 evita roce lateral en filas 2–4). */
+const ROLLER_WIDTH_SCALE = 1.03;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -57,9 +60,8 @@ export function estimateColaCenterDistance(
 }
 
 /**
- * Rodillo con eje calibrado en la activa (scroll arriba) y distancia por viewport al scrollear:
- * - Activa en el eje: realce sutil
- * - Arriba / abajo del eje: achica, apaga o desvanece según zona
+ * Rodillo con eje calibrado en la activa (scroll arriba) y distancia por viewport al scrollear.
+ * Escala simétrica 1=5, 2=4; el realce de tamaño lo tiene quien está en el eje visual (fila 3).
  */
 export function getColaRollerStyle(
   items: ColaItem[],
@@ -67,18 +69,28 @@ export function getColaRollerStyle(
   centerDistance: ColaCenterDistance,
 ): ColaRollerStyle {
   const item = items[index];
-  const variant = getColaVariant(item, items);
   const dist = clamp(centerDistance, -1, 1);
-  const absDist = Math.abs(dist);
+  const viewportAbs = Math.abs(dist);
 
-  let scale = Math.max(MIN_SCALE, 1 - absDist * SCALE_RANGE);
+  const activeIndex = items.findIndex((colaItem) => colaItem.estado === "activa");
+  let absDistForScale = viewportAbs;
+
+  if (activeIndex >= 0) {
+    const indexAbs = Math.abs(
+      clamp((index - activeIndex) * ROW_INDEX_STEP, -1, 1),
+    );
+    // Evita que arriba se midan más cerca del eje que su par abajo (1>5, 2>4).
+    absDistForScale = Math.max(viewportAbs, indexAbs);
+  }
+
+  let scale = Math.max(MIN_SCALE, 1 - absDistForScale * SCALE_RANGE);
   let opacity = 1;
   const filterParts: string[] = [];
   let transformOrigin = "center center";
   let zIndex: number | undefined;
 
-  if (variant === "activa" && absDist < ACTIVE_CENTER_ZONE) {
-    const boost = lerp(ACTIVE_CENTER_BOOST, 1, absDist / ACTIVE_CENTER_ZONE);
+  if (viewportAbs < CENTER_ROW_ZONE) {
+    const boost = lerp(CENTER_ROW_BOOST, 1, viewportAbs / CENTER_ROW_ZONE);
     scale = Math.min(boost, Math.max(scale, 1));
     zIndex = 2;
   }
@@ -120,7 +132,8 @@ export function getColaRollerStyle(
 }
 
 export function getColaRollerTransform(style: ColaRollerStyle): string {
-  return `scale(${style.scale})`;
+  const widthScale = style.scale * ROLLER_WIDTH_SCALE;
+  return `scale(${widthScale}, ${style.scale})`;
 }
 
 /** Chip "Tocada": solo en la más reciente, casi imperceptible. */

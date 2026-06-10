@@ -23,6 +23,9 @@ const iconSizeClasses = {
   xs: "size-3",
 } as const;
 
+/** Tamaño del + en la barra/cabecera de cola (peek y sheet abierta). */
+export const COLA_ADD_BUTTON_SIZE = "sm" as const;
+
 export default function AddButton({
   ariaLabel,
   size = "md",

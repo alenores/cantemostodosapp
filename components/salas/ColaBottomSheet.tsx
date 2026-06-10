@@ -4,7 +4,7 @@ import ColaBarSiguientePreview from "@/components/salas/ColaBarSiguientePreview"
 import ColaItemCard from "@/components/salas/ColaItem";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
-import AddButton from "@/components/ui/AddButton";
+import AddButton, { COLA_ADD_BUTTON_SIZE } from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { resolverNombreArtistaDisplay } from "@/lib/buscador";
 import {
@@ -48,6 +48,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent,
+  type PointerEvent,
 } from "react";
 
 const SNAP_THRESHOLD = 0.3;
@@ -411,8 +413,8 @@ export default function ColaBottomSheet({
     ? "none"
     : "transform 350ms cubic-bezier(0.32, 0.72, 0, 1)";
   const panelTranslateY = panelY > 0 ? panelY : 0;
-  /** Barra peek separada: comprimida o mientras se arrastra. Abierta → la sheet ocupa ese ancho. */
-  const showPeekBar = isPeekMode || isDragging;
+  /** Barra inferior solo con la sheet comprimida; abierta → desaparece (el + queda en la cabecera). */
+  const showPeekBar = !isSettledOpen;
 
   function clearColaLongPress() {
     if (longPressTimerRef.current) {
@@ -500,6 +502,18 @@ export default function ColaBottomSheet({
     );
   }
 
+  function handleOpenBuscador(
+    event: MouseEvent<HTMLButtonElement> | PointerEvent<HTMLButtonElement>,
+  ) {
+    event.stopPropagation();
+    onOpenBuscador();
+  }
+
+  function handleTogglePanelClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    togglePanel();
+  }
+
   return (
     <>
       <div
@@ -545,8 +559,13 @@ export default function ColaBottomSheet({
             <div className="h-1 w-10 rounded-full bg-cola-sheet-pill" />
           </button>
 
-          <div className="relative flex shrink-0 items-center px-4 pb-3">
-            <div className="size-8 shrink-0" aria-hidden="true" />
+          <div className="relative flex shrink-0 items-center gap-2 px-4 pb-3">
+            <AddButton
+              ariaLabel="Agregar canción"
+              size={COLA_ADD_BUTTON_SIZE}
+              onPointerDown={handleOpenBuscador}
+              onClick={handleOpenBuscador}
+            />
 
             <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
               Fila de canciones
@@ -657,7 +676,6 @@ export default function ColaBottomSheet({
 
       {showPeekBar && (
       <div
-        {...bindBarDrag()}
         data-no-tap-feedback
         role="group"
         aria-roledescription="sheet"
@@ -673,20 +691,22 @@ export default function ColaBottomSheet({
           height: COLA_BAR_TOTAL_HEIGHT_CSS,
         }}
       >
-        {isPeekMode && (
-          <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
-            <div
-              className="h-1 w-10 rounded-full bg-cola-sheet-pill"
-              aria-hidden="true"
-            />
-          </div>
-        )}
+        <div {...bindBarDrag()} className="flex shrink-0 touch-none flex-col">
+          {isPeekMode && (
+            <div className="flex shrink-0 justify-center pt-1.5 pb-0.5">
+              <div
+                className="h-1 w-10 rounded-full bg-cola-sheet-pill"
+                aria-hidden="true"
+              />
+            </div>
+          )}
 
-        <div
-          className="shrink-0 bg-bg-cola-sheet"
-          style={{ height: COLA_BAR_EXTRA_HEIGHT_PX }}
-          aria-hidden="true"
-        />
+          <div
+            className="shrink-0 bg-bg-cola-sheet"
+            style={{ height: COLA_BAR_EXTRA_HEIGHT_PX }}
+            aria-hidden="true"
+          />
+        </div>
 
         <div
           className={`mt-auto flex shrink-0 items-center gap-2 px-4 ${
@@ -708,20 +728,25 @@ export default function ColaBottomSheet({
           ) : (
             <span className="min-w-0 flex-1" aria-hidden="true" />
           )}
-          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-black/20 py-0.5 pl-2.5 pr-1">
-            <span className="whitespace-nowrap text-sm font-semibold text-text-primary">
-              Fila{" "}
-              <span className="font-normal text-text-secondary">
-                · {pendientes}
+          <div className="flex shrink-0 items-center gap-2">
+            <TapButton
+              type="button"
+              aria-label="Abrir fila de canciones"
+              onClick={handleTogglePanelClick}
+              className="flex shrink-0 items-center rounded-full border border-border/50 bg-black/20 px-2.5 py-1.5"
+            >
+              <span className="whitespace-nowrap text-sm font-semibold text-text-primary">
+                Fila{" "}
+                <span className="font-normal text-text-secondary">
+                  · {pendientes}
+                </span>
               </span>
-            </span>
+            </TapButton>
             <AddButton
               ariaLabel="Agregar canción"
-              size={isPeekMode ? "xs" : "bar"}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenBuscador();
-              }}
+              size={COLA_ADD_BUTTON_SIZE}
+              onPointerDown={handleOpenBuscador}
+              onClick={handleOpenBuscador}
             />
           </div>
         </div>

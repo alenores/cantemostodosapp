@@ -8,7 +8,7 @@ import {
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
 import {
-  CIFRACLUB_EMBED_INITIAL_OFFSET_PX,
+  LETRA_EMBED_INITIAL_OFFSET_PX,
   LETRA_EMBED_BOTTOM_PADDING,
   LETRA_SECTION_BOTTOM_PADDING,
 } from "@/lib/sala-layout";
@@ -121,7 +121,7 @@ export default function CancionActivaSection({
 
   const cifraclubEmbedOffsetPx =
     isCifraclubEmbed && !cifraTopRevealed
-      ? CIFRACLUB_EMBED_INITIAL_OFFSET_PX
+      ? LETRA_EMBED_INITIAL_OFFSET_PX
       : undefined;
 
   return (

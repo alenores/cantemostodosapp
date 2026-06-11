@@ -44,8 +44,11 @@ export const LETRA_SECTION_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(
 /** Reserva espacio para la barra; el overlap deja que tape sutilmente el borde del iframe */
 export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - COLA_BAR_WEBVIEW_OVERLAP_PX}px + env(safe-area-inset-bottom, 0px))`;
 
-/** Simula scroll inicial en embed de Cifra Club (canción activa). Calibrar en móvil. */
-export const CIFRACLUB_EMBED_INITIAL_OFFSET_PX = 280;
+/** Simula scroll inicial en iframe embebido (Cifra Club activa; preview internet). Calibrar en móvil. */
+export const LETRA_EMBED_INITIAL_OFFSET_PX = 280;
+
+/** @deprecated Usar LETRA_EMBED_INITIAL_OFFSET_PX */
+export const CIFRACLUB_EMBED_INITIAL_OFFSET_PX = LETRA_EMBED_INITIAL_OFFSET_PX;
 
 /** @deprecated Usar flex-1 + LETRA_EMBED_BOTTOM_PADDING en CancionActivaSection */
 export const LETRA_EMBED_HEIGHT_CSS = `calc(100dvh - ${SALA_HEADER_HEIGHT_PX}px - ${LETRA_ACTIVE_CHROME_PX}px - ${COLA_BAR_HEIGHT_PX}px - env(safe-area-inset-bottom, 0px))`;

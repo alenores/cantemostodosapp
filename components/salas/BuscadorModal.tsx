@@ -13,6 +13,8 @@ import {
   resolverNombreArtistaDisplay,
   resultadoKey,
 } from "@/lib/buscador";
+import { shouldApplyEmbedInitialOffset } from "@/lib/letra-display";
+import { LETRA_EMBED_INITIAL_OFFSET_PX } from "@/lib/sala-layout";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { agregarACola, avanzarCancion, type CancionInput } from "@/lib/cola-logic";
 import {
@@ -224,6 +226,7 @@ export default function BuscadorModal({
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionGuardado>(null);
   const [fabGuardarAbierto, setFabGuardarAbierto] = useState(false);
+  const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
   const [guardarLetraModal, setGuardarLetraModal] =
     useState<GuardarLetraModalState | null>(null);
   const [cancionesCancionero, setCancionesCancionero] = useState<
@@ -256,6 +259,7 @@ export default function BuscadorModal({
     setBusquedaRealizada(false);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
+    setEmbedTopRevealed(false);
     setGuardarLetraModal(null);
     setCancionesCancionero([]);
   }, []);
@@ -431,6 +435,7 @@ export default function BuscadorModal({
     setSeleccionado(resultado);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
+    setEmbedTopRevealed(false);
     setError(null);
     pantallaRef.current = "preview";
     setPantalla("preview");
@@ -442,6 +447,7 @@ export default function BuscadorModal({
     setSeleccionado(null);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
+    setEmbedTopRevealed(false);
     setError(null);
   }
 
@@ -649,6 +655,18 @@ export default function BuscadorModal({
       seleccionado?.fuente === "link-guardado") &&
     Boolean(seleccionado.letra?.trim());
 
+  const previewIframeConRecorteInicial = Boolean(
+    seleccionado &&
+      !previewConLetraLocal &&
+      (esInternetPreview || esLinkGuardadoPreview) &&
+      shouldApplyEmbedInitialOffset(seleccionado.url),
+  );
+
+  const previewEmbedOffsetPx =
+    previewIframeConRecorteInicial && !embedTopRevealed
+      ? LETRA_EMBED_INITIAL_OFFSET_PX
+      : undefined;
+
   function handleGuardarTap() {
     if (!seleccionado || guardarDeshabilitado || accionLoading) {
       return;
@@ -852,7 +870,17 @@ export default function BuscadorModal({
                       <LetraTexto texto={seleccionado.letra!} />
                     </div>
                   ) : (
-                    <LetraViewer url={seleccionado.url} elevated fill />
+                    <LetraViewer
+                      url={seleccionado.url}
+                      elevated
+                      fill
+                      initialScrollOffsetPx={previewEmbedOffsetPx}
+                      onRevealTop={
+                        previewIframeConRecorteInicial
+                          ? () => setEmbedTopRevealed(true)
+                          : undefined
+                      }
+                    />
                   )}
                 </div>
 

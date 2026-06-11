@@ -40,6 +40,12 @@ export function shouldPreferTextExtract(url: string): boolean {
   return kind === "acordesdcanciones" || kind === "lacuerda" || kind === "desconocido";
 }
 
+/** Iframe embebido con recorte inicial (Cifra Club activa; preview con página web). */
+export function shouldApplyEmbedInitialOffset(url: string): boolean {
+  const kind = getLetraSourceKind(url);
+  return kind === "cifraclub" || kind === "acordesdcanciones";
+}
+
 export function resolveLetraContenido(input: {
   letraTexto?: string | null;
   urlLetra?: string | null;

@@ -10,7 +10,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@hello-pangea/dnd": "^18.0.1",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "@use-gesture/react": "^10.3.1",
@@ -21,15 +20,15 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "sharp": "^0.34.2",
-    "to-ico": "^1.1.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "sharp": "^0.34.2",
     "tailwindcss": "^4",
+    "to-ico": "^1.1.5",
     "typescript": "^5"
   }
 }

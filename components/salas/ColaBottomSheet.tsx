@@ -1,6 +1,7 @@
 "use client";
 
 import ColaBarSiguientePreview from "@/components/salas/ColaBarSiguientePreview";
+import ColaItemActionBar from "@/components/salas/ColaItemActionBar";
 import ColaItemCard from "@/components/salas/ColaItem";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
@@ -8,13 +9,18 @@ import AddButton, { COLA_ADD_BUTTON_SIZE } from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { resolverNombreArtistaDisplay } from "@/lib/buscador";
 import {
+  applyOrdenUpdates,
   avanzarCancion,
-  applyColaReorder,
-  buildReorderUpdates,
+  canSelectColaItem,
   deleteColaCompleta,
   deleteColaItem,
   finalizarCancionActiva,
+  movePendienteDown,
+  movePendienteToBottom,
+  movePendienteToProxima,
+  movePendienteUp,
   persistColaOrden,
+  type ColaItemActionId,
 } from "@/lib/cola-logic";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useColaRollerDistances } from "@/hooks/useColaRollerDistances";
@@ -36,14 +42,6 @@ import {
 } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import type { ColaItem } from "@/types";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  type DraggableProvided,
-  type DraggableStateSnapshot,
-  type DropResult,
-} from "@hello-pangea/dnd";
 import { useDrag } from "@use-gesture/react";
 import { Trash2 } from "lucide-react";
 import {
@@ -59,7 +57,8 @@ import {
 const SNAP_THRESHOLD = 0.2;
 const PEEK_THRESHOLD = 0.92;
 const TAP_MOVE_THRESHOLD_PX = 12;
-const COLA_DRAG_LONG_PRESS_MS = 500;
+const COLA_SELECT_LONG_PRESS_MS = 400;
+const COLA_SELECT_TIMEOUT_MS = 8000;
 
 type ColaBottomSheetProps = {
   items: ColaItem[];
@@ -91,11 +90,18 @@ function isBarInteractiveTarget(target: EventTarget | null): boolean {
   );
 }
 
+function isColaSelectableRowTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-cola-selectable='true']"))
+  );
+}
+
 type ListDragMemo =
   | { kind: "undecided"; startY: number; startScrollTop: number }
   | { kind: "sheet"; startY: number }
   | { kind: "scroll"; startScrollTop: number }
-  | { kind: "reorder" };
+  | { kind: "row"; startScrollTop: number };
 
 export default function ColaBottomSheet({
   items,
@@ -119,22 +125,21 @@ export default function ColaBottomSheet({
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
   const [deleteFabOpen, setDeleteFabOpen] = useState(false);
   const [avisoEntered, setAvisoEntered] = useState(false);
-  const [isColaReordering, setIsColaReordering] = useState(false);
-  const [dragReadyId, setDragReadyId] = useState<number | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
 
   const panelYRef = useRef(panelY);
-  const dragReadyIdRef = useRef<number | null>(null);
+  const selectedItemIdRef = useRef<number | null>(null);
+  const suppressTapRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressItemRef = useRef<number | null>(null);
   const contentHeightRef = useRef(400);
   const listScrollRef = useRef<HTMLDivElement>(null);
-  const isColaReorderingRef = useRef(false);
 
   const contentHeight = getColaOpenHeight(viewportHeight, expanded);
   const closedPanelY = getColaPanelClosedY(contentHeight);
   contentHeightRef.current = contentHeight;
   panelYRef.current = panelY;
-  dragReadyIdRef.current = dragReadyId;
+  selectedItemIdRef.current = selectedItemId;
 
   const progress =
     contentHeight > 0
@@ -186,6 +191,8 @@ export default function ColaBottomSheet({
       setPanelY(closedY);
       setExpanded(false);
       setDeleteFabOpen(false);
+      setSelectedItemId(null);
+      clearColaLongPress();
       return;
     }
 
@@ -193,6 +200,8 @@ export default function ColaBottomSheet({
     setPanelY(closedY);
     setExpanded(false);
     setDeleteFabOpen(false);
+    setSelectedItemId(null);
+    clearColaLongPress();
   }, []);
 
   useEffect(() => {
@@ -227,6 +236,11 @@ export default function ColaBottomSheet({
 
     if (deleteFabOpen) {
       setDeleteFabOpen(false);
+      return;
+    }
+
+    if (selectedItemId !== null) {
+      setSelectedItemId(null);
       return;
     }
 
@@ -349,14 +363,6 @@ export default function ColaBottomSheet({
         return panelYRef.current;
       }
 
-      if (isColaReorderingRef.current) {
-        if (state.first) {
-          state.cancel?.();
-        }
-
-        return { kind: "reorder" as const };
-      }
-
       const scrollEl = listScrollRef.current;
       const scrollTop = scrollEl?.scrollTop ?? 0;
       const maxScroll = scrollEl
@@ -365,18 +371,10 @@ export default function ColaBottomSheet({
       const [, my] = state.movement;
 
       if (state.first) {
-        const readyId = dragReadyIdRef.current;
+        const target = state.event?.target;
 
-        if (readyId !== null) {
-          const target = state.event?.target;
-
-          if (
-            target instanceof Element &&
-            target.closest(`[data-cola-id="${readyId}"]`)
-          ) {
-            state.cancel?.();
-            return { kind: "reorder" as const };
-          }
+        if (isColaSelectableRowTarget(target ?? null)) {
+          return { kind: "row" as const, startScrollTop: scrollTop };
         }
 
         if (scrollTop > 0) {
@@ -392,13 +390,25 @@ export default function ColaBottomSheet({
 
       const memo = state.memo as ListDragMemo | undefined;
 
-      if (memo?.kind === "reorder") {
-        return memo;
-      }
-
       if (memo?.kind === "scroll") {
         if (scrollEl) {
           scrollEl.scrollTop = clamp(memo.startScrollTop - my, 0, maxScroll);
+        }
+
+        return memo;
+      }
+
+      if (memo?.kind === "row") {
+        if (Math.abs(my) < TAP_MOVE_THRESHOLD_PX) {
+          return memo;
+        }
+
+        if (my < 0 && scrollEl) {
+          scrollEl.scrollTop = clamp(memo.startScrollTop - my, 0, maxScroll);
+          return {
+            kind: "scroll" as const,
+            startScrollTop: memo.startScrollTop,
+          };
         }
 
         return memo;
@@ -417,11 +427,6 @@ export default function ColaBottomSheet({
       if (memo?.kind === "undecided") {
         if (Math.abs(my) < TAP_MOVE_THRESHOLD_PX) {
           return memo;
-        }
-
-        if (dragReadyIdRef.current !== null) {
-          state.cancel?.();
-          return { kind: "reorder" as const };
         }
 
         if (my < 0) {
@@ -512,20 +517,60 @@ export default function ColaBottomSheet({
     setExpanded((prev) => !prev);
   }
 
-  async function handleDragEnd(result: DropResult) {
-    const reordered = applyColaReorder(items, result);
-
-    if (!reordered) {
+  function handleItemSelect(itemId: number) {
+    if (suppressTapRef.current) {
+      suppressTapRef.current = false;
       return;
     }
 
-    onItemsReordered(reordered);
+    if (selectedItemIdRef.current !== null) {
+      setSelectedItemId(null);
+      return;
+    }
 
-    const updates = buildReorderUpdates(items, result);
+    setAdvanceItemId(itemId);
+  }
+
+  async function handleColaItemAction(
+    actionId: ColaItemActionId,
+    itemId: number,
+  ) {
+    triggerHaptic();
+
+    if (actionId === "activar") {
+      setSelectedItemId(null);
+      setAdvanceItemId(itemId);
+      return;
+    }
+
+    if (actionId === "eliminar") {
+      setSelectedItemId(null);
+      setDeleteItemId(itemId);
+      return;
+    }
+
+    let updates = null;
+
+    switch (actionId) {
+      case "subir":
+        updates = movePendienteUp(items, itemId);
+        break;
+      case "bajar":
+        updates = movePendienteDown(items, itemId);
+        break;
+      case "proxima":
+        updates = movePendienteToProxima(items, itemId);
+        break;
+      case "fondo":
+        updates = movePendienteToBottom(items, itemId);
+        break;
+    }
 
     if (!updates) {
       return;
     }
+
+    onItemsReordered(applyOrdenUpdates(items, updates));
 
     const supabase = createClient();
     await persistColaOrden(supabase, updates);
@@ -617,6 +662,20 @@ export default function ColaBottomSheet({
     }
   }, [isSettledOpen, isSnapping, items, scheduleRollerUpdate]);
 
+  useEffect(() => {
+    if (selectedItemId === null) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSelectedItemId(null);
+    }, COLA_SELECT_TIMEOUT_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [selectedItemId]);
+
   function handlePanelTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
     if (event.propertyName !== "transform" || event.target !== event.currentTarget) {
       return;
@@ -635,90 +694,86 @@ export default function ColaBottomSheet({
     longPressItemRef.current = null;
   }
 
-  function handleColaRowPointerDown(itemId: number) {
-    clearColaLongPress();
-    longPressItemRef.current = itemId;
-    longPressTimerRef.current = setTimeout(() => {
-      setDragReadyId(itemId);
-      triggerHaptic();
-      longPressTimerRef.current = null;
-    }, COLA_DRAG_LONG_PRESS_MS);
-  }
-
-  function handleColaRowPointerEnd(itemId: number) {
-    if (longPressTimerRef.current) {
-      clearColaLongPress();
+  function handleColaRowPointerDown(item: ColaItem) {
+    if (!canSelectColaItem(item)) {
       return;
     }
 
-    if (dragReadyId === itemId && !isColaReorderingRef.current) {
-      setDragReadyId(null);
+    if (
+      selectedItemIdRef.current !== null &&
+      selectedItemIdRef.current !== item.id
+    ) {
+      setSelectedItemId(null);
+    }
+
+    clearColaLongPress();
+    longPressItemRef.current = item.id;
+    longPressTimerRef.current = setTimeout(() => {
+      suppressTapRef.current = true;
+      setSelectedItemId(item.id);
+      triggerHaptic();
+      longPressTimerRef.current = null;
+    }, COLA_SELECT_LONG_PRESS_MS);
+  }
+
+  function handleColaRowPointerEnd() {
+    if (longPressTimerRef.current) {
+      clearColaLongPress();
     }
   }
 
-  function renderColaDraggableRow(
-    item: ColaItem,
-    index: number,
-    draggableProvided: DraggableProvided,
-    snapshot: DraggableStateSnapshot,
-  ) {
-    const isPendiente = item.estado === "pendiente";
-    const isDraggingVisual =
-      snapshot.isDragging && !snapshot.isDropAnimating;
-
-    const dragHabilitado = isPendiente && dragReadyId === item.id;
+  function renderColaRow(item: ColaItem, index: number) {
+    const selectable = canSelectColaItem(item);
+    const isSelected = selectedItemId === item.id;
 
     return (
       <div
-        ref={(node) => {
-          draggableProvided.innerRef(node);
-          setRollerRowRef(index, node);
-        }}
-        {...draggableProvided.draggableProps}
-        {...(isPendiente ? draggableProvided.dragHandleProps : {})}
+        key={item.id}
+        ref={(node) => setRollerRowRef(index, node)}
         data-cola-id={item.id}
+        data-cola-selectable={selectable ? "true" : undefined}
         className={
-          isPendiente
-            ? `cola-draggable-item${
-                dragHabilitado ? " cola-draggable-item--reorder-ready" : ""
-              } ${dragHabilitado ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`
+          selectable
+            ? `cola-selectable-item${
+                isSelected ? " cola-selectable-item--selected" : ""
+              }`
             : undefined
         }
         onPointerDown={
-          isPendiente ? () => handleColaRowPointerDown(item.id) : undefined
+          selectable && !isSelected
+            ? () => handleColaRowPointerDown(item)
+            : undefined
         }
-        onPointerUp={
-          isPendiente ? () => handleColaRowPointerEnd(item.id) : undefined
-        }
+        onPointerUp={selectable && !isSelected ? handleColaRowPointerEnd : undefined}
         onPointerCancel={
-          isPendiente ? () => handleColaRowPointerEnd(item.id) : undefined
+          selectable && !isSelected ? handleColaRowPointerEnd : undefined
         }
         onContextMenu={
-          isPendiente ? (event) => event.preventDefault() : undefined
+          selectable ? (event) => event.preventDefault() : undefined
         }
       >
-        <div
-          className={
-            isDraggingVisual
-              ? "cola-drag-surface cola-drag-surface--active"
-              : "cola-drag-surface"
+        <ColaItemCard
+          item={item}
+          items={items}
+          index={index}
+          isSelected={isSelected}
+          centerDistance={
+            rollerDistances[index] ?? estimateColaCenterDistance(items, index)
           }
-        >
-          <ColaItemCard
+          isFocalRow={index === focalRowIndex}
+          useViewportScaleOnly={rollerUseViewportScaleOnly}
+          onSelect={handleItemSelect}
+          onFinalize={() => void handleFinalize()}
+        />
+        {isSelected && (
+          <ColaItemActionBar
             item={item}
             items={items}
-            index={index}
-            centerDistance={
-              rollerDistances[index] ?? estimateColaCenterDistance(items, index)
+            onAction={(actionId, itemId) =>
+              void handleColaItemAction(actionId, itemId)
             }
-            isFocalRow={index === focalRowIndex}
-            useViewportScaleOnly={rollerUseViewportScaleOnly}
-            isDragging={isDraggingVisual}
-            onDelete={setDeleteItemId}
-            onSelect={(itemId) => setAdvanceItemId(itemId)}
-            onFinalize={() => void handleFinalize()}
           />
-        </div>
+        )}
       </div>
     );
   }
@@ -746,9 +801,7 @@ export default function ColaBottomSheet({
           height: panelUsesOpenLayout
             ? getColaPanelOpenHeightCss(contentHeight)
             : contentHeight,
-          transform: !isColaReordering
-            ? `translateY(${panelTranslateY}px)`
-            : undefined,
+          transform: `translateY(${panelTranslateY}px)`,
           transition: panelTransition,
           visibility: panelHidden ? "hidden" : "visible",
         }}
@@ -832,69 +885,32 @@ export default function ColaBottomSheet({
           </div>
         </div>
 
-        <div
-          className={`relative flex min-h-0 flex-1 flex-col bg-bg-cola-list ${
-            isColaReordering ? "cola-dnd-active" : ""
-          }`}
-        >
-          <DragDropContext
-            onDragStart={() => {
-              isColaReorderingRef.current = true;
-              setIsColaReordering(true);
+        <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
+          <div
+            ref={listScrollRef}
+            className="cola-list-roller min-h-0 flex-1 touch-pan-y space-y-2 overflow-x-visible overflow-y-auto overscroll-none px-3 py-3"
+            onPointerDown={(event) => {
+              if (
+                selectedItemIdRef.current !== null &&
+                !isColaSelectableRowTarget(event.target)
+              ) {
+                setSelectedItemId(null);
+              }
             }}
-            onDragEnd={(result) => {
-              isColaReorderingRef.current = false;
-              setIsColaReordering(false);
-              setDragReadyId(null);
-              clearColaLongPress();
-              void handleDragEnd(result);
-            }}
+            style={
+              !showPeekBar
+                ? { paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }
+                : undefined
+            }
           >
-            <Droppable droppableId="cola-juntada">
-              {(provided) => (
-                <div
-                  ref={(node) => {
-                    provided.innerRef(node);
-                    listScrollRef.current = node;
-                  }}
-                  {...provided.droppableProps}
-                  className="cola-list-roller min-h-0 flex-1 touch-pan-y space-y-2 overflow-x-visible overflow-y-auto overscroll-none px-3 py-3"
-                  style={
-                    !showPeekBar
-                      ? { paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }
-                      : undefined
-                  }
-                >
-                {items.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-text-muted">
-                    La cola está vacía
-                  </p>
-                ) : (
-                  items.map((item, index) => (
-                    <Draggable
-                      key={item.id}
-                      draggableId={String(item.id)}
-                      index={index}
-                      isDragDisabled={
-                        item.estado !== "pendiente" || dragReadyId !== item.id
-                      }
-                    >
-                      {(draggableProvided, snapshot) =>
-                        renderColaDraggableRow(
-                          item,
-                          index,
-                          draggableProvided,
-                          snapshot,
-                        )
-                      }
-                    </Draggable>
-                  ))
-                )}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+            {items.length === 0 ? (
+              <p className="py-8 text-center text-sm text-text-muted">
+                La cola está vacía
+              </p>
+            ) : (
+              items.map((item, index) => renderColaRow(item, index))
+            )}
+          </div>
         </div>
       </div>
 

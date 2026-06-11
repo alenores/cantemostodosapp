@@ -14,7 +14,6 @@ import {
 } from "@/lib/cola-roller";
 import type { ColaItem } from "@/types";
 import ColaSiguienteButton from "@/components/salas/ColaSiguienteButton";
-import { Trash2 } from "lucide-react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 type ColaItemProps = {
@@ -24,31 +23,13 @@ type ColaItemProps = {
   centerDistance?: ColaCenterDistance;
   isFocalRow?: boolean;
   useViewportScaleOnly?: boolean;
-  isDragging?: boolean;
-  onDelete: (id: number) => void;
+  isSelected?: boolean;
   onSelect?: (id: number) => void;
   onFinalize?: (id: number) => void;
 };
 
 function stopDragPointer(event: ReactPointerEvent) {
   event.stopPropagation();
-}
-
-function DragHandle() {
-  return (
-    <div
-      className="pointer-events-none grid shrink-0 grid-cols-2 gap-[2px] py-2 pl-0 pr-0.5"
-      aria-hidden="true"
-    >
-      {Array.from({ length: 6 }).map((_, dotIndex) => (
-        <span
-          key={dotIndex}
-          className="size-[3px] rounded-full bg-text-muted"
-          aria-hidden="true"
-        />
-      ))}
-    </div>
-  );
 }
 
 function variantClasses(variant: ColaVariant): string {
@@ -68,12 +49,17 @@ function buildRollerStyle(
   items: ColaItem[],
   index: number,
   centerDistance: ColaCenterDistance,
-  isDragging: boolean,
+  isSelected: boolean,
   isFocalRow: boolean,
   useViewportScaleOnly: boolean,
 ): CSSProperties | undefined {
-  if (isDragging) {
-    return undefined;
+  if (isSelected) {
+    return {
+      transform: "scale(1)",
+      transformOrigin: "center center",
+      opacity: 1,
+      marginBottom: 0,
+    };
   }
 
   const roller = getColaRollerStyle(
@@ -101,8 +87,7 @@ export default function ColaItemCard({
   centerDistance,
   isFocalRow = false,
   useViewportScaleOnly = false,
-  isDragging = false,
-  onDelete,
+  isSelected = false,
   onSelect,
   onFinalize,
 }: ColaItemProps) {
@@ -115,7 +100,7 @@ export default function ColaItemCard({
   const isPendiente = item.estado === "pendiente";
   const isActiva = variant === "activa";
   const isProxima = variant === "proxima";
-  const showActions = isPendiente;
+  const showAvatar = isPendiente;
   const showTocadaChip = shouldShowTocadaChip(items, index);
   const resolvedCenterDistance =
     centerDistance ?? estimateColaCenterDistance(items, index);
@@ -123,16 +108,15 @@ export default function ColaItemCard({
     items,
     index,
     resolvedCenterDistance,
-    isDragging,
+    isSelected,
     isFocalRow,
     useViewportScaleOnly,
   );
-  const rollerClass = isDragging ? "cola-roller-item--dragging" : "cola-roller-item";
 
   const songText = (
     <div className="min-w-0 flex-1">
       <p
-        className={`truncate ${
+        className={`truncate select-none ${
           isActiva
             ? "text-[18px] font-bold leading-snug text-bg-darker"
             : "text-[16px] font-semibold leading-snug text-text-primary"
@@ -142,7 +126,7 @@ export default function ColaItemCard({
       </p>
       {artista && (
         <p
-          className={`truncate ${
+          className={`truncate select-none ${
             isActiva
               ? "text-[15px] font-semibold leading-snug text-bg-darker/75"
               : "text-[13px] leading-snug text-text-muted"
@@ -165,18 +149,22 @@ export default function ColaItemCard({
 
   const songContent = (
     <div
-      role={isPendiente ? "button" : undefined}
-      tabIndex={isPendiente ? 0 : undefined}
-      onClick={() => isPendiente && onSelect?.(item.id)}
+      role={isPendiente && !isSelected ? "button" : undefined}
+      tabIndex={isPendiente && !isSelected ? 0 : undefined}
+      onClick={() => isPendiente && !isSelected && onSelect?.(item.id)}
       onKeyDown={(event) => {
-        if (isPendiente && (event.key === "Enter" || event.key === " ")) {
+        if (
+          isPendiente &&
+          !isSelected &&
+          (event.key === "Enter" || event.key === " ")
+        ) {
           event.preventDefault();
           onSelect?.(item.id);
         }
       }}
       aria-label={isPendiente ? `Activar ${nombre}` : undefined}
-      className={`flex min-w-0 flex-1 items-center gap-2 text-left ${
-        isPendiente ? "cursor-pointer" : "cursor-default"
+      className={`flex min-w-0 flex-1 items-center gap-2 text-left select-none ${
+        isPendiente && !isSelected ? "cursor-pointer" : "cursor-default"
       }`}
     >
       {songIcon}
@@ -184,45 +172,28 @@ export default function ColaItemCard({
     </div>
   );
 
-  const actionButtons = showActions ? (
-    <div className="flex shrink-0 items-center gap-2 px-1">
-      <div
-        className="pointer-events-none flex size-8 shrink-0 items-center justify-center"
-        aria-label={
-          item.agregado_nombre
-            ? `Agregada por ${item.agregado_nombre}`
-            : "Agregada por usuario desconocido"
-        }
-        title={item.agregado_nombre ?? undefined}
-      >
-        <UserAvatar
-          nombre={item.agregado_nombre ?? ""}
-          email=""
-          avatarUrl={item.agregado_avatar_url ?? null}
-          size={28}
-        />
-      </div>
-      <button
-        type="button"
-        aria-label="Eliminar canción de la cola"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDelete(item.id);
-        }}
-        onPointerDown={stopDragPointer}
-        className="flex size-8 items-center justify-center text-text-secondary"
-      >
-        <Trash2 className="size-4" aria-hidden="true" />
-      </button>
+  const avatarSlot = showAvatar ? (
+    <div
+      className="pointer-events-none flex size-8 shrink-0 items-center justify-center px-1"
+      aria-label={
+        item.agregado_nombre
+          ? `Agregada por ${item.agregado_nombre}`
+          : "Agregada por usuario desconocido"
+      }
+      title={item.agregado_nombre ?? undefined}
+    >
+      <UserAvatar
+        nombre={item.agregado_nombre ?? ""}
+        email=""
+        avatarUrl={item.agregado_avatar_url ?? null}
+        size={28}
+      />
     </div>
   ) : null;
 
   if (isProxima) {
     return (
-      <div
-        className={`${rollerClass} overflow-visible`}
-        style={rollerStyle}
-      >
+      <div className="cola-roller-item overflow-visible" style={rollerStyle}>
         <div
           className="flex overflow-hidden rounded-[10px]"
           onContextMenu={(event) => event.preventDefault()}
@@ -236,14 +207,9 @@ export default function ColaItemCard({
             </span>
           </div>
 
-          <div
-            className={`flex flex-1 items-center gap-3 rounded-r-[10px] border border-l-0 border-border-card bg-bg-card px-3 py-2.5 ${
-              isDragging ? "cola-item-dragging" : ""
-            }`}
-          >
-            <DragHandle />
+          <div className="flex flex-1 items-center gap-3 rounded-r-[10px] border border-l-0 border-border-card bg-bg-card px-3 py-2.5">
             {songContent}
-            {actionButtons}
+            {avatarSlot}
           </div>
         </div>
       </div>
@@ -251,66 +217,60 @@ export default function ColaItemCard({
   }
 
   return (
-    <div
-      className={`${rollerClass} overflow-visible`}
-      style={rollerStyle}
-    >
+    <div className="cola-roller-item overflow-visible" style={rollerStyle}>
       <div
         className={`flex items-stretch overflow-hidden rounded-[12px] border ${
           isActiva ? "min-h-[68px]" : "items-center py-2.5 px-3"
-        } ${variantClasses(variant)} ${
-          isDragging ? "cola-item-dragging" : ""
-        }`}
+        } ${variantClasses(variant)}`}
         onContextMenu={isPendiente ? (event) => event.preventDefault() : undefined}
       >
-      {isActiva && (
+        {isActiva && (
+          <div
+            className="flex w-6 shrink-0 items-center justify-center self-stretch bg-letra-bg"
+            aria-hidden="true"
+          >
+            <span
+              className="text-[9px] font-bold uppercase tracking-[0.2em] text-accent"
+              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+            >
+              Activa
+            </span>
+          </div>
+        )}
+
         <div
-          className="flex w-6 shrink-0 items-center justify-center self-stretch bg-letra-bg"
-          aria-hidden="true"
+          className={`flex min-w-0 flex-1 items-center ${
+            isActiva ? "gap-2 py-4 pl-2 pr-2" : "gap-2"
+          }`}
         >
-          <span
-            className="text-[9px] font-bold uppercase tracking-[0.2em] text-accent"
-            style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-          >
-            Activa
-          </span>
+          {!isPendiente && !isActiva ? (
+            <div className="w-6 shrink-0" aria-hidden="true" />
+          ) : null}
+
+          {songContent}
+
+          {showTocadaChip && (
+            <span
+              className="shrink-0 rounded-full border border-transparent px-1.5 py-px text-[8px] text-text-muted/35"
+              aria-label="Canción ya tocada"
+            >
+              Tocada
+            </span>
+          )}
+
+          {isActiva && items.some((i) => i.estado === "pendiente") && (
+            <ColaSiguienteButton
+              onClick={(event) => {
+                event.stopPropagation();
+                onFinalize?.(item.id);
+              }}
+              onPointerDown={stopDragPointer}
+            />
+          )}
+
+          {avatarSlot}
         </div>
-      )}
-
-      <div
-        className={`flex min-w-0 flex-1 items-center ${
-          isActiva ? "gap-2 py-4 pl-2 pr-2" : isPendiente ? "gap-2" : "gap-2"
-        }`}
-      >
-        {isPendiente ? <DragHandle /> : null}
-        {!isPendiente && !isActiva ? (
-          <div className="w-6 shrink-0" aria-hidden="true" />
-        ) : null}
-
-        {songContent}
-
-        {showTocadaChip && (
-          <span
-            className="shrink-0 rounded-full border border-transparent px-1.5 py-px text-[8px] text-text-muted/35"
-            aria-label="Canción ya tocada"
-          >
-            Tocada
-          </span>
-        )}
-
-        {isActiva && items.some((i) => i.estado === "pendiente") && (
-          <ColaSiguienteButton
-            onClick={(event) => {
-              event.stopPropagation();
-              onFinalize?.(item.id);
-            }}
-            onPointerDown={stopDragPointer}
-          />
-        )}
-
-        {actionButtons}
       </div>
-    </div>
     </div>
   );
 }

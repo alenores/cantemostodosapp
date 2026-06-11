@@ -1,6 +1,5 @@
 import type { ColaItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DropResult } from "@hello-pangea/dnd";
 import { fetchColaAgregadoSnapshot } from "@/lib/usuario";
 
 export type CancionInput = {
@@ -41,73 +40,46 @@ export function getFirstPendienteIndex(items: ColaItem[]): number {
   return items.findIndex((item) => item.estado === "pendiente");
 }
 
-export function buildReorderUpdates(
-  items: ColaItem[],
-  result: DropResult,
-): OrdenUpdate[] | null {
-  const { source, destination, draggableId } = result;
+export function canSelectColaItem(item: ColaItem): boolean {
+  return item.estado === "pendiente";
+}
 
-  if (!destination) {
-    return null;
-  }
+export type ColaItemActionId =
+  | "activar"
+  | "subir"
+  | "bajar"
+  | "proxima"
+  | "fondo"
+  | "eliminar";
 
-  if (source.index === destination.index) {
-    return null;
-  }
+function getPendientesOrdenados(items: ColaItem[]): ColaItem[] {
+  return items.filter((item) => item.estado === "pendiente");
+}
 
-  const sourceItem = items.find((item) => String(item.id) === draggableId);
-
-  if (!sourceItem || sourceItem.estado !== "pendiente") {
-    return null;
-  }
-
-  const firstPendienteIndex = getFirstPendienteIndex(items);
-
-  if (firstPendienteIndex === -1) {
-    return null;
-  }
-
-  if (destination.index < firstPendienteIndex) {
-    return null;
-  }
-
-  const pendientes = items.filter((item) => item.estado === "pendiente");
-  const sourcePendienteIndex = pendientes.findIndex(
-    (item) => item.id === sourceItem.id,
-  );
-  const destinationPendienteIndex = destination.index - firstPendienteIndex;
-
-  if (sourcePendienteIndex === -1) {
-    return null;
-  }
-
-  const reordered = [...pendientes];
-  const [moved] = reordered.splice(sourcePendienteIndex, 1);
-  reordered.splice(destinationPendienteIndex, 0, moved);
-
-  const anchorOrden = Math.max(
+function getAnchorOrden(items: ColaItem[]): number {
+  return Math.max(
     0,
     ...items
       .filter((item) => item.estado !== "pendiente")
       .map((item) => item.orden),
   );
+}
 
-  return reordered.map((item, index) => ({
+function buildPendientesOrdenUpdates(
+  items: ColaItem[],
+  reorderedPendientes: ColaItem[],
+): OrdenUpdate[] {
+  const anchorOrden = getAnchorOrden(items);
+  return reorderedPendientes.map((item, index) => ({
     id: item.id,
     orden: anchorOrden + index + 1,
   }));
 }
 
-export function applyColaReorder(
+export function applyOrdenUpdates(
   items: ColaItem[],
-  result: DropResult,
-): ColaItem[] | null {
-  const updates = buildReorderUpdates(items, result);
-
-  if (!updates) {
-    return null;
-  }
-
+  updates: OrdenUpdate[],
+): ColaItem[] {
   const ordenById = new Map(updates.map((update) => [update.id, update.orden]));
 
   return [...items]
@@ -116,6 +88,101 @@ export function applyColaReorder(
       return orden === undefined ? item : { ...item, orden };
     })
     .sort((a, b) => a.orden - b.orden);
+}
+
+function reorderPendienteToIndex(
+  items: ColaItem[],
+  itemId: number,
+  destinationIndex: number,
+): OrdenUpdate[] | null {
+  const pendientes = getPendientesOrdenados(items);
+  const sourceIndex = pendientes.findIndex((item) => item.id === itemId);
+
+  if (sourceIndex === -1 || sourceIndex === destinationIndex) {
+    return null;
+  }
+
+  const reordered = [...pendientes];
+  const [moved] = reordered.splice(sourceIndex, 1);
+  reordered.splice(destinationIndex, 0, moved);
+
+  return buildPendientesOrdenUpdates(items, reordered);
+}
+
+export function movePendienteUp(
+  items: ColaItem[],
+  itemId: number,
+): OrdenUpdate[] | null {
+  const pendientes = getPendientesOrdenados(items);
+  const idx = pendientes.findIndex((item) => item.id === itemId);
+
+  if (idx <= 0) {
+    return null;
+  }
+
+  return reorderPendienteToIndex(items, itemId, idx - 1);
+}
+
+export function movePendienteDown(
+  items: ColaItem[],
+  itemId: number,
+): OrdenUpdate[] | null {
+  const pendientes = getPendientesOrdenados(items);
+  const idx = pendientes.findIndex((item) => item.id === itemId);
+
+  if (idx === -1 || idx >= pendientes.length - 1) {
+    return null;
+  }
+
+  return reorderPendienteToIndex(items, itemId, idx + 1);
+}
+
+export function movePendienteToProxima(
+  items: ColaItem[],
+  itemId: number,
+): OrdenUpdate[] | null {
+  return reorderPendienteToIndex(items, itemId, 0);
+}
+
+export function movePendienteToBottom(
+  items: ColaItem[],
+  itemId: number,
+): OrdenUpdate[] | null {
+  const pendientes = getPendientesOrdenados(items);
+
+  if (pendientes.length <= 1) {
+    return null;
+  }
+
+  return reorderPendienteToIndex(items, itemId, pendientes.length - 1);
+}
+
+export function getColaItemActions(
+  item: ColaItem,
+  items: ColaItem[],
+): ColaItemActionId[] {
+  if (!canSelectColaItem(item)) {
+    return [];
+  }
+
+  const variant = getColaVariant(item, items);
+  const pendientes = getPendientesOrdenados(items);
+  const idx = pendientes.findIndex((entry) => entry.id === item.id);
+  const isLast = idx === pendientes.length - 1;
+
+  const actions: ColaItemActionId[] = ["activar"];
+
+  if (variant === "pendiente" && idx > 0) {
+    actions.push("proxima", "subir");
+  }
+
+  if (!isLast) {
+    actions.push("bajar", "fondo");
+  }
+
+  actions.push("eliminar");
+
+  return actions;
 }
 
 export async function persistColaOrden(

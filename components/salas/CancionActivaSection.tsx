@@ -3,10 +3,12 @@
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
 import {
+  getLetraSourceKind,
   resolveLetraContenido,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
 import {
+  CIFRACLUB_EMBED_INITIAL_OFFSET_PX,
   LETRA_EMBED_BOTTOM_PADDING,
   LETRA_SECTION_BOTTOM_PADDING,
 } from "@/lib/sala-layout";
@@ -28,6 +30,7 @@ export default function CancionActivaSection({
 }: CancionActivaSectionProps) {
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
+  const [cifraTopRevealed, setCifraTopRevealed] = useState(false);
 
   const hasCancion = Boolean(cancionNombre);
   const hasManualText = Boolean(letraTexto?.trim());
@@ -85,6 +88,10 @@ export default function CancionActivaSection({
     };
   }, [hasManualText, hasUrl, urlLetra]);
 
+  useEffect(() => {
+    setCifraTopRevealed(false);
+  }, [urlLetra]);
+
   const needsExtract =
     !hasManualText &&
     Boolean(urlLetra?.trim()) &&
@@ -106,6 +113,16 @@ export default function CancionActivaSection({
 
   const showTexto = contenido?.mode === "texto";
   const showEmbed = contenido?.mode === "embed";
+
+  const isCifraclubEmbed =
+    showEmbed &&
+    contenido?.mode === "embed" &&
+    getLetraSourceKind(contenido.url) === "cifraclub";
+
+  const cifraclubEmbedOffsetPx =
+    isCifraclubEmbed && !cifraTopRevealed
+      ? CIFRACLUB_EMBED_INITIAL_OFFSET_PX
+      : undefined;
 
   return (
     <section
@@ -158,6 +175,12 @@ export default function CancionActivaSection({
                 title="Letra de la canción activa"
                 flushBottom
                 fill
+                initialScrollOffsetPx={cifraclubEmbedOffsetPx}
+                onRevealTop={
+                  isCifraclubEmbed
+                    ? () => setCifraTopRevealed(true)
+                    : undefined
+                }
               />
             </div>
           )}

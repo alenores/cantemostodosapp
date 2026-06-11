@@ -14,7 +14,7 @@ import {
   resultadoKey,
 } from "@/lib/buscador";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
-import { agregarACola, type CancionInput } from "@/lib/cola-logic";
+import { agregarACola, avanzarCancion, type CancionInput } from "@/lib/cola-logic";
 import {
   getDuplicadoCancioneroNivel,
   guardarLetraEnCancionero,
@@ -457,6 +457,30 @@ export default function BuscadorModal({
 
     try {
       await agregarACola(supabase, salaId, toCancionInput(seleccionado));
+
+      const { data: activaCheck } = await supabase
+        .from("cola_juntada")
+        .select("id")
+        .eq("sala_id", salaId)
+        .eq("estado", "activa")
+        .limit(1)
+        .maybeSingle();
+
+      if (!activaCheck) {
+        const { data: primeraPendiente } = await supabase
+          .from("cola_juntada")
+          .select("id")
+          .eq("sala_id", salaId)
+          .eq("estado", "pendiente")
+          .order("orden", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (primeraPendiente) {
+          await avanzarCancion(supabase, salaId, primeraPendiente.id);
+        }
+      }
+
       await onDataChange();
       onColaAdded?.();
       handleClose();

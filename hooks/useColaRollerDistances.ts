@@ -93,6 +93,16 @@ export function useColaRollerDistances(
 
     if (scrollTop <= SCROLL_TOP_CALIBRATION_PX && activeRect) {
       focalCenterYRef.current = activeRect.top + activeRect.height / 2;
+    } else if (
+      scrollTop <= SCROLL_TOP_CALIBRATION_PX &&
+      activeIndex < 0 &&
+      rowRefs.current[0]
+    ) {
+      // Sin canción activa: calibrar al primer elemento para que las
+      // canciones pendientes no aparezcan con el efecto faded de tocadas.
+      const firstRow = rowRefs.current[0];
+      const firstRect = firstRow.getBoundingClientRect();
+      focalCenterYRef.current = firstRect.top + firstRect.height / 2;
     } else if (focalCenterYRef.current === null) {
       const rowSpan = measureRowSpan(rowRefs.current, activeIndex);
       focalCenterYRef.current = containerCenter - rowSpan * 0.85;

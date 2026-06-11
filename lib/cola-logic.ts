@@ -232,6 +232,41 @@ export async function avanzarCancion(
     throw activarError;
   }
 
+  // Ensure the newly active item is positioned right after the tocadas.
+  // When the user picks a non-sequential song it keeps its original orden,
+  // which leaves it visually below the pendientes that were in between.
+  const { data: itemsAfterActivation } = await supabase
+    .from("cola_juntada")
+    .select("id, orden, estado")
+    .eq("sala_id", salaId)
+    .order("orden", { ascending: true });
+
+  if (itemsAfterActivation && itemsAfterActivation.length > 0) {
+    const tocadasFinal = itemsAfterActivation.filter(
+      (i) => i.estado === "tocada",
+    );
+    const activaFinal = itemsAfterActivation.find((i) => i.id === nuevoItemId);
+    const pendientesFinal = itemsAfterActivation
+      .filter((i) => i.estado === "pendiente")
+      .sort((a, b) => a.orden - b.orden);
+
+    const anchorOrden =
+      tocadasFinal.length > 0
+        ? Math.max(...tocadasFinal.map((i) => i.orden))
+        : 0;
+
+    if (activaFinal && activaFinal.orden !== anchorOrden + 1) {
+      const reorderUpdates: OrdenUpdate[] = [
+        { id: nuevoItemId, orden: anchorOrden + 1 },
+      ];
+      let nextOrden = anchorOrden + 2;
+      for (const item of pendientesFinal) {
+        reorderUpdates.push({ id: item.id, orden: nextOrden++ });
+      }
+      await persistColaOrden(supabase, reorderUpdates);
+    }
+  }
+
   const { data: sesion, error: sesionError } = await supabase
     .from("sesion_sala")
     .select("id")

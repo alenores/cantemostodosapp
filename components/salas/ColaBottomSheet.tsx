@@ -463,7 +463,6 @@ export default function ColaBottomSheet({
       const [, my] = state.movement;
 
       if (
-        state.last &&
         (state.tap || Math.abs(my) < TAP_MOVE_THRESHOLD_PX) &&
         isBarInteractiveTarget(state.event?.target ?? null)
       ) {
@@ -553,6 +552,7 @@ export default function ColaBottomSheet({
     await avanzarCancion(supabase, salaId, advanceItemId);
     setAdvanceItemId(null);
     await onColaChange();
+    listScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleConfirmDeleteAll() {
@@ -588,10 +588,8 @@ export default function ColaBottomSheet({
   const isMostlyClosed = panelY >= contentHeight * (1 - SNAP_THRESHOLD);
   /** Misma geometría del panel abierto mientras arrastrás o animás (evita saltos al cruzar el umbral). */
   const panelUsesOpenLayout = isDragging || isSnapping || !isMostlyClosed;
-  /** Barra colapsada: persiste todo el arrastre (no desmontar bajo el dedo); oculta al abrir en reposo. */
-  const showPeekBar =
-    contentHeight > 0 &&
-    (isDragging || (!isSnapping && isMostlyClosed && !isSettledOpen));
+  /** Barra colapsada: visible cuando el panel está en zona cerrada (posición física). */
+  const showPeekBar = contentHeight > 0 && isPeekMode;
   const panelHidden = isPeekMode && !isDragging && !isSnapping;
 
   const activeIndex = items.findIndex((item) => item.estado === "activa");
@@ -769,6 +767,7 @@ export default function ColaBottomSheet({
           {...bindPanelDrag()}
           data-no-tap-feedback
           className="relative z-20 shrink-0 touch-none select-none border-b border-border bg-bg-cola-sheet"
+          onClick={() => deleteFabOpen && setDeleteFabOpen(false)}
         >
           <div className="flex flex-col px-4 pt-1.5 pb-3">
             <div className="flex shrink-0 justify-center pb-2">
@@ -823,7 +822,10 @@ export default function ColaBottomSheet({
               <AddButton
                 ariaLabel="Agregar canción"
                 size={COLA_ADD_BUTTON_SIZE}
-                onPointerDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  event.nativeEvent.stopPropagation();
+                }}
                 onClick={handleOpenBuscador}
               />
             </div>
@@ -934,6 +936,10 @@ export default function ColaBottomSheet({
                 <AddButton
                   ariaLabel="Agregar canción"
                   size={COLA_ADD_BUTTON_SIZE}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    event.nativeEvent.stopPropagation();
+                  }}
                   onClick={handleOpenBuscador}
                 />
                 <TapButton

@@ -267,8 +267,8 @@ export default function BuscadorModal({
   }, []);
 
   const handleClose = useCallback(() => {
-    resetState();
     onClose();
+    resetState();
   }, [onClose, resetState]);
 
   useHardwareBack(open, () => {

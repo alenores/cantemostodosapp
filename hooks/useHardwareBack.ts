@@ -10,16 +10,8 @@ type StackEntry = {
 const stack: StackEntry[] = [];
 const consumedIds = new Set<string>();
 let listenerReady = false;
-let suppressNextPop = false;
 
-function handlePopState(event: PopStateEvent) {
-  if (suppressNextPop) {
-    suppressNextPop = false;
-    // Evita que Next.js interprete el history.back() de cleanup como navegación.
-    event.stopImmediatePropagation();
-    return;
-  }
-
+function handlePopState() {
   const entry = stack.pop();
 
   if (!entry) {
@@ -47,6 +39,7 @@ export function useHardwareBack(enabled: boolean, onBack: () => void) {
   const id = useId();
   const onBackRef = useRef(onBack);
   const pushedRef = useRef(false);
+  const prevStateRef = useRef<unknown>(null);
 
   onBackRef.current = onBack;
 
@@ -63,6 +56,7 @@ export function useHardwareBack(enabled: boolean, onBack: () => void) {
     };
 
     stack.push(entry);
+    prevStateRef.current = window.history.state;
     window.history.pushState({ hardwareBack: id }, "");
     pushedRef.current = true;
 
@@ -75,8 +69,9 @@ export function useHardwareBack(enabled: boolean, onBack: () => void) {
 
       if (pushedRef.current && !consumedIds.has(id)) {
         pushedRef.current = false;
-        suppressNextPop = true;
-        window.history.back();
+        // replaceState silently restores the previous state without firing
+        // a popstate event, so Next.js never interprets this as a navigation.
+        window.history.replaceState(prevStateRef.current, "");
       }
 
       consumedIds.delete(id);

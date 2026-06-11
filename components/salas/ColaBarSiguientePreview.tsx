@@ -26,6 +26,10 @@ export default function ColaBarSiguientePreview({
             event.stopPropagation();
             onSiguiente();
           }}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            event.nativeEvent.stopPropagation();
+          }}
         />
       )}
 

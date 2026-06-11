@@ -298,7 +298,7 @@ export default function ColaItemCard({
           </span>
         )}
 
-        {isActiva && (
+        {isActiva && items.some((i) => i.estado === "pendiente") && (
           <ColaSiguienteButton
             onClick={(event) => {
               event.stopPropagation();

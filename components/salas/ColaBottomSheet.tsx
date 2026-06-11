@@ -924,7 +924,7 @@ export default function ColaBottomSheet({
 
             <div className="flex shrink-0 items-stretch gap-2.5 pb-2">
               <ColaBarSiguientePreview
-                showSiguiente={Boolean(activaItem)}
+                showSiguiente={Boolean(activaItem) && pendientes > 0}
                 proximaDisplay={proximaDisplay}
                 onSiguiente={() => void handleFinalize()}
               />

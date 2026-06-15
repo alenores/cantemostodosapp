@@ -3,6 +3,7 @@ import { countCancionesCancionero } from "@/lib/cancionero";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 export const revalidate = 0;
 
@@ -33,12 +34,14 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
   const { aviso = null } = await searchParams;
 
   return (
-    <SalasPageClient
-      salas={salas ?? []}
-      cancioneroTotal={cancioneroTotal}
-      errorMessage={salasError?.message ?? null}
-      usuario={mapUserToUsuarioActivo(user)}
-      avisoInicial={aviso}
-    />
+    <Suspense fallback={null}>
+      <SalasPageClient
+        salas={salas ?? []}
+        cancioneroTotal={cancioneroTotal}
+        errorMessage={salasError?.message ?? null}
+        usuario={mapUserToUsuarioActivo(user)}
+        avisoInicial={aviso}
+      />
+    </Suspense>
   );
 }

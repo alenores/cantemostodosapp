@@ -6,7 +6,7 @@ import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { TapLink } from "@/components/ui/TapFeedback";
+import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
@@ -24,7 +24,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
-export default function CancioneroPageClient() {
+export type CancioneroPageClientProps = {
+  embedded?: boolean;
+  onClose?: () => void;
+};
+
+export default function CancioneroPageClient({
+  embedded = false,
+  onClose,
+}: CancioneroPageClientProps = {}) {
   const online = useOnlineStatus();
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [localReady, setLocalReady] = useState(false);
@@ -159,17 +167,29 @@ export default function CancioneroPageClient() {
   );
 
   return (
-    <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
+    <div
+      className={`relative flex min-h-full flex-1 flex-col bg-bg-app ${embedded ? "h-full" : ""}`}
+    >
       <AppReadyMarker />
       <header className="border-b border-border bg-bg-darker px-4 py-3">
         <div className="flex items-center gap-3">
-          <TapLink
-            href="/salas"
-            ariaLabel="Volver a salas"
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-          >
-            <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-          </TapLink>
+          {embedded ? (
+            <TapButton
+              aria-label="Volver a salas"
+              onClick={onClose}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+            </TapButton>
+          ) : (
+            <TapLink
+              href="/salas"
+              ariaLabel="Volver a salas"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+            </TapLink>
+          )}
           <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
             Canciones guardadas
           </h1>

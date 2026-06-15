@@ -2,6 +2,7 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import BuildVersionFooter from "@/components/BuildVersionFooter";
+import CancioneroPageClient from "@/components/cancionero/CancioneroPageClient";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
@@ -9,11 +10,13 @@ import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useAfinador } from "@/hooks/useAfinador";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import type { Sala, UsuarioActivo } from "@/types";
-import { BookOpen, Gauge, Plus } from "lucide-react";
+import { BookOpen, Gauge, Plus, WifiOff } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const AVISO_MENSAJES: Record<string, string> = {
   "perfil-actualizado": "Perfil actualizado.",
@@ -29,16 +32,26 @@ type SalasPageClientProps = {
   avisoInicial?: string | null;
 };
 
-export default function SalasPageClient({
+export default function SalasPageClient(props: SalasPageClientProps) {
+  const searchParams = useSearchParams();
+
+  return <SalasPageClientInner {...props} openCancioneroOnMount={searchParams.get("cancionero") === "1"} />;
+}
+
+function SalasPageClientInner({
   salas,
   cancioneroTotal,
   errorMessage,
   usuario,
   avisoInicial = null,
-}: SalasPageClientProps) {
+  openCancioneroOnMount = false,
+}: SalasPageClientProps & { openCancioneroOnMount?: boolean }) {
   const router = useRouter();
+  const online = useOnlineStatus();
   const [modalOpen, setModalOpen] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
+  const [cancioneroOpen, setCancioneroOpen] = useState(false);
+  const [cancioneroCount, setCancioneroCount] = useState(cancioneroTotal);
   const {
     detection: afinadorDetection,
     micError: afinadorMicError,
@@ -48,12 +61,45 @@ export default function SalasPageClient({
   } = useAfinador();
   const avisoMensaje = avisoInicial ? AVISO_MENSAJES[avisoInicial] : null;
 
-  useHardwareBack(afinadorOpen, () => {
+  useEffect(() => {
+    if (openCancioneroOnMount) {
+      setCancioneroOpen(true);
+      window.history.replaceState(null, "", "/salas");
+    }
+  }, [openCancioneroOnMount]);
+
+  useEffect(() => {
+    if (online) {
+      setCancioneroCount(cancioneroTotal);
+      return;
+    }
+
+    void getCancioneroLocalAsCancionero().then((canciones) => {
+      setCancioneroCount(canciones.length);
+    });
+  }, [online, cancioneroTotal]);
+
+  function openCancionero() {
+    if (online) {
+      router.push("/cancionero");
+      return;
+    }
+
+    setCancioneroOpen(true);
+  }
+
+  function closeCancionero() {
+    setCancioneroOpen(false);
+  }
+
+  useHardwareBack(cancioneroOpen, closeCancionero);
+
+  useHardwareBack(afinadorOpen && !cancioneroOpen, () => {
     stopAfinador();
     setAfinadorOpen(false);
   });
 
-  useHardwareBack(modalOpen && !afinadorOpen, () => {
+  useHardwareBack(modalOpen && !afinadorOpen && !cancioneroOpen, () => {
     setModalOpen(false);
   });
 
@@ -92,6 +138,16 @@ export default function SalasPageClient({
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+        {!online && (
+          <p
+            className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
+            role="status"
+          >
+            <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+            Sin conexión · modo local activo
+          </p>
+        )}
+
         {avisoMensaje && (
           <p
             className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
@@ -102,27 +158,22 @@ export default function SalasPageClient({
         )}
 
         <div className="grid grid-cols-2 gap-[10px]">
-          <TapLink
-            href="/cancionero"
-            ariaLabel="Ver canciones guardadas"
+          <TapButton
+            aria-label="Ver canciones guardadas"
+            onClick={openCancionero}
             className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
           >
             <p className="text-center text-[13px] font-bold text-text-primary">
               Canciones guardadas
             </p>
             <div className="flex flex-1 items-center justify-center">
-              <BookOpen
-                className="size-16 text-accent"
-                aria-hidden="true"
-              />
+              <BookOpen className="size-16 text-accent" aria-hidden="true" />
             </div>
             <div className="w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white">
               <span className="font-bold">Ver </span>
-              <span className="font-normal opacity-70">
-                ({cancioneroTotal})
-              </span>
+              <span className="font-normal opacity-70">({cancioneroCount})</span>
             </div>
-          </TapLink>
+          </TapButton>
 
           <TapButton
             aria-label="Abrir afinador"
@@ -148,7 +199,8 @@ export default function SalasPageClient({
           <TapButton
             aria-label="Crear sala"
             onClick={() => setModalOpen(true)}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded-full border border-border text-text-faint"
+            disabled={!online}
+            className="flex size-[18px] shrink-0 items-center justify-center rounded-full border border-border text-text-faint disabled:opacity-40"
           >
             <Plus className="size-2.5" strokeWidth={2.5} aria-hidden="true" />
           </TapButton>
@@ -164,7 +216,7 @@ export default function SalasPageClient({
         ) : salas.length > 0 ? (
           <div className="flex flex-col gap-3">
             {salas.map((sala) => (
-              <SalaCard key={sala.id} sala={sala} />
+              <SalaCard key={sala.id} sala={sala} offline={!online} />
             ))}
           </div>
         ) : (
@@ -192,6 +244,12 @@ export default function SalasPageClient({
           setAfinadorOpen(false);
         }}
       />
+
+      {cancioneroOpen && (
+        <div className="fixed inset-0 z-[200] flex flex-col bg-bg-app">
+          <CancioneroPageClient embedded onClose={closeCancionero} />
+        </div>
+      )}
     </div>
   );
 }

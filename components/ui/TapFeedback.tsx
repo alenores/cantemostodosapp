@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { isOfflineNavigableRoute } from "@/lib/offline/offline-routes";
 
 type TapButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -68,20 +67,12 @@ export function TapLink({
     }
 
     event.preventDefault();
-
-    if (!isOfflineNavigableRoute(href)) {
-      window.location.assign("/~offline");
-      return;
-    }
-
-    // Navegación completa: el service worker puede servir HTML/RSC cacheados.
-    window.location.assign(href);
   }
 
   return (
     <Link
       href={href}
-      prefetch
+      prefetch={online}
       aria-label={ariaLabel}
       className={`relative ${className}`.trim()}
       onClick={handleClick}

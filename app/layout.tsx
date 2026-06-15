@@ -1,4 +1,6 @@
 import SplashScreen from "@/components/SplashScreen";
+import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
+import SerwistProvider from "@/components/offline/SerwistProvider";
 import NavigationProgressProvider from "@/components/ui/NavigationProgress";
 import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
 import { APP_SHELL_BG } from "@/lib/splash-theme";
@@ -94,14 +96,17 @@ export default function RootLayout({
             <div className="splash-progress-bar h-full w-1/3 bg-accent" />
           </div>
         </div>
-        <TapFeedbackProvider>
-          <Suspense fallback={null}>
-            <NavigationProgressProvider>
-              <SplashScreen />
-              {children}
-            </NavigationProgressProvider>
-          </Suspense>
-        </TapFeedbackProvider>
+        <SerwistProvider>
+          <TapFeedbackProvider>
+            <Suspense fallback={null}>
+              <NavigationProgressProvider>
+                <CancioneroSyncRunner />
+                <SplashScreen />
+                {children}
+              </NavigationProgressProvider>
+            </Suspense>
+          </TapFeedbackProvider>
+        </SerwistProvider>
       </body>
     </html>
   );

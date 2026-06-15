@@ -14,6 +14,7 @@ export type CancionGuardada = {
   url_letra: string;
   letra: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 export type CancionCancionero = Pick<

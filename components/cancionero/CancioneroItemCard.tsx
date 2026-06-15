@@ -11,6 +11,7 @@ const LONG_PRESS_MS = 500;
 
 type CancioneroItemCardProps = {
   cancion: CancionCancionero;
+  mutationsEnabled?: boolean;
   actionsOpen: boolean;
   onOpenActions: () => void;
   onCloseActions: () => void;
@@ -21,6 +22,7 @@ type CancioneroItemCardProps = {
 
 export default function CancioneroItemCard({
   cancion,
+  mutationsEnabled = true,
   actionsOpen,
   onOpenActions,
   onCloseActions,
@@ -53,6 +55,10 @@ export default function CancioneroItemCard({
   }
 
   function handlePointerDown() {
+    if (!mutationsEnabled) {
+      return;
+    }
+
     clearLongPressTimer();
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
@@ -79,6 +85,10 @@ export default function CancioneroItemCard({
   }
 
   function handleContextMenu(event: MouseEvent) {
+    if (!mutationsEnabled) {
+      return;
+    }
+
     event.preventDefault();
     openActions();
   }

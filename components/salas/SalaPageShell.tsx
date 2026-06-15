@@ -7,7 +7,6 @@ import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
 import { TapLink } from "@/components/ui/TapFeedback";
 import {
   deriveCancionActivaFromCola,
-  deriveColaResumen,
   fetchColaCompleta,
   fetchColaItemById,
   getColaItemIdFromSesion,
@@ -15,10 +14,13 @@ import {
 } from "@/lib/sala-data";
 import { COLA_AVISO_SHOW_DELAY_MS, COLA_BAR_STACK_OFFSET_CSS } from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
+import { getColaLocalItems } from "@/lib/offline/cola-local-store";
+import { flushColaLocalToSupabase } from "@/lib/offline/cola-local-sync";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const GIT_COMMIT_SHA = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA ?? "dev";
@@ -31,6 +33,7 @@ type SalaPageShellProps = {
 };
 
 export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
+  const online = useOnlineStatus();
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
   const drawerWasOpenBeforeBuscadorRef = useRef(false);
@@ -110,12 +113,32 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
   }, []);
 
   const loadColaCompleta = useCallback(async () => {
+    if (!online) {
+      const items = await getColaLocalItems(salaId);
+      setColaItems(items);
+      setCancionActiva(deriveCancionActivaFromCola(items));
+      return;
+    }
+
     const supabase = createClient();
+
+    try {
+      const flushed = await flushColaLocalToSupabase(supabase, salaId);
+
+      if (flushed > 0) {
+        console.info(
+          `[cola-local] ${flushed} canciones subidas al final de la cola`,
+        );
+      }
+    } catch (flushError) {
+      console.warn("[cola-local] Error al subir cola local:", flushError);
+    }
+
     const items = await fetchColaCompleta(supabase, salaId);
 
     setColaItems(items);
     setCancionActiva(deriveCancionActivaFromCola(items));
-  }, [salaId]);
+  }, [online, salaId]);
 
   const updateCancionFromSesion = useCallback(async (sesion: SesionSala) => {
     const colaItemId = getColaItemIdFromSesion(sesion);
@@ -139,6 +162,11 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
   );
 
   useEffect(() => {
+    if (!online) {
+      void loadColaCompleta();
+      return;
+    }
+
     const supabase = createClient();
     let sesionChannel: RealtimeChannel | null = null;
     let colaChannel: RealtimeChannel | null = null;
@@ -229,7 +257,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
         void supabase.removeChannel(colaChannel);
       }
     };
-  }, [salaId, loadColaCompleta, handleSesionChange]);
+  }, [online, salaId, loadColaCompleta, handleSesionChange]);
 
   const lyricsDimmed = drawerProgress > 0.05;
 
@@ -261,6 +289,12 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
             <h1 className="truncate text-base font-extrabold leading-tight text-text-primary">
               {salaNombre}
             </h1>
+            {!online && (
+              <p className="mt-0.5 flex items-center gap-1 text-[10px] text-text-muted">
+                <WifiOff className="size-3 shrink-0" aria-hidden="true" />
+                Lista local en este celular
+              </p>
+            )}
           </div>
         </div>
       </header>
@@ -296,6 +330,7 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       <ColaBottomSheet
         items={colaItems}
         salaId={salaId}
+        offlineMode={!online}
         onColaChange={loadColaCompleta}
         onItemsReordered={handleColaItemsReordered}
         onOpenBuscador={handleOpenBuscador}

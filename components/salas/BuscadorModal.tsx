@@ -16,6 +16,7 @@ import {
 import { shouldApplyEmbedInitialOffset } from "@/lib/letra-display";
 import { LETRA_EMBED_INITIAL_OFFSET_PX } from "@/lib/sala-layout";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { agregarACola, avanzarCancion, type CancionInput } from "@/lib/cola-logic";
 import {
   getDuplicadoCancioneroNivel,
@@ -27,6 +28,15 @@ import {
   buscarEnCancionero,
   fetchCancioneroBusqueda,
 } from "@/lib/sala-data";
+import {
+  getCancioneroLocalAll,
+  getCancioneroLocalForBusqueda,
+} from "@/lib/offline/cancionero-store";
+import {
+  addColaLocalItem,
+  avanzarColaLocal,
+  getColaLocalItems,
+} from "@/lib/offline/cola-local-store";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero, ResultadoBusquedaBuscador } from "@/types";
 import {
@@ -204,6 +214,7 @@ export default function BuscadorModal({
   onDataChange,
   onColaAdded,
 }: BuscadorModalProps) {
+  const online = useOnlineStatus();
   const inputRef = useRef<HTMLInputElement>(null);
   const pantallaRef = useRef<Pantalla>("busqueda");
   const confirmacionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -265,10 +276,24 @@ export default function BuscadorModal({
   }, []);
 
   const cargarCancionesCancionero = useCallback(async () => {
+    if (!online) {
+      const records = await getCancioneroLocalAll();
+      const canciones = getCancioneroLocalForBusqueda(records);
+      setCancionesCancionero(
+        canciones.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          artista: c.artista,
+          letra: c.letra,
+        })),
+      );
+      return;
+    }
+
     const supabase = createClient();
     const canciones = await fetchCancioneroBusqueda(supabase);
     setCancionesCancionero(canciones);
-  }, []);
+  }, [online]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -355,6 +380,42 @@ export default function BuscadorModal({
     setError(null);
     setBusquedaRealizada(true);
     setResultados({ cancionero: [], linksGuardados: [], internet: [] });
+
+    if (!online) {
+      try {
+        const records = await getCancioneroLocalAll();
+        const canciones = getCancioneroLocalForBusqueda(records);
+        setCancionesCancionero(
+          canciones.map((c) => ({
+            id: c.id,
+            nombre: c.nombre,
+            artista: c.artista,
+            letra: c.letra,
+          })),
+        );
+
+        const paso1 = buscarEnCancionero(trimmed, canciones, { conLetra: true });
+
+        setResultados({
+          cancionero: paso1.map((c) =>
+            mapCancionLocalAResultado(c, "cancionero"),
+          ),
+          linksGuardados: [],
+          internet: [],
+        });
+      } catch (searchError) {
+        setError(
+          searchError instanceof Error
+            ? searchError.message
+            : "Error al buscar en el cancionero local",
+        );
+      } finally {
+        setLoadingLocal(false);
+        setLoadingInternet(false);
+      }
+
+      return;
+    }
 
     try {
       const supabase = createClient();
@@ -459,9 +520,31 @@ export default function BuscadorModal({
     setAccionLoading(true);
     setError(null);
 
-    const supabase = createClient();
-
     try {
+      if (!online) {
+        await addColaLocalItem(salaId, toCancionInput(seleccionado));
+
+        const localItems = await getColaLocalItems(salaId);
+        const tieneActiva = localItems.some((item) => item.estado === "activa");
+
+        if (!tieneActiva) {
+          const primeraPendiente = localItems.find(
+            (item) => item.estado === "pendiente",
+          );
+
+          if (primeraPendiente) {
+            await avanzarColaLocal(salaId, primeraPendiente.id);
+          }
+        }
+
+        await onDataChange();
+        onColaAdded?.();
+        handleClose();
+        return;
+      }
+
+      const supabase = createClient();
+
       await agregarACola(supabase, salaId, toCancionInput(seleccionado));
 
       const { data: activaCheck } = await supabase
@@ -631,11 +714,13 @@ export default function BuscadorModal({
     );
   }, [seleccionadoDisplay, cancionesCancionero]);
 
-  const guardarDeshabilitado = Boolean(
-    esCancioneroPreview ||
-      (esLinkGuardadoPreview && esCifraSitio) ||
-      duplicadoCompletoEnPreview,
-  );
+  const guardarDeshabilitado =
+    !online ||
+    Boolean(
+      esCancioneroPreview ||
+        (esLinkGuardadoPreview && esCifraSitio) ||
+        duplicadoCompletoEnPreview,
+    );
 
   const guardarAccionDirecta = Boolean(esInternetPreview && esCifraSitio);
 

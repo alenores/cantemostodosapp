@@ -8,29 +8,26 @@ import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapLink } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
   deleteCancionCancionero,
-  fetchCancionesCancionero,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
+import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
+import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
+import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero } from "@/types";
-import { ArrowLeft, Music, Search } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { ArrowLeft, Music, Search, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
-type CancioneroPageClientProps = {
-  cancionesIniciales: CancionCancionero[];
-  errorMessage: string | null;
-};
-
-export default function CancioneroPageClient({
-  cancionesIniciales,
-  errorMessage,
-}: CancioneroPageClientProps) {
-  const [canciones, setCanciones] = useState(cancionesIniciales);
+export default function CancioneroPageClient() {
+  const online = useOnlineStatus();
+  const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
+  const [localReady, setLocalReady] = useState(false);
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [cancionEditando, setCancionEditando] = useState<CancionCancionero | null>(
@@ -51,18 +48,51 @@ export default function CancioneroPageClient({
     [canciones, query],
   );
 
-  const reloadCanciones = useCallback(async () => {
-    const supabase = createClient();
-    const data = await fetchCancionesCancionero(supabase);
+  const loadLocalCanciones = useCallback(async () => {
+    const data = await getCancioneroLocalAsCancionero();
     setCanciones(data);
+    setLocalReady(true);
   }, []);
 
+  useEffect(() => {
+    void loadLocalCanciones();
+
+    function handleSyncFinished() {
+      void loadLocalCanciones();
+    }
+
+    window.addEventListener(CANCIONERO_SYNC_EVENT, handleSyncFinished);
+
+    return () => {
+      window.removeEventListener(CANCIONERO_SYNC_EVENT, handleSyncFinished);
+    };
+  }, [loadLocalCanciones]);
+
+  const reloadCanciones = useCallback(async () => {
+    if (!online) {
+      await loadLocalCanciones();
+      return;
+    }
+
+    const supabase = createClient();
+    await syncCancioneroLocal(supabase);
+    await loadLocalCanciones();
+  }, [loadLocalCanciones, online]);
+
   function handleNuevaCancion() {
+    if (!online) {
+      return;
+    }
+
     setCancionEditando(null);
     setFormOpen(true);
   }
 
   function handleEditar(cancion: CancionCancionero) {
+    if (!online) {
+      return;
+    }
+
     setCancionEditando(cancion);
     setFormOpen(true);
   }
@@ -72,11 +102,15 @@ export default function CancioneroPageClient({
   }
 
   function handleEliminar(cancion: CancionCancionero) {
+    if (!online) {
+      return;
+    }
+
     setCancionAEliminar(cancion);
   }
 
   async function handleConfirmEliminar() {
-    if (!cancionAEliminar || actionLoading) {
+    if (!cancionAEliminar || actionLoading || !online) {
       return;
     }
 
@@ -142,11 +176,23 @@ export default function CancioneroPageClient({
           <AddButton
             ariaLabel="Agregar canción"
             onClick={handleNuevaCancion}
+            disabled={!online}
+            className={!online ? "opacity-40" : ""}
           />
         </div>
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-4 pb-8">
+        {!online && (
+          <p
+            className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
+            role="status"
+          >
+            <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+            Sin conexión · mostrando copia local (solo lectura)
+          </p>
+        )}
+
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
@@ -173,15 +219,17 @@ export default function CancioneroPageClient({
           </p>
         )}
 
-        {errorMessage ? (
-          <p className="text-sm text-accent" role="alert">
-            No se pudieron cargar las canciones: {errorMessage}
+        {!localReady ? (
+          <p className="py-8 text-center text-sm text-text-muted">
+            Cargando canciones...
           </p>
         ) : canciones.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
             <Music className="size-10 text-text-faint" aria-hidden="true" />
             <p className="max-w-xs text-sm text-text-muted">
-              Aún no hay canciones guardadas. Tocá + para agregar la primera.
+              {online
+                ? "Aún no hay canciones guardadas. Tocá + para agregar la primera."
+                : "No hay copia local todavía. Conectate a internet para sincronizar."}
             </p>
           </div>
         ) : cancionesFiltradas.length === 0 ? (
@@ -194,6 +242,7 @@ export default function CancioneroPageClient({
               <CancioneroItemCard
                 key={cancion.id}
                 cancion={cancion}
+                mutationsEnabled={online}
                 actionsOpen={activeCardId === cancion.id}
                 onOpenActions={() => setActiveCardId(cancion.id)}
                 onCloseActions={() => setActiveCardId(null)}

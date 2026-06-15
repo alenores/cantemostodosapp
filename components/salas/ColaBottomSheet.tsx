@@ -41,6 +41,13 @@ import {
   getColaPanelClosedY,
 } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
+import {
+  avanzarColaLocal,
+  deleteColaLocalCompleta,
+  deleteColaLocalItem,
+  finalizarColaLocalActiva,
+  persistColaLocalOrden,
+} from "@/lib/offline/cola-local-store";
 import type { ColaItem } from "@/types";
 import { useDrag } from "@use-gesture/react";
 import { Trash2 } from "lucide-react";
@@ -63,6 +70,7 @@ const COLA_SELECT_TIMEOUT_MS = 8000;
 type ColaBottomSheetProps = {
   items: ColaItem[];
   salaId: number;
+  offlineMode?: boolean;
   onColaChange: () => Promise<void>;
   onItemsReordered: (items: ColaItem[]) => void;
   onOpenBuscador: () => void;
@@ -106,6 +114,7 @@ type ListDragMemo =
 export default function ColaBottomSheet({
   items,
   salaId,
+  offlineMode = false,
   onColaChange,
   onItemsReordered,
   onOpenBuscador,
@@ -572,6 +581,12 @@ export default function ColaBottomSheet({
 
     onItemsReordered(applyOrdenUpdates(items, updates));
 
+    if (offlineMode) {
+      await persistColaLocalOrden(salaId, items, updates);
+      await onColaChange();
+      return;
+    }
+
     const supabase = createClient();
     await persistColaOrden(supabase, updates);
     await onColaChange();
@@ -579,6 +594,13 @@ export default function ColaBottomSheet({
 
   async function handleConfirmDeleteItem() {
     if (deleteItemId === null) {
+      return;
+    }
+
+    if (offlineMode) {
+      await deleteColaLocalItem(salaId, deleteItemId);
+      setDeleteItemId(null);
+      await onColaChange();
       return;
     }
 
@@ -593,6 +615,14 @@ export default function ColaBottomSheet({
       return;
     }
 
+    if (offlineMode) {
+      await avanzarColaLocal(salaId, advanceItemId);
+      setAdvanceItemId(null);
+      await onColaChange();
+      listScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     const supabase = createClient();
     await avanzarCancion(supabase, salaId, advanceItemId);
     setAdvanceItemId(null);
@@ -601,6 +631,13 @@ export default function ColaBottomSheet({
   }
 
   async function handleConfirmDeleteAll() {
+    if (offlineMode) {
+      await deleteColaLocalCompleta(salaId);
+      setShowDeleteAllDialog(false);
+      await onColaChange();
+      return;
+    }
+
     const supabase = createClient();
     await deleteColaCompleta(supabase, salaId);
     setShowDeleteAllDialog(false);
@@ -612,6 +649,13 @@ export default function ColaBottomSheet({
     await new Promise((resolve) =>
       setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
     );
+
+    if (offlineMode) {
+      await finalizarColaLocalActiva(salaId);
+      await onColaChange();
+      snapPanelClosed();
+      return;
+    }
 
     const supabase = createClient();
     await finalizarCancionActiva(supabase, salaId);

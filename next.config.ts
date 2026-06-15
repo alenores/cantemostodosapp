@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSerwist } from "@serwist/turbopack";
 import { execSync } from "child_process";
 
 function getCommitSha(): string {
@@ -46,4 +47,4 @@ const nextConfig: NextConfig = {
     : undefined,
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

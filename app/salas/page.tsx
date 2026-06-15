@@ -1,8 +1,7 @@
-import SalasPageClient from "@/components/salas/SalasPageClient";
+import SalasPageGate from "@/components/salas/SalasPageGate";
 import { countCancionesCancionero } from "@/lib/cancionero";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 export const revalidate = 0;
@@ -18,8 +17,20 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { aviso = null } = await searchParams;
+
   if (!user) {
-    redirect("/auth/login");
+    return (
+      <Suspense fallback={null}>
+        <SalasPageGate
+          serverUsuario={null}
+          serverSalas={null}
+          cancioneroTotal={0}
+          errorMessage={null}
+          avisoInicial={aviso}
+        />
+      </Suspense>
+    );
   }
 
   const [{ data: salas, error: salasError }, cancioneroTotal] = await Promise.all([
@@ -31,15 +42,13 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
     countCancionesCancionero(supabase).catch(() => 0),
   ]);
 
-  const { aviso = null } = await searchParams;
-
   return (
     <Suspense fallback={null}>
-      <SalasPageClient
-        salas={salas ?? []}
+      <SalasPageGate
+        serverUsuario={mapUserToUsuarioActivo(user)}
+        serverSalas={salas ?? []}
         cancioneroTotal={cancioneroTotal}
         errorMessage={salasError?.message ?? null}
-        usuario={mapUserToUsuarioActivo(user)}
         avisoInicial={aviso}
       />
     </Suspense>

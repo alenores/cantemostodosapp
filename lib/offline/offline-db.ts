@@ -1,8 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { EstadoCola } from "@/types";
+import type { EstadoCola, Sala, UsuarioActivo } from "@/types";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 2;
+export const OFFLINE_DB_VERSION = 3;
 
 export type CancioneroLocalRecord = {
   id: number;
@@ -32,6 +32,14 @@ export type ColaLocalRecord = {
 
 type MetaRow = CancioneroLocalMeta & { id: "sync" };
 
+export type AppSnapshotRecord = {
+  id: "current";
+  usuario: UsuarioActivo;
+  salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+  cancioneroTotal: number;
+  savedAt: string;
+};
+
 export interface OfflineDB extends DBSchema {
   canciones: {
     key: number;
@@ -46,6 +54,10 @@ export interface OfflineDB extends DBSchema {
     key: number;
     value: ColaLocalRecord;
     indexes: { "by-sala": number };
+  };
+  app_snapshot: {
+    key: "current";
+    value: AppSnapshotRecord;
   };
 }
 
@@ -74,6 +86,10 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
             keyPath: "localId",
           });
           colaLocal.createIndex("by-sala", "salaId");
+        }
+
+        if (oldVersion < 3 && !db.objectStoreNames.contains("app_snapshot")) {
+          db.createObjectStore("app_snapshot", { keyPath: "id" });
         }
       },
     });

@@ -6,6 +6,7 @@ import CancioneroPageClient from "@/components/cancionero/CancioneroPageClient";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
+import SalaPageShell from "@/components/salas/SalaPageShell";
 import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useAfinador } from "@/hooks/useAfinador";
@@ -51,6 +52,10 @@ function SalasPageClientInner({
   const [modalOpen, setModalOpen] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [cancioneroOpen, setCancioneroOpen] = useState(false);
+  const [salaOverlay, setSalaOverlay] = useState<Pick<
+    Sala,
+    "id" | "nombre"
+  > | null>(null);
   const [cancioneroCount, setCancioneroCount] = useState(cancioneroTotal);
   const {
     detection: afinadorDetection,
@@ -91,6 +96,21 @@ function SalasPageClientInner({
   function closeCancionero() {
     setCancioneroOpen(false);
   }
+
+  function openSala(sala: Pick<Sala, "id" | "nombre" | "descripcion">) {
+    if (online) {
+      router.push(`/salas/${sala.id}`);
+      return;
+    }
+
+    setSalaOverlay({ id: sala.id, nombre: sala.nombre });
+  }
+
+  function closeSalaOverlay() {
+    setSalaOverlay(null);
+  }
+
+  useHardwareBack(salaOverlay !== null && !cancioneroOpen, closeSalaOverlay);
 
   useHardwareBack(cancioneroOpen, closeCancionero);
 
@@ -216,7 +236,12 @@ function SalasPageClientInner({
         ) : salas.length > 0 ? (
           <div className="flex flex-col gap-3">
             {salas.map((sala) => (
-              <SalaCard key={sala.id} sala={sala} offline={!online} />
+              <SalaCard
+                key={sala.id}
+                sala={sala}
+                offline={!online}
+                onOpenOffline={openSala}
+              />
             ))}
           </div>
         ) : (
@@ -248,6 +273,17 @@ function SalasPageClientInner({
       {cancioneroOpen && (
         <div className="fixed inset-0 z-[200] flex flex-col bg-bg-app">
           <CancioneroPageClient embedded onClose={closeCancionero} />
+        </div>
+      )}
+
+      {salaOverlay && (
+        <div className="fixed inset-0 z-[200] flex flex-col bg-bg-app">
+          <SalaPageShell
+            salaId={salaOverlay.id}
+            salaNombre={salaOverlay.nombre}
+            embedded
+            onClose={closeSalaOverlay}
+          />
         </div>
       )}
     </div>

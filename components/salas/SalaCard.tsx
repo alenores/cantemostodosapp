@@ -7,15 +7,20 @@ import { ArrowRight } from "lucide-react";
 type SalaCardProps = {
   sala: Pick<Sala, "id" | "nombre" | "descripcion">;
   offline?: boolean;
+  onOpenOffline?: (sala: Pick<Sala, "id" | "nombre" | "descripcion">) => void;
 };
 
-export default function SalaCard({ sala, offline = false }: SalaCardProps) {
+export default function SalaCard({
+  sala,
+  offline = false,
+  onOpenOffline,
+}: SalaCardProps) {
   if (offline) {
     return (
       <TapButton
-        aria-label={`${sala.nombre} (requiere conexión)`}
-        disabled
-        className="flex min-h-11 w-full items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3 opacity-50"
+        aria-label={`Abrir ${sala.nombre} (modo local)`}
+        onClick={() => onOpenOffline?.(sala)}
+        className="flex min-h-11 w-full items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3"
       >
         <div className="min-w-0 flex-1 text-left">
           <p className="truncate text-base font-bold text-text-primary">

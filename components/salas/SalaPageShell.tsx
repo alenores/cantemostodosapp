@@ -4,7 +4,7 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
-import { TapLink } from "@/components/ui/TapFeedback";
+import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import {
   deriveCancionActivaFromCola,
   fetchColaCompleta,
@@ -30,9 +30,17 @@ const SHOW_BUILD_SHA =
 type SalaPageShellProps = {
   salaId: number;
   salaNombre: string;
+  /** Solo para overlay offline desde Salas: cierra sin navegar. */
+  embedded?: boolean;
+  onClose?: () => void;
 };
 
-export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps) {
+export default function SalaPageShell({
+  salaId,
+  salaNombre,
+  embedded = false,
+  onClose,
+}: SalaPageShellProps) {
   const online = useOnlineStatus();
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
@@ -269,13 +277,23 @@ export default function SalaPageShell({ salaId, salaNombre }: SalaPageShellProps
       <AppReadyMarker />
       <header className="shrink-0 border-b border-accent/35 bg-accent-dim px-2 py-1.5">
         <div className="flex items-center gap-1">
-          <TapLink
-            href="/salas"
-            ariaLabel="Volver a salas"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
-          >
-            <ArrowLeft className="size-5" aria-hidden="true" />
-          </TapLink>
+          {embedded ? (
+            <TapButton
+              aria-label="Volver a salas"
+              onClick={onClose}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
+            >
+              <ArrowLeft className="size-5" aria-hidden="true" />
+            </TapButton>
+          ) : (
+            <TapLink
+              href="/salas"
+              ariaLabel="Volver a salas"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
+            >
+              <ArrowLeft className="size-5" aria-hidden="true" />
+            </TapLink>
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-semibold leading-tight text-accent">
               sala

@@ -271,7 +271,7 @@ function SalasPageClientInner({
       />
 
       {cancioneroOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col bg-bg-app">
+        <div className="fixed inset-0 z-[200] flex min-h-0 flex-col overflow-hidden bg-bg-app">
           <CancioneroPageClient embedded onClose={closeCancionero} />
         </div>
       )}

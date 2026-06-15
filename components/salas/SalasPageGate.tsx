@@ -3,11 +3,10 @@
 import SalasPageClient from "@/components/salas/SalasPageClient";
 import { SalasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { resolveOfflineSalasPayload } from "@/lib/auth/offline-entry";
 import { getAppSnapshot, saveAppSnapshot } from "@/lib/offline/app-snapshot-store";
-import { APP_SHELL_BG } from "@/lib/splash-theme";
 import { createClient } from "@/lib/supabase/client";
 import type { Sala, UsuarioActivo } from "@/types";
-import { WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -21,11 +20,16 @@ type SalasPageGateProps = {
 
 type GateState =
   | { status: "loading" }
-  | { status: "ready"; payload: Omit<SalasPageGateProps, "serverUsuario" | "serverSalas"> & {
-      salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
-      usuario: UsuarioActivo;
-    } }
-  | { status: "offline-no-session" };
+  | {
+      status: "ready";
+      payload: {
+        salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+        usuario: UsuarioActivo;
+        cancioneroTotal: number;
+        errorMessage: string | null;
+        avisoInicial: string | null;
+      };
+    };
 
 export default function SalasPageGate({
   serverUsuario,
@@ -84,47 +88,32 @@ export default function SalasPageGate({
         return;
       }
 
-      if (!session) {
-        if (online) {
-          router.replace("/auth/login");
-        } else {
-          setGate({ status: "offline-no-session" });
-        }
-        return;
-      }
+      if (!online) {
+        const snapshot = await getAppSnapshot();
 
-      if (online) {
-        if (!refreshAttemptedRef.current) {
-          refreshAttemptedRef.current = true;
-          router.refresh();
+        if (cancelled) {
           return;
         }
 
+        setGate({
+          status: "ready",
+          payload: resolveOfflineSalasPayload(snapshot, session, avisoInicial),
+        });
+        return;
+      }
+
+      if (!session) {
         router.replace("/auth/login");
         return;
       }
 
-      const snapshot = await getAppSnapshot();
-
-      if (cancelled) {
+      if (!refreshAttemptedRef.current) {
+        refreshAttemptedRef.current = true;
+        router.refresh();
         return;
       }
 
-      if (!snapshot) {
-        setGate({ status: "offline-no-session" });
-        return;
-      }
-
-      setGate({
-        status: "ready",
-        payload: {
-          salas: snapshot.salas,
-          usuario: snapshot.usuario,
-          cancioneroTotal: snapshot.cancioneroTotal,
-          errorMessage: null,
-          avisoInicial,
-        },
-      });
+      router.replace("/auth/login");
     }
 
     void bootstrapWithoutServerUser();
@@ -144,22 +133,6 @@ export default function SalasPageGate({
 
   if (gate.status === "loading") {
     return <SalasLoadingSkeleton />;
-  }
-
-  if (gate.status === "offline-no-session") {
-    return (
-      <div
-        className="flex min-h-full flex-1 flex-col items-center justify-center gap-4 px-6 py-12 text-center"
-        style={{ backgroundColor: APP_SHELL_BG }}
-      >
-        <WifiOff className="size-12 text-text-muted" aria-hidden="true" />
-        <h1 className="text-xl font-extrabold text-text-primary">Sin conexión</h1>
-        <p className="max-w-sm text-sm text-text-muted">
-          No hay sesión guardada en este celular. Conectate a internet y entrá
-          una vez; después podés abrir la app sin WiFi.
-        </p>
-      </div>
-    );
   }
 
   return <SalasPageClient {...gate.payload} />;

@@ -4,6 +4,7 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import { clearAppSnapshot } from "@/lib/offline/app-snapshot-store";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import { ArrowLeft, Camera } from "lucide-react";
@@ -49,6 +50,7 @@ export default function PerfilPageClient({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleAvatarPick(event: React.ChangeEvent<HTMLInputElement>) {
@@ -72,6 +74,22 @@ export default function PerfilPageClient({
     setError(null);
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+  }
+
+  async function handleLogout() {
+    if (logoutLoading) {
+      return;
+    }
+
+    setLogoutLoading(true);
+    setError(null);
+
+    const supabase = createClient();
+    await clearAppSnapshot();
+    await supabase.auth.signOut();
+
+    startNavigation();
+    router.replace("/auth/login");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -363,6 +381,14 @@ export default function PerfilPageClient({
             </p>
           )}
         </form>
+
+        <TapButton
+          onClick={() => void handleLogout()}
+          disabled={logoutLoading || loading}
+          className="mt-6 min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-semibold text-text-primary disabled:opacity-60"
+        >
+          {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
+        </TapButton>
       </main>
     </div>
   );

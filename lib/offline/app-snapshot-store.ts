@@ -36,3 +36,12 @@ export async function getAppSnapshot(): Promise<AppSnapshotRecord | null> {
   const db = await getOfflineDb();
   return (await db.get("app_snapshot", "current")) ?? null;
 }
+
+export async function clearAppSnapshot(): Promise<void> {
+  if (!isOfflineBrowser()) {
+    return;
+  }
+
+  const db = await getOfflineDb();
+  await db.delete("app_snapshot", "current");
+}

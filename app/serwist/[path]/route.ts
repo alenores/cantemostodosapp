@@ -20,6 +20,8 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
     useNativeEsbuild: true,
     additionalPrecacheEntries: [
       { url: "/~offline", revision },
+      { url: "/salas", revision },
+      { url: "/cancionero", revision },
       { url: "/manifest.json", revision },
     ],
   });

@@ -1,5 +1,6 @@
 import SplashScreen from "@/components/SplashScreen";
 import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
+import OfflinePrefetchRunner from "@/components/offline/OfflinePrefetchRunner";
 import SerwistProvider from "@/components/offline/SerwistProvider";
 import NavigationProgressProvider from "@/components/ui/NavigationProgress";
 import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
@@ -101,6 +102,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <NavigationProgressProvider>
                 <CancioneroSyncRunner />
+                <OfflinePrefetchRunner />
                 <SplashScreen />
                 {children}
               </NavigationProgressProvider>

@@ -21,6 +21,9 @@ export default function OfflinePage() {
       >
         Canciones guardadas
       </TapLink>
+      <p className="max-w-sm text-xs text-text-muted">
+        Tip: abrí Canciones guardadas una vez con WiFi para usarlas sin conexión.
+      </p>
       <TapLink
         href="/salas"
         ariaLabel="Volver a salas"

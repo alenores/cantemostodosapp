@@ -15,6 +15,6 @@ export const config = {
      * - favicon.ico
      * - login y registro (públicos; sin refresco en cada visita)
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|serwist|~offline|auth/login|auth/registro|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|serwist|~offline|pwa-boot\\.html|auth/login|auth/registro|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|html)$).*)",
   ],
 };

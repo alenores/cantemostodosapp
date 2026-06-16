@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#232323" />
+    <title>CantemosTodos</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #232323;
+        color: #e8e8e8;
+        font-family: system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Cargando CantemosTodos...</p>
+    <script>
+      (function () {
+        var target = "/salas";
+
+        function go() {
+          window.location.replace(target);
+        }
+
+        if (!("serviceWorker" in navigator)) {
+          go();
+          return;
+        }
+
+        navigator.serviceWorker
+          .register("/serwist/sw.js", { scope: "/" })
+          .then(function () {
+            return navigator.serviceWorker.ready;
+          })
+          .then(go)
+          .catch(go);
+      })();
+    </script>
+  </body>
+</html>

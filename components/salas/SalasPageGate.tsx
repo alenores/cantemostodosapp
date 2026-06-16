@@ -5,6 +5,7 @@ import { SalasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { resolveOfflineSalasPayload } from "@/lib/auth/offline-entry";
 import { getAppSnapshot, saveAppSnapshot } from "@/lib/offline/app-snapshot-store";
+import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import type { Sala, UsuarioActivo } from "@/types";
 import { useRouter } from "next/navigation";
@@ -72,6 +73,7 @@ export default function SalasPageGate({
         salas: serverSalas,
         cancioneroTotal,
       });
+      void warmOfflineCache();
       refreshAttemptedRef.current = false;
       return;
     }

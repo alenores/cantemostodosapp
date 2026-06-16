@@ -2,6 +2,7 @@
 
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OFFLINE_PREFETCH_ROUTES } from "@/lib/offline/offline-routes";
+import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -14,14 +15,10 @@ export function useOfflinePrefetch(): void {
       return;
     }
 
-    for (const route of OFFLINE_PREFETCH_ROUTES) {
-      router.prefetch(route);
-    }
+    void warmOfflineCache();
 
     for (const route of OFFLINE_PREFETCH_ROUTES) {
-      void fetch(route, { credentials: "include" }).catch(() => {
-        // El prefetch de Next + SW cubren la mayoría de casos.
-      });
+      router.prefetch(route);
     }
   }, [online, router]);
 }

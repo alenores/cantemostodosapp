@@ -4,6 +4,7 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -81,6 +82,7 @@ export default function LoginPageClient() {
     }
 
     router.refresh();
+    void warmOfflineCache();
     startNavigation();
     router.push("/salas");
   }

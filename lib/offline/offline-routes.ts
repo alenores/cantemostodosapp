@@ -3,6 +3,7 @@ export const OFFLINE_NAVIGABLE_PATHS = new Set([
   "/salas",
   "/cancionero",
   "/~offline",
+  "/pwa-boot.html",
 ]);
 
 export function isOfflineNavigableRoute(href: string): boolean {

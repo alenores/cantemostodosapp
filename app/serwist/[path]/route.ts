@@ -19,8 +19,10 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
     swSrc: "app/sw.ts",
     useNativeEsbuild: true,
     additionalPrecacheEntries: [
+      { url: "/pwa-boot.html", revision },
       { url: "/~offline", revision },
       { url: "/salas", revision },
+      { url: "/auth/login", revision },
       { url: "/cancionero", revision },
       { url: "/manifest.json", revision },
     ],

@@ -10,36 +10,131 @@
         margin: 0;
         min-height: 100vh;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: 12px;
+        padding: 24px;
+        box-sizing: border-box;
         background: #232323;
         color: #e8e8e8;
         font-family: system-ui, sans-serif;
+        text-align: center;
+      }
+      p {
+        margin: 0;
+        max-width: 20rem;
+        line-height: 1.45;
+      }
+      .muted {
+        color: #a8a8a8;
+        font-size: 0.95rem;
       }
     </style>
   </head>
   <body>
-    <p>Cargando CantemosTodos...</p>
+    <p id="status">Cargando CantemosTodos...</p>
     <script>
       (function () {
-        var target = "/salas";
+        var FALLBACK_PATHS = ["/salas", "/pwa-boot.html", "/~offline"];
 
-        function go() {
-          window.location.replace(target);
+        function setStatus(text, muted) {
+          var node = document.getElementById("status");
+          node.textContent = text;
+          if (muted) {
+            node.className = "muted";
+          }
         }
 
-        if (!("serviceWorker" in navigator)) {
-          go();
-          return;
+        function matchCandidates(path) {
+          return [path, location.origin + path];
         }
 
-        navigator.serviceWorker
-          .register("/serwist/sw.js", { scope: "/" })
-          .then(function () {
-            return navigator.serviceWorker.ready;
-          })
-          .then(go)
-          .catch(go);
+        async function findCachedResponse(preferredPath) {
+          if (!("caches" in window)) {
+            return null;
+          }
+
+          var paths = preferredPath
+            ? [preferredPath].concat(
+                FALLBACK_PATHS.filter(function (path) {
+                  return path !== preferredPath;
+                }),
+              )
+            : FALLBACK_PATHS.slice();
+
+          var cacheNames = await caches.keys();
+
+          for (var i = 0; i < paths.length; i++) {
+            for (var j = 0; j < cacheNames.length; j++) {
+              var cache = await caches.open(cacheNames[j]);
+              var candidates = matchCandidates(paths[i]);
+
+              for (var k = 0; k < candidates.length; k++) {
+                var match = await cache.match(candidates[k]);
+                if (match) {
+                  return match;
+                }
+              }
+            }
+          }
+
+          return null;
+        }
+
+        async function renderCached(preferredPath) {
+          var cached = await findCachedResponse(preferredPath);
+          if (!cached) {
+            return false;
+          }
+
+          var html = await cached.text();
+          document.open();
+          document.write(html);
+          document.close();
+          return true;
+        }
+
+        async function registerWorkerIfOnline() {
+          if (!("serviceWorker" in navigator) || !navigator.onLine) {
+            return;
+          }
+
+          try {
+            await navigator.serviceWorker.register("/serwist/sw.js", {
+              scope: "/",
+            });
+            await navigator.serviceWorker.ready;
+          } catch (error) {
+            // Si falla el registro, seguimos con lo guardado localmente.
+          }
+        }
+
+        async function boot() {
+          await registerWorkerIfOnline();
+
+          if (navigator.onLine) {
+            window.location.replace("/salas");
+            return;
+          }
+
+          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            window.location.replace("/salas");
+            return;
+          }
+
+          var rendered = await renderCached("/salas");
+          if (rendered) {
+            return;
+          }
+
+          setStatus(
+            "Sin conexión. Abrí la app con WiFi al menos una vez para dejarla lista en el celular.",
+            true,
+          );
+        }
+
+        boot();
       })();
     </script>
   </body>

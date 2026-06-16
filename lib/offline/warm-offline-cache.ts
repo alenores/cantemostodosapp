@@ -1,11 +1,10 @@
+import {
+  OFFLINE_SHELL_CACHE,
+  OFFLINE_SHELL_URLS,
+} from "@/lib/offline/shell-urls";
+
 /** Rutas que deben quedar guardadas en el celular para abrir sin internet. */
-export const OFFLINE_WARM_ROUTES = [
-  "/pwa-boot.html",
-  "/salas",
-  "/~offline",
-  "/auth/login",
-  "/manifest.json",
-] as const;
+export const OFFLINE_WARM_ROUTES = [...OFFLINE_SHELL_URLS, "/manifest.json"] as const;
 
 function cacheUrlsInServiceWorker(urls: readonly string[]): void {
   if (!("serviceWorker" in navigator)) {
@@ -26,13 +25,22 @@ function cacheUrlsInServiceWorker(urls: readonly string[]): void {
 }
 
 async function fetchWarmRoutes(urls: readonly string[]): Promise<void> {
+  const cache =
+    typeof caches !== "undefined"
+      ? await caches.open(OFFLINE_SHELL_CACHE)
+      : null;
+
   await Promise.all(
     urls.map(async (url) => {
       try {
-        await fetch(url, {
+        const response = await fetch(url, {
           credentials: "include",
           cache: "reload",
         });
+
+        if (cache && response.ok) {
+          await cache.put(url, response.clone());
+        }
       } catch {
         // Sin red o fallo puntual: el SW puede tener copia previa.
       }

@@ -37,6 +37,8 @@ function isInternalNavigationHref(href: string | null): href is string {
   return Boolean(href && href.startsWith("/") && !href.startsWith("//"));
 }
 
+const NAV_PROGRESS_MAX_MS = 12_000;
+
 export default function NavigationProgressProvider({
   children,
 }: {
@@ -114,6 +116,20 @@ export default function NavigationProgressProvider({
       document.removeEventListener("click", handleClick, true);
     };
   }, [currentRoute, startNavigation]);
+
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setActive(false);
+    }, NAV_PROGRESS_MAX_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [active]);
 
   useEffect(() => {
     return () => {

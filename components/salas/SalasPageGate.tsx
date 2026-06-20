@@ -4,12 +4,14 @@ import SalasPageClient from "@/components/salas/SalasPageClient";
 import { SalasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { resolveOfflineSalasPayload } from "@/lib/auth/offline-entry";
+import { countCancionesCancionero } from "@/lib/cancionero";
 import { getAppSnapshot, saveAppSnapshot } from "@/lib/offline/app-snapshot-store";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
+import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { Sala, UsuarioActivo } from "@/types";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type SalasPageGateProps = {
   serverUsuario: UsuarioActivo | null;
@@ -41,7 +43,7 @@ export default function SalasPageGate({
 }: SalasPageGateProps) {
   const online = useOnlineStatus();
   const router = useRouter();
-  const refreshAttemptedRef = useRef(false);
+  const [refreshAttempted, setRefreshAttempted] = useState(false);
   const [gate, setGate] = useState<GateState>(() =>
     serverUsuario && serverSalas
       ? {
@@ -74,7 +76,7 @@ export default function SalasPageGate({
         cancioneroTotal,
       });
       void warmOfflineCache();
-      refreshAttemptedRef.current = false;
+      setRefreshAttempted(false);
       return;
     }
 
@@ -109,13 +111,42 @@ export default function SalasPageGate({
         return;
       }
 
-      if (!refreshAttemptedRef.current) {
-        refreshAttemptedRef.current = true;
+      if (!refreshAttempted) {
+        setRefreshAttempted(true);
         router.refresh();
         return;
       }
 
-      router.replace("/auth/login");
+      const usuario = mapUserToUsuarioActivo(session.user);
+      const [{ data: salas, error: salasError }, cancioneroTotalClient] =
+        await Promise.all([
+          supabase
+            .from("salas")
+            .select("id, nombre, descripcion")
+            .eq("visible", true)
+            .order("nombre"),
+          countCancionesCancionero(supabase).catch(() => 0),
+        ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      const payload = {
+        salas: salas ?? [],
+        usuario,
+        cancioneroTotal: cancioneroTotalClient,
+        errorMessage: salasError?.message ?? null,
+        avisoInicial,
+      };
+
+      setGate({ status: "ready", payload });
+      void saveAppSnapshot({
+        usuario,
+        salas: payload.salas,
+        cancioneroTotal: payload.cancioneroTotal,
+      });
+      void warmOfflineCache();
     }
 
     void bootstrapWithoutServerUser();
@@ -128,6 +159,7 @@ export default function SalasPageGate({
     cancioneroTotal,
     errorMessage,
     online,
+    refreshAttempted,
     router,
     serverSalas,
     serverUsuario,

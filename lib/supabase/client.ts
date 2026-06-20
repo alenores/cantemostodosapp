@@ -1,3 +1,7 @@
+import {
+  BROWSER_AUTH_COOKIE,
+  PWA_AUTH_COOKIE,
+} from "@/lib/supabase/auth-cookie";
 import { isStandalonePwa } from "@/lib/pwa";
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -15,7 +19,7 @@ export function createClient() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookieOptions: {
-          name: standalone ? "sb-pwa-auth" : "sb-browser-auth",
+          name: standalone ? PWA_AUTH_COOKIE : BROWSER_AUTH_COOKIE,
           ...(standalone ? { maxAge: PWA_SESSION_MAX_AGE_SECONDS } : {}),
         },
         auth: {

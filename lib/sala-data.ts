@@ -9,7 +9,6 @@ export type CancionBusquedaLocal = {
   url_letra: string;
 };
 
-const MAX_BUSQUEDA_LOCAL = 5;
 const PESO_NOMBRE = 10;
 const PESO_ARTISTA = 5;
 const PESO_LETRA = 1;
@@ -95,7 +94,6 @@ export function buscarEnCancionero(
     }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_BUSQUEDA_LOCAL)
     .map((entry) => entry.cancion);
 }
 

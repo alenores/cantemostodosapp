@@ -32,12 +32,8 @@ import {
 } from "@/lib/cancionero";
 import {
   buscarEnCancionero,
-  fetchCancioneroBusqueda,
+  loadCancionesParaBusqueda,
 } from "@/lib/sala-data";
-import {
-  getCancioneroLocalAll,
-  getCancioneroLocalForBusqueda,
-} from "@/lib/offline/cancionero-store";
 import {
   addColaLocalItem,
   avanzarColaLocal,
@@ -342,23 +338,17 @@ export default function BuscadorModal({
   }, []);
 
   const cargarCancionesCancionero = useCallback(async () => {
-    if (!online) {
-      const records = await getCancioneroLocalAll();
-      const canciones = getCancioneroLocalForBusqueda(records);
-      setCancionesCancionero(
-        canciones.map((c) => ({
-          id: c.id,
-          nombre: c.nombre,
-          artista: c.artista,
-          letra: c.letra,
-        })),
-      );
-      return;
-    }
-
-    const supabase = createClient();
-    const canciones = await fetchCancioneroBusqueda(supabase);
-    setCancionesCancionero(canciones);
+    const canciones = await loadCancionesParaBusqueda(
+      online ? createClient() : undefined,
+    );
+    setCancionesCancionero(
+      canciones.map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        artista: c.artista,
+        letra: c.letra,
+      })),
+    );
   }, [online]);
 
   const handleClose = useCallback(() => {
@@ -457,50 +447,23 @@ export default function BuscadorModal({
     setLocalCascadeActive(false);
     setInternetCascadeActive(false);
 
-    if (!online) {
-      try {
-        const records = await getCancioneroLocalAll();
-        const canciones = getCancioneroLocalForBusqueda(records);
-        setCancionesCancionero(
-          canciones.map((c) => ({
-            id: c.id,
-            nombre: c.nombre,
-            artista: c.artista,
-            letra: c.letra,
-          })),
-        );
-
-        const paso1 = buscarEnCancionero(trimmed, canciones, { conLetra: true });
-
-        setResultados({
-          cancionero: paso1.map((c) =>
-            mapCancionLocalAResultado(c, "cancionero"),
-          ),
-          linksGuardados: [],
-          internet: [],
-        });
-        scheduleCascade(paso1.length, setLocalCascadeActive, localCascadeTimerRef);
-      } catch (searchError) {
-        setError(
-          searchError instanceof Error
-            ? searchError.message
-            : "Error al buscar en el cancionero local",
-        );
-      } finally {
-        setLoadingLocal(false);
-        setLoadingInternet(false);
-      }
-
-      return;
-    }
-
     try {
-      const supabase = createClient();
-      const canciones = await fetchCancioneroBusqueda(supabase);
-      setCancionesCancionero(canciones);
+      const canciones = await loadCancionesParaBusqueda(
+        online ? createClient() : undefined,
+      );
+      setCancionesCancionero(
+        canciones.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          artista: c.artista,
+          letra: c.letra,
+        })),
+      );
 
       const paso1 = buscarEnCancionero(trimmed, canciones, { conLetra: true });
-      const paso2 = buscarEnCancionero(trimmed, canciones, { soloLink: true });
+      const paso2 = online
+        ? buscarEnCancionero(trimmed, canciones, { soloLink: true })
+        : [];
 
       setResultados({
         cancionero: paso1.map((c) =>
@@ -520,10 +483,17 @@ export default function BuscadorModal({
       setError(
         searchError instanceof Error
           ? searchError.message
-          : "Error al buscar en el cancionero",
+          : online
+            ? "Error al buscar en el cancionero"
+            : "Error al buscar en el cancionero local",
       );
     } finally {
       setLoadingLocal(false);
+    }
+
+    if (!online) {
+      setLoadingInternet(false);
+      return;
     }
 
     try {

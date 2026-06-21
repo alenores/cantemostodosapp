@@ -2,9 +2,10 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
-import CancioneroListSkeleton, {
+import {
   CASCADE_MAX_DELAY_MS,
   CASCADE_STAGGER_MS,
+  SearchFieldSkeleton,
 } from "@/components/cancionero/CancioneroListSkeleton";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
@@ -253,26 +254,29 @@ export default function CancioneroPageClient({
           </p>
         )}
 
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setActiveCardId(null);
-            }}
-            placeholder="Buscar por nombre o artista..."
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            disabled={!localReady}
-            className={`${inputClassName} ${!localReady ? "opacity-70" : ""}`}
-          />
-        </div>
+        {!localReady ? (
+          <SearchFieldSkeleton />
+        ) : (
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActiveCardId(null);
+              }}
+              placeholder="Buscar por nombre o artista..."
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              className={inputClassName}
+            />
+          </div>
+        )}
 
         {actionError && (
           <p className="text-sm text-accent" role="alert">
@@ -280,9 +284,7 @@ export default function CancioneroPageClient({
           </p>
         )}
 
-        {!localReady ? (
-          <CancioneroListSkeleton includeSearch={false} />
-        ) : canciones.length === 0 ? (
+        {!localReady ? null : canciones.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
             <Music className="size-10 text-text-faint" aria-hidden="true" />
             <p className="max-w-xs text-sm text-text-muted">

@@ -1,3 +1,7 @@
+import {
+  getCancioneroLocalAll,
+  getCancioneroLocalForBusqueda,
+} from "@/lib/offline/cancionero-store";
 import type { ColaItem, SesionSala } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -110,6 +114,24 @@ export async function fetchCancioneroBusqueda(
   }
 
   return data ?? [];
+}
+
+/** Copia local primero (como la pantalla de canciones guardadas); Supabase si no hay cache. */
+export async function loadCancionesParaBusqueda(
+  supabase?: SupabaseClient,
+): Promise<CancionBusquedaLocal[]> {
+  const records = await getCancioneroLocalAll();
+  const local = getCancioneroLocalForBusqueda(records);
+
+  if (local.length > 0) {
+    return local;
+  }
+
+  if (!supabase) {
+    return [];
+  }
+
+  return fetchCancioneroBusqueda(supabase);
 }
 
 export type CancionActivaData = {

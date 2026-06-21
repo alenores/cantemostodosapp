@@ -96,7 +96,7 @@ export function BuscadorInternetPendingSkeleton({ cardCount = 2 }: { cardCount?:
   );
 }
 
-function SearchFieldSkeleton() {
+export function SearchFieldSkeleton() {
   return (
     <div
       className="relative rounded-[10px] border border-border bg-[#323232] px-4 py-3"
@@ -180,7 +180,7 @@ export function CancioneroPageSkeleton() {
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-4 pb-24">
-        <CancioneroListSkeleton />
+        <SearchFieldSkeleton />
       </main>
     </div>
   );

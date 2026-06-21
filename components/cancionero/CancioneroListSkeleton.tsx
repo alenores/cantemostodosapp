@@ -8,13 +8,16 @@ const CARD_LAYOUTS = [
   { title: "w-[66%]", artist: "w-[38%]" },
 ] as const;
 
+export const CASCADE_STAGGER_MS = 58;
+export const CASCADE_MAX_DELAY_MS = 720;
+
 type CancioneroCardSkeletonProps = {
   titleWidth: string;
   artistWidth: string;
   shimmerDelayMs: number;
 };
 
-function CancioneroCardSkeleton({
+export function CancioneroCardSkeleton({
   titleWidth,
   artistWidth,
   shimmerDelayMs,
@@ -44,6 +47,51 @@ function CancioneroCardSkeleton({
           style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
         />
       </div>
+    </div>
+  );
+}
+
+function SectionLabelSkeleton() {
+  return (
+    <div
+      className="cancionero-skeleton-shimmer mb-2 h-3 w-28 rounded-md"
+      aria-hidden="true"
+    />
+  );
+}
+
+export function BuscadorSearchSkeleton({ cardCount = 5 }: { cardCount?: number }) {
+  return (
+    <div
+      className="flex flex-col gap-2"
+      role="status"
+      aria-live="polite"
+      aria-label="Buscando canciones"
+    >
+      <SectionLabelSkeleton />
+      {CARD_LAYOUTS.slice(0, cardCount).map((layout, index) => (
+        <CancioneroCardSkeleton
+          key={index}
+          titleWidth={layout.title}
+          artistWidth={layout.artist}
+          shimmerDelayMs={index * 90}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function BuscadorInternetPendingSkeleton({ cardCount = 2 }: { cardCount?: number }) {
+  return (
+    <div className="mt-2 flex flex-col gap-2" aria-hidden="true">
+      {CARD_LAYOUTS.slice(0, cardCount).map((layout, index) => (
+        <CancioneroCardSkeleton
+          key={index}
+          titleWidth={layout.title}
+          artistWidth={layout.artist}
+          shimmerDelayMs={index * 90}
+        />
+      ))}
     </div>
   );
 }

@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  BuscadorInternetPendingSkeleton,
+  BuscadorSearchSkeleton,
+  CASCADE_MAX_DELAY_MS,
+  CASCADE_STAGGER_MS,
+} from "@/components/cancionero/CancioneroListSkeleton";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
@@ -45,7 +51,6 @@ import {
   Check,
   Link2,
   ListPlus,
-  Loader2,
   Music,
   Search,
   X,
@@ -57,6 +62,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from "react";
 
@@ -102,6 +108,33 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
       resultado.fuente === "cancionero" ? "" : resultado.url,
     letra_texto: letraTexto,
   };
+}
+
+function getCascadeDelay(index: number): string {
+  return `${Math.min(index * CASCADE_STAGGER_MS, CASCADE_MAX_DELAY_MS)}ms`;
+}
+
+function scheduleCascade(
+  count: number,
+  setActive: (active: boolean) => void,
+  timerRef: MutableRefObject<number | undefined>,
+) {
+  if (timerRef.current !== undefined) {
+    window.clearTimeout(timerRef.current);
+  }
+
+  if (count <= 0) {
+    setActive(false);
+    return;
+  }
+
+  setActive(true);
+  const duration =
+    Math.min(count * CASCADE_STAGGER_MS, CASCADE_MAX_DELAY_MS) + 520;
+  timerRef.current = window.setTimeout(() => {
+    setActive(false);
+    timerRef.current = undefined;
+  }, duration);
 }
 
 function ResultadoItem({
@@ -178,13 +211,19 @@ function SeccionResultados({
   icon,
   resultados,
   onSelect,
+  cascadeActive = false,
+  cascadeStartIndex = 0,
+  trailing,
 }: {
   label: string;
   icon?: ReactNode;
   resultados: ResultadoBusquedaBuscador[];
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
+  cascadeActive?: boolean;
+  cascadeStartIndex?: number;
+  trailing?: ReactNode;
 }) {
-  if (resultados.length === 0) {
+  if (resultados.length === 0 && !trailing) {
     return null;
   }
 
@@ -196,13 +235,24 @@ function SeccionResultados({
           {label}
         </p>
       </div>
-      <ul className="flex flex-col gap-2">
-        {resultados.map((resultado) => (
-          <li key={resultadoKey(resultado)}>
-            <ResultadoItem resultado={resultado} onSelect={onSelect} />
-          </li>
-        ))}
-      </ul>
+      {resultados.length > 0 ? (
+        <ul className="flex flex-col gap-2">
+          {resultados.map((resultado, index) => (
+            <li
+              key={resultadoKey(resultado)}
+              className={cascadeActive ? "cancionero-item-cascade" : undefined}
+              style={
+                cascadeActive
+                  ? { animationDelay: getCascadeDelay(cascadeStartIndex + index) }
+                  : undefined
+              }
+            >
+              <ResultadoItem resultado={resultado} onSelect={onSelect} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {trailing}
     </div>
   );
 }
@@ -220,6 +270,8 @@ export default function BuscadorModal({
   const confirmacionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const localCascadeTimerRef = useRef<number | undefined>(undefined);
+  const internetCascadeTimerRef = useRef<number | undefined>(undefined);
 
   const [pantalla, setPantalla] = useState<Pantalla>("busqueda");
   const [query, setQuery] = useState("");
@@ -243,6 +295,8 @@ export default function BuscadorModal({
   const [cancionesCancionero, setCancionesCancionero] = useState<
     CancionCancionero[]
   >([]);
+  const [localCascadeActive, setLocalCascadeActive] = useState(false);
+  const [internetCascadeActive, setInternetCascadeActive] = useState(false);
 
   const resultadosEnInternet = useMemo(
     () => [...resultados.linksGuardados, ...resultados.internet],
@@ -273,6 +327,18 @@ export default function BuscadorModal({
     setEmbedTopRevealed(false);
     setGuardarLetraModal(null);
     setCancionesCancionero([]);
+    setLocalCascadeActive(false);
+    setInternetCascadeActive(false);
+
+    if (localCascadeTimerRef.current !== undefined) {
+      window.clearTimeout(localCascadeTimerRef.current);
+      localCascadeTimerRef.current = undefined;
+    }
+
+    if (internetCascadeTimerRef.current !== undefined) {
+      window.clearTimeout(internetCascadeTimerRef.current);
+      internetCascadeTimerRef.current = undefined;
+    }
   }, []);
 
   const cargarCancionesCancionero = useCallback(async () => {
@@ -336,6 +402,14 @@ export default function BuscadorModal({
       if (confirmacionTimerRef.current) {
         clearTimeout(confirmacionTimerRef.current);
       }
+
+      if (localCascadeTimerRef.current !== undefined) {
+        window.clearTimeout(localCascadeTimerRef.current);
+      }
+
+      if (internetCascadeTimerRef.current !== undefined) {
+        window.clearTimeout(internetCascadeTimerRef.current);
+      }
     };
   }, []);
 
@@ -380,6 +454,8 @@ export default function BuscadorModal({
     setError(null);
     setBusquedaRealizada(true);
     setResultados({ cancionero: [], linksGuardados: [], internet: [] });
+    setLocalCascadeActive(false);
+    setInternetCascadeActive(false);
 
     if (!online) {
       try {
@@ -403,6 +479,7 @@ export default function BuscadorModal({
           linksGuardados: [],
           internet: [],
         });
+        scheduleCascade(paso1.length, setLocalCascadeActive, localCascadeTimerRef);
       } catch (searchError) {
         setError(
           searchError instanceof Error
@@ -434,6 +511,11 @@ export default function BuscadorModal({
         ),
         internet: [],
       });
+      scheduleCascade(
+        paso1.length + paso2.length,
+        setLocalCascadeActive,
+        localCascadeTimerRef,
+      );
     } catch (searchError) {
       setError(
         searchError instanceof Error
@@ -478,6 +560,11 @@ export default function BuscadorModal({
         ...current,
         internet,
       }));
+      scheduleCascade(
+        internet.length,
+        setInternetCascadeActive,
+        internetCascadeTimerRef,
+      );
     } catch (searchError) {
       if (pantallaRef.current === "busqueda") {
         setError(
@@ -820,17 +907,7 @@ export default function BuscadorModal({
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            {loadingLocal && (
-              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                <Loader2
-                  className="size-8 animate-spin text-accent"
-                  aria-hidden="true"
-                />
-                <p className="text-sm text-text-secondary">
-                  Buscando en el cancionero...
-                </p>
-              </div>
-            )}
+            {loadingLocal && <BuscadorSearchSkeleton />}
 
             {!loadingLocal && error && totalResultados === 0 && (
               <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
@@ -869,42 +946,72 @@ export default function BuscadorModal({
                 </div>
               )}
 
-            {!loadingLocal && totalResultados > 0 && (
+            {!loadingLocal && (totalResultados > 0 || loadingInternet) && (
               <>
-                <SeccionResultados
-                  label="Del cancionero"
-                  icon={
-                    <Bookmark
-                      className="size-3.5 shrink-0"
-                      style={{ color: "var(--tuner-in-tune)" }}
-                      aria-hidden="true"
-                    />
-                  }
-                  resultados={resultados.cancionero}
-                  onSelect={handleSelectResultado}
-                />
-                <SeccionResultados
-                  label="En internet"
-                  icon={
-                    <Link2
-                      className="size-3.5 shrink-0 text-[#8BA4C4]"
-                      aria-hidden="true"
-                    />
-                  }
-                  resultados={resultadosEnInternet}
-                  onSelect={handleSelectResultado}
-                />
+                {resultados.cancionero.length > 0 ? (
+                  <SeccionResultados
+                    label="Del cancionero"
+                    icon={
+                      <Bookmark
+                        className="size-3.5 shrink-0"
+                        style={{ color: "var(--tuner-in-tune)" }}
+                        aria-hidden="true"
+                      />
+                    }
+                    resultados={resultados.cancionero}
+                    onSelect={handleSelectResultado}
+                    cascadeActive={localCascadeActive}
+                  />
+                ) : null}
+                {(resultados.linksGuardados.length > 0 ||
+                  resultados.internet.length > 0 ||
+                  loadingInternet) && (
+                  <SeccionResultados
+                    label="En internet"
+                    icon={
+                      <Link2
+                        className="size-3.5 shrink-0 text-[#8BA4C4]"
+                        aria-hidden="true"
+                      />
+                    }
+                    resultados={resultados.linksGuardados}
+                    onSelect={handleSelectResultado}
+                    cascadeActive={localCascadeActive}
+                    cascadeStartIndex={resultados.cancionero.length}
+                    trailing={
+                      <>
+                        {resultados.internet.length > 0 ? (
+                          <ul className="mt-2 flex flex-col gap-2">
+                            {resultados.internet.map((resultado, index) => (
+                              <li
+                                key={resultadoKey(resultado)}
+                                className={
+                                  internetCascadeActive
+                                    ? "cancionero-item-cascade"
+                                    : undefined
+                                }
+                                style={
+                                  internetCascadeActive
+                                    ? { animationDelay: getCascadeDelay(index) }
+                                    : undefined
+                                }
+                              >
+                                <ResultadoItem
+                                  resultado={resultado}
+                                  onSelect={handleSelectResultado}
+                                />
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {loadingInternet ? (
+                          <BuscadorInternetPendingSkeleton />
+                        ) : null}
+                      </>
+                    }
+                  />
+                )}
               </>
-            )}
-
-            {!loadingLocal && loadingInternet && (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-text-muted">
-                <Loader2
-                  className="size-4 animate-spin text-accent"
-                  aria-hidden="true"
-                />
-                Buscando en acordesdcanciones y cifraclub...
-              </div>
             )}
           </div>
         </section>

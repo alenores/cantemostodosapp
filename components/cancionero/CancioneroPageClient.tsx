@@ -2,7 +2,10 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
-import CancioneroListSkeleton from "@/components/cancionero/CancioneroListSkeleton";
+import CancioneroListSkeleton, {
+  CASCADE_MAX_DELAY_MS,
+  CASCADE_STAGGER_MS,
+} from "@/components/cancionero/CancioneroListSkeleton";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
@@ -21,9 +24,6 @@ import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero } from "@/types";
 import { ArrowLeft, Music, Search, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const CASCADE_STAGGER_MS = 58;
-const CASCADE_MAX_DELAY_MS = 720;
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";

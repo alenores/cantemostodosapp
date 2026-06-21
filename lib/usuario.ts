@@ -43,11 +43,12 @@ export async function fetchColaAgregadoSnapshot(
   supabase: SupabaseClient,
 ): Promise<ColaAgregadoSnapshot | null> {
   const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (error || !user) {
+  const user = session?.user;
+
+  if (!user) {
     return null;
   }
 

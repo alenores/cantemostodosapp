@@ -566,15 +566,6 @@ export async function agregarACola(
     throw new Error("La canción no tiene un link de letra válido.");
   }
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    throw new Error("Tu sesión expiró. Volvé a iniciar sesión.");
-  }
-
   const { data: lastItem, error: lastError } = await supabase
     .from("cola_juntada")
     .select("orden")

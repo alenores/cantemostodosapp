@@ -65,6 +65,12 @@ export default function CancioneroPageClient({
 
   const loadLocalCanciones = useCallback(async () => {
     const data = await getCancioneroLocalAsCancionero();
+
+    if (!hadLoadedRef.current && data.length > 0) {
+      hadLoadedRef.current = true;
+      setCascadeActive(true);
+    }
+
     setCanciones(data);
     setLocalReady(true);
   }, []);
@@ -84,16 +90,9 @@ export default function CancioneroPageClient({
   }, [loadLocalCanciones]);
 
   useEffect(() => {
-    if (!localReady || canciones.length === 0) {
+    if (!cascadeActive || canciones.length === 0) {
       return;
     }
-
-    if (hadLoadedRef.current) {
-      return;
-    }
-
-    hadLoadedRef.current = true;
-    setCascadeActive(true);
 
     const maxDelay = Math.min(
       canciones.length * CASCADE_STAGGER_MS,
@@ -107,7 +106,7 @@ export default function CancioneroPageClient({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [canciones.length, localReady]);
+  }, [cascadeActive, canciones.length]);
 
   const reloadCanciones = useCallback(async () => {
     if (!online) {

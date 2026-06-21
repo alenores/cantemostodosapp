@@ -53,6 +53,11 @@ export default function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true){localStorage.setItem("pwa-installed-v1","1");localStorage.setItem("pwa-ever-standalone-v1","1");}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body
         className="flex min-h-full flex-col"

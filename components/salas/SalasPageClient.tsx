@@ -2,6 +2,7 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import BuildVersionFooter from "@/components/BuildVersionFooter";
+import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
 import CancioneroPageClient from "@/components/cancionero/CancioneroPageClient";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
@@ -158,6 +159,8 @@ function SalasPageClientInner({
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+        <PwaInstallBanners />
+
         {!online && (
           <p
             className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"

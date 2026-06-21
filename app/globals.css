@@ -383,3 +383,184 @@ html.splash-active body {
     margin-bottom 280ms cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
 }
+
+/* PWA install banners */
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.progress-bar-indeterminate {
+  animation: progress-indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-install-bg {
+  0%,
+  100% {
+    background-color: var(--bg-card);
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+  }
+}
+
+.ios-install-pulse {
+  animation: pulse-install-bg 2.2s ease-in-out infinite;
+}
+
+@keyframes ios-share-press {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.78);
+  }
+}
+
+@keyframes ios-ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes ios-finger {
+  0%,
+  70%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  45% {
+    transform: translateX(-50%) translateY(8px);
+    opacity: 0.8;
+  }
+  55% {
+    transform: translateX(-50%) translateY(4px);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-menu-slide {
+  0%,
+  15% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  30%,
+  75% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  90%,
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes ios-menu-highlight {
+  0%,
+  30% {
+    background: transparent;
+  }
+  50%,
+  70% {
+    background: color-mix(in srgb, var(--accent) 18%, white);
+  }
+  85%,
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes ios-icon-pop {
+  0%,
+  55% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.92);
+  }
+  90%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ios-icon-shine {
+  0%,
+  60% {
+    transform: translateX(-100%) rotate(25deg);
+    opacity: 0;
+  }
+  75% {
+    transform: translateX(200%) rotate(25deg);
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.ios-share-btn {
+  animation: ios-share-press 3s ease-in-out infinite;
+}
+
+.ios-share-ripple {
+  animation: ios-ripple 3s ease-out infinite;
+}
+
+.ios-finger {
+  animation: ios-finger 3s ease-in-out infinite;
+}
+
+.ios-menu {
+  animation: ios-menu-slide 4s ease-in-out infinite;
+}
+
+.ios-menu-item {
+  animation: ios-menu-highlight 4s ease-in-out infinite;
+}
+
+.ios-icon-pop {
+  animation: ios-icon-pop 3.5s ease-out infinite;
+}
+
+.ios-icon-shine {
+  animation: ios-icon-shine 3.5s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar-indeterminate,
+  .ios-install-pulse,
+  .ios-share-btn,
+  .ios-share-ripple,
+  .ios-finger,
+  .ios-menu,
+  .ios-menu-item,
+  .ios-icon-pop,
+  .ios-icon-shine {
+    animation: none;
+  }
+}

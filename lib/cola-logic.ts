@@ -1,6 +1,12 @@
 import type { ColaItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchColaAgregadoSnapshot } from "@/lib/usuario";
+import {
+  isMissingColumnError,
+} from "@/lib/supabase/errors";
+import {
+  fetchColaAgregadoSnapshot,
+  type ColaAgregadoSnapshot,
+} from "@/lib/usuario";
 
 export type CancionInput = {
   nombre: string;
@@ -467,11 +473,108 @@ export async function finalizarCancionActiva(
   }
 }
 
+type ColaInsertBase = {
+  sala_id: number;
+  nombre: string;
+  artista: string | null;
+  url_letra: string;
+  estado: "pendiente";
+  orden: number;
+};
+
+async function insertColaJuntadaRow(
+  supabase: SupabaseClient,
+  base: ColaInsertBase,
+  options: {
+    letraTexto: string | null;
+    agregado: ColaAgregadoSnapshot | null;
+  },
+): Promise<void> {
+  const variants: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+
+  const pushVariant = (row: Record<string, unknown>) => {
+    const cleaned = Object.fromEntries(
+      Object.entries(row).filter(([, value]) => value !== undefined),
+    );
+    const key = JSON.stringify(cleaned);
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    variants.push(cleaned);
+  };
+
+  const { letraTexto, agregado } = options;
+
+  if (agregado) {
+    pushVariant({
+      ...base,
+      letra_texto: letraTexto,
+      ...agregado,
+    });
+  }
+
+  pushVariant({
+    ...base,
+    letra_texto: letraTexto,
+  });
+
+  if (agregado) {
+    pushVariant({
+      ...base,
+      ...agregado,
+    });
+  }
+
+  pushVariant({ ...base });
+
+  let lastSchemaError: { message?: string; code?: string } | null = null;
+
+  for (const row of variants) {
+    const { error } = await supabase.from("cola_juntada").insert(row);
+
+    if (!error) {
+      return;
+    }
+
+    if (isMissingColumnError(error)) {
+      lastSchemaError = error;
+      continue;
+    }
+
+    throw error;
+  }
+
+  if (lastSchemaError) {
+    throw lastSchemaError;
+  }
+
+  throw new Error("No se pudo agregar la canción a la cola.");
+}
+
 export async function agregarACola(
   supabase: SupabaseClient,
   salaId: number,
   cancion: CancionInput,
 ): Promise<void> {
+  const urlLetra = cancion.url_letra.trim();
+
+  if (!urlLetra) {
+    throw new Error("La canción no tiene un link de letra válido.");
+  }
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("Tu sesión expiró. Volvé a iniciar sesión.");
+  }
+
   const { data: lastItem, error: lastError } = await supabase
     .from("cola_juntada")
     .select("orden")
@@ -486,23 +589,23 @@ export async function agregarACola(
 
   const nextOrden = (lastItem?.orden ?? 0) + 1;
   const agregado = await fetchColaAgregadoSnapshot(supabase);
-
   const letraTexto = cancion.letra_texto?.trim() || null;
 
-  const { error } = await supabase.from("cola_juntada").insert({
-    sala_id: salaId,
-    nombre: cancion.nombre,
-    artista: cancion.artista,
-    url_letra: cancion.url_letra,
-    letra_texto: letraTexto,
-    estado: "pendiente",
-    orden: nextOrden,
-    ...(agregado ?? {}),
-  });
-
-  if (error) {
-    throw error;
-  }
+  await insertColaJuntadaRow(
+    supabase,
+    {
+      sala_id: salaId,
+      nombre: cancion.nombre.trim(),
+      artista: cancion.artista?.trim() || null,
+      url_letra: urlLetra,
+      estado: "pendiente",
+      orden: nextOrden,
+    },
+    {
+      letraTexto,
+      agregado,
+    },
+  );
 }
 
 export async function agregarAGuardadas(

@@ -1,5 +1,5 @@
 import type { CancionCancionero } from "@/types";
-import { fetchColaAgregadoSnapshot } from "@/lib/usuario";
+import { agregarACola } from "@/lib/cola-logic";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CancioneroFormData = {
@@ -250,34 +250,10 @@ export async function agregarCancioneroACola(
   salaId: number,
   cancion: CancionCancionero,
 ): Promise<void> {
-  const { data: lastItem, error: lastError } = await supabase
-    .from("cola_juntada")
-    .select("orden")
-    .eq("sala_id", salaId)
-    .order("orden", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (lastError) {
-    throw lastError;
-  }
-
-  const nextOrden = (lastItem?.orden ?? 0) + 1;
-  const letraTexto = cancion.letra?.trim() || null;
-  const agregado = await fetchColaAgregadoSnapshot(supabase);
-
-  const { error } = await supabase.from("cola_juntada").insert({
-    sala_id: salaId,
+  await agregarACola(supabase, salaId, {
     nombre: cancion.nombre,
     artista: cancion.artista,
-    url_letra: "",
-    letra_texto: letraTexto,
-    estado: "pendiente",
-    orden: nextOrden,
-    ...(agregado ?? {}),
+    url_letra: `cancionero://${cancion.id}`,
+    letra_texto: cancion.letra,
   });
-
-  if (error) {
-    throw error;
-  }
 }

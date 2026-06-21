@@ -24,6 +24,7 @@ import { LETRA_EMBED_INITIAL_OFFSET_PX } from "@/lib/sala-layout";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { agregarACola, avanzarCancion, type CancionInput } from "@/lib/cola-logic";
+import { formatDatabaseError } from "@/lib/supabase/errors";
 import {
   getDuplicadoCancioneroNivel,
   guardarLetraEnCancionero,
@@ -90,8 +91,7 @@ type GuardarLetraModalState = {
 const CONFIRMACION_MS = 1500;
 
 function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
-  const letraTexto =
-    resultado.fuente === "cancionero" ? resultado.letra?.trim() || null : null;
+  const letraTexto = resultado.letra?.trim() || null;
   const { nombre, artista } = resolverNombreArtistaDisplay(
     resultado.titulo,
     resultado.artista,
@@ -101,9 +101,43 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
     nombre,
     artista: artista || null,
     url_letra:
-      resultado.fuente === "cancionero" ? "" : resultado.url,
+      resultado.fuente === "cancionero"
+        ? resultado.id != null
+          ? `cancionero://${resultado.id}`
+          : ""
+        : resultado.url.trim(),
     letra_texto: letraTexto,
   };
+}
+
+async function activarPrimeraPendienteSiColaVacia(
+  supabase: ReturnType<typeof createClient>,
+  salaId: number,
+): Promise<void> {
+  const { data: activaCheck } = await supabase
+    .from("cola_juntada")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("estado", "activa")
+    .limit(1)
+    .maybeSingle();
+
+  if (activaCheck) {
+    return;
+  }
+
+  const { data: primeraPendiente } = await supabase
+    .from("cola_juntada")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("estado", "pendiente")
+    .order("orden", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (primeraPendiente) {
+    await avanzarCancion(supabase, salaId, primeraPendiente.id);
+  }
 }
 
 function getCascadeDelay(index: number): string {
@@ -604,27 +638,13 @@ export default function BuscadorModal({
 
       await agregarACola(supabase, salaId, toCancionInput(seleccionado));
 
-      const { data: activaCheck } = await supabase
-        .from("cola_juntada")
-        .select("id")
-        .eq("sala_id", salaId)
-        .eq("estado", "activa")
-        .limit(1)
-        .maybeSingle();
-
-      if (!activaCheck) {
-        const { data: primeraPendiente } = await supabase
-          .from("cola_juntada")
-          .select("id")
-          .eq("sala_id", salaId)
-          .eq("estado", "pendiente")
-          .order("orden", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (primeraPendiente) {
-          await avanzarCancion(supabase, salaId, primeraPendiente.id);
-        }
+      try {
+        await activarPrimeraPendienteSiColaVacia(supabase, salaId);
+      } catch (activationError) {
+        console.warn(
+          "[buscador] La canción se sumó a la cola, pero no se pudo activar:",
+          activationError,
+        );
       }
 
       await onDataChange();
@@ -632,9 +652,7 @@ export default function BuscadorModal({
       handleClose();
     } catch (actionError) {
       setError(
-        actionError instanceof Error
-          ? actionError.message
-          : "Error al agregar a la cola",
+        formatDatabaseError(actionError, "Error al agregar a la cola"),
       );
     } finally {
       setAccionLoading(false);
@@ -1122,8 +1140,8 @@ export default function BuscadorModal({
                   ¿Confirmás la canción?
                 </p>
 
-                {error && !previewConLetraLocal && (
-                  <p className="mb-2 text-sm text-accent">{error}</p>
+                {error && (
+                  <p className="mb-2 text-center text-sm text-accent">{error}</p>
                 )}
 
                 <div className="grid grid-cols-2 gap-1.5">
@@ -1134,7 +1152,9 @@ export default function BuscadorModal({
                     className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-2 py-1 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     <ListPlus className="size-4 shrink-0" aria-hidden="true" />
-                    <span className="text-center leading-tight">Sumar a fila</span>
+                    <span className="text-center leading-tight">
+                      {accionLoading ? "Sumando..." : "Sumar a fila"}
+                    </span>
                   </button>
 
                   <button

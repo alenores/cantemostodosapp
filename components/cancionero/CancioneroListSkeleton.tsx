@@ -26,7 +26,7 @@ function CancioneroCardSkeleton({
     >
       <div className="flex items-center gap-3">
         <div
-          className="cancionero-skeleton-shimmer size-6 shrink-0 rounded-md border border-[#9ae0c8]/25"
+          className="cancionero-skeleton-shimmer size-6 shrink-0 rounded-md border border-border"
           style={{ animationDelay: `${shimmerDelayMs}ms` }}
         />
         <div className="min-w-0 flex-1 space-y-2">
@@ -40,7 +40,7 @@ function CancioneroCardSkeleton({
           />
         </div>
         <div
-          className="cancionero-skeleton-shimmer size-3.5 shrink-0 rounded-full ring-1 ring-[var(--tuner-in-tune)]/35"
+          className="cancionero-skeleton-shimmer size-3.5 shrink-0 rounded-full ring-1 ring-border"
           style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
         />
       </div>
@@ -71,7 +71,7 @@ function CancioneroSkeletonHeader() {
       {[0, 1, 2, 3, 4].map((index) => (
         <span
           key={index}
-          className="cancionero-skeleton-eq-bar w-1 rounded-full bg-accent/35"
+          className="cancionero-skeleton-eq-bar w-1 rounded-full bg-text-faint/45"
           style={{ animationDelay: `${index * 0.14}s` }}
         />
       ))}

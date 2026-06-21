@@ -563,9 +563,9 @@ html.splash-active body {
 .cancionero-skeleton-shimmer {
   background-image: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--bg-card-hover) 88%, transparent) 0%,
-    color-mix(in srgb, var(--accent) 16%, var(--bg-card-hover)) 42%,
-    color-mix(in srgb, var(--bg-card-hover) 88%, transparent) 84%
+    color-mix(in srgb, var(--bg-card-hover) 92%, transparent) 0%,
+    color-mix(in srgb, var(--text-faint) 22%, var(--bg-card-hover)) 42%,
+    color-mix(in srgb, var(--bg-card-hover) 92%, transparent) 84%
   );
   background-size: 200% 100%;
   animation: cancionero-shimmer 2.6s ease-in-out infinite;

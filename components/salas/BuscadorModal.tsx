@@ -23,7 +23,7 @@ import { shouldApplyEmbedInitialOffset } from "@/lib/letra-display";
 import { LETRA_EMBED_INITIAL_OFFSET_PX } from "@/lib/sala-layout";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { agregarACola, avanzarCancion, type CancionInput } from "@/lib/cola-logic";
+import { type CancionInput } from "@/lib/cola-logic";
 import { formatDatabaseError } from "@/lib/supabase/errors";
 import {
   getDuplicadoCancioneroNivel,
@@ -108,36 +108,6 @@ function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
         : resultado.url.trim(),
     letra_texto: letraTexto,
   };
-}
-
-async function activarPrimeraPendienteSiColaVacia(
-  supabase: ReturnType<typeof createClient>,
-  salaId: number,
-): Promise<void> {
-  const { data: activaCheck } = await supabase
-    .from("cola_juntada")
-    .select("id")
-    .eq("sala_id", salaId)
-    .eq("estado", "activa")
-    .limit(1)
-    .maybeSingle();
-
-  if (activaCheck) {
-    return;
-  }
-
-  const { data: primeraPendiente } = await supabase
-    .from("cola_juntada")
-    .select("id")
-    .eq("sala_id", salaId)
-    .eq("estado", "pendiente")
-    .order("orden", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (primeraPendiente) {
-    await avanzarCancion(supabase, salaId, primeraPendiente.id);
-  }
 }
 
 function getCascadeDelay(index: number): string {
@@ -634,17 +604,20 @@ export default function BuscadorModal({
         return;
       }
 
-      const supabase = createClient();
+      const response = await fetch("/api/cola/agregar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          salaId,
+          cancion: toCancionInput(seleccionado),
+        }),
+      });
 
-      await agregarACola(supabase, salaId, toCancionInput(seleccionado));
+      const data = (await response.json()) as { ok?: boolean; error?: string };
 
-      try {
-        await activarPrimeraPendienteSiColaVacia(supabase, salaId);
-      } catch (activationError) {
-        console.warn(
-          "[buscador] La canción se sumó a la cola, pero no se pudo activar:",
-          activationError,
-        );
+      if (!response.ok) {
+        throw new Error(data.error ?? "Error al agregar a la cola");
       }
 
       await onDataChange();

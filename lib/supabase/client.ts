@@ -1,26 +1,48 @@
 import {
   BROWSER_AUTH_COOKIE,
   PWA_AUTH_COOKIE,
+  resolveAuthCookieName,
 } from "@/lib/supabase/auth-cookie";
-import { isStandalonePwa } from "@/lib/pwa";
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const PWA_SESSION_MAX_AGE_SECONDS = 400 * 24 * 60 * 60;
 
 let browserClient: SupabaseClient | undefined;
+let browserClientCookieName: string | undefined;
+
+function readDocumentCookies(): { name: string }[] {
+  if (typeof document === "undefined") {
+    return [];
+  }
+
+  return document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => ({ name: part.split("=")[0] ?? "" }))
+    .filter((cookie) => cookie.name.length > 0);
+}
 
 export function createClient() {
+  const cookieName = resolveAuthCookieName(readDocumentCookies());
+
+  if (browserClient && browserClientCookieName !== cookieName) {
+    browserClient = undefined;
+  }
+
   if (!browserClient) {
-    const standalone = isStandalonePwa();
+    browserClientCookieName = cookieName;
 
     browserClient = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookieOptions: {
-          name: standalone ? PWA_AUTH_COOKIE : BROWSER_AUTH_COOKIE,
-          ...(standalone ? { maxAge: PWA_SESSION_MAX_AGE_SECONDS } : {}),
+          name: cookieName,
+          ...(cookieName === PWA_AUTH_COOKIE
+            ? { maxAge: PWA_SESSION_MAX_AGE_SECONDS }
+            : {}),
         },
         auth: {
           persistSession: true,

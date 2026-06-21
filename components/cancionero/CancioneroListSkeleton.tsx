@@ -1,0 +1,139 @@
+const CARD_LAYOUTS = [
+  { title: "w-[72%]", artist: "w-[48%]" },
+  { title: "w-[84%]", artist: "w-[56%]" },
+  { title: "w-[64%]", artist: "w-[40%]" },
+  { title: "w-[78%]", artist: "w-[52%]" },
+  { title: "w-[70%]", artist: "w-[44%]" },
+  { title: "w-[80%]", artist: "w-[50%]" },
+  { title: "w-[66%]", artist: "w-[38%]" },
+] as const;
+
+type CancioneroCardSkeletonProps = {
+  titleWidth: string;
+  artistWidth: string;
+  shimmerDelayMs: number;
+};
+
+function CancioneroCardSkeleton({
+  titleWidth,
+  artistWidth,
+  shimmerDelayMs,
+}: CancioneroCardSkeletonProps) {
+  return (
+    <div
+      className="rounded-[12px] border border-border-card bg-bg-card px-3 py-3"
+      aria-hidden="true"
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="cancionero-skeleton-shimmer size-6 shrink-0 rounded-md border border-[#9ae0c8]/25"
+          style={{ animationDelay: `${shimmerDelayMs}ms` }}
+        />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div
+            className={`cancionero-skeleton-shimmer h-[17px] rounded-md ${titleWidth}`}
+            style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
+          />
+          <div
+            className={`cancionero-skeleton-shimmer h-[14px] rounded-md ${artistWidth}`}
+            style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
+          />
+        </div>
+        <div
+          className="cancionero-skeleton-shimmer size-3.5 shrink-0 rounded-full ring-1 ring-[var(--tuner-in-tune)]/35"
+          style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SearchFieldSkeleton() {
+  return (
+    <div
+      className="relative rounded-[10px] border border-border bg-[#323232] px-4 py-3"
+      aria-hidden="true"
+    >
+      <div className="flex items-center gap-3">
+        <div className="cancionero-skeleton-shimmer size-4 shrink-0 rounded-full" />
+        <div className="cancionero-skeleton-shimmer h-4 flex-1 rounded-md" />
+      </div>
+    </div>
+  );
+}
+
+function CancioneroSkeletonHeader() {
+  return (
+    <div
+      className="flex items-center justify-center gap-1 py-1"
+      aria-hidden="true"
+    >
+      {[0, 1, 2, 3, 4].map((index) => (
+        <span
+          key={index}
+          className="cancionero-skeleton-eq-bar w-1 rounded-full bg-accent/35"
+          style={{ animationDelay: `${index * 0.14}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+type CancioneroListSkeletonProps = {
+  includeSearch?: boolean;
+  cardCount?: number;
+};
+
+export default function CancioneroListSkeleton({
+  includeSearch = true,
+  cardCount = 7,
+}: CancioneroListSkeletonProps) {
+  return (
+    <div
+      className="flex flex-col gap-3"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando canciones guardadas"
+    >
+      <CancioneroSkeletonHeader />
+      {includeSearch ? <SearchFieldSkeleton /> : null}
+      <div className="flex flex-col gap-3">
+        {CARD_LAYOUTS.slice(0, cardCount).map((layout, index) => (
+          <CancioneroCardSkeleton
+            key={index}
+            titleWidth={layout.title}
+            artistWidth={layout.artist}
+            shimmerDelayMs={index * 90}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function CancioneroPageSkeleton() {
+  return (
+    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+      <header className="border-b border-border bg-bg-darker px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="cancionero-skeleton-shimmer size-11 shrink-0 rounded-full"
+            aria-hidden="true"
+          />
+          <div
+            className="cancionero-skeleton-shimmer h-6 flex-1 rounded-lg"
+            aria-hidden="true"
+          />
+          <div
+            className="cancionero-skeleton-shimmer size-11 shrink-0 rounded-full"
+            aria-hidden="true"
+          />
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col gap-3 px-4 py-4 pb-24">
+        <CancioneroListSkeleton />
+      </main>
+    </div>
+  );
+}

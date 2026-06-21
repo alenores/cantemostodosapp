@@ -2,6 +2,7 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
+import CancioneroListSkeleton from "@/components/cancionero/CancioneroListSkeleton";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
@@ -19,7 +20,10 @@ import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero } from "@/types";
 import { ArrowLeft, Music, Search, WifiOff } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const CASCADE_STAGGER_MS = 58;
+const CASCADE_MAX_DELAY_MS = 720;
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
@@ -50,6 +54,8 @@ export default function CancioneroPageClient({
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<number | null>(null);
+  const [cascadeActive, setCascadeActive] = useState(false);
+  const hadLoadedRef = useRef(false);
 
   const cancionesFiltradas = useMemo(
     () => filterCancionesCancionero(canciones, query),
@@ -75,6 +81,32 @@ export default function CancioneroPageClient({
       window.removeEventListener(CANCIONERO_SYNC_EVENT, handleSyncFinished);
     };
   }, [loadLocalCanciones]);
+
+  useEffect(() => {
+    if (!localReady || canciones.length === 0) {
+      return;
+    }
+
+    if (hadLoadedRef.current) {
+      return;
+    }
+
+    hadLoadedRef.current = true;
+    setCascadeActive(true);
+
+    const maxDelay = Math.min(
+      canciones.length * CASCADE_STAGGER_MS,
+      CASCADE_MAX_DELAY_MS,
+    );
+
+    const timer = window.setTimeout(() => {
+      setCascadeActive(false);
+    }, maxDelay + 520);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [canciones.length, localReady]);
 
   const reloadCanciones = useCallback(async () => {
     if (!online) {
@@ -237,7 +269,8 @@ export default function CancioneroPageClient({
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
-            className={inputClassName}
+            disabled={!localReady}
+            className={`${inputClassName} ${!localReady ? "opacity-70" : ""}`}
           />
         </div>
 
@@ -248,9 +281,7 @@ export default function CancioneroPageClient({
         )}
 
         {!localReady ? (
-          <p className="py-8 text-center text-sm text-text-muted">
-            Cargando canciones...
-          </p>
+          <CancioneroListSkeleton includeSearch={false} />
         ) : canciones.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
             <Music className="size-10 text-text-faint" aria-hidden="true" />
@@ -266,18 +297,32 @@ export default function CancioneroPageClient({
           </p>
         ) : (
           <div className="flex flex-col gap-3">
-            {cancionesFiltradas.map((cancion) => (
-              <CancioneroItemCard
+            {cancionesFiltradas.map((cancion, index) => (
+              <div
                 key={cancion.id}
-                cancion={cancion}
-                mutationsEnabled={online}
-                actionsOpen={activeCardId === cancion.id}
-                onOpenActions={() => setActiveCardId(cancion.id)}
-                onCloseActions={() => setActiveCardId(null)}
-                onVer={handleVer}
-                onEditar={handleEditar}
-                onEliminar={handleEliminar}
-              />
+                className={cascadeActive ? "cancionero-item-cascade" : undefined}
+                style={
+                  cascadeActive
+                    ? {
+                        animationDelay: `${Math.min(
+                          index * CASCADE_STAGGER_MS,
+                          CASCADE_MAX_DELAY_MS,
+                        )}ms`,
+                      }
+                    : undefined
+                }
+              >
+                <CancioneroItemCard
+                  cancion={cancion}
+                  mutationsEnabled={online}
+                  actionsOpen={activeCardId === cancion.id}
+                  onOpenActions={() => setActiveCardId(cancion.id)}
+                  onCloseActions={() => setActiveCardId(null)}
+                  onVer={handleVer}
+                  onEditar={handleEditar}
+                  onEliminar={handleEliminar}
+                />
+              </div>
             ))}
           </div>
         )}

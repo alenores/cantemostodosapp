@@ -1,5 +1,7 @@
 import { COLA_BAR_HEIGHT_PX } from "@/lib/sala-layout";
 
+import { CancioneroPageSkeleton } from "@/components/cancionero/CancioneroListSkeleton";
+
 function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
     <div
@@ -74,23 +76,7 @@ export function SalaLoadingSkeleton() {
 }
 
 export function CancioneroLoadingSkeleton() {
-  return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
-      <header className="border-b border-border bg-bg-dark px-4 py-3">
-        <div className="flex items-center gap-3">
-          <SkeletonBlock className="size-9 rounded-full" />
-          <SkeletonBlock className="h-6 flex-1" />
-          <SkeletonBlock className="size-9 rounded-full" />
-        </div>
-      </header>
-
-      <main className="flex flex-1 flex-col gap-3 px-4 py-4 pb-24">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <SkeletonBlock key={index} className="h-[72px] rounded-[12px]" />
-        ))}
-      </main>
-    </div>
-  );
+  return <CancioneroPageSkeleton />;
 }
 
 export function PerfilLoadingSkeleton() {

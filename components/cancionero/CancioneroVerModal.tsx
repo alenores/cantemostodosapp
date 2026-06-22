@@ -4,7 +4,7 @@ import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -22,6 +22,10 @@ const HEADER_CLASS =
   "shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14 select-none";
 const BOTTOM_NAV_CLASS =
   "shrink-0 border-t border-border bg-bg-dark px-3 py-1.5 select-none";
+/** px/s por nivel (1 = muy suave). */
+const AUTO_SCROLL_SPEEDS = [16, 28, 44, 64, 92];
+const AUTO_SCROLL_MAX_LEVEL = AUTO_SCROLL_SPEEDS.length;
+const PLAY_LONG_PRESS_MS = 500;
 
 type GestureMode = "undecided" | "carousel" | "scroll";
 
@@ -67,16 +71,62 @@ function applyRubberBand(offset: number, canGo: boolean): number {
 type CancionNavBarProps = {
   tieneAnterior: boolean;
   tieneSiguiente: boolean;
+  tieneLetra: boolean;
+  autoScrollLevel: number;
   onAnterior?: () => void;
   onSiguiente?: () => void;
+  onAutoScrollTap?: () => void;
+  onAutoScrollPause?: () => void;
 };
 
 function CancionNavBar({
   tieneAnterior,
   tieneSiguiente,
+  tieneLetra,
+  autoScrollLevel,
   onAnterior,
   onSiguiente,
+  onAutoScrollTap,
+  onAutoScrollPause,
 }: CancionNavBarProps) {
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function handlePlayPointerDown() {
+    if (!tieneLetra || autoScrollLevel === 0) {
+      return;
+    }
+
+    longPressTriggeredRef.current = false;
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      onAutoScrollPause?.();
+    }, PLAY_LONG_PRESS_MS);
+  }
+
+  function handlePlayPointerUp() {
+    clearLongPressTimer();
+  }
+
+  function handlePlayClick() {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
+    onAutoScrollTap?.();
+  }
+
+  const isScrolling = autoScrollLevel > 0;
+
   return (
     <div className={BOTTOM_NAV_CLASS}>
       <div className="flex items-center justify-between gap-2">
@@ -89,6 +139,38 @@ function CancionNavBar({
         >
           <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
         </TapButton>
+
+        <TapButton
+          type="button"
+          aria-label={
+            !tieneLetra
+              ? "Sin letra para desplazar"
+              : isScrolling
+                ? `Velocidad ${autoScrollLevel}. Tocá para acelerar. Mantené para pausar.`
+                : "Iniciar desplazamiento automático de la letra"
+          }
+          disabled={!tieneLetra}
+          onClick={handlePlayClick}
+          onPointerDown={handlePlayPointerDown}
+          onPointerUp={handlePlayPointerUp}
+          onPointerLeave={handlePlayPointerUp}
+          onPointerCancel={handlePlayPointerUp}
+          className={`relative flex size-8 shrink-0 items-center justify-center rounded-full disabled:opacity-30 ${
+            isScrolling ? "bg-accent text-white" : "bg-bg-card text-text-primary"
+          }`}
+        >
+          {isScrolling ? (
+            <Pause className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Play className="size-3.5" aria-hidden="true" />
+          )}
+          {isScrolling && (
+            <span className="absolute -bottom-0.5 text-[9px] font-bold leading-none">
+              {autoScrollLevel}
+            </span>
+          )}
+        </TapButton>
+
         <TapButton
           type="button"
           aria-label="Canción siguiente"
@@ -109,8 +191,11 @@ type CancionSlideProps = {
   isCurrent?: boolean;
   tieneAnterior?: boolean;
   tieneSiguiente?: boolean;
+  autoScrollLevel?: number;
   onAnterior?: () => void;
   onSiguiente?: () => void;
+  onAutoScrollTap?: () => void;
+  onAutoScrollPause?: () => void;
 };
 
 function CancionSlide({
@@ -119,8 +204,11 @@ function CancionSlide({
   isCurrent = false,
   tieneAnterior = false,
   tieneSiguiente = false,
+  autoScrollLevel = 0,
   onAnterior,
   onSiguiente,
+  onAutoScrollTap,
+  onAutoScrollPause,
 }: CancionSlideProps) {
   if (!cancion) {
     return (
@@ -134,8 +222,22 @@ function CancionSlide({
 
   const tieneLetra = Boolean(cancion.letra?.trim());
   const navProps = isCurrent
-    ? { tieneAnterior, tieneSiguiente, onAnterior, onSiguiente }
-    : { tieneAnterior: false, tieneSiguiente: false };
+    ? {
+        tieneAnterior,
+        tieneSiguiente,
+        tieneLetra,
+        autoScrollLevel,
+        onAnterior,
+        onSiguiente,
+        onAutoScrollTap,
+        onAutoScrollPause,
+      }
+    : {
+        tieneAnterior: false,
+        tieneSiguiente: false,
+        tieneLetra: false,
+        autoScrollLevel: 0,
+      };
 
   return (
     <div
@@ -192,6 +294,8 @@ export default function CancioneroVerModal({
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<ActiveGesture | null>(null);
   const lockedRef = useRef(false);
+  const autoScrollLevelRef = useRef(0);
+  const pauseAutoScrollRef = useRef<(() => void) | null>(null);
 
   const tieneAnteriorRef = useRef(tieneAnterior);
   const tieneSiguienteRef = useRef(tieneSiguiente);
@@ -200,6 +304,35 @@ export default function CancioneroVerModal({
 
   const [offsetX, setOffsetX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [autoScrollLevel, setAutoScrollLevel] = useState(0);
+
+  const pauseAutoScroll = useCallback(() => {
+    setAutoScrollLevel(0);
+  }, []);
+
+  const handleAutoScrollTap = useCallback(() => {
+    setAutoScrollLevel((level) => {
+      if (level === 0) {
+        triggerHaptic();
+        return 1;
+      }
+
+      if (level < AUTO_SCROLL_MAX_LEVEL) {
+        triggerHaptic();
+        return level + 1;
+      }
+
+      return level;
+    });
+  }, []);
+
+  useEffect(() => {
+    autoScrollLevelRef.current = autoScrollLevel;
+  }, [autoScrollLevel]);
+
+  useEffect(() => {
+    pauseAutoScrollRef.current = pauseAutoScroll;
+  }, [pauseAutoScroll]);
 
   useEffect(() => {
     tieneAnteriorRef.current = tieneAnterior;
@@ -214,6 +347,7 @@ export default function CancioneroVerModal({
 
   useEffect(() => {
     if (!open) {
+      setAutoScrollLevel(0);
       return;
     }
 
@@ -247,6 +381,8 @@ export default function CancioneroVerModal({
       if (lockedRef.current) {
         return;
       }
+
+      pauseAutoScrollRef.current?.();
 
       const width = getViewportWidth();
 
@@ -291,6 +427,52 @@ export default function CancioneroVerModal({
   );
 
   useEffect(() => {
+    if (autoScrollLevel === 0) {
+      return;
+    }
+
+    let lastTime = performance.now();
+    let frameId = 0;
+
+    function tick(now: number) {
+      const scrollEl = letraScrollRef.current;
+      const level = autoScrollLevelRef.current;
+
+      if (!scrollEl || level === 0) {
+        return;
+      }
+
+      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+
+      if (maxScroll <= 1) {
+        setAutoScrollLevel(0);
+        return;
+      }
+
+      const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      const speed = AUTO_SCROLL_SPEEDS[level - 1] ?? AUTO_SCROLL_SPEEDS[0];
+      const nextScrollTop = scrollEl.scrollTop + speed * deltaSeconds;
+
+      if (nextScrollTop >= maxScroll) {
+        scrollEl.scrollTop = maxScroll;
+        triggerHaptic();
+        setAutoScrollLevel(0);
+        return;
+      }
+
+      scrollEl.scrollTop = nextScrollTop;
+      frameId = requestAnimationFrame(tick);
+    }
+
+    frameId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [autoScrollLevel]);
+
+  useEffect(() => {
     if (!cancion) {
       return;
     }
@@ -298,6 +480,7 @@ export default function CancioneroVerModal({
     letraScrollRef.current?.scrollTo(0, 0);
     setOffsetX(0);
     setAnimating(false);
+    setAutoScrollLevel(0);
     gestureRef.current = null;
   }, [cancion?.id]);
 
@@ -340,7 +523,13 @@ export default function CancioneroVerModal({
           return;
         }
 
-        gesture.mode = Math.abs(dx) > Math.abs(dy) ? "carousel" : "scroll";
+        if (Math.abs(dx) > Math.abs(dy)) {
+          pauseAutoScrollRef.current?.();
+          gesture.mode = "carousel";
+        } else {
+          gesture.mode = "scroll";
+          pauseAutoScrollRef.current?.();
+        }
       }
 
       if (gesture.mode === "scroll") {
@@ -504,8 +693,11 @@ export default function CancioneroVerModal({
               isCurrent
               tieneAnterior={tieneAnterior}
               tieneSiguiente={tieneSiguiente}
+              autoScrollLevel={autoScrollLevel}
               onAnterior={() => navigateByDirection(-1)}
               onSiguiente={() => navigateByDirection(1)}
+              onAutoScrollTap={handleAutoScrollTap}
+              onAutoScrollPause={pauseAutoScroll}
             />
             <CancionSlide cancion={cancionSiguiente} />
           </div>

@@ -2,20 +2,56 @@
 
 import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
+import { useDrag } from "@use-gesture/react";
 import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
+
+const SWIPE_THRESHOLD_PX = 50;
 
 type CancioneroVerModalProps = {
   open: boolean;
   cancion: CancionCancionero | null;
   onClose: () => void;
+  onAnterior?: () => void;
+  onSiguiente?: () => void;
+  tieneAnterior?: boolean;
+  tieneSiguiente?: boolean;
 };
 
 export default function CancioneroVerModal({
   open,
   cancion,
   onClose,
+  onAnterior,
+  onSiguiente,
+  tieneAnterior = false,
+  tieneSiguiente = false,
 }: CancioneroVerModalProps) {
+  const letraScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    letraScrollRef.current?.scrollTo(0, 0);
+  }, [cancion?.id]);
+
+  const bindHeaderSwipe = useDrag(
+    ({ movement: [mx], last }) => {
+      if (!last || Math.abs(mx) < SWIPE_THRESHOLD_PX) {
+        return;
+      }
+
+      if (mx < 0 && tieneAnterior) {
+        triggerHaptic();
+        onAnterior?.();
+      } else if (mx > 0 && tieneSiguiente) {
+        triggerHaptic();
+        onSiguiente?.();
+      }
+    },
+    { axis: "x", filterTaps: true },
+  );
+
   if (!open || !cancion) {
     return null;
   }
@@ -36,9 +72,13 @@ export default function CancioneroVerModal({
         aria-labelledby="cancionero-ver-titulo"
         className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
+        <header
+          {...bindHeaderSwipe()}
+          className="shrink-0 touch-pan-y border-b border-border bg-bg-dark px-4 py-3"
+          aria-label="Deslizá a la izquierda o derecha para cambiar de canción"
+        >
           <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 select-none">
               <h2
                 id="cancionero-ver-titulo"
                 className="text-lg font-extrabold text-accent"
@@ -61,7 +101,10 @@ export default function CancioneroVerModal({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div
+          ref={letraScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+        >
           {tieneLetra ? (
             <LetraTexto texto={cancion.letra!} />
           ) : (

@@ -141,6 +141,30 @@ export default function CancioneroPageClient({
     setCancionViendo(cancion);
   }
 
+  const cancionViendoIndex = useMemo(() => {
+    if (!cancionViendo) {
+      return -1;
+    }
+
+    return cancionesFiltradas.findIndex(
+      (cancion) => cancion.id === cancionViendo.id,
+    );
+  }, [cancionViendo, cancionesFiltradas]);
+
+  function handleNavigateCancion(direction: -1 | 1) {
+    if (cancionViendoIndex === -1) {
+      return;
+    }
+
+    const nextIndex = cancionViendoIndex + direction;
+
+    if (nextIndex < 0 || nextIndex >= cancionesFiltradas.length) {
+      return;
+    }
+
+    setCancionViendo(cancionesFiltradas[nextIndex]!);
+  }
+
   function handleEliminar(cancion: CancionCancionero) {
     if (!online) {
       return;
@@ -344,6 +368,13 @@ export default function CancioneroPageClient({
         open={cancionViendo !== null}
         cancion={cancionViendo}
         onClose={() => setCancionViendo(null)}
+        onAnterior={() => handleNavigateCancion(-1)}
+        onSiguiente={() => handleNavigateCancion(1)}
+        tieneAnterior={cancionViendoIndex > 0}
+        tieneSiguiente={
+          cancionViendoIndex >= 0 &&
+          cancionViendoIndex < cancionesFiltradas.length - 1
+        }
       />
 
       <ConfirmDialog

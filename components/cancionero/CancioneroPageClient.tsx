@@ -367,6 +367,17 @@ export default function CancioneroPageClient({
       <CancioneroVerModal
         open={cancionViendo !== null}
         cancion={cancionViendo}
+        cancionAnterior={
+          cancionViendoIndex > 0
+            ? cancionesFiltradas[cancionViendoIndex - 1]!
+            : null
+        }
+        cancionSiguiente={
+          cancionViendoIndex >= 0 &&
+          cancionViendoIndex < cancionesFiltradas.length - 1
+            ? cancionesFiltradas[cancionViendoIndex + 1]!
+            : null
+        }
         onClose={() => setCancionViendo(null)}
         onAnterior={() => handleNavigateCancion(-1)}
         onSiguiente={() => handleNavigateCancion(1)}

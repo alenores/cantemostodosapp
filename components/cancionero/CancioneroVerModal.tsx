@@ -5,13 +5,19 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
 import { X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 
 const AXIS_LOCK_PX = 8;
 const SWIPE_COMMIT_RATIO = 0.2;
 const SWIPE_COMMIT_MIN_PX = 48;
-const CAROUSEL_TRANSITION_MS = 240;
+const CAROUSEL_TRANSITION_MS = 260;
 
 type GestureMode = "undecided" | "carousel" | "scroll";
 
@@ -26,6 +32,8 @@ type ActiveGesture = {
 type CancioneroVerModalProps = {
   open: boolean;
   cancion: CancionCancionero | null;
+  cancionAnterior?: CancionCancionero | null;
+  cancionSiguiente?: CancionCancionero | null;
   onClose: () => void;
   onAnterior?: () => void;
   onSiguiente?: () => void;
@@ -46,15 +54,73 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 function applyRubberBand(offset: number, canGo: boolean): number {
   if (!canGo) {
-    return offset * 0.3;
+    return offset * 0.32;
   }
 
   return offset;
 }
 
+type CancionSlideProps = {
+  cancion: CancionCancionero | null;
+  scrollRef?: RefObject<HTMLDivElement | null>;
+  isCurrent?: boolean;
+};
+
+function CancionSlide({ cancion, scrollRef, isCurrent = false }: CancionSlideProps) {
+  if (!cancion) {
+    return (
+      <div
+        className="h-full shrink-0 basis-1/3"
+        style={{ flex: "0 0 33.333333%" }}
+        aria-hidden="true"
+      />
+    );
+  }
+
+  const tieneLetra = Boolean(cancion.letra?.trim());
+
+  return (
+    <div
+      className="flex h-full shrink-0 flex-col bg-bg-cola-sheet"
+      style={{ flex: "0 0 33.333333%" }}
+    >
+      <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14">
+        <div className="min-w-0 select-none">
+          <h2
+            id={isCurrent ? "cancionero-ver-titulo" : undefined}
+            className="text-lg font-extrabold text-accent"
+          >
+            {cancion.nombre}
+          </h2>
+          {cancion.artista && (
+            <p className="mt-0.5 truncate text-sm text-text-muted">
+              {cancion.artista}
+            </p>
+          )}
+        </div>
+      </header>
+
+      <div
+        ref={isCurrent ? scrollRef : undefined}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4"
+      >
+        {tieneLetra ? (
+          <LetraTexto texto={cancion.letra!} />
+        ) : (
+          <p className="py-8 text-center text-sm text-text-muted">
+            Esta canción no tiene letra guardada.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CancioneroVerModal({
   open,
   cancion,
+  cancionAnterior = null,
+  cancionSiguiente = null,
   onClose,
   onAnterior,
   onSiguiente,
@@ -62,12 +128,10 @@ export default function CancioneroVerModal({
   tieneSiguiente = false,
 }: CancioneroVerModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<ActiveGesture | null>(null);
-  const animatingRef = useRef(false);
-  const navigatingRef = useRef(false);
-  const enterFromRef = useRef<"left" | "right" | null>(null);
+  const lockedRef = useRef(false);
 
   const tieneAnteriorRef = useRef(tieneAnterior);
   const tieneSiguienteRef = useRef(tieneSiguiente);
@@ -85,7 +149,7 @@ export default function CancioneroVerModal({
   }, [tieneAnterior, tieneSiguiente, onAnterior, onSiguiente]);
 
   useEffect(() => {
-    animatingRef.current = animating;
+    lockedRef.current = animating;
   }, [animating]);
 
   useEffect(() => {
@@ -101,27 +165,17 @@ export default function CancioneroVerModal({
     };
   }, [open]);
 
-  const getPanelWidth = useCallback(() => {
-    return panelRef.current?.offsetWidth ?? 0;
+  const getViewportWidth = useCallback(() => {
+    return viewportRef.current?.offsetWidth ?? 0;
   }, []);
 
-  const finishNavigation = useCallback((direction: -1 | 1) => {
-    triggerHaptic();
-    enterFromRef.current = direction < 0 ? "left" : "right";
-
-    if (direction < 0) {
-      onAnteriorRef.current?.();
-    } else {
-      onSiguienteRef.current?.();
-    }
-  }, []);
-
-  const animateTo = useCallback(
+  const runTransition = useCallback(
     (targetOffset: number, onDone?: () => void) => {
       setAnimating(true);
       setOffsetX(targetOffset);
 
       window.setTimeout(() => {
+        setAnimating(false);
         onDone?.();
       }, CAROUSEL_TRANSITION_MS);
     },
@@ -130,24 +184,31 @@ export default function CancioneroVerModal({
 
   const handleRelease = useCallback(
     (dx: number) => {
-      const width = getPanelWidth();
+      const width = getViewportWidth();
       const threshold = Math.max(width * SWIPE_COMMIT_RATIO, SWIPE_COMMIT_MIN_PX);
 
-      if (dx < -threshold && tieneAnteriorRef.current) {
-        navigatingRef.current = true;
-        animateTo(width, () => finishNavigation(-1));
+      // El panel sigue el dedo: izquierda muestra la siguiente, derecha la anterior.
+      if (dx < -threshold && tieneSiguienteRef.current) {
+        runTransition(-width, () => {
+          triggerHaptic();
+          onSiguienteRef.current?.();
+          setOffsetX(0);
+        });
         return;
       }
 
-      if (dx > threshold && tieneSiguienteRef.current) {
-        navigatingRef.current = true;
-        animateTo(-width, () => finishNavigation(1));
+      if (dx > threshold && tieneAnteriorRef.current) {
+        runTransition(width, () => {
+          triggerHaptic();
+          onAnteriorRef.current?.();
+          setOffsetX(0);
+        });
         return;
       }
 
-      animateTo(0);
+      runTransition(0);
     },
-    [animateTo, finishNavigation, getPanelWidth],
+    [getViewportWidth, runTransition],
   );
 
   useEffect(() => {
@@ -156,30 +217,9 @@ export default function CancioneroVerModal({
     }
 
     letraScrollRef.current?.scrollTo(0, 0);
-
-    const panelWidth = panelRef.current?.offsetWidth ?? 0;
-    const enterFrom = enterFromRef.current;
-    enterFromRef.current = null;
-
-    if (enterFrom && panelWidth > 0) {
-      setAnimating(false);
-      setOffsetX(enterFrom === "left" ? -panelWidth : panelWidth);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setAnimating(true);
-          setOffsetX(0);
-          window.setTimeout(() => {
-            setAnimating(false);
-            navigatingRef.current = false;
-          }, CAROUSEL_TRANSITION_MS);
-        });
-      });
-      return;
-    }
-
     setOffsetX(0);
     setAnimating(false);
-    navigatingRef.current = false;
+    gestureRef.current = null;
   }, [cancion?.id]);
 
   useEffect(() => {
@@ -189,12 +229,10 @@ export default function CancioneroVerModal({
       return;
     }
 
-    function getPoint(clientX: number, clientY: number) {
-      return { x: clientX, y: clientY };
-    }
+    const dialogEl = dialog;
 
     function beginGesture(clientX: number, clientY: number, pointerId: number) {
-      if (animatingRef.current || navigatingRef.current) {
+      if (lockedRef.current) {
         return;
       }
 
@@ -223,11 +261,7 @@ export default function CancioneroVerModal({
           return;
         }
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-          gesture.mode = "carousel";
-        } else {
-          gesture.mode = "scroll";
-        }
+        gesture.mode = Math.abs(dx) > Math.abs(dy) ? "carousel" : "scroll";
       }
 
       if (gesture.mode === "scroll") {
@@ -248,29 +282,31 @@ export default function CancioneroVerModal({
       prevent();
 
       const displayOffset = applyRubberBand(
-        -dx,
-        dx < 0 ? tieneAnteriorRef.current : dx > 0 ? tieneSiguienteRef.current : true,
+        dx,
+        dx < 0 ? tieneSiguienteRef.current : dx > 0 ? tieneAnteriorRef.current : true,
       );
       setOffsetX(displayOffset);
     }
 
-    function endGesture(clientX: number) {
+    function endGesture(clientX: number, pointerId: number) {
       const gesture = gestureRef.current;
 
-      if (!gesture) {
+      if (!gesture || gesture.pointerId !== pointerId) {
         return;
       }
 
-      const dx = clientX - gesture.startX;
-
       if (gesture.mode === "carousel") {
-        handleRelease(dx);
+        handleRelease(clientX - gesture.startX);
       }
 
       gestureRef.current = null;
     }
 
-    const dialogEl = dialog;
+    function releaseCapture(pointerId: number) {
+      if (dialogEl.hasPointerCapture(pointerId)) {
+        dialogEl.releasePointerCapture(pointerId);
+      }
+    }
 
     function onPointerDown(event: PointerEvent) {
       if (event.pointerType === "mouse" && event.button !== 0) {
@@ -309,15 +345,23 @@ export default function CancioneroVerModal({
         return;
       }
 
-      if (dialogEl.hasPointerCapture(event.pointerId)) {
-        dialogEl.releasePointerCapture(event.pointerId);
-      }
-
-      endGesture(event.clientX);
+      releaseCapture(event.pointerId);
+      endGesture(event.clientX, event.pointerId);
     }
 
     function onPointerCancel(event: PointerEvent) {
-      onPointerUp(event);
+      const gesture = gestureRef.current;
+
+      if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      releaseCapture(event.pointerId);
+      gestureRef.current = null;
+
+      if (gesture.mode === "carousel") {
+        runTransition(0);
+      }
     }
 
     dialogEl.addEventListener("pointerdown", onPointerDown);
@@ -331,13 +375,11 @@ export default function CancioneroVerModal({
       dialogEl.removeEventListener("pointerup", onPointerUp);
       dialogEl.removeEventListener("pointercancel", onPointerCancel);
     };
-  }, [open, handleRelease]);
+  }, [open, handleRelease, runTransition]);
 
   if (!open || !cancion) {
     return null;
   }
-
-  const tieneLetra = Boolean(cancion.letra?.trim());
 
   return createPortal(
     <div className="fixed inset-0 z-[300] flex items-center justify-center px-3 py-6">
@@ -362,45 +404,27 @@ export default function CancioneroVerModal({
           <X className="size-5 text-text-primary" aria-hidden="true" />
         </TapButton>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          ref={viewportRef}
+          className="relative min-h-0 flex-1 overflow-hidden"
+        >
           <div
-            ref={panelRef}
-            className="flex h-full flex-col bg-bg-cola-sheet will-change-transform"
+            className="flex h-full will-change-transform"
             style={{
-              transform: `translateX(${offsetX}px)`,
+              width: "300%",
+              transform: `translateX(calc(-33.333333% + ${offsetX}px))`,
               transition: animating
-                ? `transform ${CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`
+                ? `transform ${CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.25, 0.82, 0.35, 1)`
                 : "none",
             }}
           >
-            <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14">
-              <div className="min-w-0 select-none">
-                <h2
-                  id="cancionero-ver-titulo"
-                  className="text-lg font-extrabold text-accent"
-                >
-                  {cancion.nombre}
-                </h2>
-                {cancion.artista && (
-                  <p className="mt-0.5 truncate text-sm text-text-muted">
-                    {cancion.artista}
-                  </p>
-                )}
-              </div>
-            </header>
-
-            <div
-              ref={letraScrollRef}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4"
-            >
-              {tieneLetra ? (
-                <LetraTexto texto={cancion.letra!} />
-              ) : (
-                <p className="py-8 text-center text-sm text-text-muted">
-                  Esta canción no tiene letra guardada.
-                </p>
-              )}
-            </div>
+            <CancionSlide cancion={cancionAnterior} />
+            <CancionSlide
+              cancion={cancion}
+              scrollRef={letraScrollRef}
+              isCurrent
+            />
+            <CancionSlide cancion={cancionSiguiente} />
           </div>
         </div>
       </div>

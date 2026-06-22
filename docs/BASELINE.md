@@ -66,3 +66,5 @@ Pantalla **Canciones guardadas** → modal de detalle:
 ## Próximo trabajo (riesgo medio)
 
 Integrar auto-scroll en la canción activa de la sala reutilizando la lógica del modal, **sin modificar** `ColaBottomSheet`.
+
+> Actualizado: auto-scroll en sala implementado en `CancionActivaSection` + `hooks/useLetraAutoScroll.ts` (solo letra texto). Tag anterior sigue siendo el rollback del cancionero.

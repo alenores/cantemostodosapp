@@ -1,7 +1,9 @@
 "use client";
 
+import LetraAutoScrollBar from "@/components/salas/LetraAutoScrollBar";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
+import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
 import {
   getLetraSourceKind,
   resolveLetraContenido,
@@ -13,7 +15,7 @@ import {
   LETRA_SECTION_BOTTOM_PADDING,
 } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -28,6 +30,7 @@ export default function CancionActivaSection({
   urlLetra = null,
   letraTexto = null,
 }: CancionActivaSectionProps) {
+  const letraScrollRef = useRef<HTMLDivElement>(null);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
   const [cifraTopRevealed, setCifraTopRevealed] = useState(false);
@@ -114,6 +117,18 @@ export default function CancionActivaSection({
   const showTexto = contenido?.mode === "texto";
   const showEmbed = contenido?.mode === "embed";
 
+  const cancionContentKey = hasCancion
+    ? `${cancionNombre ?? ""}|${artista ?? ""}|${urlLetra ?? ""}|${letraTexto ?? ""}`
+    : null;
+
+  const { autoScrollLevel, accelerate, decelerate } = useLetraAutoScroll(
+    letraScrollRef,
+    {
+      enabled: showTexto,
+      contentKey: cancionContentKey,
+    },
+  );
+
   const isCifraclubEmbed =
     showEmbed &&
     contenido?.mode === "embed" &&
@@ -123,6 +138,39 @@ export default function CancionActivaSection({
     isCifraclubEmbed && !cifraTopRevealed
       ? LETRA_EMBED_INITIAL_OFFSET_PX
       : undefined;
+
+  if (showTexto && contenido?.mode === "texto") {
+    return (
+      <section
+        className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
+        style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+      >
+        <h2 className="shrink-0 text-xl font-bold text-text-primary">
+          {cancionNombre}
+        </h2>
+        {artista && (
+          <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
+            {artista}
+          </p>
+        )}
+
+        <div
+          ref={letraScrollRef}
+          data-cancionero-letra-scroll=""
+          className="mt-2 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
+        >
+          <LetraTexto texto={contenido.texto} edgeToEdge />
+        </div>
+
+        <LetraAutoScrollBar
+          enabled
+          autoScrollLevel={autoScrollLevel}
+          onAccelerate={accelerate}
+          onDecelerate={decelerate}
+        />
+      </section>
+    );
+  }
 
   return (
     <section
@@ -162,10 +210,6 @@ export default function CancionActivaSection({
             <p className="mt-6 text-center text-sm text-text-muted">
               Esta canción no tiene letra disponible.
             </p>
-          )}
-
-          {showTexto && contenido.mode === "texto" && (
-            <LetraTexto texto={contenido.texto} />
           )}
 
           {showEmbed && contenido.mode === "embed" && (

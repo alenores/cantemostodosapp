@@ -4,7 +4,7 @@ import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
-import { X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -18,6 +18,8 @@ const AXIS_LOCK_PX = 8;
 const SWIPE_COMMIT_RATIO = 0.2;
 const SWIPE_COMMIT_MIN_PX = 48;
 const CAROUSEL_TRANSITION_MS = 260;
+const NAV_BAR_CLASS =
+  "shrink-0 border-border bg-bg-dark px-3 py-3 select-none";
 
 type GestureMode = "undecided" | "carousel" | "scroll";
 
@@ -60,13 +62,66 @@ function applyRubberBand(offset: number, canGo: boolean): number {
   return offset;
 }
 
+type CancionNavBarProps = {
+  tieneAnterior: boolean;
+  tieneSiguiente: boolean;
+  onAnterior?: () => void;
+  onSiguiente?: () => void;
+  borderClass: string;
+};
+
+function CancionNavBar({
+  tieneAnterior,
+  tieneSiguiente,
+  onAnterior,
+  onSiguiente,
+  borderClass,
+}: CancionNavBarProps) {
+  return (
+    <div className={`${NAV_BAR_CLASS} ${borderClass}`}>
+      <div className="flex items-center justify-between gap-2">
+        <TapButton
+          type="button"
+          aria-label="Canción anterior"
+          disabled={!tieneAnterior}
+          onClick={onAnterior}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
+        >
+          <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
+        </TapButton>
+        <TapButton
+          type="button"
+          aria-label="Canción siguiente"
+          disabled={!tieneSiguiente}
+          onClick={onSiguiente}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
+        >
+          <ChevronRight className="size-5 text-text-primary" aria-hidden="true" />
+        </TapButton>
+      </div>
+    </div>
+  );
+}
+
 type CancionSlideProps = {
   cancion: CancionCancionero | null;
   scrollRef?: RefObject<HTMLDivElement | null>;
   isCurrent?: boolean;
+  tieneAnterior?: boolean;
+  tieneSiguiente?: boolean;
+  onAnterior?: () => void;
+  onSiguiente?: () => void;
 };
 
-function CancionSlide({ cancion, scrollRef, isCurrent = false }: CancionSlideProps) {
+function CancionSlide({
+  cancion,
+  scrollRef,
+  isCurrent = false,
+  tieneAnterior = false,
+  tieneSiguiente = false,
+  onAnterior,
+  onSiguiente,
+}: CancionSlideProps) {
   if (!cancion) {
     return (
       <div
@@ -78,40 +133,68 @@ function CancionSlide({ cancion, scrollRef, isCurrent = false }: CancionSlidePro
   }
 
   const tieneLetra = Boolean(cancion.letra?.trim());
+  const navProps = isCurrent
+    ? { tieneAnterior, tieneSiguiente, onAnterior, onSiguiente }
+    : { tieneAnterior: false, tieneSiguiente: false };
 
   return (
     <div
       className="flex h-full shrink-0 flex-col bg-bg-cola-sheet"
       style={{ flex: "0 0 33.333333%" }}
     >
-      <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14">
-        <div className="min-w-0 select-none">
-          <h2
-            id={isCurrent ? "cancionero-ver-titulo" : undefined}
-            className="text-lg font-extrabold text-accent"
+      <header className={`${NAV_BAR_CLASS} border-b pr-14`}>
+        <div className="flex items-center gap-2">
+          <TapButton
+            type="button"
+            aria-label="Canción anterior"
+            disabled={!navProps.tieneAnterior}
+            onClick={navProps.onAnterior}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
           >
-            {cancion.nombre}
-          </h2>
-          {cancion.artista && (
-            <p className="mt-0.5 truncate text-sm text-text-muted">
-              {cancion.artista}
-            </p>
-          )}
+            <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
+          </TapButton>
+          <div className="min-w-0 flex-1">
+            <h2
+              id={isCurrent ? "cancionero-ver-titulo" : undefined}
+              className="truncate text-lg font-extrabold text-accent"
+            >
+              {cancion.nombre}
+            </h2>
+            {cancion.artista && (
+              <p className="mt-0.5 truncate text-sm text-text-muted">
+                {cancion.artista}
+              </p>
+            )}
+          </div>
+          <TapButton
+            type="button"
+            aria-label="Canción siguiente"
+            disabled={!navProps.tieneSiguiente}
+            onClick={navProps.onSiguiente}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
+          >
+            <ChevronRight className="size-5 text-text-primary" aria-hidden="true" />
+          </TapButton>
         </div>
       </header>
 
       <div
         ref={isCurrent ? scrollRef : undefined}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
       >
         {tieneLetra ? (
-          <LetraTexto texto={cancion.letra!} />
+          <LetraTexto texto={cancion.letra!} edgeToEdge />
         ) : (
-          <p className="py-8 text-center text-sm text-text-muted">
+          <p className="px-4 py-8 text-center text-sm text-text-muted">
             Esta canción no tiene letra guardada.
           </p>
         )}
       </div>
+
+      <CancionNavBar
+        {...navProps}
+        borderClass="border-t"
+      />
     </div>
   );
 }
@@ -182,22 +265,15 @@ export default function CancioneroVerModal({
     [],
   );
 
-  const handleRelease = useCallback(
-    (dx: number) => {
-      const width = getViewportWidth();
-      const threshold = Math.max(width * SWIPE_COMMIT_RATIO, SWIPE_COMMIT_MIN_PX);
-
-      // El panel sigue el dedo: izquierda muestra la siguiente, derecha la anterior.
-      if (dx < -threshold && tieneSiguienteRef.current) {
-        runTransition(-width, () => {
-          triggerHaptic();
-          onSiguienteRef.current?.();
-          setOffsetX(0);
-        });
+  const navigateByDirection = useCallback(
+    (direction: -1 | 1) => {
+      if (lockedRef.current) {
         return;
       }
 
-      if (dx > threshold && tieneAnteriorRef.current) {
+      const width = getViewportWidth();
+
+      if (direction < 0 && tieneAnteriorRef.current) {
         runTransition(width, () => {
           triggerHaptic();
           onAnteriorRef.current?.();
@@ -206,9 +282,35 @@ export default function CancioneroVerModal({
         return;
       }
 
-      runTransition(0);
+      if (direction > 0 && tieneSiguienteRef.current) {
+        runTransition(-width, () => {
+          triggerHaptic();
+          onSiguienteRef.current?.();
+          setOffsetX(0);
+        });
+      }
     },
     [getViewportWidth, runTransition],
+  );
+
+  const handleRelease = useCallback(
+    (dx: number) => {
+      const width = getViewportWidth();
+      const threshold = Math.max(width * SWIPE_COMMIT_RATIO, SWIPE_COMMIT_MIN_PX);
+
+      if (dx < -threshold && tieneSiguienteRef.current) {
+        navigateByDirection(1);
+        return;
+      }
+
+      if (dx > threshold && tieneAnteriorRef.current) {
+        navigateByDirection(-1);
+        return;
+      }
+
+      runTransition(0);
+    },
+    [getViewportWidth, navigateByDirection, runTransition],
   );
 
   useEffect(() => {
@@ -382,7 +484,7 @@ export default function CancioneroVerModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[300] flex items-center justify-center px-3 py-6">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center px-3 py-4">
       <button
         type="button"
         aria-label="Cerrar canción"
@@ -394,7 +496,7 @@ export default function CancioneroVerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancionero-ver-titulo"
-        className="relative z-10 flex h-[min(85vh,720px)] w-full max-w-md touch-none flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md touch-none flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <TapButton
           aria-label="Cerrar"
@@ -423,6 +525,10 @@ export default function CancioneroVerModal({
               cancion={cancion}
               scrollRef={letraScrollRef}
               isCurrent
+              tieneAnterior={tieneAnterior}
+              tieneSiguiente={tieneSiguiente}
+              onAnterior={() => navigateByDirection(-1)}
+              onSiguiente={() => navigateByDirection(1)}
             />
             <CancionSlide cancion={cancionSiguiente} />
           </div>

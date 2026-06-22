@@ -142,17 +142,19 @@ export default function CancionActivaSection({
   if (showTexto && contenido?.mode === "texto") {
     return (
       <section
-        className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
+        className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-0"
         style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-2.5">
-          <div className="flex items-start gap-2">
+        <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-1.5">
+          <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold text-text-primary">
+              <h2 className="text-xl font-bold leading-tight text-text-primary">
                 {cancionNombre}
               </h2>
               {artista && (
-                <p className="mt-0.5 text-[13px] text-text-muted">{artista}</p>
+                <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
+                  {artista}
+                </p>
               )}
             </div>
             <LetraAutoScrollBar

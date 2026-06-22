@@ -4,20 +4,24 @@ import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
-import { useDrag } from "@use-gesture/react";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-const AXIS_LOCK_PX = 10;
-const SWIPE_COMMIT_RATIO = 0.22;
-const SWIPE_COMMIT_MIN_PX = 56;
+const AXIS_LOCK_PX = 8;
+const SWIPE_COMMIT_RATIO = 0.2;
+const SWIPE_COMMIT_MIN_PX = 48;
 const CAROUSEL_TRANSITION_MS = 240;
 
-type DragMemo =
-  | { kind: "undecided"; startScrollTop: number }
-  | { kind: "carousel" }
-  | { kind: "scroll"; startScrollTop: number };
+type GestureMode = "undecided" | "carousel" | "scroll";
+
+type ActiveGesture = {
+  mode: GestureMode;
+  startX: number;
+  startY: number;
+  startScrollTop: number;
+  pointerId: number;
+};
 
 type CancioneroVerModalProps = {
   open: boolean;
@@ -40,12 +44,9 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   );
 }
 
-function applyRubberBand(
-  offset: number,
-  canGo: boolean,
-): number {
+function applyRubberBand(offset: number, canGo: boolean): number {
   if (!canGo) {
-    return offset * 0.28;
+    return offset * 0.3;
   }
 
   return offset;
@@ -60,12 +61,32 @@ export default function CancioneroVerModal({
   tieneAnterior = false,
   tieneSiguiente = false,
 }: CancioneroVerModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const letraScrollRef = useRef<HTMLDivElement>(null);
-  const [offsetX, setOffsetX] = useState(0);
-  const [animating, setAnimating] = useState(false);
+  const gestureRef = useRef<ActiveGesture | null>(null);
+  const animatingRef = useRef(false);
   const navigatingRef = useRef(false);
   const enterFromRef = useRef<"left" | "right" | null>(null);
+
+  const tieneAnteriorRef = useRef(tieneAnterior);
+  const tieneSiguienteRef = useRef(tieneSiguiente);
+  const onAnteriorRef = useRef(onAnterior);
+  const onSiguienteRef = useRef(onSiguiente);
+
+  const [offsetX, setOffsetX] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  useEffect(() => {
+    tieneAnteriorRef.current = tieneAnterior;
+    tieneSiguienteRef.current = tieneSiguiente;
+    onAnteriorRef.current = onAnterior;
+    onSiguienteRef.current = onSiguiente;
+  }, [tieneAnterior, tieneSiguiente, onAnterior, onSiguiente]);
+
+  useEffect(() => {
+    animatingRef.current = animating;
+  }, [animating]);
 
   useEffect(() => {
     if (!open) {
@@ -79,6 +100,55 @@ export default function CancioneroVerModal({
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
+
+  const getPanelWidth = useCallback(() => {
+    return panelRef.current?.offsetWidth ?? 0;
+  }, []);
+
+  const finishNavigation = useCallback((direction: -1 | 1) => {
+    triggerHaptic();
+    enterFromRef.current = direction < 0 ? "left" : "right";
+
+    if (direction < 0) {
+      onAnteriorRef.current?.();
+    } else {
+      onSiguienteRef.current?.();
+    }
+  }, []);
+
+  const animateTo = useCallback(
+    (targetOffset: number, onDone?: () => void) => {
+      setAnimating(true);
+      setOffsetX(targetOffset);
+
+      window.setTimeout(() => {
+        onDone?.();
+      }, CAROUSEL_TRANSITION_MS);
+    },
+    [],
+  );
+
+  const handleRelease = useCallback(
+    (dx: number) => {
+      const width = getPanelWidth();
+      const threshold = Math.max(width * SWIPE_COMMIT_RATIO, SWIPE_COMMIT_MIN_PX);
+
+      if (dx < -threshold && tieneAnteriorRef.current) {
+        navigatingRef.current = true;
+        animateTo(width, () => finishNavigation(-1));
+        return;
+      }
+
+      if (dx > threshold && tieneSiguienteRef.current) {
+        navigatingRef.current = true;
+        animateTo(-width, () => finishNavigation(1));
+        return;
+      }
+
+      animateTo(0);
+    },
+    [animateTo, finishNavigation, getPanelWidth],
+  );
 
   useEffect(() => {
     if (!cancion) {
@@ -112,153 +182,156 @@ export default function CancioneroVerModal({
     navigatingRef.current = false;
   }, [cancion?.id]);
 
-  const getPanelWidth = useCallback(() => {
-    return panelRef.current?.offsetWidth ?? 0;
-  }, []);
+  useEffect(() => {
+    const dialog = dialogRef.current;
 
-  const finishNavigation = useCallback(
-    (direction: -1 | 1) => {
-      triggerHaptic();
-      enterFromRef.current = direction < 0 ? "left" : "right";
+    if (!dialog || !open) {
+      return;
+    }
 
-      if (direction < 0) {
-        onAnterior?.();
-      } else {
-        onSiguiente?.();
-      }
-    },
-    [onAnterior, onSiguiente],
-  );
+    function getPoint(clientX: number, clientY: number) {
+      return { x: clientX, y: clientY };
+    }
 
-  const animateTo = useCallback(
-    (targetOffset: number, onDone?: () => void) => {
-      setAnimating(true);
-      setOffsetX(targetOffset);
-
-      window.setTimeout(() => {
-        onDone?.();
-      }, CAROUSEL_TRANSITION_MS);
-    },
-    [],
-  );
-
-  const handleRelease = useCallback(
-    (mx: number) => {
-      const width = getPanelWidth();
-      const threshold = Math.max(width * SWIPE_COMMIT_RATIO, SWIPE_COMMIT_MIN_PX);
-
-      if (mx < -threshold && tieneAnterior) {
-        navigatingRef.current = true;
-        animateTo(width, () => finishNavigation(-1));
+    function beginGesture(clientX: number, clientY: number, pointerId: number) {
+      if (animatingRef.current || navigatingRef.current) {
         return;
       }
 
-      if (mx > threshold && tieneSiguiente) {
-        navigatingRef.current = true;
-        animateTo(-width, () => finishNavigation(1));
+      gestureRef.current = {
+        mode: "undecided",
+        startX: clientX,
+        startY: clientY,
+        startScrollTop: letraScrollRef.current?.scrollTop ?? 0,
+        pointerId,
+      };
+    }
+
+    function moveGesture(clientX: number, clientY: number, prevent: () => void) {
+      const gesture = gestureRef.current;
+
+      if (!gesture) {
         return;
       }
 
-      animateTo(0);
-    },
-    [
-      animateTo,
-      finishNavigation,
-      getPanelWidth,
-      tieneAnterior,
-      tieneSiguiente,
-    ],
-  );
-
-  const dragHandler = useCallback(
-    (state: {
-      movement: [number, number];
-      first: boolean;
-      last: boolean;
-      memo?: unknown;
-      event?: Event;
-    }) => {
-      if (animating || navigatingRef.current) {
-        return state.memo;
-      }
-
-      const [mx, my] = state.movement;
+      const dx = clientX - gesture.startX;
+      const dy = clientY - gesture.startY;
       const scrollEl = letraScrollRef.current;
 
-      if (state.first) {
-        if (isInteractiveTarget(state.event?.target ?? null)) {
-          return undefined;
+      if (gesture.mode === "undecided") {
+        if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) {
+          return;
         }
 
-        return {
-          kind: "undecided" as const,
-          startScrollTop: scrollEl?.scrollTop ?? 0,
-        };
+        if (Math.abs(dx) > Math.abs(dy)) {
+          gesture.mode = "carousel";
+        } else {
+          gesture.mode = "scroll";
+        }
       }
 
-      const memo = state.memo as DragMemo | undefined;
-
-      if (!memo) {
-        return memo;
-      }
-
-      if (memo.kind === "undecided") {
-        if (Math.abs(mx) < AXIS_LOCK_PX && Math.abs(my) < AXIS_LOCK_PX) {
-          return memo;
-        }
-
-        if (Math.abs(mx) > Math.abs(my)) {
-          if (state.event?.cancelable) {
-            state.event.preventDefault();
-          }
-
-          return { kind: "carousel" as const };
-        }
-
-        return {
-          kind: "scroll" as const,
-          startScrollTop: memo.startScrollTop,
-        };
-      }
-
-      if (memo.kind === "scroll") {
-        if (state.event?.cancelable) {
-          state.event.preventDefault();
-        }
+      if (gesture.mode === "scroll") {
+        prevent();
 
         if (scrollEl) {
           const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-          scrollEl.scrollTop = clamp(memo.startScrollTop - my, 0, maxScroll);
+          scrollEl.scrollTop = clamp(
+            gesture.startScrollTop - dy,
+            0,
+            maxScroll,
+          );
         }
 
-        return memo;
+        return;
       }
 
-      if (state.event?.cancelable) {
-        state.event.preventDefault();
-      }
+      prevent();
 
       const displayOffset = applyRubberBand(
-        -mx,
-        mx < 0 ? tieneAnterior : mx > 0 ? tieneSiguiente : true,
+        -dx,
+        dx < 0 ? tieneAnteriorRef.current : dx > 0 ? tieneSiguienteRef.current : true,
       );
       setOffsetX(displayOffset);
+    }
 
-      if (state.last) {
-        handleRelease(mx);
-        return undefined;
+    function endGesture(clientX: number) {
+      const gesture = gestureRef.current;
+
+      if (!gesture) {
+        return;
       }
 
-      return memo;
-    },
-    [animating, handleRelease, tieneAnterior, tieneSiguiente],
-  );
+      const dx = clientX - gesture.startX;
 
-  const bindPanelDrag = useDrag(dragHandler, {
-    axis: undefined,
-    filterTaps: true,
-    eventOptions: { passive: false },
-  });
+      if (gesture.mode === "carousel") {
+        handleRelease(dx);
+      }
+
+      gestureRef.current = null;
+    }
+
+    const dialogEl = dialog;
+
+    function onPointerDown(event: PointerEvent) {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
+      if (isInteractiveTarget(event.target)) {
+        return;
+      }
+
+      beginGesture(event.clientX, event.clientY, event.pointerId);
+
+      if (gestureRef.current) {
+        dialogEl.setPointerCapture(event.pointerId);
+      }
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      const gesture = gestureRef.current;
+
+      if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      moveGesture(event.clientX, event.clientY, () => {
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+      });
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      const gesture = gestureRef.current;
+
+      if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      if (dialogEl.hasPointerCapture(event.pointerId)) {
+        dialogEl.releasePointerCapture(event.pointerId);
+      }
+
+      endGesture(event.clientX);
+    }
+
+    function onPointerCancel(event: PointerEvent) {
+      onPointerUp(event);
+    }
+
+    dialogEl.addEventListener("pointerdown", onPointerDown);
+    dialogEl.addEventListener("pointermove", onPointerMove);
+    dialogEl.addEventListener("pointerup", onPointerUp);
+    dialogEl.addEventListener("pointercancel", onPointerCancel);
+
+    return () => {
+      dialogEl.removeEventListener("pointerdown", onPointerDown);
+      dialogEl.removeEventListener("pointermove", onPointerMove);
+      dialogEl.removeEventListener("pointerup", onPointerUp);
+      dialogEl.removeEventListener("pointercancel", onPointerCancel);
+    };
+  }, [open, handleRelease]);
 
   if (!open || !cancion) {
     return null;
@@ -275,10 +348,11 @@ export default function CancioneroVerModal({
         onClick={onClose}
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancionero-ver-titulo"
-        className="relative z-10 flex h-[min(85vh,720px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(85vh,720px)] w-full max-w-md touch-none flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <TapButton
           aria-label="Cerrar"
@@ -290,9 +364,8 @@ export default function CancioneroVerModal({
 
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div
-            {...bindPanelDrag()}
             ref={panelRef}
-            className="flex h-full flex-col bg-bg-cola-sheet"
+            className="flex h-full flex-col bg-bg-cola-sheet will-change-transform"
             style={{
               transform: `translateX(${offsetX}px)`,
               transition: animating

@@ -41,6 +41,14 @@ export const LETRA_SCROLL_BOTTOM_EXTRA_PX = 16;
 
 export const LETRA_SECTION_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px) + ${LETRA_SCROLL_BOTTOM_EXTRA_PX}px)`;
 
+/** Solape de la letra en texto sobre la barra de cola (recupera altura visible). */
+export const LETRA_TEXT_COLA_OVERLAP_PX = 28;
+
+export const LETRA_SECTION_TEXT_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - LETRA_TEXT_COLA_OVERLAP_PX}px + env(safe-area-inset-bottom, 0px))`;
+
+/** Aire interno al final del scroll para que la última línea no quede bajo la barra. */
+export const LETRA_TEXT_SCROLL_END_PADDING = `calc(${COLA_BAR_HEIGHT_PX - LETRA_TEXT_COLA_OVERLAP_PX + 6}px + env(safe-area-inset-bottom, 0px))`;
+
 /** Reserva espacio para la barra; el overlap deja que tape sutilmente el borde del iframe */
 export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - COLA_BAR_WEBVIEW_OVERLAP_PX}px + env(safe-area-inset-bottom, 0px))`;
 

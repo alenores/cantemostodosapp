@@ -13,6 +13,8 @@ import {
   LETRA_EMBED_INITIAL_OFFSET_PX,
   LETRA_EMBED_BOTTOM_PADDING,
   LETRA_SECTION_BOTTOM_PADDING,
+  LETRA_SECTION_TEXT_BOTTOM_PADDING,
+  LETRA_TEXT_SCROLL_END_PADDING,
 } from "@/lib/sala-layout";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -143,7 +145,7 @@ export default function CancionActivaSection({
     return (
       <section
         className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-0"
-        style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
+        style={{ paddingBottom: LETRA_SECTION_TEXT_BOTTOM_PADDING }}
       >
         <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-1.5">
           <div className="flex items-center gap-2">
@@ -171,7 +173,12 @@ export default function CancionActivaSection({
           data-cancionero-letra-scroll=""
           className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
         >
-          <LetraTexto texto={contenido.texto} edgeToEdge />
+          <LetraTexto
+            texto={contenido.texto}
+            edgeToEdge
+            fillViewport
+            scrollEndPadding={LETRA_TEXT_SCROLL_END_PADDING}
+          />
         </div>
       </section>
     );

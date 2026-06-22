@@ -145,29 +145,32 @@ export default function CancionActivaSection({
         className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-3"
         style={{ paddingBottom: LETRA_SECTION_BOTTOM_PADDING }}
       >
-        <h2 className="shrink-0 text-xl font-bold text-text-primary">
-          {cancionNombre}
-        </h2>
-        {artista && (
-          <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
-            {artista}
-          </p>
-        )}
+        <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-2.5">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold text-text-primary">
+                {cancionNombre}
+              </h2>
+              {artista && (
+                <p className="mt-0.5 text-[13px] text-text-muted">{artista}</p>
+              )}
+            </div>
+            <LetraAutoScrollBar
+              enabled
+              autoScrollLevel={autoScrollLevel}
+              onAccelerate={accelerate}
+              onDecelerate={decelerate}
+            />
+          </div>
+        </header>
 
         <div
           ref={letraScrollRef}
           data-cancionero-letra-scroll=""
-          className="mt-2 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
+          className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
         >
           <LetraTexto texto={contenido.texto} edgeToEdge />
         </div>
-
-        <LetraAutoScrollBar
-          enabled
-          autoScrollLevel={autoScrollLevel}
-          onAccelerate={accelerate}
-          onDecelerate={decelerate}
-        />
       </section>
     );
   }

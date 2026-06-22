@@ -264,8 +264,8 @@ export default function CancioneroPageClient({
 
       <main
         className={`flex flex-1 flex-col gap-3 px-4 py-4 pb-8 ${
-          embedded ? "min-h-0 overflow-y-auto overscroll-y-contain" : ""
-        }`}
+          embedded ? "min-h-0 overscroll-y-contain" : ""
+        } ${embedded && cancionViendo === null ? "overflow-y-auto" : embedded ? "overflow-hidden" : ""}`}
       >
         {!online && (
           <p
@@ -367,17 +367,6 @@ export default function CancioneroPageClient({
       <CancioneroVerModal
         open={cancionViendo !== null}
         cancion={cancionViendo}
-        cancionAnterior={
-          cancionViendoIndex > 0
-            ? cancionesFiltradas[cancionViendoIndex - 1]!
-            : null
-        }
-        cancionSiguiente={
-          cancionViendoIndex >= 0 &&
-          cancionViendoIndex < cancionesFiltradas.length - 1
-            ? cancionesFiltradas[cancionViendoIndex + 1]!
-            : null
-        }
         onClose={() => setCancionViendo(null)}
         onAnterior={() => handleNavigateCancion(-1)}
         onSiguiente={() => handleNavigateCancion(1)}

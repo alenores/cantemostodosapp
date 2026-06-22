@@ -48,14 +48,24 @@ type CancioneroVerModalProps = {
   tieneSiguiente?: boolean;
 };
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
     Boolean(target.closest("button, a, [role='button'], input, textarea, select"))
+  );
+}
+
+function isLetraScrollTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-cancionero-letra-scroll]"))
+  );
+}
+
+function isCarouselZoneTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-cancionero-carousel-zone]"))
   );
 }
 
@@ -206,7 +216,7 @@ function CancionSlide({
       className="flex h-full shrink-0 flex-col bg-bg-cola-sheet"
       style={{ flex: "0 0 33.333333%" }}
     >
-      <header className={HEADER_CLASS}>
+      <header className={`${HEADER_CLASS} touch-none`} data-cancionero-carousel-zone="">
         <div className="min-w-0">
           <h2
             id={isCurrent ? "cancionero-ver-titulo" : undefined}
@@ -224,7 +234,8 @@ function CancionSlide({
 
       <div
         ref={isCurrent ? scrollRef : undefined}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        data-cancionero-letra-scroll=""
+        className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
       >
         {tieneLetra ? (
           <LetraTexto texto={cancion.letra!} edgeToEdge />
@@ -455,6 +466,122 @@ export default function CancioneroVerModal({
   }, [cancion?.id]);
 
   useEffect(() => {
+    const scrollEl = letraScrollRef.current;
+
+    if (!scrollEl || !open) {
+      return;
+    }
+
+    type LetraGesture = {
+      mode: "undecided" | "carousel";
+      startX: number;
+      startY: number;
+      pointerId: number;
+    };
+
+    let letraGesture: LetraGesture | null = null;
+
+    function syncScrollOffset() {
+      autoScrollOffsetRef.current = scrollEl!.scrollTop;
+    }
+
+    function endManualScroll() {
+      syncScrollOffset();
+      manualScrollActiveRef.current = false;
+    }
+
+    function onLetraPointerDown(event: PointerEvent) {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
+      if (isInteractiveTarget(event.target)) {
+        return;
+      }
+
+      if (autoScrollLevelRef.current > 0) {
+        manualScrollActiveRef.current = true;
+      }
+
+      letraGesture = {
+        mode: "undecided",
+        startX: event.clientX,
+        startY: event.clientY,
+        pointerId: event.pointerId,
+      };
+    }
+
+    function onLetraPointerMove(event: PointerEvent) {
+      if (!letraGesture || letraGesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const dx = event.clientX - letraGesture.startX;
+      const dy = event.clientY - letraGesture.startY;
+
+      if (letraGesture.mode === "undecided") {
+        if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) {
+          return;
+        }
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          letraGesture.mode = "carousel";
+          scrollEl!.setPointerCapture(event.pointerId);
+        } else {
+          letraGesture = null;
+          return;
+        }
+      }
+
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+
+      const displayOffset = applyRubberBand(
+        dx,
+        dx < 0 ? tieneSiguienteRef.current : dx > 0 ? tieneAnteriorRef.current : true,
+      );
+      setOffsetX(displayOffset);
+    }
+
+    function onLetraPointerUp(event: PointerEvent) {
+      if (letraGesture && letraGesture.pointerId === event.pointerId) {
+        if (letraGesture.mode === "carousel") {
+          handleRelease(event.clientX - letraGesture.startX);
+        }
+
+        if (scrollEl!.hasPointerCapture(event.pointerId)) {
+          scrollEl!.releasePointerCapture(event.pointerId);
+        }
+
+        letraGesture = null;
+      }
+
+      endManualScroll();
+    }
+
+    function onLetraScroll() {
+      if (manualScrollActiveRef.current || autoScrollLevelRef.current > 0) {
+        syncScrollOffset();
+      }
+    }
+
+    scrollEl.addEventListener("pointerdown", onLetraPointerDown);
+    scrollEl.addEventListener("pointermove", onLetraPointerMove);
+    scrollEl.addEventListener("pointerup", onLetraPointerUp);
+    scrollEl.addEventListener("pointercancel", onLetraPointerUp);
+    scrollEl.addEventListener("scroll", onLetraScroll, { passive: true });
+
+    return () => {
+      scrollEl.removeEventListener("pointerdown", onLetraPointerDown);
+      scrollEl.removeEventListener("pointermove", onLetraPointerMove);
+      scrollEl.removeEventListener("pointerup", onLetraPointerUp);
+      scrollEl.removeEventListener("pointercancel", onLetraPointerUp);
+      scrollEl.removeEventListener("scroll", onLetraScroll);
+    };
+  }, [open, handleRelease, cancion?.id]);
+
+  useEffect(() => {
     const dialog = dialogRef.current;
 
     if (!dialog || !open) {
@@ -468,15 +595,11 @@ export default function CancioneroVerModal({
         return;
       }
 
-      if (autoScrollLevelRef.current > 0) {
-        manualScrollActiveRef.current = true;
-      }
-
       gestureRef.current = {
-        mode: "undecided",
+        mode: "carousel",
         startX: clientX,
         startY: clientY,
-        startScrollTop: letraScrollRef.current?.scrollTop ?? 0,
+        startScrollTop: 0,
         pointerId,
       };
     }
@@ -489,40 +612,6 @@ export default function CancioneroVerModal({
       }
 
       const dx = clientX - gesture.startX;
-      const dy = clientY - gesture.startY;
-      const scrollEl = letraScrollRef.current;
-
-      if (gesture.mode === "undecided") {
-        if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) {
-          return;
-        }
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-          gesture.mode = "carousel";
-        } else {
-          gesture.mode = "scroll";
-          gesture.startScrollTop = scrollEl?.scrollTop ?? gesture.startScrollTop;
-          gesture.startX = clientX;
-          gesture.startY = clientY;
-        }
-      }
-
-      if (gesture.mode === "scroll") {
-        prevent();
-
-        if (scrollEl) {
-          const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-          const nextScrollTop = clamp(
-            gesture.startScrollTop - dy,
-            0,
-            maxScroll,
-          );
-          scrollEl.scrollTop = nextScrollTop;
-          autoScrollOffsetRef.current = nextScrollTop;
-        }
-
-        return;
-      }
 
       prevent();
 
@@ -544,9 +633,6 @@ export default function CancioneroVerModal({
         handleRelease(clientX - gesture.startX);
       }
 
-      autoScrollOffsetRef.current =
-        letraScrollRef.current?.scrollTop ?? autoScrollOffsetRef.current;
-      manualScrollActiveRef.current = false;
       gestureRef.current = null;
     }
 
@@ -562,6 +648,13 @@ export default function CancioneroVerModal({
       }
 
       if (isInteractiveTarget(event.target)) {
+        return;
+      }
+
+      if (
+        isLetraScrollTarget(event.target) ||
+        !isCarouselZoneTarget(event.target)
+      ) {
         return;
       }
 
@@ -606,9 +699,6 @@ export default function CancioneroVerModal({
 
       releaseCapture(event.pointerId);
       gestureRef.current = null;
-      autoScrollOffsetRef.current =
-        letraScrollRef.current?.scrollTop ?? autoScrollOffsetRef.current;
-      manualScrollActiveRef.current = false;
 
       if (gesture.mode === "carousel") {
         runTransition(0);
@@ -645,7 +735,7 @@ export default function CancioneroVerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancionero-ver-titulo"
-        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md touch-none flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <TapButton
           aria-label="Cerrar"

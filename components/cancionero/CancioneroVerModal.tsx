@@ -18,8 +18,10 @@ const AXIS_LOCK_PX = 8;
 const SWIPE_COMMIT_RATIO = 0.2;
 const SWIPE_COMMIT_MIN_PX = 48;
 const CAROUSEL_TRANSITION_MS = 260;
-const NAV_BAR_CLASS =
-  "shrink-0 border-border bg-bg-dark px-3 py-3 select-none";
+const HEADER_CLASS =
+  "shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14 select-none";
+const BOTTOM_NAV_CLASS =
+  "shrink-0 border-t border-border bg-bg-dark px-3 py-1.5 select-none";
 
 type GestureMode = "undecided" | "carousel" | "scroll";
 
@@ -67,7 +69,6 @@ type CancionNavBarProps = {
   tieneSiguiente: boolean;
   onAnterior?: () => void;
   onSiguiente?: () => void;
-  borderClass: string;
 };
 
 function CancionNavBar({
@@ -75,28 +76,27 @@ function CancionNavBar({
   tieneSiguiente,
   onAnterior,
   onSiguiente,
-  borderClass,
 }: CancionNavBarProps) {
   return (
-    <div className={`${NAV_BAR_CLASS} ${borderClass}`}>
+    <div className={BOTTOM_NAV_CLASS}>
       <div className="flex items-center justify-between gap-2">
         <TapButton
           type="button"
           aria-label="Canción anterior"
           disabled={!tieneAnterior}
           onClick={onAnterior}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
         >
-          <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
+          <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
         </TapButton>
         <TapButton
           type="button"
           aria-label="Canción siguiente"
           disabled={!tieneSiguiente}
           onClick={onSiguiente}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
         >
-          <ChevronRight className="size-5 text-text-primary" aria-hidden="true" />
+          <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
         </TapButton>
       </div>
     </div>
@@ -142,39 +142,19 @@ function CancionSlide({
       className="flex h-full shrink-0 flex-col bg-bg-cola-sheet"
       style={{ flex: "0 0 33.333333%" }}
     >
-      <header className={`${NAV_BAR_CLASS} border-b pr-14`}>
-        <div className="flex items-center gap-2">
-          <TapButton
-            type="button"
-            aria-label="Canción anterior"
-            disabled={!navProps.tieneAnterior}
-            onClick={navProps.onAnterior}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
+      <header className={HEADER_CLASS}>
+        <div className="min-w-0">
+          <h2
+            id={isCurrent ? "cancionero-ver-titulo" : undefined}
+            className="truncate text-lg font-extrabold text-accent"
           >
-            <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
-          </TapButton>
-          <div className="min-w-0 flex-1">
-            <h2
-              id={isCurrent ? "cancionero-ver-titulo" : undefined}
-              className="truncate text-lg font-extrabold text-accent"
-            >
-              {cancion.nombre}
-            </h2>
-            {cancion.artista && (
-              <p className="mt-0.5 truncate text-sm text-text-muted">
-                {cancion.artista}
-              </p>
-            )}
-          </div>
-          <TapButton
-            type="button"
-            aria-label="Canción siguiente"
-            disabled={!navProps.tieneSiguiente}
-            onClick={navProps.onSiguiente}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card disabled:opacity-30"
-          >
-            <ChevronRight className="size-5 text-text-primary" aria-hidden="true" />
-          </TapButton>
+            {cancion.nombre}
+          </h2>
+          {cancion.artista && (
+            <p className="mt-0.5 truncate text-sm text-text-muted">
+              {cancion.artista}
+            </p>
+          )}
         </div>
       </header>
 
@@ -191,10 +171,7 @@ function CancionSlide({
         )}
       </div>
 
-      <CancionNavBar
-        {...navProps}
-        borderClass="border-t"
-      />
+      <CancionNavBar {...navProps} />
     </div>
   );
 }

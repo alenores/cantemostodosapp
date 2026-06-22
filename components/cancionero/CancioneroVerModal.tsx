@@ -258,6 +258,7 @@ export default function CancioneroVerModal({
   const lockedRef = useRef(false);
   const autoScrollLevelRef = useRef(0);
   const autoScrollOffsetRef = useRef(0);
+  const manualScrollActiveRef = useRef(false);
 
   const tieneAnteriorRef = useRef(tieneAnterior);
   const tieneSiguienteRef = useRef(tieneSiguiente);
@@ -404,6 +405,12 @@ export default function CancioneroVerModal({
         return;
       }
 
+      if (manualScrollActiveRef.current) {
+        lastTime = now;
+        frameId = requestAnimationFrame(tick);
+        return;
+      }
+
       const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
 
       if (maxScroll <= 1) {
@@ -461,6 +468,10 @@ export default function CancioneroVerModal({
         return;
       }
 
+      if (autoScrollLevelRef.current > 0) {
+        manualScrollActiveRef.current = true;
+      }
+
       gestureRef.current = {
         mode: "undecided",
         startX: clientX,
@@ -490,6 +501,9 @@ export default function CancioneroVerModal({
           gesture.mode = "carousel";
         } else {
           gesture.mode = "scroll";
+          gesture.startScrollTop = scrollEl?.scrollTop ?? gesture.startScrollTop;
+          gesture.startX = clientX;
+          gesture.startY = clientY;
         }
       }
 
@@ -530,6 +544,9 @@ export default function CancioneroVerModal({
         handleRelease(clientX - gesture.startX);
       }
 
+      autoScrollOffsetRef.current =
+        letraScrollRef.current?.scrollTop ?? autoScrollOffsetRef.current;
+      manualScrollActiveRef.current = false;
       gestureRef.current = null;
     }
 
@@ -589,6 +606,9 @@ export default function CancioneroVerModal({
 
       releaseCapture(event.pointerId);
       gestureRef.current = null;
+      autoScrollOffsetRef.current =
+        letraScrollRef.current?.scrollTop ?? autoScrollOffsetRef.current;
+      manualScrollActiveRef.current = false;
 
       if (gesture.mode === "carousel") {
         runTransition(0);

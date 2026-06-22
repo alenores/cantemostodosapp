@@ -22,8 +22,8 @@ const HEADER_CLASS =
   "shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14 select-none";
 const BOTTOM_NAV_CLASS =
   "shrink-0 border-t border-border bg-bg-dark px-3 py-1.5 select-none";
-/** px/s por nivel (1 = muy suave). */
-const AUTO_SCROLL_SPEEDS = [16, 28, 44, 64, 92];
+/** px/s por nivel (1 = muy suave). Escalones más separados para notar cada paso. */
+const AUTO_SCROLL_SPEEDS = [14, 30, 52, 82, 120];
 const AUTO_SCROLL_MAX_LEVEL = AUTO_SCROLL_SPEEDS.length;
 
 type GestureMode = "undecided" | "carousel" | "scroll";
@@ -257,7 +257,7 @@ export default function CancioneroVerModal({
   const gestureRef = useRef<ActiveGesture | null>(null);
   const lockedRef = useRef(false);
   const autoScrollLevelRef = useRef(0);
-  const pauseAutoScrollRef = useRef<(() => void) | null>(null);
+  const autoScrollOffsetRef = useRef(0);
 
   const tieneAnteriorRef = useRef(tieneAnterior);
   const tieneSiguienteRef = useRef(tieneSiguiente);
@@ -267,10 +267,6 @@ export default function CancioneroVerModal({
   const [offsetX, setOffsetX] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [autoScrollLevel, setAutoScrollLevel] = useState(0);
-
-  const pauseAutoScroll = useCallback(() => {
-    setAutoScrollLevel(0);
-  }, []);
 
   const handleAutoScrollAccelerate = useCallback(() => {
     setAutoScrollLevel((level) => {
@@ -296,11 +292,11 @@ export default function CancioneroVerModal({
 
   useEffect(() => {
     autoScrollLevelRef.current = autoScrollLevel;
-  }, [autoScrollLevel]);
 
-  useEffect(() => {
-    pauseAutoScrollRef.current = pauseAutoScroll;
-  }, [pauseAutoScroll]);
+    if (autoScrollLevel > 0) {
+      autoScrollOffsetRef.current = letraScrollRef.current?.scrollTop ?? 0;
+    }
+  }, [autoScrollLevel]);
 
   useEffect(() => {
     tieneAnteriorRef.current = tieneAnterior;
@@ -349,8 +345,6 @@ export default function CancioneroVerModal({
       if (lockedRef.current) {
         return;
       }
-
-      pauseAutoScrollRef.current?.();
 
       const width = getViewportWidth();
 
@@ -420,16 +414,16 @@ export default function CancioneroVerModal({
       const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
       const speed = AUTO_SCROLL_SPEEDS[level - 1] ?? AUTO_SCROLL_SPEEDS[0];
-      const nextScrollTop = scrollEl.scrollTop + speed * deltaSeconds;
+      autoScrollOffsetRef.current += speed * deltaSeconds;
 
-      if (nextScrollTop >= maxScroll) {
+      if (autoScrollOffsetRef.current >= maxScroll) {
+        autoScrollOffsetRef.current = maxScroll;
         scrollEl.scrollTop = maxScroll;
-        triggerHaptic();
-        setAutoScrollLevel(0);
+        frameId = requestAnimationFrame(tick);
         return;
       }
 
-      scrollEl.scrollTop = nextScrollTop;
+      scrollEl.scrollTop = autoScrollOffsetRef.current;
       frameId = requestAnimationFrame(tick);
     }
 
@@ -446,6 +440,7 @@ export default function CancioneroVerModal({
     }
 
     letraScrollRef.current?.scrollTo(0, 0);
+    autoScrollOffsetRef.current = 0;
     setOffsetX(0);
     setAnimating(false);
     setAutoScrollLevel(0);
@@ -492,11 +487,9 @@ export default function CancioneroVerModal({
         }
 
         if (Math.abs(dx) > Math.abs(dy)) {
-          pauseAutoScrollRef.current?.();
           gesture.mode = "carousel";
         } else {
           gesture.mode = "scroll";
-          pauseAutoScrollRef.current?.();
         }
       }
 
@@ -505,11 +498,13 @@ export default function CancioneroVerModal({
 
         if (scrollEl) {
           const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-          scrollEl.scrollTop = clamp(
+          const nextScrollTop = clamp(
             gesture.startScrollTop - dy,
             0,
             maxScroll,
           );
+          scrollEl.scrollTop = nextScrollTop;
+          autoScrollOffsetRef.current = nextScrollTop;
         }
 
         return;

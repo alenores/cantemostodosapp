@@ -2,7 +2,9 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
+import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
+import type { ColaIndividualItem } from "@/types";
 import {
   ListMusic,
   Maximize2,
@@ -11,7 +13,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const LETRA_TEST_PLACEHOLDER = [
   "Verso 1",
@@ -39,6 +41,7 @@ export default function HomePageShell() {
   const [cancionActiva, setCancionActiva] = useState<string | null>(null);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
+  const [colaSheetAbierta, setColaSheetAbierta] = useState(false);
   const [autoScrollActivo, setAutoScrollActivo] = useState(false);
   const [autoScrollVelocidad, setAutoScrollVelocidad] = useState(1);
 
@@ -54,8 +57,15 @@ export default function HomePageShell() {
     };
   }, [modoLectura]);
 
+  useEffect(() => {
+    if (!modoLectura) {
+      setColaSheetAbierta(false);
+    }
+  }, [modoLectura]);
+
   const salirModoLectura = () => {
     setOverlayAbierto(false);
+    setColaSheetAbierta(false);
     setModoLectura(false);
   };
 
@@ -64,10 +74,23 @@ export default function HomePageShell() {
     setModoLectura(true);
   };
 
+  const handleActivarCancion = useCallback((item: ColaIndividualItem) => {
+    setCancionActiva(item.nombre);
+    setColaSheetAbierta(false);
+  }, []);
+
   return (
     <div
       className="flex flex-col overflow-hidden bg-bg-app"
-      style={{ height: "100dvh" }}
+      style={{
+        height: "100dvh",
+        ...(!modoLectura
+          ? {
+              paddingBottom:
+                "calc(56px + env(safe-area-inset-bottom, 0px))",
+            }
+          : {}),
+      }}
     >
       {!modoLectura && (
         <header className="flex h-14 shrink-0 flex-row items-center gap-3 border-b border-border bg-bg-dark px-4">
@@ -90,14 +113,7 @@ export default function HomePageShell() {
         className={`min-h-0 overflow-y-auto ${
           modoLectura ? "" : "flex-1"
         }`}
-        style={
-          modoLectura
-            ? { height: "100dvh" }
-            : {
-                paddingBottom:
-                  "calc(56px + env(safe-area-inset-bottom, 0px))",
-              }
-        }
+        style={modoLectura ? { height: "100dvh" } : undefined}
       >
         {cancionActiva === null ? (
           <div className="flex h-full flex-col items-center justify-center gap-3">
@@ -119,7 +135,7 @@ export default function HomePageShell() {
         ) : (
           <div className="relative bg-letra-bg px-4 py-6">
             <h1 className="text-lg font-bold text-letra-text">
-              Canción de prueba
+              {cancionActiva === "test" ? "Canción de prueba" : cancionActiva}
             </h1>
             <p className="mt-1 text-sm text-letra-text/60">Artista demo</p>
             <div className="mt-6 space-y-2">
@@ -151,11 +167,10 @@ export default function HomePageShell() {
       </main>
 
       {!modoLectura && (
-        <footer className="flex h-[52px] shrink-0 items-center justify-center border-t border-border bg-bg-dark">
-          <p className="text-xs text-text-muted">
-            Cola individual · próximamente
-          </p>
-        </footer>
+        <ColaIndividualSheet
+          modo="colapsable"
+          onActivarCancion={handleActivarCancion}
+        />
       )}
 
       {modoLectura && (
@@ -196,9 +211,7 @@ export default function HomePageShell() {
 
           <button
             type="button"
-            onClick={() => {
-              console.log("TODO: abrir cola individual");
-            }}
+            onClick={() => setColaSheetAbierta(true)}
             className="fixed z-[45] flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary"
             style={{
               bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
@@ -208,6 +221,32 @@ export default function HomePageShell() {
             <ListMusic className="size-4" aria-hidden="true" />
             Cola
           </button>
+
+          {colaSheetAbierta && (
+            <div
+              className="fixed bottom-0 left-0 right-0 z-[45] flex flex-col rounded-t-2xl border-t border-border bg-bg-dark"
+              style={{
+                height: "60vh",
+                paddingTop: 16,
+                paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              }}
+            >
+              <div className="flex shrink-0 items-center justify-end px-4 pb-2">
+                <button
+                  type="button"
+                  aria-label="Cerrar cola individual"
+                  onClick={() => setColaSheetAbierta(false)}
+                  className="flex size-8 items-center justify-center text-text-muted"
+                >
+                  <X className="size-5" aria-hidden="true" />
+                </button>
+              </div>
+              <ColaIndividualSheet
+                modo="sheet"
+                onActivarCancion={handleActivarCancion}
+              />
+            </div>
+          )}
         </>
       )}
 

@@ -67,3 +67,14 @@ export type UsuarioActivo = {
   email: string;
   avatar_url: string | null;
 };
+
+export type ColaIndividualItem = {
+  id: number;
+  user_id: string;
+  nombre: string;
+  artista: string | null;
+  url_letra: string | null;
+  letra_texto: string | null;
+  orden: number;
+  created_at: string;
+};

@@ -1,5 +1,6 @@
 import SplashScreen from "@/components/SplashScreen";
 import AuthSessionListener from "@/components/auth/AuthSessionListener";
+import AppFooter from "@/components/ui/AppFooter";
 import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
 import OfflinePrefetchRunner from "@/components/offline/OfflinePrefetchRunner";
 import OfflineWarmRunner from "@/components/offline/OfflineWarmRunner";
@@ -114,6 +115,7 @@ export default function RootLayout({
                 <AuthSessionListener />
                 <SplashScreen />
                 {children}
+                <AppFooter />
               </NavigationProgressProvider>
             </Suspense>
           </TapFeedbackProvider>

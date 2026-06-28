@@ -26,7 +26,7 @@ function hideInlineSplash() {
 }
 
 function isSettledRoute(pathname: string): boolean {
-  return pathname !== "/" && pathname !== "";
+  return pathname !== "";
 }
 
 export default function SplashScreen() {

@@ -32,11 +32,13 @@ const inputClassName =
 export type CancioneroPageClientProps = {
   embedded?: boolean;
   onClose?: () => void;
+  hideBack?: boolean;
 };
 
 export default function CancioneroPageClient({
   embedded = false,
   onClose,
+  hideBack = false,
 }: CancioneroPageClientProps = {}) {
   const online = useOnlineStatus();
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
@@ -222,10 +224,12 @@ export default function CancioneroPageClient({
     },
   );
 
+  const constrainedLayout = embedded || hideBack;
+
   return (
     <div
       className={`relative flex flex-col bg-bg-app ${
-        embedded
+        constrainedLayout
           ? "min-h-0 h-full flex-1 overflow-hidden"
           : "min-h-full flex-1"
       }`}
@@ -233,23 +237,30 @@ export default function CancioneroPageClient({
       <AppReadyMarker />
       <header className="border-b border-border bg-bg-darker px-4 py-3">
         <div className="flex items-center gap-3">
-          {embedded ? (
-            <TapButton
-              aria-label="Volver a salas"
-              onClick={onClose}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-            </TapButton>
-          ) : (
-            <TapLink
-              href="/salas"
-              ariaLabel="Volver a salas"
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-            </TapLink>
-          )}
+          {!hideBack &&
+            (embedded ? (
+              <TapButton
+                aria-label="Volver a salas"
+                onClick={onClose}
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                <ArrowLeft
+                  className="size-5 text-text-primary"
+                  aria-hidden="true"
+                />
+              </TapButton>
+            ) : (
+              <TapLink
+                href="/salas"
+                ariaLabel="Volver a salas"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                <ArrowLeft
+                  className="size-5 text-text-primary"
+                  aria-hidden="true"
+                />
+              </TapLink>
+            ))}
           <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
             Canciones guardadas
           </h1>
@@ -264,8 +275,14 @@ export default function CancioneroPageClient({
 
       <main
         className={`flex flex-1 flex-col gap-3 px-4 py-4 pb-8 ${
-          embedded ? "min-h-0 overscroll-y-contain" : ""
-        } ${embedded && cancionViendo === null ? "overflow-y-auto" : embedded ? "overflow-hidden" : ""}`}
+          constrainedLayout ? "min-h-0 overscroll-y-contain" : ""
+        } ${
+          constrainedLayout && cancionViendo === null
+            ? "overflow-y-auto"
+            : constrainedLayout
+              ? "overflow-hidden"
+              : ""
+        }`}
       >
         {!online && (
           <p

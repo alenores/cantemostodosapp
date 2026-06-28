@@ -7,13 +7,6 @@ import { useEffect, useRef } from "react";
 
 async function runCancioneroSync(): Promise<void> {
   const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    return;
-  }
 
   try {
     const result = await syncCancioneroLocal(supabase);
@@ -23,6 +16,8 @@ async function runCancioneroSync(): Promise<void> {
         `[cancionero-sync] Copia local actualizada (${result.count} canciones)`,
       );
     }
+  } catch (error) {
+    console.warn("[cancionero-sync] Error al sincronizar:", error);
   } finally {
     dispatchCancioneroSyncFinished();
   }

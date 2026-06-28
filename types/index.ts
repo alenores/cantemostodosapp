@@ -78,3 +78,13 @@ export type ColaIndividualItem = {
   orden: number;
   created_at: string;
 };
+
+export type UsuarioCancion = {
+  id: number;
+  user_id: string;
+  cancion_guardada_id: number | null;
+  url_letra: string | null;
+  nombre: string;
+  artista: string | null;
+  created_at: string;
+};

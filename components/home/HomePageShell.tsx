@@ -1,34 +1,103 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
-import { Music, Search } from "lucide-react";
-import { useState } from "react";
+import AutoScrollControl from "@/components/home/AutoScrollControl";
+import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
+import {
+  ListMusic,
+  Maximize2,
+  Music,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
+const LETRA_TEST_PLACEHOLDER = [
+  "Verso 1",
+  "Lorem ipsum dolor sit amet",
+  "Consectetur adipiscing elit",
+  "Sed do eiusmod tempor incididunt",
+  "",
+  "Estribillo",
+  "Ut labore et dolore magna aliqua",
+  "Ut enim ad minim veniam",
+  "Quis nostrud exercitation ullamco",
+  "",
+  "Verso 2",
+  "Duis aute irure dolor in reprehenderit",
+  "In voluptate velit esse cillum",
+  "Dolore eu fugiat nulla pariatur",
+  "",
+  "Estribillo",
+  "Excepteur sint occaecat cupidatat",
+  "Non proident sunt in culpa",
+  "Qui officia deserunt mollit anim",
+];
 
 export default function HomePageShell() {
-  const [cancionActiva] = useState<string | null>(null);
+  const [cancionActiva, setCancionActiva] = useState<string | null>(null);
+  const [modoLectura, setModoLectura] = useState(false);
+  const [overlayAbierto, setOverlayAbierto] = useState(false);
+  const [autoScrollActivo, setAutoScrollActivo] = useState(false);
+  const [autoScrollVelocidad, setAutoScrollVelocidad] = useState(1);
+
+  useEffect(() => {
+    if (modoLectura) {
+      document.body.setAttribute("data-modo-lectura", "true");
+    } else {
+      document.body.removeAttribute("data-modo-lectura");
+    }
+
+    return () => {
+      document.body.removeAttribute("data-modo-lectura");
+    };
+  }, [modoLectura]);
+
+  const salirModoLectura = () => {
+    setOverlayAbierto(false);
+    setModoLectura(false);
+  };
+
+  const activarModoLecturaTest = () => {
+    setCancionActiva("test");
+    setModoLectura(true);
+  };
 
   return (
     <div
       className="flex flex-col overflow-hidden bg-bg-app"
       style={{ height: "100dvh" }}
     >
-      <header className="flex h-14 shrink-0 flex-row items-center gap-3 border-b border-border bg-bg-dark px-4">
-        <Search className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
-        <input
-          type="text"
-          placeholder="Buscar canción..."
-          className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
-          onFocus={() => {
-            console.log("TODO: abrir buscador");
-          }}
-        />
-      </header>
+      {!modoLectura && (
+        <header className="flex h-14 shrink-0 flex-row items-center gap-3 border-b border-border bg-bg-dark px-4">
+          <Search
+            className="size-5 shrink-0 text-text-muted"
+            aria-hidden="true"
+          />
+          <input
+            type="text"
+            placeholder="Buscar canción..."
+            className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+            onFocus={() => {
+              console.log("TODO: abrir buscador");
+            }}
+          />
+        </header>
+      )}
 
       <main
-        className="min-h-0 flex-1 overflow-y-auto"
-        style={{
-          paddingBottom: "calc(56px + env(safe-area-inset-bottom, 0px))",
-        }}
+        className={`min-h-0 overflow-y-auto ${
+          modoLectura ? "" : "flex-1"
+        }`}
+        style={
+          modoLectura
+            ? { height: "100dvh" }
+            : {
+                paddingBottom:
+                  "calc(56px + env(safe-area-inset-bottom, 0px))",
+              }
+        }
       >
         {cancionActiva === null ? (
           <div className="flex h-full flex-col items-center justify-center gap-3">
@@ -39,13 +108,109 @@ export default function HomePageShell() {
             <p className="text-center text-sm text-text-muted">
               Buscá una canción para empezar
             </p>
+            <button
+              type="button"
+              onClick={activarModoLecturaTest}
+              className="mt-2 rounded-xl border border-border bg-bg-dark px-4 py-2 text-xs text-text-secondary"
+            >
+              Activar modo lectura (test)
+            </button>
           </div>
-        ) : null}
+        ) : (
+          <div className="relative bg-letra-bg px-4 py-6">
+            <h1 className="text-lg font-bold text-letra-text">
+              Canción de prueba
+            </h1>
+            <p className="mt-1 text-sm text-letra-text/60">Artista demo</p>
+            <div className="mt-6 space-y-2">
+              {LETRA_TEST_PLACEHOLDER.map((line, index) =>
+                line === "" ? (
+                  <div key={index} className="h-4" aria-hidden="true" />
+                ) : (
+                  <p
+                    key={index}
+                    className="text-base font-bold leading-loose text-letra-text"
+                  >
+                    {line}
+                  </p>
+                ),
+              )}
+            </div>
+            {!modoLectura && (
+              <button
+                type="button"
+                onClick={() => setModoLectura(true)}
+                className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-bg-dark px-4 py-2 text-xs text-text-secondary"
+              >
+                <Maximize2 className="size-4" aria-hidden="true" />
+                Expandir
+              </button>
+            )}
+          </div>
+        )}
       </main>
 
-      <footer className="flex h-[52px] shrink-0 items-center justify-center border-t border-border bg-bg-dark">
-        <p className="text-xs text-text-muted">Cola individual · próximamente</p>
-      </footer>
+      {!modoLectura && (
+        <footer className="flex h-[52px] shrink-0 items-center justify-center border-t border-border bg-bg-dark">
+          <p className="text-xs text-text-muted">
+            Cola individual · próximamente
+          </p>
+        </footer>
+      )}
+
+      {modoLectura && (
+        <>
+          <button
+            type="button"
+            aria-label={
+              overlayAbierto
+                ? "Cerrar controles"
+                : "Abrir controles de modo lectura"
+            }
+            onClick={() => setOverlayAbierto((open) => !open)}
+            className="fixed z-50 flex size-11 items-center justify-center rounded-full border border-border bg-bg-dark/90 backdrop-blur-sm"
+            style={{ top: 16, right: 16 }}
+          >
+            {overlayAbierto ? (
+              <X className="size-5 text-text-primary" aria-hidden="true" />
+            ) : (
+              <SlidersHorizontal
+                className="size-5 text-text-primary"
+                aria-hidden="true"
+              />
+            )}
+          </button>
+
+          <ModoLecturaOverlay
+            abierto={overlayAbierto}
+            onCerrar={() => setOverlayAbierto(false)}
+            onSalirModoLectura={salirModoLectura}
+          />
+
+          <AutoScrollControl
+            activo={autoScrollActivo}
+            velocidad={autoScrollVelocidad}
+            onToggle={() => setAutoScrollActivo((active) => !active)}
+            onVelocidadChange={setAutoScrollVelocidad}
+          />
+
+          <button
+            type="button"
+            onClick={() => {
+              console.log("TODO: abrir cola individual");
+            }}
+            className="fixed z-[45] flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary"
+            style={{
+              bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+              left: 16,
+            }}
+          >
+            <ListMusic className="size-4" aria-hidden="true" />
+            Cola
+          </button>
+        </>
+      )}
+
       <AppReadyMarker />
     </div>
   );

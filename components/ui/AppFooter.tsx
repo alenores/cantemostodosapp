@@ -3,6 +3,7 @@
 import { BookOpen, Home, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type TabConfig = {
   href: string;
@@ -33,10 +34,30 @@ const TABS: TabConfig[] = [
   },
 ];
 
+function readModoLecturaHidden() {
+  return document.body.getAttribute("data-modo-lectura") === "true";
+}
+
 export default function AppFooter() {
   const pathname = usePathname();
+  const [modoLecturaHidden, setModoLecturaHidden] = useState(false);
 
-  if (pathname.startsWith("/auth")) {
+  useEffect(() => {
+    setModoLecturaHidden(readModoLecturaHidden());
+
+    const observer = new MutationObserver(() => {
+      setModoLecturaHidden(readModoLecturaHidden());
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-modo-lectura"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  if (pathname.startsWith("/auth") || modoLecturaHidden) {
     return null;
   }
 

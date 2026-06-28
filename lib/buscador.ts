@@ -1,4 +1,4 @@
-import { extractSitio, parseTituloArtista } from "@/lib/google-search";
+import { extractSitio, parseTituloArtista } from "@/lib/brave-search";
 import type { CancionBusquedaLocal } from "@/lib/sala-data";
 import type { FuenteBusqueda, ResultadoBusquedaBuscador } from "@/types";
 

@@ -3,7 +3,6 @@ import { isUsefulExtractedLetra } from "@/lib/letra-extract";
 export type LetraSourceKind =
   | "acordesdcanciones"
   | "cifraclub"
-  | "lacuerda"
   | "desconocido";
 
 export type LetraDisplayMode = "texto" | "embed";
@@ -24,10 +23,6 @@ export function getLetraSourceKind(url: string): LetraSourceKind {
       return "cifraclub";
     }
 
-    if (hostname.includes("lacuerda")) {
-      return "lacuerda";
-    }
-
     return "desconocido";
   } catch {
     return "desconocido";
@@ -37,7 +32,7 @@ export function getLetraSourceKind(url: string): LetraSourceKind {
 /** Fuentes donde priorizamos texto extraído (hoja blanca). Cifra Club va directo a iframe. */
 export function shouldPreferTextExtract(url: string): boolean {
   const kind = getLetraSourceKind(url);
-  return kind === "acordesdcanciones" || kind === "lacuerda" || kind === "desconocido";
+  return kind === "acordesdcanciones" || kind === "desconocido";
 }
 
 /** Iframe embebido con recorte inicial (Cifra Club activa; preview con página web). */

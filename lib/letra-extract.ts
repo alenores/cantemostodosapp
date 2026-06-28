@@ -4,7 +4,6 @@ const FETCH_TIMEOUT_MS = 15_000;
 
 const ALLOWED_HOST_SUFFIXES = [
   "acordesdcanciones.com",
-  "lacuerda.net",
   "cifraclub.com",
   "cifraclub.com.br",
 ];
@@ -102,22 +101,6 @@ function paragraphToText(
     .join("\n");
 }
 
-function extractLaCuerdaLetra($: cheerio.CheerioAPI): string | null {
-  const fromSelectors = extractFromSelectors($, [".letra", "#letra", ".txt"]);
-
-  if (fromSelectors) {
-    return fromSelectors;
-  }
-
-  const pres = $("pre");
-
-  if (pres.length === 0) {
-    return null;
-  }
-
-  return cleanLetraText(pres.last().text());
-}
-
 function extractCifraClubLetra($: cheerio.CheerioAPI): string | null {
   return extractFromSelectors($, [
     "#ct_cifra",
@@ -194,17 +177,12 @@ function extractLetraFromHtml(html: string, url: string): string | null {
     return extractAcordesDeCancionesLetra($);
   }
 
-  if (hostname.includes("lacuerda")) {
-    return extractLaCuerdaLetra($);
-  }
-
   if (hostname.includes("cifraclub")) {
     return extractCifraClubLetra($);
   }
 
   return (
     extractAcordesDeCancionesLetra($) ??
-    extractLaCuerdaLetra($) ??
     extractCifraClubLetra($)
   );
 }

@@ -35,7 +35,7 @@ El `main` quedaba con ~82px de altura porque el panel de cola en `ColaBottomShee
    - `LETRA_SCROLL_BOTTOM_EXTRA_PX = 16` (aire al final del scroll, además de la barra de 60px).
 
 5. **Contenido dual** (`lib/letra-display.ts`)
-   - Acordes / La Cuerda → hoja blanca (`LetraTexto`).
+   - Acordes → hoja blanca (`LetraTexto`).
    - Cifra Club → iframe embebido **dentro de la app** (no links externos como solución principal).
 
 ### Prohibido sin prueba en 2 canciones + 2 dispositivos

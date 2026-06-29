@@ -732,6 +732,93 @@ html.splash-active body {
   animation: sala-lectura-fab-in 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
+@keyframes sala-cola-aviso-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sala-cola-aviso-out {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.sala-cola-aviso-in {
+  animation: sala-cola-aviso-in 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.sala-cola-aviso-out {
+  animation: sala-cola-aviso-out 360ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sala-fila-aviso-slot {
+  overflow: hidden;
+  min-width: 0;
+  transition:
+    max-width 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    margin-right 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sala-fila-aviso-slot--idle {
+  max-width: 0;
+  margin-right: 0;
+}
+
+.sala-fila-aviso-slot--in,
+.sala-fila-aviso-slot--out {
+  max-width: min(48vw, 11.5rem);
+  margin-right: 0.625rem;
+}
+
+@keyframes sala-fila-aviso-text-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes sala-fila-aviso-text-out {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+
+  to {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
+  }
+}
+
+.sala-fila-aviso-text-in {
+  animation: sala-fila-aviso-text-in 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.sala-fila-aviso-text-out {
+  animation: sala-fila-aviso-text-out 360ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .progress-bar-indeterminate,
   .ios-install-pulse,
@@ -747,7 +834,11 @@ html.splash-active body {
   .sala-letra-skeleton-line,
   .cancionero-skeleton-eq-bar,
   .cancionero-item-cascade,
-  .sala-lectura-fab-item {
+  .sala-lectura-fab-item,
+  .sala-cola-aviso-in,
+  .sala-cola-aviso-out,
+  .sala-fila-aviso-text-in,
+  .sala-fila-aviso-text-out {
     animation: none;
   }
 
@@ -757,9 +848,13 @@ html.splash-active body {
   }
 
   .cancionero-item-cascade,
-  .sala-lectura-fab-item {
-    opacity: 1;
-    transform: none;
+  .sala-lectura-fab-item,
+  .sala-cola-aviso-in,
+  .sala-cola-aviso-out,
+  .sala-fila-aviso-slot {
+    max-width: 0;
+    margin-right: 0;
+    transition: none;
   }
 }
 

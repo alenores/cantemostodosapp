@@ -152,7 +152,7 @@ export default function CancionActivaSection({
       >
         {!modoLectura ? (
           <header className="shrink-0 border-b border-border bg-bg-sala px-2 py-1.5">
-            <h2 className="text-xl font-bold leading-tight text-text-primary">
+            <h2 className="text-xl font-bold leading-tight text-accent">
               {cancionNombre}
             </h2>
             {artista && (
@@ -211,7 +211,7 @@ export default function CancionActivaSection({
         <>
           {!modoLectura ? (
             <>
-              <h2 className="shrink-0 text-xl font-bold text-text-primary">
+              <h2 className="shrink-0 text-xl font-bold text-accent">
                 {cancionNombre}
               </h2>
               {artista && (

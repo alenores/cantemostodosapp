@@ -4,6 +4,7 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
+import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
 import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
@@ -16,11 +17,12 @@ import {
   type CancionActivaData,
 } from "@/lib/sala-data";
 import {
+  COLA_AVISO_EXIT_MS,
   COLA_AVISO_SHOW_DELAY_MS,
   getLetraModoLecturaHorizontalPadding,
+  getLecturaColaAvisoTopCss,
   getLecturaFabMenuTopCss,
   getLecturaTopChromeTopCss,
-  getSalaFloatControlsBottomCss,
   getSalaMainFooterPaddingCss,
   LECTURA_TOP_CHROME_SIDE_PX,
 } from "@/lib/sala-layout";
@@ -208,7 +210,7 @@ export default function SalaPageShell({
   const openColaRef = useRef<(() => void) | null>(null);
   const handleSiguienteRef = useRef<(() => void) | null>(null);
   const [colaAviso, setColaAviso] = useState<string | null>(null);
-  const [colaAvisoEntered, setColaAvisoEntered] = useState(false);
+  const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const letraScrollRef = useRef<HTMLDivElement>(null);
@@ -224,6 +226,7 @@ export default function SalaPageShell({
       clearTimeout(colaAvisoHideTimerRef.current);
     }
 
+    setColaAvisoExiting(false);
     setColaAviso(null);
 
     colaAvisoShowTimerRef.current = setTimeout(() => {
@@ -231,8 +234,13 @@ export default function SalaPageShell({
       colaAvisoShowTimerRef.current = null;
 
       colaAvisoHideTimerRef.current = setTimeout(() => {
-        setColaAviso(null);
-        colaAvisoHideTimerRef.current = null;
+        setColaAvisoExiting(true);
+
+        colaAvisoHideTimerRef.current = setTimeout(() => {
+          setColaAviso(null);
+          setColaAvisoExiting(false);
+          colaAvisoHideTimerRef.current = null;
+        }, COLA_AVISO_EXIT_MS);
       }, 2500);
     }, COLA_AVISO_SHOW_DELAY_MS);
   }, []);
@@ -391,24 +399,6 @@ export default function SalaPageShell({
     },
     [updateCancionFromSesion],
   );
-
-  useEffect(() => {
-    if (!colaAviso) {
-      setColaAvisoEntered(false);
-      return;
-    }
-
-    setColaAvisoEntered(false);
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setColaAvisoEntered(true);
-      });
-    });
-
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, [colaAviso]);
 
   useEffect(() => {
     initialColaLoadPendingRef.current = true;
@@ -636,6 +626,8 @@ export default function SalaPageShell({
           onRequestSiguiente={(siguiente) => {
             handleSiguienteRef.current = siguiente;
           }}
+          colaAviso={!modoLectura ? colaAviso : null}
+          colaAvisoExiting={colaAvisoExiting}
           onDragEnd={() => suppressColaRealtime(1500)}
         />
       </main>
@@ -715,19 +707,16 @@ export default function SalaPageShell({
         </>
       ) : null}
 
-      {!modoLectura && colaAviso ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`pointer-events-none fixed left-1/2 z-40 w-fit max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-[10px] border border-accent/30 bg-bg-cola-aviso px-3.5 py-2 text-center text-sm font-semibold whitespace-nowrap text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.38)] transition-[opacity,transform] duration-300 ease-out ${
-            colaAvisoEntered ? "opacity-100" : "translate-y-2 opacity-0"
-          }`}
+      {modoLectura && colaAviso ? (
+        <ColaAvisoToast
+          message={colaAviso}
+          exiting={colaAvisoExiting}
+          className="fixed z-[48]"
           style={{
-            bottom: `calc(${getSalaFloatControlsBottomCss(presenceBarVisible)} + 72px)`,
+            top: getLecturaColaAvisoTopCss(),
+            right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
           }}
-        >
-          {colaAviso}
-        </div>
+        />
       ) : null}
 
       {buscadorOpen && (

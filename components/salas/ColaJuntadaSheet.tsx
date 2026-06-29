@@ -1,5 +1,6 @@
 "use client";
 
+import ColaFilaFloatButton from "@/components/salas/ColaFilaFloatButton";
 import ColaJuntadaItem from "@/components/salas/ColaJuntadaItem";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
 import AddButton, { COLA_ADD_BUTTON_SIZE } from "@/components/ui/AddButton";
@@ -52,7 +53,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ListMusic, Maximize2, SkipForward, Trash2, X } from "lucide-react";
+import { Maximize2, SkipForward, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 
@@ -127,6 +128,8 @@ type ColaJuntadaSheetProps = {
   onRequestSiguiente?: (siguiente: () => void) => void;
   onExpand?: () => void;
   presentacionOculta?: boolean;
+  colaAviso?: string | null;
+  colaAvisoExiting?: boolean;
   onDragEnd?: () => void;
 };
 
@@ -201,6 +204,8 @@ export default function ColaJuntadaSheet({
   onRequestSiguiente,
   onExpand,
   presentacionOculta = false,
+  colaAviso = null,
+  colaAvisoExiting = false,
   onDragEnd,
 }: ColaJuntadaSheetProps) {
   const [abierto, setAbierto] = useState(false);
@@ -702,14 +707,12 @@ export default function ColaJuntadaSheet({
               </TapButton>
             ) : null}
 
-            <TapButton
-              type="button"
+            <ColaFilaFloatButton
+              pendientesCount={pendientesCount}
+              colaAviso={colaAviso}
+              colaAvisoExiting={colaAvisoExiting}
               onClick={openCola}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
-            >
-              <ListMusic className="size-4" aria-hidden="true" />
-              <span>Fila · {pendientesCount}</span>
-            </TapButton>
+            />
           </div>
         </div>
       ) : null}

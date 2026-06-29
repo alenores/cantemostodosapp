@@ -104,6 +104,12 @@ export const LECTURA_TOP_CHROME_INSET_PX = 6;
 export const LECTURA_TOP_CHROME_HEIGHT_PX = 36;
 export const LECTURA_TOP_CHROME_SIDE_PX = 16;
 export const LECTURA_FAB_MENU_GAP_PX = 8;
+/** Aire entre el botón de controles y el aviso de cola en modo lectura. */
+export const LECTURA_COLA_AVISO_GAP_PX = 8;
+/** Duración de la salida del aviso de cola. */
+export const COLA_AVISO_EXIT_MS = 360;
+/** @deprecated Usar COLA_AVISO_EXIT_MS */
+export const LECTURA_COLA_AVISO_EXIT_MS = COLA_AVISO_EXIT_MS;
 /** Auto-scroll pegado al borde inferior para no tapar la letra. */
 export const LECTURA_AUTO_SCROLL_BOTTOM_PX = 8;
 
@@ -113,6 +119,10 @@ export function getLecturaTopChromeTopCss(): string {
 
 export function getLecturaFabMenuTopCss(): string {
   return `calc(${LECTURA_TOP_CHROME_INSET_PX}px + env(safe-area-inset-top, 0px) + ${LECTURA_TOP_CHROME_HEIGHT_PX}px + ${LECTURA_FAB_MENU_GAP_PX}px)`;
+}
+
+export function getLecturaColaAvisoTopCss(): string {
+  return `calc(${LECTURA_TOP_CHROME_INSET_PX}px + env(safe-area-inset-top, 0px) + ${LECTURA_TOP_CHROME_HEIGHT_PX}px + ${LECTURA_COLA_AVISO_GAP_PX}px)`;
 }
 
 export function getLecturaAutoScrollBottomCss(): string {

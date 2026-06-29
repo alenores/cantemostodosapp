@@ -3,21 +3,17 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import BuildVersionFooter from "@/components/BuildVersionFooter";
 import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
-import CancioneroPageClient from "@/components/cancionero/CancioneroPageClient";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
 import { useSalasNavigation } from "@/components/salas/SalasRouteCoordinator";
-import AfinadorModal from "@/components/ui/AfinadorModal";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
-import { useAfinador } from "@/hooks/useAfinador";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import type { Sala, UsuarioActivo } from "@/types";
-import { BookOpen, Gauge, Plus, WifiOff } from "lucide-react";
+import { Plus, WifiOff } from "lucide-react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const AVISO_MENSAJES: Record<string, string> = {
@@ -28,48 +24,22 @@ const AVISO_MENSAJES: Record<string, string> = {
 
 type SalasPageClientProps = {
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
-  cancioneroTotal: number;
   errorMessage: string | null;
   usuario: UsuarioActivo;
   avisoInicial?: string | null;
 };
 
-export default function SalasPageClient(props: SalasPageClientProps) {
-  const searchParams = useSearchParams();
-
-  return <SalasPageClientInner {...props} openCancioneroOnMount={searchParams.get("cancionero") === "1"} />;
-}
-
-function SalasPageClientInner({
+export default function SalasPageClient({
   salas,
-  cancioneroTotal,
   errorMessage,
   usuario,
   avisoInicial = null,
-  openCancioneroOnMount = false,
-}: SalasPageClientProps & { openCancioneroOnMount?: boolean }) {
+}: SalasPageClientProps) {
   const router = useRouter();
   const online = useOnlineStatus();
   const { enterSala, registerSalaNames } = useSalasNavigation();
   const [modalOpen, setModalOpen] = useState(false);
-  const [afinadorOpen, setAfinadorOpen] = useState(false);
-  const [cancioneroOpen, setCancioneroOpen] = useState(false);
-  const [cancioneroCount, setCancioneroCount] = useState(cancioneroTotal);
-  const {
-    detection: afinadorDetection,
-    micError: afinadorMicError,
-    micReady: afinadorMicReady,
-    start: startAfinador,
-    stop: stopAfinador,
-  } = useAfinador();
   const avisoMensaje = avisoInicial ? AVISO_MENSAJES[avisoInicial] : null;
-
-  useEffect(() => {
-    if (openCancioneroOnMount) {
-      setCancioneroOpen(true);
-      window.history.replaceState(null, "", "/salas");
-    }
-  }, [openCancioneroOnMount]);
 
   useEffect(() => {
     registerSalaNames(
@@ -80,30 +50,6 @@ function SalasPageClientInner({
     );
   }, [registerSalaNames, salas]);
 
-  useEffect(() => {
-    if (online) {
-      setCancioneroCount(cancioneroTotal);
-      return;
-    }
-
-    void getCancioneroLocalAsCancionero().then((canciones) => {
-      setCancioneroCount(canciones.length);
-    });
-  }, [online, cancioneroTotal]);
-
-  function openCancionero() {
-    if (online) {
-      router.push("/cancionero");
-      return;
-    }
-
-    setCancioneroOpen(true);
-  }
-
-  function closeCancionero() {
-    setCancioneroOpen(false);
-  }
-
   function openSala(sala: Pick<Sala, "id" | "nombre" | "descripcion">) {
     enterSala(
       { id: sala.id, nombre: sala.nombre },
@@ -111,14 +57,7 @@ function SalasPageClientInner({
     );
   }
 
-  useHardwareBack(cancioneroOpen, closeCancionero);
-
-  useHardwareBack(afinadorOpen && !cancioneroOpen, () => {
-    stopAfinador();
-    setAfinadorOpen(false);
-  });
-
-  useHardwareBack(modalOpen && !afinadorOpen && !cancioneroOpen, () => {
+  useHardwareBack(modalOpen, () => {
     setModalOpen(false);
   });
 
@@ -178,44 +117,6 @@ function SalasPageClientInner({
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-[10px]">
-          <TapButton
-            aria-label="Ver canciones guardadas"
-            onClick={openCancionero}
-            className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
-          >
-            <p className="text-center text-[13px] font-bold text-text-primary">
-              Canciones guardadas
-            </p>
-            <div className="flex flex-1 items-center justify-center">
-              <BookOpen className="size-16 text-accent" aria-hidden="true" />
-            </div>
-            <div className="w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white">
-              <span className="font-bold">Ver </span>
-              <span className="font-normal opacity-70">({cancioneroCount})</span>
-            </div>
-          </TapButton>
-
-          <TapButton
-            aria-label="Abrir afinador"
-            onClick={() => {
-              void startAfinador();
-              setAfinadorOpen(true);
-            }}
-            className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
-          >
-            <p className="text-center text-[13px] font-bold text-text-primary">
-              Afinador
-            </p>
-            <div className="flex flex-1 items-center justify-center">
-              <Gauge className="size-16 text-accent" aria-hidden="true" />
-            </div>
-            <span className="w-full rounded-lg bg-accent px-3 py-[9px] text-center text-sm font-bold text-white">
-              Abrir
-            </span>
-          </TapButton>
-        </div>
-
         <div className="flex items-center gap-1.5">
           <TapButton
             aria-label="Crear sala"
@@ -254,23 +155,6 @@ function SalasPageClientInner({
         onClose={() => setModalOpen(false)}
         onCreated={() => router.refresh()}
       />
-
-      <AfinadorModal
-        open={afinadorOpen}
-        detection={afinadorDetection}
-        micError={afinadorMicError}
-        micReady={afinadorMicReady}
-        onClose={() => {
-          stopAfinador();
-          setAfinadorOpen(false);
-        }}
-      />
-
-      {cancioneroOpen && (
-        <div className="fixed inset-0 z-[200] flex min-h-0 flex-col overflow-hidden bg-bg-app">
-          <CancioneroPageClient embedded onClose={closeCancionero} />
-        </div>
-      )}
     </div>
   );
 }

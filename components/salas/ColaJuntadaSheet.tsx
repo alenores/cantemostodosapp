@@ -26,6 +26,7 @@ import {
   COLA_FINALIZE_BUTTON_MS,
   COLA_MODAL_HORIZONTAL_INSET_PX,
   COLA_MODAL_TOP_INSET_PX,
+  COLA_SHEET_EXIT_MS,
   getColaModalBottomCss,
   getSalaFloatControlsBottomCss,
 } from "@/lib/sala-layout";
@@ -209,6 +210,8 @@ export default function ColaJuntadaSheet({
   onDragEnd,
 }: ColaJuntadaSheetProps) {
   const [abierto, setAbierto] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetExiting, setSheetExiting] = useState(false);
   const [portalMounted, setPortalMounted] = useState(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
@@ -216,6 +219,7 @@ export default function ColaJuntadaSheet({
   const [nombreRevealGeneration, setNombreRevealGeneration] = useState(0);
 
   const listScrollRef = useRef<HTMLDivElement>(null);
+  const sheetCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => a.orden - b.orden),
@@ -226,7 +230,7 @@ export default function ColaJuntadaSheet({
     () =>
       sortedItems
         .filter((item) => item.estado === "tocada")
-        .sort((a, b) => b.orden - a.orden),
+        .sort((a, b) => a.orden - b.orden),
     [sortedItems],
   );
 
@@ -269,27 +273,54 @@ export default function ColaJuntadaSheet({
   );
 
   const openCola = useCallback(() => {
+    if (sheetCloseTimerRef.current) {
+      clearTimeout(sheetCloseTimerRef.current);
+      sheetCloseTimerRef.current = null;
+    }
+
     triggerHaptic();
+    setSheetExiting(false);
+    setSheetVisible(true);
     setAbierto(true);
   }, []);
 
   const closeCola = useCallback(() => {
+    if (!sheetVisible || sheetExiting) {
+      return;
+    }
+
     setAbierto(false);
-  }, []);
+    setSheetExiting(true);
+
+    sheetCloseTimerRef.current = setTimeout(() => {
+      setSheetVisible(false);
+      setSheetExiting(false);
+      sheetCloseTimerRef.current = null;
+    }, COLA_SHEET_EXIT_MS);
+  }, [sheetExiting, sheetVisible]);
 
   useEffect(() => {
     setPortalMounted(true);
   }, []);
 
   useEffect(() => {
-    onSettledOpenChange?.(abierto);
-  }, [abierto, onSettledOpenChange]);
+    return () => {
+      if (sheetCloseTimerRef.current) {
+        clearTimeout(sheetCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const settledOpen = sheetVisible && !sheetExiting && abierto;
+    onSettledOpenChange?.(settledOpen);
+  }, [abierto, onSettledOpenChange, sheetExiting, sheetVisible]);
 
   useEffect(() => {
     onRequestOpen?.(openCola);
   }, [onRequestOpen, openCola]);
 
-  useHardwareBack(abierto, () => {
+  useHardwareBack(sheetVisible && !sheetExiting, () => {
     if (showDeleteAllDialog) {
       setShowDeleteAllDialog(false);
       return;
@@ -322,6 +353,7 @@ export default function ColaJuntadaSheet({
       return;
     }
 
+    closeCola();
     triggerHaptic();
     await new Promise((resolve) =>
       setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
@@ -495,13 +527,16 @@ export default function ColaJuntadaSheet({
   const listaVacia = sortedItems.length === 0;
 
   const colaModalLayer =
-    abierto && portalMounted
+    sheetVisible && portalMounted
       ? createPortal(
           <>
             <button
               type="button"
               aria-label="Cerrar cola"
-              className="fixed inset-0 bg-black/50"
+              data-no-tap-feedback
+              className={`fixed inset-0 bg-black/50 ${
+                sheetExiting ? "sala-cola-sheet-backdrop--exit" : ""
+              }`}
               style={{ zIndex: COLA_MODAL_LAYER_Z }}
               onClick={closeCola}
             />
@@ -518,7 +553,9 @@ export default function ColaJuntadaSheet({
               onDragCancel={handleDragCancel}
             >
               <div
-                className="fixed flex flex-col overflow-hidden rounded-2xl border-[3px] border-bg-cola-sheet bg-bg-dark shadow-[0_0_0_1px_rgba(0,0,0,0.65),0_20px_56px_rgba(0,0,0,0.62)]"
+                className={`fixed flex flex-col overflow-hidden rounded-2xl border-[3px] border-bg-cola-sheet bg-bg-dark shadow-[0_0_0_1px_rgba(0,0,0,0.65),0_20px_56px_rgba(0,0,0,0.62)] ${
+                  sheetExiting ? "sala-cola-sheet-panel--exit" : ""
+                }`}
                 style={{
                   zIndex: COLA_MODAL_LAYER_Z + 1,
                   top: `calc(${COLA_MODAL_TOP_INSET_PX}px + env(safe-area-inset-top, 0px))`,

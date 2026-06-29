@@ -56,19 +56,6 @@ function ShimmerBlock({
   );
 }
 
-function SalasQuickActionCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
-  return (
-    <div
-      className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
-      aria-hidden="true"
-    >
-      <ShimmerBlock className="h-[13px] w-[78%]" delayMs={delayMs} />
-      <ShimmerBlock className="size-16 rounded-xl" delayMs={delayMs + 40} />
-      <ShimmerBlock className="h-[34px] w-full rounded-lg" delayMs={delayMs + 80} />
-    </div>
-  );
-}
-
 function SalaCardSkeleton({
   titleWidth,
   subtitleWidth,
@@ -103,7 +90,7 @@ function SalasSectionLabelSkeleton() {
 
 function SalasHeaderSkeleton() {
   return (
-    <header className="border-b border-border bg-bg-app px-4 py-3">
+    <header className="border-b border-accent/40 bg-accent px-4 py-3">
       <div className="flex items-center gap-2.5">
         <ShimmerBlock className="size-8 shrink-0 rounded-lg" />
         <ShimmerBlock className="h-6 flex-1 rounded-lg" />
@@ -113,6 +100,19 @@ function SalasHeaderSkeleton() {
         </div>
       </div>
     </header>
+  );
+}
+
+function HerramientasHubCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
+  return (
+    <div
+      className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
+      aria-hidden="true"
+    >
+      <ShimmerBlock className="h-[13px] w-[72%]" delayMs={delayMs} />
+      <ShimmerBlock className="size-16 rounded-xl" delayMs={delayMs + 40} />
+      <ShimmerBlock className="h-[34px] w-full rounded-lg" delayMs={delayMs + 80} />
+    </div>
   );
 }
 
@@ -199,6 +199,60 @@ function SalasFooterSpacer() {
   );
 }
 
+/** Skeleton del hub /cancionero — replica Herramientas. */
+export function HerramientasHubSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando herramientas"
+    >
+      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
+        <ShimmerBlock className="h-6 w-32 rounded-lg" />
+      </header>
+
+      <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+        <div className="grid grid-cols-2 gap-[10px]">
+          <HerramientasHubCardSkeleton />
+          <HerramientasHubCardSkeleton delayMs={60} />
+          <HerramientasHubCardSkeleton delayMs={120} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/** Skeleton inline del Home mientras carga la cola inicial. */
+export function HomePageSkeleton() {
+  return (
+    <div
+      className="flex flex-col overflow-hidden bg-bg-sala"
+      style={{ height: "100dvh" }}
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando inicio"
+    >
+      <main
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+        style={{ paddingBottom: getSalaMainFooterPaddingCss() }}
+      >
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <SalaLetraSkeleton showHeader={false} />
+        </div>
+        <div
+          className="pointer-events-none fixed inset-x-2 z-20"
+          style={{ bottom: getSalaMainFooterPaddingCss() }}
+          aria-hidden="true"
+        >
+          <ShimmerBlock className="h-[66px] w-full rounded-[16px]" />
+        </div>
+      </main>
+      <SalasFooterSpacer />
+    </div>
+  );
+}
+
 /** Skeleton del listado /salas — replica SalasPageClient. */
 export function SalasPageSkeleton() {
   return (
@@ -211,11 +265,6 @@ export function SalasPageSkeleton() {
       <SalasHeaderSkeleton />
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
-        <div className="grid grid-cols-2 gap-[10px]">
-          <SalasQuickActionCardSkeleton />
-          <SalasQuickActionCardSkeleton delayMs={60} />
-        </div>
-
         <SalasSectionLabelSkeleton />
 
         <div className="flex flex-col gap-3">

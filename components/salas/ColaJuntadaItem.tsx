@@ -30,6 +30,7 @@ type ColaDisplayItem = Pick<
 type ColaJuntadaItemProps = {
   item: ColaDisplayItem;
   variant: ColaJuntadaItemVariant;
+  showAgregadoAvatar?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
   onVolverAPendiente?: (id: number) => void;
   nombreRevealGeneration?: number;
@@ -45,6 +46,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       onVolverAPendiente,
       nombreRevealGeneration,
       nombreRevealIndex,
+      showAgregadoAvatar = true,
     },
     ref,
   ) {
@@ -116,7 +118,8 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       letra_texto: item.letra_texto,
     });
     const showAvatar =
-      Boolean(item.agregado_avatar_url) || Boolean(item.agregado_nombre);
+      showAgregadoAvatar &&
+      (Boolean(item.agregado_avatar_url) || Boolean(item.agregado_nombre));
 
     return (
       <div

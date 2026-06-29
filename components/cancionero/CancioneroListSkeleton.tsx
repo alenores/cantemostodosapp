@@ -130,11 +130,13 @@ function CancioneroSkeletonHeader() {
 type CancioneroListSkeletonProps = {
   includeSearch?: boolean;
   cardCount?: number;
+  showHeader?: boolean;
 };
 
 export default function CancioneroListSkeleton({
   includeSearch = true,
   cardCount = 7,
+  showHeader = false,
 }: CancioneroListSkeletonProps) {
   return (
     <div
@@ -143,7 +145,7 @@ export default function CancioneroListSkeleton({
       aria-live="polite"
       aria-label="Cargando canciones guardadas"
     >
-      <CancioneroSkeletonHeader />
+      {showHeader ? <CancioneroSkeletonHeader /> : null}
       {includeSearch ? <SearchFieldSkeleton /> : null}
       <div className="flex flex-col gap-3">
         {CARD_LAYOUTS.slice(0, cardCount).map((layout, index) => (
@@ -161,8 +163,13 @@ export default function CancioneroListSkeleton({
 
 export function CancioneroPageSkeleton() {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
-      <header className="border-b border-border bg-bg-darker px-4 py-3">
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando cancionero"
+    >
+      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
         <div className="flex items-center gap-3">
           <div
             className="cancionero-skeleton-shimmer size-11 shrink-0 rounded-full"
@@ -179,9 +186,21 @@ export function CancioneroPageSkeleton() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-4 pb-24">
+      <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-4 pb-24">
         <SearchFieldSkeleton />
+        <div className="flex flex-col gap-3">
+          {CARD_LAYOUTS.map((layout, index) => (
+            <CancioneroCardSkeleton
+              key={index}
+              titleWidth={layout.title}
+              artistWidth={layout.artist}
+              shimmerDelayMs={index * 90}
+            />
+          ))}
+        </div>
       </main>
     </div>
   );
 }
+
+export const CancioneroSubpageSkeleton = CancioneroPageSkeleton;

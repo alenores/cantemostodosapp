@@ -13,10 +13,33 @@ const MIC_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: false,
 };
 
+function getMicErrorMessage(error: unknown): string {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      return "Necesitamos permiso para usar el micrófono. Tocá «Permitir micrófono» y aceptá en el cartel del navegador.";
+    }
+
+    if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+      return "No encontramos un micrófono en este dispositivo.";
+    }
+
+    if (error.name === "NotReadableError") {
+      return "El micrófono está en uso por otra app. Cerrala e intentá de nuevo.";
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "No se pudo acceder al micrófono. Intentá de nuevo.";
+}
+
 type UseAfinadorResult = {
   detection: NoteDetection | null;
   micError: string | null;
   micReady: boolean;
+  micStarting: boolean;
   start: () => Promise<void>;
   stop: () => void;
 };
@@ -25,6 +48,7 @@ export function useAfinador(): UseAfinadorResult {
   const [detection, setDetection] = useState<NoteDetection | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [micReady, setMicReady] = useState(false);
+  const [micStarting, setMicStarting] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -36,6 +60,7 @@ export function useAfinador(): UseAfinadorResult {
 
   const stopAudio = useCallback(() => {
     runningRef.current = false;
+    setMicStarting(false);
 
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -58,13 +83,19 @@ export function useAfinador(): UseAfinadorResult {
   }, []);
 
   const start = useCallback(async () => {
-    if (runningRef.current) {
+    if (runningRef.current || micStarting) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicError("Este navegador no permite acceder al micrófono.");
       return;
     }
 
     setMicError(null);
     setMicReady(false);
     setDetection(null);
+    setMicStarting(true);
     lastFrequencyRef.current = null;
 
     try {
@@ -103,6 +134,7 @@ export function useAfinador(): UseAfinadorResult {
       );
       runningRef.current = true;
       setMicReady(true);
+      setMicStarting(false);
 
       const updatePitch = () => {
         if (!runningRef.current) {
@@ -138,11 +170,11 @@ export function useAfinador(): UseAfinadorResult {
       };
 
       animationFrameRef.current = requestAnimationFrame(updatePitch);
-    } catch {
+    } catch (error) {
       stopAudio();
-      setMicError("Permiso de micrófono necesario para usar el afinador");
+      setMicError(getMicErrorMessage(error));
     }
-  }, [stopAudio]);
+  }, [micStarting, stopAudio]);
 
   useEffect(() => {
     return () => {
@@ -154,6 +186,7 @@ export function useAfinador(): UseAfinadorResult {
     detection,
     micError,
     micReady,
+    micStarting,
     start,
     stop: stopAudio,
   };

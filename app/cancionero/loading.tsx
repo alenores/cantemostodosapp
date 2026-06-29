@@ -1,5 +1,5 @@
-import { CancioneroLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
+import { HerramientasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 
-export default function CancioneroLoading() {
-  return <CancioneroLoadingSkeleton />;
+export default function HerramientasLoading() {
+  return <HerramientasLoadingSkeleton />;
 }

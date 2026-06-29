@@ -8,7 +8,7 @@ import type { Sala, UsuarioActivo } from "@/types";
 export type AppSnapshotPayload = {
   usuario: UsuarioActivo;
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
-  cancioneroTotal: number;
+  cancioneroTotal?: number;
 };
 
 export async function saveAppSnapshot(

@@ -1,4 +1,5 @@
-import type { UsuarioCancion } from "@/types";
+import type { CancionInput } from "@/lib/cola-logic";
+import type { CancionCancionero, UsuarioCancion } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function getMisCanciones(
@@ -14,6 +15,15 @@ export async function getMisCanciones(
   }
 
   return data ?? [];
+}
+
+export function yaExisteEnMisCanciones(
+  canciones: UsuarioCancion[],
+  cancionGuardadaId: number,
+): boolean {
+  return canciones.some(
+    (item) => item.cancion_guardada_id === cancionGuardadaId,
+  );
 }
 
 export async function agregarAMisCanciones(
@@ -61,3 +71,29 @@ export async function eliminarDeMisCanciones(
     throw error;
   }
 }
+
+export function usuarioCancionToCancionInput(
+  cancion: UsuarioCancion,
+  letraTexto?: string | null,
+): CancionInput {
+  if (cancion.cancion_guardada_id !== null) {
+    return {
+      nombre: cancion.nombre.trim(),
+      artista: cancion.artista?.trim() || null,
+      url_letra: `cancionero://${cancion.cancion_guardada_id}`,
+      letra_texto: letraTexto?.trim() || null,
+    };
+  }
+
+  return {
+    nombre: cancion.nombre.trim(),
+    artista: cancion.artista?.trim() || null,
+    url_letra: cancion.url_letra?.trim() ?? "",
+    letra_texto: letraTexto?.trim() || null,
+  };
+}
+
+export type MisCancionCarouselEntry = {
+  usuarioCancion: UsuarioCancion;
+  cancion: CancionCancionero;
+};

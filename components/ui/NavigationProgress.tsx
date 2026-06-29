@@ -150,19 +150,13 @@ export default function NavigationProgressProvider({
     <NavigationProgressContext.Provider value={{ startNavigation }}>
       {children}
       {active && (
-        <>
-          <div
-            className="pointer-events-none fixed inset-x-0 top-0 z-[90] h-[3px] overflow-hidden bg-accent/20"
-            role="progressbar"
-            aria-label="Cargando pantalla"
-          >
-            <div className="nav-progress-bar h-full w-1/3 bg-accent" />
-          </div>
-          <div
-            className="pointer-events-none fixed inset-0 z-[80] bg-bg-app/35 backdrop-blur-[1px] transition-opacity duration-150"
-            aria-hidden="true"
-          />
-        </>
+        <div
+          className="pointer-events-none fixed inset-x-0 top-0 z-[90] h-[3px] overflow-hidden bg-accent/20"
+          role="progressbar"
+          aria-label="Cargando pantalla"
+        >
+          <div className="nav-progress-bar h-full w-1/3 bg-accent" />
+        </div>
       )}
     </NavigationProgressContext.Provider>
   );

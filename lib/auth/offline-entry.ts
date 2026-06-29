@@ -13,7 +13,6 @@ export const OFFLINE_GUEST_USUARIO: UsuarioActivo = {
 export type OfflineSalasPayload = {
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
   usuario: UsuarioActivo;
-  cancioneroTotal: number;
   errorMessage: string | null;
   avisoInicial: string | null;
 };
@@ -32,7 +31,6 @@ export function resolveOfflineSalasPayload(
   return {
     salas: snapshot?.salas ?? [],
     usuario,
-    cancioneroTotal: snapshot?.cancioneroTotal ?? 0,
     errorMessage: null,
     avisoInicial,
   };

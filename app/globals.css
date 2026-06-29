@@ -819,6 +819,40 @@ html.splash-active body {
   animation: sala-fila-aviso-text-out 360ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+@keyframes sala-cola-sheet-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0.92;
+    transform: translateY(calc(100% + 1.25rem));
+  }
+}
+
+@keyframes sala-cola-sheet-backdrop-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.sala-cola-sheet-panel--exit {
+  animation: sala-cola-sheet-out var(--transition-duration) var(--transition-timing)
+    forwards;
+  pointer-events: none;
+}
+
+.sala-cola-sheet-backdrop--exit {
+  animation: sala-cola-sheet-backdrop-out var(--transition-duration)
+    var(--transition-timing) forwards;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .progress-bar-indeterminate,
   .ios-install-pulse,
@@ -838,7 +872,10 @@ html.splash-active body {
   .sala-cola-aviso-in,
   .sala-cola-aviso-out,
   .sala-fila-aviso-text-in,
-  .sala-fila-aviso-text-out {
+  .sala-fila-aviso-text-out,
+  .sala-cola-sheet-panel--exit,
+  .sala-cola-sheet-backdrop--exit,
+  .cola-nombre-reveal {
     animation: none;
   }
 

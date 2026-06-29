@@ -2,6 +2,7 @@
 export const OFFLINE_NAVIGABLE_PATHS = new Set([
   "/salas",
   "/cancionero",
+  "/cancionero/global",
   "/~offline",
   "/pwa-boot.html",
 ]);
@@ -15,4 +16,8 @@ export function isOfflineNavigableRoute(href: string): boolean {
   }
 }
 
-export const OFFLINE_PREFETCH_ROUTES = ["/cancionero", "/salas"] as const;
+export const OFFLINE_PREFETCH_ROUTES = [
+  "/cancionero",
+  "/cancionero/global",
+  "/salas",
+] as const;

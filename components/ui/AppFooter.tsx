@@ -1,9 +1,9 @@
 "use client";
 
-import { BookOpen, Home, Users } from "lucide-react";
-import Link from "next/link";
+import { Home, Users, Wrench } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { TapLink } from "@/components/ui/TapFeedback";
 
 type TabConfig = {
   href: string;
@@ -28,9 +28,10 @@ const TABS: TabConfig[] = [
   },
   {
     href: "/cancionero",
-    label: "Cancionero",
-    icon: BookOpen,
-    isActive: (pathname) => pathname === "/cancionero",
+    label: "Herramientas",
+    icon: Wrench,
+    isActive: (pathname) =>
+      pathname === "/cancionero" || pathname.startsWith("/cancionero/"),
   },
 ];
 
@@ -99,9 +100,10 @@ export default function AppFooter() {
           const showBadge = isSalasTab && conectados > 0;
 
           return (
-            <Link
+            <TapLink
               key={href}
               href={href}
+              ariaLabel={displayLabel}
               className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 ${colorClass}`}
             >
               <span className="relative">
@@ -129,7 +131,7 @@ export default function AppFooter() {
               >
                 {displayLabel}
               </span>
-            </Link>
+            </TapLink>
           );
         })}
       </nav>

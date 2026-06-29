@@ -1,5 +1,7 @@
-import { CancioneroPageSkeleton } from "@/components/cancionero/CancioneroListSkeleton";
+import { CancioneroSubpageSkeleton } from "@/components/cancionero/CancioneroListSkeleton";
 import {
+  HerramientasHubSkeleton,
+  HomePageSkeleton,
   SalaPageSkeleton,
   SalasPageSkeleton,
 } from "@/components/salas/SalasSkeletons";
@@ -21,13 +23,26 @@ export function SalaLoadingSkeleton() {
   return <SalaPageSkeleton />;
 }
 
+export function HerramientasLoadingSkeleton() {
+  return <HerramientasHubSkeleton />;
+}
+
 export function CancioneroLoadingSkeleton() {
-  return <CancioneroPageSkeleton />;
+  return <CancioneroSubpageSkeleton />;
+}
+
+export function HomeLoadingSkeleton() {
+  return <HomePageSkeleton />;
 }
 
 export function PerfilLoadingSkeleton() {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+    <div
+      className="flex min-h-full flex-1 flex-col bg-bg-app"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando perfil"
+    >
       <header className="border-b border-border bg-bg-dark px-4 py-3">
         <div className="flex items-center gap-3">
           <SkeletonBlock className="size-9 rounded-full" />
@@ -35,7 +50,7 @@ export function PerfilLoadingSkeleton() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 px-4 py-6">
+      <main className="flex flex-1 flex-col gap-4 px-4 py-6 pb-24">
         <div className="flex flex-col items-center gap-3">
           <SkeletonBlock className="size-24 rounded-full" />
           <SkeletonBlock className="h-10 w-full rounded-[10px]" />
@@ -46,3 +61,6 @@ export function PerfilLoadingSkeleton() {
     </div>
   );
 }
+
+/** @deprecated Usar HerramientasLoadingSkeleton */
+export const CancioneroHubLoadingSkeleton = HerramientasLoadingSkeleton;

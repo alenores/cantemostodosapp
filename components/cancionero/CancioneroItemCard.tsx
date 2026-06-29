@@ -12,10 +12,13 @@ const LONG_PRESS_MS = 500;
 type CancioneroItemCardProps = {
   cancion: CancionCancionero;
   mutationsEnabled?: boolean;
+  mostrarSumarMisCanciones?: boolean;
+  modoSeleccion?: boolean;
   actionsOpen: boolean;
   onOpenActions: () => void;
   onCloseActions: () => void;
   onVer: (cancion: CancionCancionero) => void;
+  onSumarAMisCanciones?: (cancion: CancionCancionero) => void;
   onEditar: (cancion: CancionCancionero) => void;
   onEliminar: (cancion: CancionCancionero) => void;
 };
@@ -23,15 +26,21 @@ type CancioneroItemCardProps = {
 export default function CancioneroItemCard({
   cancion,
   mutationsEnabled = true,
+  mostrarSumarMisCanciones = false,
+  modoSeleccion = false,
   actionsOpen,
   onOpenActions,
   onCloseActions,
   onVer,
+  onSumarAMisCanciones,
   onEditar,
   onEliminar,
 }: CancioneroItemCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClickRef = useRef(false);
+
+  const longPressEnabled =
+    mutationsEnabled && (mostrarSumarMisCanciones || mutationsEnabled);
 
   useEffect(() => {
     return () => {
@@ -55,7 +64,7 @@ export default function CancioneroItemCard({
   }
 
   function handlePointerDown() {
-    if (!mutationsEnabled) {
+    if (!longPressEnabled || modoSeleccion) {
       return;
     }
 
@@ -85,7 +94,7 @@ export default function CancioneroItemCard({
   }
 
   function handleContextMenu(event: MouseEvent) {
-    if (!mutationsEnabled) {
+    if (!longPressEnabled || modoSeleccion) {
       return;
     }
 
@@ -98,10 +107,49 @@ export default function CancioneroItemCard({
     action();
   }
 
+  const actionButtons = [
+    mostrarSumarMisCanciones && onSumarAMisCanciones
+      ? {
+          key: "sumar",
+          label: `Sumar ${cancion.nombre} a Mis canciones`,
+          className:
+            "flex size-12 items-center justify-center rounded-full border border-border bg-bg-dark text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)]",
+          icon: Bookmark,
+          action: () => onSumarAMisCanciones(cancion),
+        }
+      : null,
+    mutationsEnabled
+      ? {
+          key: "editar",
+          label: `Editar ${cancion.nombre}`,
+          className:
+            "flex size-12 items-center justify-center rounded-full border border-border bg-bg-dark text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)]",
+          icon: Pencil,
+          action: () => onEditar(cancion),
+        }
+      : null,
+    mutationsEnabled
+      ? {
+          key: "eliminar",
+          label: `Eliminar ${cancion.nombre}`,
+          className:
+            "flex size-12 items-center justify-center rounded-full bg-[#d94a3d] text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]",
+          icon: Trash2,
+          action: () => onEliminar(cancion),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    className: string;
+    icon: typeof Bookmark;
+    action: () => void;
+  }>;
+
   return (
     <article
       className={`relative cursor-pointer rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
-        actionsOpen
+        actionsOpen || modoSeleccion
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
       }`}
@@ -131,7 +179,7 @@ export default function CancioneroItemCard({
         />
       </div>
 
-      {actionsOpen && (
+      {actionsOpen && actionButtons.length > 0 && (
         <>
           <button
             type="button"
@@ -140,27 +188,19 @@ export default function CancioneroItemCard({
             onClick={onCloseActions}
           />
           <div className="absolute right-3 top-1/2 z-50 flex -translate-y-1/2 flex-col gap-2">
-            <TapButton
-              aria-label={`Editar ${cancion.nombre}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                runAction(() => onEditar(cancion));
-              }}
-              className="flex size-12 items-center justify-center rounded-full border border-border bg-bg-dark text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)]"
-            >
-              <Pencil className="size-5" aria-hidden="true" />
-            </TapButton>
-
-            <TapButton
-              aria-label={`Eliminar ${cancion.nombre}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                runAction(() => onEliminar(cancion));
-              }}
-              className="flex size-12 items-center justify-center rounded-full bg-[#d94a3d] text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]"
-            >
-              <Trash2 className="size-5" aria-hidden="true" />
-            </TapButton>
+            {actionButtons.map(({ key, label, className, icon: Icon, action }) => (
+              <TapButton
+                key={key}
+                aria-label={label}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runAction(action);
+                }}
+                className={className}
+              >
+                <Icon className="size-5" aria-hidden="true" />
+              </TapButton>
+            ))}
           </div>
         </>
       )}

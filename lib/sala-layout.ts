@@ -28,8 +28,10 @@ export function getColaPanelOpenHeightCss(contentHeightPx: number): string {
 /** Cuánto la barra tapa el borde inferior del iframe (más alto = el embed baja más). */
 export const COLA_BAR_WEBVIEW_OVERLAP_PX = 22;
 export const COLA_AVISO_SHOW_DELAY_MS = 400;
-/** Pausa tras tap en Sig. antes de cerrar la cola y mostrar la letra */
-export const COLA_FINALIZE_BUTTON_MS = 180;
+/** Pausa tras tap en Sig. antes de avanzar (alinea con el cierre animado del sheet). */
+export const COLA_FINALIZE_BUTTON_MS = 300;
+/** Duración del slide hacia abajo al cerrar el sheet de cola. */
+export const COLA_SHEET_EXIT_MS = 350;
 export const SALA_HEADER_HEIGHT_PX = 56;
 export const APP_FOOTER_HEIGHT_PX = 56;
 /** Fila de avatares / presencia encima del footer en modo control. */

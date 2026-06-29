@@ -18,15 +18,17 @@ comentarios, nombres de componentes y prompts. No inventar sinónimos.
 ### Secciones principales (tabs del footer)
 - **Home** — pantalla principal de uso individual. Buscador + letra + cola individual.
 - **Salas** — listado de salas disponibles y sala activa.
-- **Cancionero** — cancionero Global y Mis canciones.
+- **Herramientas** — hub en el footer (`/cancionero`): Cancionero, Mis canciones, Afinador (y futuros submódulos).
 
-### Subsecciones del Cancionero
-- **Global** — canciones disponibles para todos los usuarios.
-- **Mis canciones** — cancionero personal permanente del usuario registrado.
+### Subsecciones de Herramientas
+- **Hub** (`/cancionero`) — pantalla de elección de submódulo.
+- **Cancionero** (`/cancionero/global`) — canciones disponibles para todos los usuarios.
+- **Mis canciones** (`/cancionero/mis-canciones`) — cancionero personal permanente del usuario registrado.
+- **Afinador** — modal desde el hub.
 
 ### Colas
-- **Cola individual** — setlist personal del momento. Vive en Home. Solo visible
-  para el usuario que la creó.
+- **Cola individual** — setlist personal del momento. Vive en Home. Persistida
+  en Supabase si hay sesión; en memoria (efímera) para invitados.
 - **Cola de la juntada** — setlist compartido y sincronizado en tiempo real.
   Vive en Sala. Tiene botón "Siguiente" para avanzar la canción activa.
 
@@ -103,6 +105,34 @@ Probar siempre:
 
 - **Te Quiero – Hombres G** (Cifra Club): iframe grande hasta la barra «En fila».
 - **La M.O.D.A – Ojalá** (Acordes de Canciones): hoja blanca, scroll de pantalla.
+
+---
+
+## Home (uso individual)
+
+**Referencia de UX:** `SalaPageShell.tsx` (misma cadena de layout, `CancionActivaSection`, float controls, sheet de cola).
+
+### Invitado (sin login)
+- Puede buscar (General), **Ver ahora**, ver letra, modo lectura.
+- **Cola efímera en memoria** (`lib/cola-individual-guest.ts`) — se pierde al recargar o cerrar.
+- No puede: Guardar en cancionero, Mis canciones (pestaña deshabilitada), entrar a Salas.
+
+### Usuario logueado
+- Cola persistida en Supabase (`cola_individual`).
+- Buscador Home: pestañas **General | Mis canciones**.
+- Preview General: **Ver ahora · Agregar a la lista · Guardar** (cancionero).
+- Tras Guardar en cancionero: prompt opcional **«¿Sumar a Mis canciones?»**.
+- Preview Mis canciones: **Ver ahora · Agregar a la lista** (sin Guardar).
+- **Agregar a la lista** deshabilitado si no hay activa ni pendiente en cola.
+
+### Diferencias vs Sala
+- Sin `SalaPresenceBar` ni avatares en tarjetas de cola (`showAgregadoAvatar={false}`).
+- Lupa en header de modo control (`headerAction` en `CancionActivaSection`).
+- Sin realtime / presence / offline cola de juntada.
+
+### APIs lectura pública (invitados)
+- `GET /api/buscar-letra` y `GET /api/obtener-letra` — sin auth (solo lectura).
+- Escritura (cola, guardar) sigue requiriendo sesión.
 
 ### Commits de referencia (estado estable)
 

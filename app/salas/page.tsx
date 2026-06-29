@@ -1,5 +1,4 @@
 import SalasPageGate from "@/components/salas/SalasPageGate";
-import { countCancionesCancionero } from "@/lib/cancionero";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
@@ -25,7 +24,6 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
         <SalasPageGate
           serverUsuario={null}
           serverSalas={null}
-          cancioneroTotal={0}
           errorMessage={null}
           avisoInicial={aviso}
         />
@@ -33,21 +31,17 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
     );
   }
 
-  const [{ data: salas, error: salasError }, cancioneroTotal] = await Promise.all([
-    supabase
-      .from("salas")
-      .select("id, nombre, descripcion")
-      .eq("visible", true)
-      .order("nombre"),
-    countCancionesCancionero(supabase).catch(() => 0),
-  ]);
+  const { data: salas, error: salasError } = await supabase
+    .from("salas")
+    .select("id, nombre, descripcion")
+    .eq("visible", true)
+    .order("nombre");
 
   return (
     <Suspense fallback={null}>
       <SalasPageGate
         serverUsuario={mapUserToUsuarioActivo(user)}
         serverSalas={salas ?? []}
-        cancioneroTotal={cancioneroTotal}
         errorMessage={salasError?.message ?? null}
         avisoInicial={aviso}
       />

@@ -45,6 +45,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 
 const FLOAT_BTN_SECONDARY =
   "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
@@ -122,6 +123,7 @@ type SalaModoLecturaOverlayProps = {
   onContraer: () => void;
   onSiguiente: () => void;
   onCola: () => void;
+  onAfinador: () => void;
 };
 
 function SalaModoLecturaOverlay({
@@ -131,6 +133,7 @@ function SalaModoLecturaOverlay({
   onContraer,
   onSiguiente,
   onCola,
+  onAfinador,
 }: SalaModoLecturaOverlayProps) {
   if (!abierto) {
     return null;
@@ -187,7 +190,8 @@ function SalaModoLecturaOverlay({
           label="Afinador"
           cascadeIndex={3}
           onClick={() => {
-            console.log("TODO: afinador");
+            onCerrar();
+            onAfinador();
           }}
         />
       </div>
@@ -201,6 +205,7 @@ export default function SalaPageShell({
   embedded = false,
   onClose,
 }: SalaPageShellProps) {
+  const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -257,6 +262,8 @@ export default function SalaPageShell({
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
   );
+  const [cancionNombreRevealGen, setCancionNombreRevealGen] = useState(0);
+  const prevCancionRevealKeyRef = useRef<string | null>(null);
   const [colaItems, setColaItems] = useState<ColaItem[]>([]);
   const [colaBootstrapping, setColaBootstrapping] = useState(true);
   const [presenceUsuarios, setPresenceUsuarios] = useState<PresenceUsuario[]>(
@@ -283,6 +290,27 @@ export default function SalaPageShell({
 
   const presenceBarVisible =
     !modoLectura && online && presenceUsuarios.length > 0;
+
+  useEffect(() => {
+    const revealKey = cancionActiva
+      ? `${cancionActiva.nombre}::${cancionActiva.url_letra}`
+      : null;
+
+    if (prevCancionRevealKeyRef.current === null) {
+      prevCancionRevealKeyRef.current = revealKey;
+      return;
+    }
+
+    if (revealKey !== null && prevCancionRevealKeyRef.current !== revealKey) {
+      prevCancionRevealKeyRef.current = revealKey;
+      setCancionNombreRevealGen((generation) => generation + 1);
+      return;
+    }
+
+    if (revealKey === null) {
+      prevCancionRevealKeyRef.current = null;
+    }
+  }, [cancionActiva]);
 
   const salirModoLectura = useCallback(() => {
     setOverlayAbierto(false);
@@ -598,6 +626,7 @@ export default function SalaPageShell({
               letraTexto={cancionActiva?.letra_texto ?? null}
               modoLectura={modoLectura}
               letraScrollRef={letraScrollRef}
+              nombreRevealGeneration={cancionNombreRevealGen}
             />
           )}
         </div>
@@ -642,8 +671,17 @@ export default function SalaPageShell({
                 left: getLetraModoLecturaHorizontalPadding(),
               }}
             >
-              <div className="flex min-w-0 items-center gap-1.5">
-                <span className="min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-accent">
+              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                <span
+                  key={
+                    cancionNombreRevealGen > 0
+                      ? `reveal-${cancionNombreRevealGen}`
+                      : "initial"
+                  }
+                  className={`min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-accent ${
+                    cancionNombreRevealGen > 0 ? "cola-nombre-reveal block" : ""
+                  }`}
+                >
                   {cancionActiva.nombre}
                 </span>
                 {cancionActiva.artista ? (
@@ -696,6 +734,7 @@ export default function SalaPageShell({
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
+            onAfinador={() => navigateWithProgress("/cancionero")}
           />
 
           <AutoScrollControl

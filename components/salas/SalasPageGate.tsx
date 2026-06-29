@@ -4,7 +4,6 @@ import SalasPageClient from "@/components/salas/SalasPageClient";
 import { SalasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { resolveOfflineSalasPayload } from "@/lib/auth/offline-entry";
-import { countCancionesCancionero } from "@/lib/cancionero";
 import { getAppSnapshot, saveAppSnapshot } from "@/lib/offline/app-snapshot-store";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
@@ -16,7 +15,6 @@ import { useEffect, useState } from "react";
 type SalasPageGateProps = {
   serverUsuario: UsuarioActivo | null;
   serverSalas: Pick<Sala, "id" | "nombre" | "descripcion">[] | null;
-  cancioneroTotal: number;
   errorMessage: string | null;
   avisoInicial?: string | null;
 };
@@ -28,7 +26,6 @@ type GateState =
       payload: {
         salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
         usuario: UsuarioActivo;
-        cancioneroTotal: number;
         errorMessage: string | null;
         avisoInicial: string | null;
       };
@@ -37,7 +34,6 @@ type GateState =
 export default function SalasPageGate({
   serverUsuario,
   serverSalas,
-  cancioneroTotal,
   errorMessage,
   avisoInicial = null,
 }: SalasPageGateProps) {
@@ -51,7 +47,6 @@ export default function SalasPageGate({
           payload: {
             salas: serverSalas,
             usuario: serverUsuario,
-            cancioneroTotal,
             errorMessage,
             avisoInicial,
           },
@@ -64,7 +59,6 @@ export default function SalasPageGate({
       const payload = {
         salas: serverSalas,
         usuario: serverUsuario,
-        cancioneroTotal,
         errorMessage,
         avisoInicial,
       };
@@ -73,7 +67,6 @@ export default function SalasPageGate({
       void saveAppSnapshot({
         usuario: serverUsuario,
         salas: serverSalas,
-        cancioneroTotal,
       });
       void warmOfflineCache();
       setRefreshAttempted(false);
@@ -118,15 +111,11 @@ export default function SalasPageGate({
       }
 
       const usuario = mapUserToUsuarioActivo(session.user);
-      const [{ data: salas, error: salasError }, cancioneroTotalClient] =
-        await Promise.all([
-          supabase
-            .from("salas")
-            .select("id, nombre, descripcion")
-            .eq("visible", true)
-            .order("nombre"),
-          countCancionesCancionero(supabase).catch(() => 0),
-        ]);
+      const { data: salas, error: salasError } = await supabase
+        .from("salas")
+        .select("id, nombre, descripcion")
+        .eq("visible", true)
+        .order("nombre");
 
       if (cancelled) {
         return;
@@ -135,7 +124,6 @@ export default function SalasPageGate({
       const payload = {
         salas: salas ?? [],
         usuario,
-        cancioneroTotal: cancioneroTotalClient,
         errorMessage: salasError?.message ?? null,
         avisoInicial,
       };
@@ -144,7 +132,6 @@ export default function SalasPageGate({
       void saveAppSnapshot({
         usuario,
         salas: payload.salas,
-        cancioneroTotal: payload.cancioneroTotal,
       });
       void warmOfflineCache();
     }
@@ -156,7 +143,6 @@ export default function SalasPageGate({
     };
   }, [
     avisoInicial,
-    cancioneroTotal,
     errorMessage,
     online,
     refreshAttempted,

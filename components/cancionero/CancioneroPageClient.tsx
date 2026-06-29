@@ -2,45 +2,53 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
-import {
+import CancioneroListSkeleton, {
   CASCADE_MAX_DELAY_MS,
   CASCADE_STAGGER_MS,
-  SearchFieldSkeleton,
 } from "@/components/cancionero/CancioneroListSkeleton";
+import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
   deleteCancionCancionero,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
+import {
+  agregarAMisCanciones,
+  getMisCanciones,
+} from "@/lib/mis-canciones";
 import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
 import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero } from "@/types";
-import { ArrowLeft, Music, Search, WifiOff } from "lucide-react";
+import { Music, Search, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
+const SNACKBAR_MS = 3000;
+
 export type CancioneroPageClientProps = {
-  embedded?: boolean;
-  onClose?: () => void;
-  hideBack?: boolean;
+  usuarioId: string | null;
+  modoSeleccionMisCanciones?: boolean;
 };
 
 export default function CancioneroPageClient({
-  embedded = false,
-  onClose,
-  hideBack = false,
-}: CancioneroPageClientProps = {}) {
+  usuarioId,
+  modoSeleccionMisCanciones = false,
+}: CancioneroPageClientProps) {
+  const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const supabase = useMemo(() => createClient(), []);
+  const usuarioLogueado = usuarioId !== null;
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [localReady, setLocalReady] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,12 +66,55 @@ export default function CancioneroPageClient({
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<number | null>(null);
   const [cascadeActive, setCascadeActive] = useState(false);
+  const [misCancionesIds, setMisCancionesIds] = useState<Set<number>>(new Set());
+  const [snackbar, setSnackbar] = useState<string | null>(null);
   const hadLoadedRef = useRef(false);
+  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancionesFiltradas = useMemo(
     () => filterCancionesCancionero(canciones, query),
     [canciones, query],
   );
+
+  const showSnackbar = useCallback((message: string) => {
+    if (snackbarTimerRef.current) {
+      clearTimeout(snackbarTimerRef.current);
+    }
+
+    setSnackbar(message);
+    snackbarTimerRef.current = setTimeout(() => {
+      setSnackbar(null);
+      snackbarTimerRef.current = null;
+    }, SNACKBAR_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (snackbarTimerRef.current) {
+        clearTimeout(snackbarTimerRef.current);
+      }
+    };
+  }, []);
+
+  const loadMisCancionesRefs = useCallback(async () => {
+    if (!usuarioLogueado) {
+      setMisCancionesIds(new Set());
+      return;
+    }
+
+    try {
+      const items = await getMisCanciones(supabase);
+      setMisCancionesIds(
+        new Set(
+          items
+            .map((item) => item.cancion_guardada_id)
+            .filter((id): id is number => id !== null),
+        ),
+      );
+    } catch {
+      setMisCancionesIds(new Set());
+    }
+  }, [supabase, usuarioLogueado]);
 
   const loadLocalCanciones = useCallback(async () => {
     const data = await getCancioneroLocalAsCancionero();
@@ -79,6 +130,7 @@ export default function CancioneroPageClient({
 
   useEffect(() => {
     void loadLocalCanciones();
+    void loadMisCancionesRefs();
 
     function handleSyncFinished() {
       void loadLocalCanciones();
@@ -89,7 +141,7 @@ export default function CancioneroPageClient({
     return () => {
       window.removeEventListener(CANCIONERO_SYNC_EVENT, handleSyncFinished);
     };
-  }, [loadLocalCanciones]);
+  }, [loadLocalCanciones, loadMisCancionesRefs]);
 
   useEffect(() => {
     if (!cascadeActive || canciones.length === 0) {
@@ -116,13 +168,57 @@ export default function CancioneroPageClient({
       return;
     }
 
-    const supabase = createClient();
     await syncCancioneroLocal(supabase);
     await loadLocalCanciones();
-  }, [loadLocalCanciones, online]);
+  }, [loadLocalCanciones, online, supabase]);
+
+  const sumarAMisCanciones = useCallback(
+    async (cancion: CancionCancionero) => {
+      if (!usuarioLogueado || !online) {
+        showSnackbar("Iniciá sesión para guardar en Mis canciones");
+        return;
+      }
+
+      if (misCancionesIds.has(cancion.id)) {
+        showSnackbar("Ya está en Mis canciones");
+        return;
+      }
+
+      setActionError(null);
+
+      try {
+        await agregarAMisCanciones(supabase, {
+          nombre: cancion.nombre,
+          artista: cancion.artista,
+          cancion_guardada_id: cancion.id,
+        });
+        setMisCancionesIds((prev) => new Set(prev).add(cancion.id));
+        showSnackbar("Sumada a Mis canciones");
+
+        if (modoSeleccionMisCanciones) {
+          navigateWithProgress("/cancionero/mis-canciones");
+        }
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo sumar a Mis canciones",
+        );
+      }
+    },
+    [
+      misCancionesIds,
+      modoSeleccionMisCanciones,
+      navigateWithProgress,
+      online,
+      showSnackbar,
+      supabase,
+      usuarioLogueado,
+    ],
+  );
 
   function handleNuevaCancion() {
-    if (!online) {
+    if (!online || !usuarioLogueado) {
       return;
     }
 
@@ -131,7 +227,7 @@ export default function CancioneroPageClient({
   }
 
   function handleEditar(cancion: CancionCancionero) {
-    if (!online) {
+    if (!online || !usuarioLogueado) {
       return;
     }
 
@@ -140,6 +236,11 @@ export default function CancioneroPageClient({
   }
 
   function handleVer(cancion: CancionCancionero) {
+    if (modoSeleccionMisCanciones) {
+      void sumarAMisCanciones(cancion);
+      return;
+    }
+
     setCancionViendo(cancion);
   }
 
@@ -168,7 +269,7 @@ export default function CancioneroPageClient({
   }
 
   function handleEliminar(cancion: CancionCancionero) {
-    if (!online) {
+    if (!online || !usuarioLogueado) {
       return;
     }
 
@@ -182,8 +283,6 @@ export default function CancioneroPageClient({
 
     setActionLoading(true);
     setActionError(null);
-
-    const supabase = createClient();
 
     try {
       await deleteCancionCancionero(supabase, cancionAEliminar.id);
@@ -213,6 +312,10 @@ export default function CancioneroPageClient({
     setActionError(null);
   }
 
+  function cancelarModoSeleccion() {
+    navigateWithProgress("/cancionero/mis-canciones");
+  }
+
   useHardwareBack(cancionViendo !== null && !formOpen, () => {
     setCancionViendo(null);
   });
@@ -224,66 +327,44 @@ export default function CancioneroPageClient({
     },
   );
 
-  const constrainedLayout = embedded || hideBack;
+  const mutationsEnabled = online && usuarioLogueado;
+  const mostrarSumarMisCanciones = usuarioLogueado && online;
 
   return (
-    <div
-      className={`relative flex flex-col bg-bg-app ${
-        constrainedLayout
-          ? "min-h-0 h-full flex-1 overflow-hidden"
-          : "min-h-full flex-1"
-      }`}
-    >
+    <>
       <AppReadyMarker />
-      <header className="border-b border-border bg-bg-darker px-4 py-3">
-        <div className="flex items-center gap-3">
-          {!hideBack &&
-            (embedded ? (
-              <TapButton
-                aria-label="Volver a salas"
-                onClick={onClose}
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-              >
-                <ArrowLeft
-                  className="size-5 text-text-primary"
-                  aria-hidden="true"
-                />
-              </TapButton>
-            ) : (
-              <TapLink
-                href="/salas"
-                ariaLabel="Volver a salas"
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-              >
-                <ArrowLeft
-                  className="size-5 text-text-primary"
-                  aria-hidden="true"
-                />
-              </TapLink>
-            ))}
-          <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
-            Canciones guardadas
-          </h1>
-          <AddButton
-            ariaLabel="Agregar canción"
-            onClick={handleNuevaCancion}
-            disabled={!online}
-            className={!online ? "opacity-40" : ""}
-          />
-        </div>
-      </header>
-
-      <main
-        className={`flex flex-1 flex-col gap-3 px-4 py-4 pb-8 ${
-          constrainedLayout ? "min-h-0 overscroll-y-contain" : ""
-        } ${
-          constrainedLayout && cancionViendo === null
-            ? "overflow-y-auto"
-            : constrainedLayout
-              ? "overflow-hidden"
-              : ""
-        }`}
+      <CancioneroSubpageShell
+        title="Cancionero"
+        modalOpen={cancionViendo !== null}
+        headerAction={
+          usuarioLogueado ? (
+            <AddButton
+              ariaLabel="Agregar canción"
+              onClick={handleNuevaCancion}
+              disabled={!online}
+              className={!online ? "opacity-40" : ""}
+            />
+          ) : null
+        }
       >
+        {modoSeleccionMisCanciones && (
+          <div
+            className="flex items-start gap-2 rounded-[10px] border border-accent/40 bg-accent-dim px-3 py-2.5 text-sm text-text-primary"
+            role="status"
+          >
+            <p className="min-w-0 flex-1">
+              Seleccionar canción y sumar a &quot;Mis canciones&quot;
+            </p>
+            <TapButton
+              aria-label="Cancelar selección"
+              onClick={cancelarModoSeleccion}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <X className="size-4 text-text-primary" aria-hidden="true" />
+            </TapButton>
+          </div>
+        )}
+
         {!online && (
           <p
             className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
@@ -295,80 +376,91 @@ export default function CancioneroPageClient({
         )}
 
         {!localReady ? (
-          <SearchFieldSkeleton />
+          <CancioneroListSkeleton includeSearch cardCount={6} />
         ) : (
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setActiveCardId(null);
-              }}
-              placeholder="Buscar por nombre o artista..."
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              className={inputClassName}
-            />
-          </div>
-        )}
+          <>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setActiveCardId(null);
+                }}
+                placeholder="Buscar por nombre o artista..."
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className={inputClassName}
+              />
+            </div>
 
-        {actionError && (
-          <p className="text-sm text-accent" role="alert">
-            {actionError}
-          </p>
-        )}
+            {actionError && (
+              <p className="text-sm text-accent" role="alert">
+                {actionError}
+              </p>
+            )}
 
-        {!localReady ? null : canciones.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-            <Music className="size-10 text-text-faint" aria-hidden="true" />
-            <p className="max-w-xs text-sm text-text-muted">
-              {online
-                ? "Aún no hay canciones guardadas. Tocá + para agregar la primera."
-                : "No hay copia local todavía. Conectate a internet para sincronizar."}
-            </p>
-          </div>
-        ) : cancionesFiltradas.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-muted">
-            No hay canciones que coincidan con tu búsqueda.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {cancionesFiltradas.map((cancion, index) => (
-              <div
-                key={cancion.id}
-                className={cascadeActive ? "cancionero-item-cascade" : undefined}
-                style={
-                  cascadeActive
-                    ? {
-                        animationDelay: `${Math.min(
-                          index * CASCADE_STAGGER_MS,
-                          CASCADE_MAX_DELAY_MS,
-                        )}ms`,
-                      }
-                    : undefined
-                }
-              >
-                <CancioneroItemCard
-                  cancion={cancion}
-                  mutationsEnabled={online}
-                  actionsOpen={activeCardId === cancion.id}
-                  onOpenActions={() => setActiveCardId(cancion.id)}
-                  onCloseActions={() => setActiveCardId(null)}
-                  onVer={handleVer}
-                  onEditar={handleEditar}
-                  onEliminar={handleEliminar}
-                />
+            {canciones.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+                <Music className="size-10 text-text-faint" aria-hidden="true" />
+                <p className="max-w-xs text-sm text-text-muted">
+                  {online
+                    ? usuarioLogueado
+                      ? "Aún no hay canciones. Tocá + para agregar la primera."
+                      : "Aún no hay canciones en el cancionero."
+                    : "No hay copia local todavía. Conectate a internet para sincronizar."}
+                </p>
               </div>
-            ))}
-          </div>
+            ) : cancionesFiltradas.length === 0 ? (
+              <p className="py-8 text-center text-sm text-text-muted">
+                No hay canciones que coincidan con tu búsqueda.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {cancionesFiltradas.map((cancion, index) => (
+                  <div
+                    key={cancion.id}
+                    className={
+                      cascadeActive ? "cancionero-item-cascade" : undefined
+                    }
+                    style={
+                      cascadeActive
+                        ? {
+                            animationDelay: `${Math.min(
+                              index * CASCADE_STAGGER_MS,
+                              CASCADE_MAX_DELAY_MS,
+                            )}ms`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <CancioneroItemCard
+                      cancion={cancion}
+                      mutationsEnabled={mutationsEnabled}
+                      mostrarSumarMisCanciones={mostrarSumarMisCanciones}
+                      modoSeleccion={modoSeleccionMisCanciones}
+                      actionsOpen={activeCardId === cancion.id}
+                      onOpenActions={() => setActiveCardId(cancion.id)}
+                      onCloseActions={() => setActiveCardId(null)}
+                      onVer={handleVer}
+                      onSumarAMisCanciones={(item) =>
+                        void sumarAMisCanciones(item)
+                      }
+                      onEditar={handleEditar}
+                      onEliminar={handleEliminar}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
-      </main>
+      </CancioneroSubpageShell>
 
       <CancioneroFormModal
         open={formOpen}
@@ -413,6 +505,16 @@ export default function CancioneroPageClient({
         onConfirm={() => void handleConfirmEliminar()}
         onCancel={handleCancelEliminar}
       />
-    </div>
+
+      {snackbar && (
+        <div
+          className="fixed bottom-20 left-4 right-4 z-[400] mx-auto max-w-md rounded-[12px] border border-border bg-bg-dark px-4 py-3 text-center text-sm font-medium text-text-primary shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          {snackbar}
+        </div>
+      )}
+    </>
   );
 }

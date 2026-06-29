@@ -27,7 +27,9 @@ import {
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { type CancionInput } from "@/lib/cola-logic";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { formatDatabaseError } from "@/lib/supabase/errors";
+import { agregarAMisCanciones, getMisCanciones } from "@/lib/mis-canciones";
 import {
   getDuplicadoCancioneroNivel,
   guardarLetraEnCancionero,
@@ -44,8 +46,13 @@ import {
   getColaLocalItems,
 } from "@/lib/offline/cola-local-store";
 import { createClient } from "@/lib/supabase/client";
-import type { CancionCancionero, ResultadoBusquedaBuscador } from "@/types";
+import type {
+  CancionCancionero,
+  ResultadoBusquedaBuscador,
+  UsuarioCancion,
+} from "@/types";
 import {
+  Eye,
   ArrowLeft,
   Bookmark,
   Check,
@@ -69,9 +76,16 @@ import {
 type BuscadorModalProps = {
   open: boolean;
   onClose: () => void;
-  salaId: number;
-  onDataChange: () => Promise<void>;
   onColaAdded?: () => void;
+  /** Por defecto: sala (cola de la juntada). */
+  variant?: "sala" | "home";
+  salaId?: number;
+  onDataChange?: () => Promise<void>;
+  /** Solo variant home */
+  usuarioLogueado?: boolean;
+  hasActivaOPendiente?: boolean;
+  onVerAhora?: (cancion: CancionInput) => Promise<void>;
+  onAgregarALista?: (cancion: CancionInput) => Promise<void>;
 };
 
 type Pantalla = "busqueda" | "preview";
@@ -90,6 +104,48 @@ type GuardarLetraModalState = {
   letra: string;
   url: string;
 };
+
+type FuenteHomeBusqueda = "general" | "mis_canciones";
+
+function filterMisCanciones(
+  canciones: UsuarioCancion[],
+  query: string,
+): UsuarioCancion[] {
+  const normalized = query.trim().toLowerCase();
+
+  if (!normalized) {
+    return canciones;
+  }
+
+  return canciones.filter((cancion) => {
+    const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
+    const matchesArtista = cancion.artista?.toLowerCase().includes(normalized);
+    return matchesNombre || Boolean(matchesArtista);
+  });
+}
+
+function mapMisCancionAResultado(
+  cancion: UsuarioCancion,
+): ResultadoBusquedaBuscador {
+  if (cancion.cancion_guardada_id !== null) {
+    return {
+      titulo: cancion.nombre,
+      artista: cancion.artista ?? "",
+      url: `cancionero://${cancion.cancion_guardada_id}`,
+      sitio: "Mis canciones",
+      fuente: "cancionero",
+      id: cancion.cancion_guardada_id,
+    };
+  }
+
+  return {
+    titulo: cancion.nombre,
+    artista: cancion.artista ?? "",
+    url: cancion.url_letra ?? "",
+    sitio: "Mis canciones",
+    fuente: "link-guardado",
+  };
+}
 
 const CONFIRMACION_MS = 1500;
 
@@ -263,10 +319,16 @@ function SeccionResultados({
 export default function BuscadorModal({
   open,
   onClose,
+  onColaAdded,
+  variant = "sala",
   salaId,
   onDataChange,
-  onColaAdded,
+  usuarioLogueado = false,
+  hasActivaOPendiente = false,
+  onVerAhora,
+  onAgregarALista,
 }: BuscadorModalProps) {
+  const isHome = variant === "home";
   const online = useOnlineStatus();
   const inputRef = useRef<HTMLInputElement>(null);
   const pantallaRef = useRef<Pantalla>("busqueda");
@@ -300,6 +362,19 @@ export default function BuscadorModal({
   >([]);
   const [localCascadeActive, setLocalCascadeActive] = useState(false);
   const [internetCascadeActive, setInternetCascadeActive] = useState(false);
+  const [fuenteHome, setFuenteHome] = useState<FuenteHomeBusqueda>("general");
+  const [misCanciones, setMisCanciones] = useState<UsuarioCancion[]>([]);
+  const [loadingMisCanciones, setLoadingMisCanciones] = useState(false);
+  const [previewEsMisCanciones, setPreviewEsMisCanciones] = useState(false);
+  const [promptMisCanciones, setPromptMisCanciones] = useState<{
+    nombre: string;
+    artista: string | null;
+    cancion_guardada_id?: number | null;
+    url_letra?: string | null;
+  } | null>(null);
+  const [guardadoRecienteId, setGuardadoRecienteId] = useState<number | null>(
+    null,
+  );
 
   const resultadosEnInternet = useMemo(
     () => [...resultados.linksGuardados, ...resultados.internet],
@@ -332,6 +407,12 @@ export default function BuscadorModal({
     setCancionesCancionero([]);
     setLocalCascadeActive(false);
     setInternetCascadeActive(false);
+    setFuenteHome("general");
+    setMisCanciones([]);
+    setLoadingMisCanciones(false);
+    setPreviewEsMisCanciones(false);
+    setPromptMisCanciones(null);
+    setGuardadoRecienteId(null);
 
     if (localCascadeTimerRef.current !== undefined) {
       window.clearTimeout(localCascadeTimerRef.current);
@@ -358,6 +439,34 @@ export default function BuscadorModal({
     );
   }, [online]);
 
+  const syncMisCancionesResultados = useCallback(
+    (searchQuery: string, animate = false) => {
+      const filtradas = filterMisCanciones(misCanciones, searchQuery).map(
+        mapMisCancionAResultado,
+      );
+
+      setResultados({
+        cancionero: filtradas,
+        linksGuardados: [],
+        internet: [],
+      });
+      setBusquedaRealizada(true);
+      setLoadingLocal(false);
+      setLoadingInternet(false);
+      setError(null);
+      setLocalCascadeActive(false);
+
+      if (animate && filtradas.length > 0) {
+        scheduleCascade(
+          filtradas.length,
+          setLocalCascadeActive,
+          localCascadeTimerRef,
+        );
+      }
+    },
+    [misCanciones],
+  );
+
   const handleClose = useCallback(() => {
     onClose();
     resetState();
@@ -381,6 +490,40 @@ export default function BuscadorModal({
 
     handleClose();
   });
+
+  useEffect(() => {
+    if (open && isHome && usuarioLogueado) {
+      setLoadingMisCanciones(true);
+      const supabase = createClient();
+      void getMisCanciones(supabase)
+        .then(setMisCanciones)
+        .catch(() => setMisCanciones([]))
+        .finally(() => setLoadingMisCanciones(false));
+    }
+  }, [open, isHome, usuarioLogueado]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !isHome ||
+      fuenteHome !== "mis_canciones" ||
+      !usuarioLogueado ||
+      loadingMisCanciones
+    ) {
+      return;
+    }
+
+    syncMisCancionesResultados(query, false);
+  }, [
+    open,
+    isHome,
+    fuenteHome,
+    usuarioLogueado,
+    query,
+    misCanciones,
+    loadingMisCanciones,
+    syncMisCancionesResultados,
+  ]);
 
   useEffect(() => {
     if (open) {
@@ -437,6 +580,11 @@ export default function BuscadorModal({
 
   async function handleSearch(event?: FormEvent) {
     event?.preventDefault();
+
+    if (isHome && fuenteHome === "mis_canciones") {
+      dismissKeyboard();
+      return;
+    }
 
     const trimmed = query.trim();
 
@@ -558,6 +706,7 @@ export default function BuscadorModal({
   function handleSelectResultado(resultado: ResultadoBusquedaBuscador) {
     dismissKeyboard();
     setSeleccionado(resultado);
+    setPreviewEsMisCanciones(isHome && fuenteHome === "mis_canciones");
     setConfirmacion(null);
     setFabGuardarAbierto(false);
     setEmbedTopRevealed(false);
@@ -576,8 +725,53 @@ export default function BuscadorModal({
     setError(null);
   }
 
+  async function handleVerAhoraHome() {
+    if (!seleccionado || accionLoading || !onVerAhora) {
+      return;
+    }
+
+    setAccionLoading(true);
+    setError(null);
+
+    try {
+      await onVerAhora(toCancionInput(seleccionado));
+      handleClose();
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : "Error al mostrar la canción",
+      );
+    } finally {
+      setAccionLoading(false);
+    }
+  }
+
+  async function handleAgregarAListaHome() {
+    if (!seleccionado || accionLoading || !onAgregarALista) {
+      return;
+    }
+
+    setAccionLoading(true);
+    setError(null);
+
+    try {
+      await onAgregarALista(toCancionInput(seleccionado));
+      onColaAdded?.();
+      handleClose();
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : "Error al agregar a la lista",
+      );
+    } finally {
+      setAccionLoading(false);
+    }
+  }
+
   async function handleAgregarACola() {
-    if (!seleccionado || accionLoading) {
+    if (!seleccionado || accionLoading || salaId == null) {
       return;
     }
 
@@ -601,7 +795,7 @@ export default function BuscadorModal({
           }
         }
 
-        await onDataChange();
+        await onDataChange?.();
         onColaAdded?.();
         handleClose();
         return;
@@ -623,7 +817,7 @@ export default function BuscadorModal({
         throw new Error(data.error ?? "Error al agregar a la cola");
       }
 
-      await onDataChange();
+      await onDataChange?.();
       onColaAdded?.();
       handleClose();
     } catch (actionError) {
@@ -633,6 +827,24 @@ export default function BuscadorModal({
     } finally {
       setAccionLoading(false);
     }
+  }
+
+  function maybePromptMisCanciones(
+    nombre: string,
+    artista: string | null,
+    cancionGuardadaId?: number | null,
+    urlLetra?: string | null,
+  ) {
+    if (!isHome || !usuarioLogueado) {
+      return;
+    }
+
+    setPromptMisCanciones({
+      nombre,
+      artista,
+      cancion_guardada_id: cancionGuardadaId ?? guardadoRecienteId,
+      url_letra: urlLetra ?? seleccionado?.url ?? null,
+    });
   }
 
   async function handleGuardarLink() {
@@ -656,9 +868,10 @@ export default function BuscadorModal({
         artista: artista || null,
         url_letra: seleccionado.url,
       });
-      await onDataChange();
+      await onDataChange?.();
       setFabGuardarAbierto(false);
       mostrarConfirmacion("link");
+      maybePromptMisCanciones(nombre, artista || null, null, seleccionado.url);
     } catch (actionError) {
       setError(
         actionError instanceof Error
@@ -767,6 +980,7 @@ export default function BuscadorModal({
 
   const guardarDeshabilitado =
     !online ||
+    (isHome && !usuarioLogueado) ||
     Boolean(
       esCancioneroPreview ||
         (esLinkGuardadoPreview && esCifraSitio) ||
@@ -823,6 +1037,11 @@ export default function BuscadorModal({
     }
   }
 
+  const mostrandoMisCanciones =
+    isHome && fuenteHome === "mis_canciones" && usuarioLogueado;
+  const buscadorCargando =
+    loadingLocal || (mostrandoMisCanciones && loadingMisCanciones);
+
   if (!open) {
     return null;
   }
@@ -856,7 +1075,11 @@ export default function BuscadorModal({
                 enterKeyHint="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar canción..."
+                placeholder={
+                  mostrandoMisCanciones
+                    ? "Filtrar mis canciones..."
+                    : "Buscar canción..."
+                }
                 autoFocus
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -867,18 +1090,63 @@ export default function BuscadorModal({
               <button
                 type="submit"
                 aria-label="Buscar"
-                disabled={!query.trim() || loadingLocal}
+                disabled={
+                  buscadorCargando ||
+                  (!mostrandoMisCanciones && !query.trim())
+                }
                 className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent disabled:opacity-60"
               >
                 <Search className="size-5 text-white" aria-hidden="true" />
               </button>
             </form>
+
+            {isHome ? (
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFuenteHome("general");
+                    setBusquedaRealizada(false);
+                    setResultados({
+                      cancionero: [],
+                      linksGuardados: [],
+                      internet: [],
+                    });
+                  }}
+                  className={`flex-1 rounded-lg py-2 text-xs font-semibold ${
+                    fuenteHome === "general"
+                      ? "bg-accent text-white"
+                      : "bg-bg-card text-text-muted"
+                  }`}
+                >
+                  General
+                </button>
+                <button
+                  type="button"
+                  disabled={!usuarioLogueado}
+                  onClick={() => {
+                    setFuenteHome("mis_canciones");
+                    setError(null);
+                    if (!loadingMisCanciones && misCanciones.length > 0) {
+                      syncMisCancionesResultados(query, true);
+                    }
+                  }}
+                  className={`flex-1 rounded-lg py-2 text-xs font-semibold disabled:opacity-40 ${
+                    fuenteHome === "mis_canciones"
+                      ? "bg-accent text-white"
+                      : "bg-bg-card text-text-muted"
+                  }`}
+                >
+                  Mis canciones
+                </button>
+              </div>
+            ) : null}
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            {loadingLocal && <BuscadorSearchSkeleton />}
+            {buscadorCargando && <BuscadorSearchSkeleton />}
 
-            {!loadingLocal && error && totalResultados === 0 && (
+            {!buscadorCargando && error && totalResultados === 0 && (
               <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <Music
                   className="size-10 text-text-faint"
@@ -888,7 +1156,7 @@ export default function BuscadorModal({
               </div>
             )}
 
-            {!loadingLocal && !error && !busquedaRealizada && (
+            {!buscadorCargando && !error && !busquedaRealizada && (
               <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <Music
                   className="size-10 text-text-faint"
@@ -900,7 +1168,7 @@ export default function BuscadorModal({
               </div>
             )}
 
-            {!loadingLocal &&
+            {!buscadorCargando &&
               busquedaRealizada &&
               totalResultados === 0 &&
               !loadingInternet && (
@@ -910,16 +1178,22 @@ export default function BuscadorModal({
                     aria-hidden="true"
                   />
                   <p className="text-sm text-text-muted">
-                    No encontramos resultados para tu búsqueda
+                    {mostrandoMisCanciones && misCanciones.length === 0
+                      ? "No tenés canciones guardadas en Mis canciones"
+                      : "No encontramos resultados para tu búsqueda"}
                   </p>
                 </div>
               )}
 
-            {!loadingLocal && (totalResultados > 0 || loadingInternet) && (
+            {!buscadorCargando && (totalResultados > 0 || loadingInternet) && (
               <>
                 {resultados.cancionero.length > 0 ? (
                   <SeccionResultados
-                    label="Del cancionero"
+                    label={
+                      isHome && fuenteHome === "mis_canciones"
+                        ? "Mis canciones"
+                        : "Del cancionero"
+                    }
                     icon={
                       <Bookmark
                         className="size-3.5 shrink-0"
@@ -1126,29 +1400,71 @@ export default function BuscadorModal({
                   <p className="mb-2 text-center text-sm text-accent">{error}</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    disabled={accionLoading}
-                    onClick={() => void handleAgregarACola()}
-                    className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-2 py-1 text-sm font-semibold text-white disabled:opacity-60"
+                {isHome ? (
+                  <div
+                    className={`grid gap-1.5 ${
+                      previewEsMisCanciones ? "grid-cols-2" : "grid-cols-3"
+                    }`}
                   >
-                    <ListPlus className="size-4 shrink-0" aria-hidden="true" />
-                    <span className="text-center leading-tight">
-                      {accionLoading ? "Sumando..." : "Sumar a fila"}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      disabled={accionLoading}
+                      onClick={() => void handleVerAhoraHome()}
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-1 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                    >
+                      <Eye className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">Ver ahora</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    disabled={accionLoading || guardarDeshabilitado}
-                    onClick={handleGuardarTap}
-                    className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-2 py-1 text-sm font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
-                  >
-                    <Bookmark className="size-4 shrink-0" aria-hidden="true" />
-                    <span className="text-center leading-tight">Guardar</span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      disabled={accionLoading || !hasActivaOPendiente}
+                      onClick={() => void handleAgregarAListaHome()}
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
+                    >
+                      <ListPlus className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">
+                        Agregar a la lista
+                      </span>
+                    </button>
+
+                    {!previewEsMisCanciones ? (
+                      <button
+                        type="button"
+                        disabled={accionLoading || guardarDeshabilitado}
+                        onClick={handleGuardarTap}
+                        className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
+                      >
+                        <Bookmark className="size-4 shrink-0" aria-hidden="true" />
+                        <span className="text-center leading-tight">Guardar</span>
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      disabled={accionLoading}
+                      onClick={() => void handleAgregarACola()}
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-2 py-1 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      <ListPlus className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">
+                        {accionLoading ? "Sumando..." : "Sumar a fila"}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={accionLoading || guardarDeshabilitado}
+                      onClick={handleGuardarTap}
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-2 py-1 text-sm font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
+                    >
+                      <Bookmark className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">Guardar</span>
+                    </button>
+                  </div>
+                )}
               </footer>
             </>
           )}
@@ -1168,13 +1484,43 @@ export default function BuscadorModal({
           onSubmit={handleGuardarLetraDesdeModal}
           onClose={() => setGuardarLetraModal(null)}
           onSaved={() => {
-            void onDataChange();
+            void onDataChange?.();
             void cargarCancionesCancionero();
             mostrarConfirmacion("letra");
+            if (guardarLetraModal) {
+              maybePromptMisCanciones(
+                guardarLetraModal.nombre,
+                guardarLetraModal.artista || null,
+                guardadoRecienteId,
+                guardarLetraModal.url,
+              );
+            }
             setGuardarLetraModal(null);
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={promptMisCanciones !== null}
+        message="¿Querés sumarla a Mis canciones?"
+        confirmLabel="Sí, sumar"
+        cancelLabel="No, gracias"
+        zIndex={60}
+        onCancel={() => setPromptMisCanciones(null)}
+        onConfirm={() => {
+          if (!promptMisCanciones) {
+            return;
+          }
+
+          const payload = promptMisCanciones;
+          setPromptMisCanciones(null);
+          const supabase = createClient();
+
+          void agregarAMisCanciones(supabase, payload).catch((error) => {
+            console.error("[mis-canciones] error al agregar", error);
+          });
+        }}
+      />
     </div>
   );
 }

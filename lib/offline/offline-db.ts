@@ -36,7 +36,7 @@ export type AppSnapshotRecord = {
   id: "current";
   usuario: UsuarioActivo;
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
-  cancioneroTotal: number;
+  cancioneroTotal?: number;
   savedAt: string;
 };
 

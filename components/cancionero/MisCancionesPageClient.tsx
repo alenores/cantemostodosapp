@@ -1,19 +1,27 @@
 "use client";
 
+import CancioneroListSkeleton from "@/components/cancionero/CancioneroListSkeleton";
+import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
+import UrlLetraModal from "@/components/salas/UrlLetraModal";
+import AddButton from "@/components/ui/AddButton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useColaIndividual } from "@/hooks/useColaIndividual";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import type { ResultadoIconoTipo } from "@/lib/buscador";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   eliminarDeMisCanciones,
   getMisCanciones,
+  usuarioCancionToCancionInput,
 } from "@/lib/mis-canciones";
+import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero, UsuarioCancion } from "@/types";
-import { Music, Search, Trash2, X } from "lucide-react";
+import { ListPlus, Music, Search, Trash2 } from "lucide-react";
+import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import {
   useCallback,
   useEffect,
@@ -27,6 +35,7 @@ const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
 const LONG_PRESS_MS = 500;
+const SNACKBAR_MS = 3000;
 
 function filterMisCanciones(
   canciones: UsuarioCancion[],
@@ -67,18 +76,22 @@ function getIconoTipo(cancion: UsuarioCancion): ResultadoIconoTipo {
 type MiCancionItemProps = {
   cancion: UsuarioCancion;
   actionsOpen: boolean;
+  colaDeshabilitada: boolean;
   onOpenActions: () => void;
   onCloseActions: () => void;
   onVer: (cancion: UsuarioCancion) => void;
+  onAgregarACola: (cancion: UsuarioCancion) => void;
   onEliminar: (cancion: UsuarioCancion) => void;
 };
 
 function MiCancionItem({
   cancion,
   actionsOpen,
+  colaDeshabilitada,
   onOpenActions,
   onCloseActions,
   onVer,
+  onAgregarACola,
   onEliminar,
 }: MiCancionItemProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,6 +175,19 @@ function MiCancionItem({
             </p>
           ) : null}
         </div>
+        <TapButton
+          aria-label={`Agregar ${cancion.nombre} a la cola`}
+          disabled={colaDeshabilitada}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAgregarACola(cancion);
+          }}
+          className={`flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark ${
+            colaDeshabilitada ? "pointer-events-none opacity-40" : ""
+          }`}
+        >
+          <ListPlus className="size-5 text-accent" aria-hidden="true" />
+        </TapButton>
       </div>
 
       {actionsOpen && (
@@ -191,43 +217,10 @@ function MiCancionItem({
   );
 }
 
-type UrlLetraModalProps = {
-  open: boolean;
-  url: string | null;
-  titulo: string;
-  onClose: () => void;
-};
-
-function UrlLetraModal({ open, url, titulo, onClose }: UrlLetraModalProps) {
-  if (!open || !url) {
-    return null;
-  }
-
-  return (
-    <div className="fixed inset-0 z-[300] flex flex-col bg-bg-app">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
-        <h2 className="min-w-0 flex-1 truncate text-lg font-extrabold text-text-primary">
-          {titulo}
-        </h2>
-        <TapButton
-          aria-label="Cerrar letra"
-          onClick={onClose}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-        >
-          <X className="size-5 text-text-primary" aria-hidden="true" />
-        </TapButton>
-      </header>
-      <iframe
-        src={url}
-        title={titulo}
-        className="min-h-0 flex-1 border-0 bg-white"
-      />
-    </div>
-  );
-}
-
 export default function MisCancionesPageClient() {
+  const navigateWithProgress = useNavigateWithProgress();
   const supabase = useMemo(() => createClient(), []);
+  const cola = useColaIndividual();
   const [canciones, setCanciones] = useState<UsuarioCancion[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -235,6 +228,7 @@ export default function MisCancionesPageClient() {
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
   );
+  const [carouselGlobalIds, setCarouselGlobalIds] = useState<number[]>([]);
   const [urlViendo, setUrlViendo] = useState<{
     url: string;
     titulo: string;
@@ -245,11 +239,43 @@ export default function MisCancionesPageClient() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<string | null>(null);
+  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancionesFiltradas = useMemo(
     () => filterMisCanciones(canciones, query),
     [canciones, query],
   );
+
+  const carouselEntries = useMemo(() => {
+    const globalRefs = cancionesFiltradas.filter(
+      (item) => item.cancion_guardada_id !== null,
+    );
+
+    return globalRefs
+      .map((item) => item.cancion_guardada_id)
+      .filter((id): id is number => id !== null);
+  }, [cancionesFiltradas]);
+
+  const showSnackbar = useCallback((message: string) => {
+    if (snackbarTimerRef.current) {
+      clearTimeout(snackbarTimerRef.current);
+    }
+
+    setSnackbar(message);
+    snackbarTimerRef.current = setTimeout(() => {
+      setSnackbar(null);
+      snackbarTimerRef.current = null;
+    }, SNACKBAR_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (snackbarTimerRef.current) {
+        clearTimeout(snackbarTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadCanciones = useCallback(async () => {
     setLoading(true);
@@ -274,25 +300,50 @@ export default function MisCancionesPageClient() {
     void loadCanciones();
   }, [loadCanciones]);
 
+  const resolveGlobalCancion = useCallback(
+    async (cancionGuardadaId: number): Promise<CancionCancionero | null> => {
+      const { data, error } = await supabase
+        .from("canciones_guardadas")
+        .select("id, nombre, artista, letra")
+        .eq("id", cancionGuardadaId)
+        .maybeSingle();
+
+      if (data) {
+        return data as CancionCancionero;
+      }
+
+      const local = await getCancioneroLocalAsCancionero();
+      const cached = local.find((item) => item.id === cancionGuardadaId);
+
+      if (cached) {
+        return cached;
+      }
+
+      if (error) {
+        setViewError(error.message);
+      }
+
+      return null;
+    },
+    [supabase],
+  );
+
   const handleVer = useCallback(
     async (cancion: UsuarioCancion) => {
       setViewError(null);
 
       if (cancion.cancion_guardada_id !== null) {
-        const { data, error } = await supabase
-          .from("canciones_guardadas")
-          .select("id, nombre, artista, letra")
-          .eq("id", cancion.cancion_guardada_id)
-          .maybeSingle();
+        const data = await resolveGlobalCancion(cancion.cancion_guardada_id);
 
-        if (error || !data) {
+        if (!data) {
           setViewError(
-            error?.message ?? "No se pudo cargar la letra de esta canción",
+            "No se pudo cargar la letra. Verificá que la canción esté en el cancionero y sincronizada.",
           );
           return;
         }
 
-        setCancionViendo(data as CancionCancionero);
+        setCarouselGlobalIds(carouselEntries);
+        setCancionViendo(data);
         return;
       }
 
@@ -303,7 +354,67 @@ export default function MisCancionesPageClient() {
 
       setViewError("Esta canción no tiene letra disponible");
     },
-    [supabase],
+    [carouselEntries, resolveGlobalCancion],
+  );
+
+  const cancionViendoIndex = useMemo(() => {
+    if (!cancionViendo) {
+      return -1;
+    }
+
+    return carouselGlobalIds.findIndex((id) => id === cancionViendo.id);
+  }, [cancionViendo, carouselGlobalIds]);
+
+  const handleNavigateCancion = useCallback(
+    async (direction: -1 | 1) => {
+      if (cancionViendoIndex === -1) {
+        return;
+      }
+
+      const nextIndex = cancionViendoIndex + direction;
+
+      if (nextIndex < 0 || nextIndex >= carouselGlobalIds.length) {
+        return;
+      }
+
+      const nextId = carouselGlobalIds[nextIndex]!;
+      const data = await resolveGlobalCancion(nextId);
+
+      if (data) {
+        setCancionViendo(data);
+      }
+    },
+    [cancionViendoIndex, carouselGlobalIds, resolveGlobalCancion],
+  );
+
+  const handleAgregarACola = useCallback(
+    async (cancion: UsuarioCancion) => {
+      if (!cola.hasActivaOPendiente) {
+        showSnackbar("Agregá una canción activa en Home primero");
+        return;
+      }
+
+      let letraTexto: string | null = null;
+
+      if (cancion.cancion_guardada_id !== null) {
+        const global = await resolveGlobalCancion(cancion.cancion_guardada_id);
+        letraTexto = global?.letra ?? null;
+      }
+
+      try {
+        await cola.agregarALista(
+          usuarioCancionToCancionInput(cancion, letraTexto),
+        );
+        showSnackbar("Agregada a la cola");
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo agregar a la cola",
+        );
+      }
+    },
+    [cola, resolveGlobalCancion, showSnackbar],
   );
 
   function handleEliminar(cancion: UsuarioCancion) {
@@ -359,80 +470,93 @@ export default function MisCancionesPageClient() {
   );
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
-      <header className="border-b border-border bg-bg-darker px-4 py-3">
-        <h1 className="text-lg font-extrabold text-text-primary">
-          Mis canciones
-        </h1>
-      </header>
-
-      <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 pb-8">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
-            aria-hidden="true"
+    <>
+      <CancioneroSubpageShell
+        title="Mis canciones"
+        modalOpen={cancionViendo !== null || urlViendo !== null}
+        headerAction={
+          <AddButton
+            ariaLabel="Agregar canción desde el cancionero"
+            onClick={() =>
+              navigateWithProgress("/cancionero/global?seleccionar=1")
+            }
           />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setActiveCardId(null);
-            }}
-            placeholder="Buscar por nombre o artista..."
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            className={inputClassName}
-            disabled={loading}
-          />
-        </div>
-
-        {(actionError || viewError) && (
-          <p className="text-sm text-accent" role="alert">
-            {actionError ?? viewError}
-          </p>
-        )}
-
+        }
+      >
         {loading ? (
-          <p className="py-8 text-center text-sm text-text-muted">
-            Cargando tus canciones...
-          </p>
-        ) : canciones.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-            <Music className="size-10 text-text-faint" aria-hidden="true" />
-            <p className="max-w-xs text-sm text-text-muted">
-              Todavía no guardaste ninguna canción. Buscá una canción y guardala
-              aquí.
-            </p>
-          </div>
-        ) : cancionesFiltradas.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-muted">
-            No hay canciones que coincidan con tu búsqueda.
-          </p>
+          <CancioneroListSkeleton includeSearch cardCount={5} />
         ) : (
-          <div className="flex flex-col gap-3">
-            {cancionesFiltradas.map((cancion) => (
-              <MiCancionItem
-                key={cancion.id}
-                cancion={cancion}
-                actionsOpen={activeCardId === cancion.id}
-                onOpenActions={() => setActiveCardId(cancion.id)}
-                onCloseActions={() => setActiveCardId(null)}
-                onVer={(item) => void handleVer(item)}
-                onEliminar={handleEliminar}
+          <>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+                aria-hidden="true"
               />
-            ))}
-          </div>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setActiveCardId(null);
+                }}
+                placeholder="Buscar por nombre o artista..."
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className={inputClassName}
+              />
+            </div>
+
+            {(actionError || viewError) && (
+              <p className="text-sm text-accent" role="alert">
+                {actionError ?? viewError}
+              </p>
+            )}
+
+            {canciones.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+                <Music className="size-10 text-text-faint" aria-hidden="true" />
+                <p className="max-w-xs text-sm text-text-muted">
+                  Todavía no guardaste ninguna canción. Tocá + para elegir una del
+                  cancionero global.
+                </p>
+              </div>
+            ) : cancionesFiltradas.length === 0 ? (
+              <p className="py-8 text-center text-sm text-text-muted">
+                No hay canciones que coincidan con tu búsqueda.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {cancionesFiltradas.map((cancion) => (
+                  <MiCancionItem
+                    key={cancion.id}
+                    cancion={cancion}
+                    colaDeshabilitada={!cola.hasActivaOPendiente}
+                    actionsOpen={activeCardId === cancion.id}
+                    onOpenActions={() => setActiveCardId(cancion.id)}
+                    onCloseActions={() => setActiveCardId(null)}
+                    onVer={(item) => void handleVer(item)}
+                    onAgregarACola={(item) => void handleAgregarACola(item)}
+                    onEliminar={handleEliminar}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
-      </main>
+      </CancioneroSubpageShell>
 
       <CancioneroVerModal
         open={cancionViendo !== null}
         cancion={cancionViendo}
         onClose={() => setCancionViendo(null)}
-        tieneAnterior={false}
-        tieneSiguiente={false}
+        onAnterior={() => void handleNavigateCancion(-1)}
+        onSiguiente={() => void handleNavigateCancion(1)}
+        tieneAnterior={cancionViendoIndex > 0}
+        tieneSiguiente={
+          cancionViendoIndex >= 0 &&
+          cancionViendoIndex < carouselGlobalIds.length - 1
+        }
       />
 
       <UrlLetraModal
@@ -450,6 +574,16 @@ export default function MisCancionesPageClient() {
         onConfirm={() => void handleConfirmEliminar()}
         onCancel={handleCancelEliminar}
       />
-    </div>
+
+      {snackbar && (
+        <div
+          className="fixed bottom-20 left-4 right-4 z-[400] mx-auto max-w-md rounded-[12px] border border-border bg-bg-dark px-4 py-3 text-center text-sm font-medium text-text-primary shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          {snackbar}
+        </div>
+      )}
+    </>
   );
 }

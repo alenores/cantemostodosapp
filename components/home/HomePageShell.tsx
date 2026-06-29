@@ -2,54 +2,254 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
-import { LETRA_AUTO_SCROLL_MAX_LEVEL } from "@/hooks/useLetraAutoScroll";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
-import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
-import { avanzarColaIndividual, getColaIndividual } from "@/lib/cola-individual";
-import { createClient } from "@/lib/supabase/client";
-import type { ColaIndividualItem } from "@/types";
+import BuscadorModal from "@/components/salas/BuscadorModal";
+import CancionActivaSection from "@/components/salas/CancionActivaSection";
+import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
+import { TapButton } from "@/components/ui/TapFeedback";
+import { useColaIndividual } from "@/hooks/useColaIndividual";
+import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
+import { triggerHaptic } from "@/lib/haptic";
+import {
+  COLA_AVISO_EXIT_MS,
+  COLA_AVISO_SHOW_DELAY_MS,
+  getLetraModoLecturaHorizontalPadding,
+  getLecturaColaAvisoTopCss,
+  getLecturaFabMenuTopCss,
+  getLecturaTopChromeTopCss,
+  getSalaMainFooterPaddingCss,
+  LECTURA_TOP_CHROME_SIDE_PX,
+} from "@/lib/sala-layout";
+import type { LucideIcon } from "lucide-react";
 import {
   ListMusic,
-  Maximize2,
-  Music,
+  Minimize2,
+  Music2,
   Search,
   SkipForward,
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
+import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const LETRA_TEST_PLACEHOLDER = [
-  "Verso 1",
-  "Lorem ipsum dolor sit amet",
-  "Consectetur adipiscing elit",
-  "Sed do eiusmod tempor incididunt",
-  "",
-  "Estribillo",
-  "Ut labore et dolore magna aliqua",
-  "Ut enim ad minim veniam",
-  "Quis nostrud exercitation ullamco",
-  "",
-  "Verso 2",
-  "Duis aute irure dolor in reprehenderit",
-  "In voluptate velit esse cillum",
-  "Dolore eu fugiat nulla pariatur",
-  "",
-  "Estribillo",
-  "Excepteur sint occaecat cupidatat",
-  "Non proident sunt in culpa",
-  "Qui officia deserunt mollit anim",
-];
+const FLOAT_BTN_SECONDARY =
+  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
+const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
+const LECTURA_TOP_CHIP =
+  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
+const LECTURA_FAB_CASCADE_STEP_MS = 55;
+
+type HomeModoLecturaFabOptionProps = {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  iconAfter?: boolean;
+  cascadeIndex: number;
+};
+
+function HomeModoLecturaFabOption({
+  icon: Icon,
+  label,
+  onClick,
+  disabled = false,
+  iconAfter = false,
+  cascadeIndex,
+}: HomeModoLecturaFabOptionProps) {
+  const iconNode = (
+    <Icon className="size-4 shrink-0" aria-hidden="true" />
+  );
+
+  return (
+    <TapButton
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+      className={`sala-lectura-fab-item pointer-events-auto flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY} ${
+        disabled ? FLOAT_BTN_DISABLED : ""
+      }`}
+      style={{
+        animationDelay: `${cascadeIndex * LECTURA_FAB_CASCADE_STEP_MS}ms`,
+      }}
+    >
+      {iconAfter ? (
+        <>
+          <span>{label}</span>
+          {iconNode}
+        </>
+      ) : (
+        <>
+          {iconNode}
+          <span>{label}</span>
+        </>
+      )}
+    </TapButton>
+  );
+}
+
+type HomeModoLecturaOverlayProps = {
+  abierto: boolean;
+  pendientesCount: number;
+  onCerrar: () => void;
+  onContraer: () => void;
+  onSiguiente: () => void;
+  onCola: () => void;
+  onBuscar: () => void;
+  onAfinador: () => void;
+};
+
+function HomeModoLecturaOverlay({
+  abierto,
+  pendientesCount,
+  onCerrar,
+  onContraer,
+  onSiguiente,
+  onCola,
+  onBuscar,
+  onAfinador,
+}: HomeModoLecturaOverlayProps) {
+  if (!abierto) {
+    return null;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-40 cursor-default"
+        aria-label="Cerrar menú de controles"
+        onClick={onCerrar}
+      />
+
+      <div
+        className="pointer-events-none fixed z-40 flex flex-col items-end gap-2"
+        style={{
+          top: getLecturaFabMenuTopCss(),
+          right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+        }}
+        role="menu"
+        aria-label="Controles de modo lectura"
+      >
+        <HomeModoLecturaFabOption
+          icon={Minimize2}
+          label="Contraer"
+          cascadeIndex={0}
+          onClick={onContraer}
+        />
+        <HomeModoLecturaFabOption
+          icon={Search}
+          label="Buscar"
+          cascadeIndex={1}
+          onClick={() => {
+            onCerrar();
+            onBuscar();
+          }}
+        />
+        <HomeModoLecturaFabOption
+          icon={SkipForward}
+          label="Siguiente"
+          iconAfter
+          cascadeIndex={2}
+          disabled={pendientesCount === 0}
+          onClick={() => {
+            onCerrar();
+            onSiguiente();
+          }}
+        />
+        <HomeModoLecturaFabOption
+          icon={ListMusic}
+          label={`Cola · ${pendientesCount}`}
+          cascadeIndex={3}
+          onClick={() => {
+            onCerrar();
+            onCola();
+          }}
+        />
+        <HomeModoLecturaFabOption
+          icon={Music2}
+          label="Afinador"
+          cascadeIndex={4}
+          onClick={() => {
+            onCerrar();
+            onAfinador();
+          }}
+        />
+      </div>
+    </>
+  );
+}
 
 export default function HomePageShell() {
-  const supabase = useMemo(() => createClient(), []);
-  const [cancionActiva, setCancionActiva] = useState<string | null>(null);
+  const navigateWithProgress = useNavigateWithProgress();
+  const cola = useColaIndividual();
+  const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const openColaRef = useRef<(() => void) | null>(null);
+  const handleSiguienteRef = useRef<(() => void) | null>(null);
+  const letraScrollRef = useRef<HTMLDivElement>(null);
+
+  const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
-  const [colaSheetAbierta, setColaSheetAbierta] = useState(false);
-  const [autoScrollLevel, setAutoScrollLevel] = useState(0);
-  const [pendientesCount, setPendientesCount] = useState(0);
-  const [colaRefreshToken, setColaRefreshToken] = useState(0);
+  const [colaAviso, setColaAviso] = useState<string | null>(null);
+  const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
+  const [cancionNombreRevealGen, setCancionNombreRevealGen] = useState(0);
+  const prevCancionRevealKeyRef = useRef<string | null>(null);
+
+  const cancionActivaScrollKey = cola.cancionActiva
+    ? `${cola.cancionActiva.nombre}::${cola.cancionActiva.url_letra}`
+    : null;
+
+  const {
+    autoScrollLevel,
+    accelerate: accelerateAutoScroll,
+    decelerate: decelerateAutoScroll,
+  } = useLetraAutoScroll(letraScrollRef, {
+    enabled: modoLectura,
+    contentKey: cancionActivaScrollKey,
+  });
+
+  const handleColaAdded = useCallback(() => {
+    triggerHaptic();
+
+    if (colaAvisoShowTimerRef.current) {
+      clearTimeout(colaAvisoShowTimerRef.current);
+    }
+
+    if (colaAvisoHideTimerRef.current) {
+      clearTimeout(colaAvisoHideTimerRef.current);
+    }
+
+    setColaAvisoExiting(false);
+    setColaAviso(null);
+
+    colaAvisoShowTimerRef.current = setTimeout(() => {
+      setColaAviso("Canción sumada a la lista");
+      colaAvisoShowTimerRef.current = null;
+
+      colaAvisoHideTimerRef.current = setTimeout(() => {
+        setColaAvisoExiting(true);
+
+        colaAvisoHideTimerRef.current = setTimeout(() => {
+          setColaAviso(null);
+          setColaAvisoExiting(false);
+          colaAvisoHideTimerRef.current = null;
+        }, COLA_AVISO_EXIT_MS);
+      }, 2500);
+    }, COLA_AVISO_SHOW_DELAY_MS);
+  }, []);
+
+  const salirModoLectura = useCallback(() => {
+    setOverlayAbierto(false);
+    setModoLectura(false);
+  }, []);
 
   useEffect(() => {
     if (modoLectura) {
@@ -64,154 +264,147 @@ export default function HomePageShell() {
   }, [modoLectura]);
 
   useEffect(() => {
-    if (!modoLectura) {
-      setColaSheetAbierta(false);
-    }
-  }, [modoLectura]);
+    const revealKey = cola.cancionActiva
+      ? `${cola.cancionActiva.nombre}::${cola.cancionActiva.url_letra}`
+      : null;
 
-  const salirModoLectura = () => {
-    setOverlayAbierto(false);
-    setColaSheetAbierta(false);
-    setModoLectura(false);
-  };
-
-  const activarModoLecturaTest = () => {
-    setCancionActiva("test");
-    setModoLectura(true);
-  };
-
-  const handleActivarCancion = useCallback((item: ColaIndividualItem) => {
-    setCancionActiva(item.nombre);
-    setColaSheetAbierta(false);
-  }, []);
-
-  const handleSiguienteIndividual = useCallback(async () => {
-    if (pendientesCount === 0) {
+    if (prevCancionRevealKeyRef.current === null) {
+      prevCancionRevealKeyRef.current = revealKey;
       return;
     }
 
-    try {
-      await avanzarColaIndividual(supabase);
-      setColaRefreshToken((token) => token + 1);
-      const cola = await getColaIndividual(supabase);
-      const activa = cola.find((item) => item.estado === "activa");
-      if (activa) {
-        setCancionActiva(activa.nombre);
-      }
-    } catch (error) {
-      console.error("[cola-individual] error al avanzar", error);
+    if (revealKey !== null && prevCancionRevealKeyRef.current !== revealKey) {
+      prevCancionRevealKeyRef.current = revealKey;
+      setCancionNombreRevealGen((generation) => generation + 1);
+      return;
     }
-  }, [pendientesCount, supabase]);
 
-  const siguienteDisabled = pendientesCount === 0;
+    if (revealKey === null) {
+      prevCancionRevealKeyRef.current = null;
+    }
+  }, [cola.cancionActiva]);
+
+  useEffect(() => {
+    return () => {
+      if (colaAvisoShowTimerRef.current) {
+        clearTimeout(colaAvisoShowTimerRef.current);
+      }
+
+      if (colaAvisoHideTimerRef.current) {
+        clearTimeout(colaAvisoHideTimerRef.current);
+      }
+    };
+  }, []);
+
+  const headerLupa = !modoLectura ? (
+    <TapButton
+      type="button"
+      aria-label="Buscar canción"
+      onClick={() => setBuscadorOpen(true)}
+      className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-bg-dark/80 text-text-primary"
+    >
+      <Search className="size-4 text-accent" aria-hidden="true" />
+    </TapButton>
+  ) : null;
 
   return (
     <div
-      className="flex flex-col overflow-hidden bg-bg-app"
-      style={{
-        height: "100dvh",
-        ...(!modoLectura
-          ? {
-              paddingBottom:
-                "calc(56px + env(safe-area-inset-bottom, 0px))",
-            }
-          : {}),
-      }}
+      className="flex flex-col overflow-hidden bg-bg-sala"
+      style={{ height: "100dvh" }}
     >
-      {!modoLectura && (
-        <header className="flex h-14 shrink-0 flex-row items-center gap-3 border-b border-border bg-bg-dark px-4">
-          <Search
-            className="size-5 shrink-0 text-text-muted"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            placeholder="Buscar canción..."
-            className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
-            onFocus={() => {
-              console.log("TODO: abrir buscador");
-            }}
-          />
-        </header>
-      )}
-
       <main
-        className={`min-h-0 overflow-y-auto ${
-          modoLectura ? "" : "flex-1"
+        className={`relative flex min-h-0 flex-col ${
+          modoLectura ? "overflow-hidden" : "flex-1 overflow-hidden"
         }`}
-        style={modoLectura ? { height: "100dvh" } : undefined}
+        style={
+          modoLectura
+            ? { height: "100dvh" }
+            : { paddingBottom: getSalaMainFooterPaddingCss() }
+        }
       >
-        {cancionActiva === null ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3">
-            <Music
-              className="size-12 text-text-muted/40"
-              aria-hidden="true"
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {cola.loading ? (
+            <SalaColaBootstrapSkeleton />
+          ) : (
+            <CancionActivaSection
+              cancionNombre={cola.cancionActiva?.nombre ?? null}
+              artista={cola.cancionActiva?.artista ?? null}
+              urlLetra={cola.cancionActiva?.url_letra ?? null}
+              letraTexto={cola.cancionActiva?.letra_texto ?? null}
+              modoLectura={modoLectura}
+              letraScrollRef={letraScrollRef}
+              nombreRevealGeneration={cancionNombreRevealGen}
+              headerAction={headerLupa}
             />
-            <p className="text-center text-sm text-text-muted">
-              Buscá una canción para empezar
-            </p>
-            <button
-              type="button"
-              onClick={activarModoLecturaTest}
-              className="mt-2 rounded-xl border border-border bg-bg-dark px-4 py-2 text-xs text-text-secondary"
-            >
-              Activar modo lectura (test)
-            </button>
-          </div>
-        ) : (
-          <div className="relative bg-letra-bg px-4 py-6">
-            <h1 className="text-lg font-bold text-letra-text">
-              {cancionActiva === "test" ? "Canción de prueba" : cancionActiva}
-            </h1>
-            <p className="mt-1 text-sm text-letra-text/60">Artista demo</p>
-            <div className="mt-6 space-y-2">
-              {LETRA_TEST_PLACEHOLDER.map((line, index) =>
-                line === "" ? (
-                  <div key={index} className="h-4" aria-hidden="true" />
-                ) : (
-                  <p
-                    key={index}
-                    className="text-base font-bold leading-loose text-letra-text"
-                  >
-                    {line}
-                  </p>
-                ),
-              )}
-            </div>
-            {!modoLectura && (
-              <button
-                type="button"
-                onClick={() => setModoLectura(true)}
-                className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-bg-dark px-4 py-2 text-xs text-text-secondary"
-              >
-                <Maximize2 className="size-4" aria-hidden="true" />
-                Expandir
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
+
+        <ColaIndividualSheet
+          items={cola.items}
+          onOpenBuscador={() => setBuscadorOpen(true)}
+          presentacionOculta={modoLectura}
+          onExpand={
+            !modoLectura && cola.cancionActiva
+              ? () => setModoLectura(true)
+              : undefined
+          }
+          onRequestOpen={(open) => {
+            openColaRef.current = open;
+          }}
+          onRequestSiguiente={(siguiente) => {
+            handleSiguienteRef.current = siguiente;
+          }}
+          colaAviso={!modoLectura ? colaAviso : null}
+          colaAvisoExiting={colaAvisoExiting}
+          onSiguiente={cola.avanzar}
+          onDeleteAll={cola.vaciarTodo}
+          onDeleteItem={cola.eliminarItem}
+          onVolverAPendiente={cola.volverAPendiente}
+          onReorder={cola.reordenarPendientes}
+        />
       </main>
 
-      {!modoLectura && (
-        <ColaIndividualSheet
-          modo="colapsable"
-          onActivarCancion={handleActivarCancion}
-          onPendientesCountChange={setPendientesCount}
-          refreshToken={colaRefreshToken}
-        />
-      )}
-
-      {modoLectura && (
+      {modoLectura ? (
         <>
-          <ColaIndividualSheet
-            modo="colapsable"
-            presentacionOculta
-            onActivarCancion={handleActivarCancion}
-            onPendientesCountChange={setPendientesCount}
-            refreshToken={colaRefreshToken}
-          />
+          {cola.cancionActiva?.nombre ? (
+            <div
+              className={`pointer-events-none fixed z-[45] max-w-[min(75vw,calc(100%-3.25rem))] px-2.5 py-1.5 ${LECTURA_TOP_CHIP}`}
+              style={{
+                top: getLecturaTopChromeTopCss(),
+                left: getLetraModoLecturaHorizontalPadding(),
+              }}
+            >
+              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                <span
+                  key={
+                    cancionNombreRevealGen > 0
+                      ? `reveal-${cancionNombreRevealGen}`
+                      : "initial"
+                  }
+                  className={`min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-accent ${
+                    cancionNombreRevealGen > 0 ? "cola-nombre-reveal block" : ""
+                  }`}
+                >
+                  {cola.cancionActiva.nombre}
+                </span>
+                {cola.cancionActiva.artista ? (
+                  <>
+                    <span
+                      className="shrink-0 text-[10px] leading-snug text-text-muted/70"
+                      aria-hidden="true"
+                    >
+                      ·
+                    </span>
+                    <span className="max-w-[38%] shrink-0 truncate text-[10px] leading-snug text-text-muted">
+                      {cola.cancionActiva.artista}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
-          <button
+          <TapButton
             type="button"
             aria-label={
               overlayAbierto
@@ -219,95 +412,68 @@ export default function HomePageShell() {
                 : "Abrir controles de modo lectura"
             }
             onClick={() => setOverlayAbierto((open) => !open)}
-            className="fixed z-50 flex size-11 items-center justify-center rounded-full border border-border bg-bg-dark/90 backdrop-blur-sm"
-            style={{ top: 16, right: 16 }}
+            className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP} ${
+              overlayAbierto ? "border-accent/45" : ""
+            }`}
+            style={{
+              top: getLecturaTopChromeTopCss(),
+              right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+            }}
           >
             {overlayAbierto ? (
-              <X className="size-5 text-text-primary" aria-hidden="true" />
+              <X className="size-4 text-text-primary" aria-hidden="true" />
             ) : (
               <SlidersHorizontal
-                className="size-5 text-text-primary"
+                className="size-4 text-accent"
                 aria-hidden="true"
               />
             )}
-          </button>
+          </TapButton>
 
-          <ModoLecturaOverlay
+          <HomeModoLecturaOverlay
             abierto={overlayAbierto}
+            pendientesCount={cola.pendientesCount}
             onCerrar={() => setOverlayAbierto(false)}
-            onSalirModoLectura={salirModoLectura}
+            onContraer={salirModoLectura}
+            onSiguiente={() => void handleSiguienteRef.current?.()}
+            onCola={() => openColaRef.current?.()}
+            onBuscar={() => setBuscadorOpen(true)}
+            onAfinador={() => navigateWithProgress("/cancionero")}
           />
 
           <AutoScrollControl
             level={autoScrollLevel}
-            onAccelerate={() =>
-              setAutoScrollLevel((level) =>
-                Math.min(LETRA_AUTO_SCROLL_MAX_LEVEL, level + 1),
-              )
-            }
-            onDecelerate={() =>
-              setAutoScrollLevel((level) => Math.max(0, level - 1))
-            }
+            enabled={Boolean(cola.cancionActiva)}
+            onAccelerate={accelerateAutoScroll}
+            onDecelerate={decelerateAutoScroll}
           />
-
-          <div
-            className="fixed z-[45] flex flex-col items-start gap-2"
-            style={{
-              bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-              left: 16,
-            }}
-          >
-            <button
-              type="button"
-              disabled={siguienteDisabled}
-              onClick={() => void handleSiguienteIndividual()}
-              className={`flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary ${
-                siguienteDisabled ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
-              <span>Siguiente</span>
-              <SkipForward className="size-4" aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setColaSheetAbierta(true)}
-              className="flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary"
-            >
-              <ListMusic className="size-4" aria-hidden="true" />
-              Cola · {pendientesCount}
-            </button>
-          </div>
-
-          {colaSheetAbierta && (
-            <div
-              className="fixed bottom-0 left-0 right-0 z-[45] flex flex-col rounded-t-2xl border-t border-border bg-bg-dark"
-              style={{
-                height: "60vh",
-                paddingTop: 16,
-                paddingBottom: "env(safe-area-inset-bottom, 0px)",
-              }}
-            >
-              <div className="flex shrink-0 items-center justify-end px-4 pb-2">
-                <button
-                  type="button"
-                  aria-label="Cerrar cola individual"
-                  onClick={() => setColaSheetAbierta(false)}
-                  className="flex size-8 items-center justify-center text-text-muted"
-                >
-                  <X className="size-5" aria-hidden="true" />
-                </button>
-              </div>
-              <ColaIndividualSheet
-                modo="sheet"
-                onActivarCancion={handleActivarCancion}
-                onPendientesCountChange={setPendientesCount}
-                refreshToken={colaRefreshToken}
-              />
-            </div>
-          )}
         </>
-      )}
+      ) : null}
+
+      {modoLectura && colaAviso ? (
+        <ColaAvisoToast
+          message={colaAviso}
+          exiting={colaAvisoExiting}
+          className="fixed z-[48]"
+          style={{
+            top: getLecturaColaAvisoTopCss(),
+            right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+          }}
+        />
+      ) : null}
+
+      {buscadorOpen ? (
+        <BuscadorModal
+          open={buscadorOpen}
+          variant="home"
+          onClose={() => setBuscadorOpen(false)}
+          onColaAdded={handleColaAdded}
+          usuarioLogueado={cola.usuarioLogueado}
+          hasActivaOPendiente={cola.hasActivaOPendiente}
+          onVerAhora={cola.verAhora}
+          onAgregarALista={cola.agregarALista}
+        />
+      ) : null}
 
       <AppReadyMarker />
     </div>

@@ -1,195 +1,605 @@
 "use client";
 
-import ColaIndividual from "@/components/home/ColaIndividual";
+import ColaFilaFloatButton from "@/components/salas/ColaFilaFloatButton";
+import ColaJuntadaItem, {
+  type ColaJuntadaItemVariant,
+} from "@/components/salas/ColaJuntadaItem";
+import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
+import AddButton, { COLA_ADD_BUTTON_SIZE } from "@/components/ui/AddButton";
+import { TapButton } from "@/components/ui/TapFeedback";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
+import type { ColaIndividualRow } from "@/hooks/useColaIndividual";
+import { triggerHaptic } from "@/lib/haptic";
 import {
-  getColaIndividual,
-  persistirOrdenColaIndividual,
-  volverAPendienteIndividual,
-} from "@/lib/cola-individual";
-import { createClient } from "@/lib/supabase/client";
-import { formatDatabaseError } from "@/lib/supabase/errors";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import type { ColaIndividualItem, UsuarioActivo } from "@/types";
-import { ChevronDown, ChevronUp, ListMusic } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+  COLA_FINALIZE_BUTTON_MS,
+  COLA_MODAL_HORIZONTAL_INSET_PX,
+  COLA_MODAL_TOP_INSET_PX,
+  COLA_SHEET_EXIT_MS,
+  getColaModalBottomCss,
+  getSalaFloatControlsBottomCss,
+} from "@/lib/sala-layout";
+import {
+  DndContext,
+  DragOverlay,
+  MeasuringStrategy,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  pointerWithin,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Maximize2, SkipForward, Trash2 } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { createPortal } from "react-dom";
 
-type ColaIndividualSheetProps = {
-  modo: "colapsable" | "sheet";
-  onActivarCancion: (item: ColaIndividualItem) => void;
-  onPendientesCountChange?: (count: number) => void;
-  refreshToken?: number;
-  presentacionOculta?: boolean;
+const COLA_MODAL_LAYER_Z = 100;
+const FLOAT_BTN_SECONDARY =
+  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
+const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
+const COLA_DRAG_DELETE_ID = "cola-drag-delete";
+
+const colaDragCollisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  const deleteHit = pointerHits.find(
+    (collision) => collision.id === COLA_DRAG_DELETE_ID,
+  );
+
+  if (deleteHit) {
+    return [deleteHit];
+  }
+
+  return closestCenter(args);
 };
 
-function ColaVaciaMessage() {
+function getIndividualVariant(
+  item: ColaIndividualRow,
+  items: ColaIndividualRow[],
+): ColaJuntadaItemVariant {
+  if (item.estado === "tocada") {
+    return "tocada";
+  }
+
+  if (item.estado === "activa") {
+    return "activa";
+  }
+
+  const firstPendiente = items
+    .filter((colaItem) => colaItem.estado === "pendiente")
+    .sort((a, b) => a.orden - b.orden)[0];
+
+  if (firstPendiente?.id === item.id) {
+    return "proxima";
+  }
+
+  return "pendiente";
+}
+
+type ColaDragDeleteZoneProps = {
+  visible: boolean;
+  highlighted: boolean;
+};
+
+function ColaDragDeleteZone({ visible, highlighted }: ColaDragDeleteZoneProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: COLA_DRAG_DELETE_ID });
+  const active = highlighted || isOver;
+
+  if (!visible) {
+    return null;
+  }
+
   return (
-    <p className="px-4 py-4 text-center text-xs text-text-muted">
-      Cola vacía · buscá una canción para agregarla
-    </p>
+    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center">
+      <div
+        ref={setNodeRef}
+        className={`pointer-events-auto flex items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-[transform,background-color,border-color,color] duration-150 ${
+          active
+            ? "scale-105 border-red-500 bg-red-500 text-white"
+            : "border-red-500/45 bg-bg-card text-red-400"
+        }`}
+      >
+        <span>Eliminar</span>
+      </div>
+    </div>
+  );
+}
+
+type ColaIndividualSheetProps = {
+  items: ColaIndividualRow[];
+  onOpenBuscador: () => void;
+  onExpand?: () => void;
+  presentacionOculta?: boolean;
+  onRequestOpen?: (open: () => void) => void;
+  onRequestSiguiente?: (siguiente: () => void) => void;
+  colaAviso?: string | null;
+  colaAvisoExiting?: boolean;
+  onSiguiente: () => Promise<void>;
+  onDeleteAll: () => Promise<void>;
+  onDeleteItem: (id: number) => Promise<void>;
+  onVolverAPendiente: (id: number) => Promise<void>;
+  onReorder: (activeId: number, overId: number) => Promise<void>;
+};
+
+type SortableRowProps = {
+  item: ColaIndividualRow;
+  items: ColaIndividualRow[];
+  listIndex: number;
+  nombreRevealGeneration: number;
+};
+
+function SortableColaIndividualRow({
+  item,
+  items,
+  listIndex,
+  nombreRevealGeneration,
+}: SortableRowProps) {
+  const variant = getIndividualVariant(item, items);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: item.id,
+    transition: null,
+    attributes: { tabIndex: -1, role: "listitem" },
+  });
+
+  const dragStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    WebkitTapHighlightColor: "transparent",
+    opacity: isDragging ? 0 : 1,
+    outline: "none",
+  } as CSSProperties;
+
+  return (
+    <ColaJuntadaItem
+      ref={setNodeRef}
+      item={item}
+      variant={variant}
+      showAgregadoAvatar={false}
+      nombreRevealGeneration={nombreRevealGeneration}
+      nombreRevealIndex={listIndex}
+      dragHandleProps={{ ...attributes, ...listeners, style: dragStyle }}
+    />
   );
 }
 
 export default function ColaIndividualSheet({
-  modo,
-  onActivarCancion,
-  onPendientesCountChange,
-  refreshToken = 0,
+  items,
+  onOpenBuscador,
+  onExpand,
   presentacionOculta = false,
+  onRequestOpen,
+  onRequestSiguiente,
+  colaAviso = null,
+  colaAvisoExiting = false,
+  onSiguiente,
+  onDeleteAll,
+  onDeleteItem,
+  onVolverAPendiente,
+  onReorder,
 }: ColaIndividualSheetProps) {
-  const supabase = useMemo(() => createClient(), []);
-  const [items, setItems] = useState<ColaIndividualItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [usuario, setUsuario] = useState<UsuarioActivo | null>(null);
-  const [expandido, setExpandido] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetExiting, setSheetExiting] = useState(false);
+  const [portalMounted, setPortalMounted] = useState(false);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<number | null>(null);
+  const [dragOverDelete, setDragOverDelete] = useState(false);
+  const [nombreRevealGeneration, setNombreRevealGeneration] = useState(0);
+  const sheetCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const pendientesCount = useMemo(
-    () => items.filter((item) => item.estado === "pendiente").length,
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => a.orden - b.orden),
     [items],
   );
 
-  useEffect(() => {
-    onPendientesCountChange?.(pendientesCount);
-  }, [onPendientesCountChange, pendientesCount]);
+  const tocadas = useMemo(
+    () => sortedItems.filter((item) => item.estado === "tocada"),
+    [sortedItems],
+  );
 
-  const loadCola = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+  const activaItem = useMemo(
+    () => sortedItems.find((item) => item.estado === "activa") ?? null,
+    [sortedItems],
+  );
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const pendientes = useMemo(
+    () => sortedItems.filter((item) => item.estado === "pendiente"),
+    [sortedItems],
+  );
 
-    if (userError) {
-      setUsuario(null);
-      setItems([]);
-      setLoadError(formatDatabaseError(userError, "No se pudo validar la sesión"));
-      setLoading(false);
+  const pendientesIds = useMemo(
+    () => pendientes.map((item) => item.id),
+    [pendientes],
+  );
+
+  const pendientesCount = pendientes.length;
+  const tieneActiva = activaItem !== null;
+
+  const activeDragItem = useMemo(
+    () =>
+      activeDragId === null
+        ? null
+        : (pendientes.find((item) => item.id === activeDragId) ?? null),
+    [activeDragId, pendientes],
+  );
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 500, tolerance: 5 },
+    }),
+  );
+
+  const openCola = useCallback(() => {
+    if (sheetCloseTimerRef.current) {
+      clearTimeout(sheetCloseTimerRef.current);
+      sheetCloseTimerRef.current = null;
+    }
+
+    triggerHaptic();
+    setSheetExiting(false);
+    setSheetVisible(true);
+    setAbierto(true);
+  }, []);
+
+  const closeCola = useCallback(() => {
+    if (!sheetVisible || sheetExiting) {
       return;
     }
 
-    if (!user) {
-      setUsuario(null);
-      setItems([]);
-      setLoading(false);
-      return;
-    }
+    setAbierto(false);
+    setSheetExiting(true);
 
-    setUsuario(mapUserToUsuarioActivo(user));
-
-    try {
-      const cola = await getColaIndividual(supabase);
-      setItems(cola);
-    } catch (error) {
-      console.error("[cola-individual] error al cargar", error);
-      setItems([]);
-      setLoadError(
-        formatDatabaseError(error, "No se pudo cargar la cola individual"),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase]);
+    sheetCloseTimerRef.current = setTimeout(() => {
+      setSheetVisible(false);
+      setSheetExiting(false);
+      sheetCloseTimerRef.current = null;
+    }, COLA_SHEET_EXIT_MS);
+  }, [sheetExiting, sheetVisible]);
 
   useEffect(() => {
-    void loadCola();
+    setPortalMounted(true);
+  }, []);
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        void loadCola();
-      }
-
-      if (event === "SIGNED_OUT") {
-        setUsuario(null);
-        setItems([]);
-        setLoadError(null);
-        setLoading(false);
-      }
-    });
-
+  useEffect(() => {
     return () => {
-      subscription.unsubscribe();
+      if (sheetCloseTimerRef.current) {
+        clearTimeout(sheetCloseTimerRef.current);
+      }
     };
-  }, [loadCola, supabase]);
+  }, []);
 
   useEffect(() => {
-    if (refreshToken > 0) {
-      void loadCola();
+    onRequestOpen?.(openCola);
+  }, [onRequestOpen, openCola]);
+
+  useHardwareBack(sheetVisible && !sheetExiting, () => {
+    if (showDeleteAllDialog) {
+      setShowDeleteAllDialog(false);
+      return;
     }
-  }, [loadCola, refreshToken]);
 
-  const handleVolverAPendiente = useCallback(
-    async (id: number) => {
-      try {
-        await volverAPendienteIndividual(supabase, id);
-        await loadCola();
-      } catch (error) {
-        console.error("[cola-individual] error al volver a pendiente", error);
-      }
-    },
-    [loadCola, supabase],
-  );
+    closeCola();
+  });
 
-  const handleReorder = useCallback(
-    (newItems: ColaIndividualItem[]) => {
-      setItems(newItems);
-      void persistirOrdenColaIndividual(supabase, newItems).catch((error) => {
-        console.error("[cola-individual] error al persistir orden", error);
-      });
-    },
-    [supabase],
-  );
-
-  if (loading || usuario === null) {
-    return null;
+  function handleOpenBuscador() {
+    closeCola();
+    onOpenBuscador();
   }
 
-  if (presentacionOculta) {
-    return null;
-  }
+  async function handleSiguiente() {
+    if (pendientesCount === 0) {
+      return;
+    }
 
-  const lista =
-    loadError !== null ? (
-      <p className="px-4 py-4 text-center text-xs text-red-400">{loadError}</p>
-    ) : items.length === 0 ? (
-      <ColaVaciaMessage />
-    ) : (
-      <ColaIndividual
-        items={items}
-        onReorder={handleReorder}
-        onVolverAPendiente={(id) => void handleVolverAPendiente(id)}
-      />
+    closeCola();
+    triggerHaptic();
+    await new Promise((resolve) =>
+      setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
     );
-
-  if (modo === "sheet") {
-    return <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{lista}</div>;
+    await onSiguiente();
   }
+
+  const handleSiguienteRef = useRef(handleSiguiente);
+  handleSiguienteRef.current = handleSiguiente;
+
+  useEffect(() => {
+    onRequestSiguiente?.(() => void handleSiguienteRef.current());
+  }, [onRequestSiguiente]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(Number(event.active.id));
+    setDragOverDelete(false);
+    navigator.vibrate?.([0, 30, 60]);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setDragOverDelete(event.over?.id === COLA_DRAG_DELETE_ID);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveDragId(null);
+    setDragOverDelete(false);
+
+    const { active, over } = event;
+
+    if (!over) {
+      return;
+    }
+
+    const activeId = Number(active.id);
+
+    if (over.id === COLA_DRAG_DELETE_ID) {
+      await onDeleteItem(activeId);
+      return;
+    }
+
+    if (active.id === over.id) {
+      return;
+    }
+
+    await onReorder(activeId, Number(over.id));
+    setNombreRevealGeneration((generation) => generation + 1);
+  };
+
+  const floatingBottom = getSalaFloatControlsBottomCss(false);
+  const modalBottom = getColaModalBottomCss();
+  const listaVacia = sortedItems.length === 0;
+
+  const colaModalLayer =
+    sheetVisible && portalMounted
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              aria-label="Cerrar cola"
+              data-no-tap-feedback
+              className={`fixed inset-0 bg-black/50 ${
+                sheetExiting ? "sala-cola-sheet-backdrop--exit" : ""
+              }`}
+              style={{ zIndex: COLA_MODAL_LAYER_Z }}
+              onClick={closeCola}
+            />
+
+            <DndContext
+              sensors={sensors}
+              collisionDetection={colaDragCollisionDetection}
+              measuring={{
+                droppable: { strategy: MeasuringStrategy.Always },
+              }}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={(event) => void handleDragEnd(event)}
+              onDragCancel={() => {
+                setActiveDragId(null);
+                setDragOverDelete(false);
+              }}
+            >
+              <div
+                className={`fixed flex flex-col overflow-hidden rounded-2xl border-[3px] border-bg-cola-sheet bg-bg-dark shadow-[0_0_0_1px_rgba(0,0,0,0.65),0_20px_56px_rgba(0,0,0,0.62)] ${
+                  sheetExiting ? "sala-cola-sheet-panel--exit" : ""
+                }`}
+                style={{
+                  zIndex: COLA_MODAL_LAYER_Z + 1,
+                  top: `calc(${COLA_MODAL_TOP_INSET_PX}px + env(safe-area-inset-top, 0px))`,
+                  bottom: modalBottom,
+                  left: COLA_MODAL_HORIZONTAL_INSET_PX,
+                  right: COLA_MODAL_HORIZONTAL_INSET_PX,
+                }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Cola individual"
+              >
+                <header className="relative shrink-0 border-b border-border bg-bg-cola-sheet px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <TapButton
+                      type="button"
+                      aria-label="Borrar toda la lista"
+                      onClick={() => setShowDeleteAllDialog(true)}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-muted/50 active:text-text-secondary"
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </TapButton>
+
+                    <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+                      <h2 className="text-lg font-bold text-text-primary">
+                        Cola individual
+                      </h2>
+                      <TapButton
+                        type="button"
+                        aria-label="Siguiente canción"
+                        disabled={pendientesCount === 0}
+                        onClick={() => void handleSiguiente()}
+                        className={`flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary ${
+                          pendientesCount === 0
+                            ? "pointer-events-none opacity-40"
+                            : ""
+                        }`}
+                      >
+                        <SkipForward className="size-4" aria-hidden="true" />
+                      </TapButton>
+                    </div>
+
+                    <AddButton
+                      ariaLabel="Agregar canción"
+                      size={COLA_ADD_BUTTON_SIZE}
+                      onClick={handleOpenBuscador}
+                    />
+                  </div>
+                </header>
+
+                <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
+                  <div
+                    className="min-h-0 flex-1 touch-pan-y select-none overflow-y-auto overscroll-none px-3 py-3"
+                    style={{
+                      paddingBottom: activeDragId
+                        ? "max(4.5rem, env(safe-area-inset-bottom, 0px))"
+                        : "max(1rem, env(safe-area-inset-bottom, 0px))",
+                    }}
+                  >
+                    {listaVacia ? (
+                      <p className="py-8 text-center text-sm text-text-muted">
+                        Cola vacía · buscá una canción para agregarla
+                      </p>
+                    ) : (
+                      <>
+                        {tocadas.length > 0 ? (
+                          <div className="mb-2 space-y-0.5">
+                            {tocadas.map((item) => (
+                              <ColaJuntadaItem
+                                key={item.id}
+                                item={item}
+                                variant="tocada"
+                                showAgregadoAvatar={false}
+                                onVolverAPendiente={(id) =>
+                                  void onVolverAPendiente(id)
+                                }
+                              />
+                            ))}
+                            <div
+                              className="mx-1 my-2 border-b border-border/40"
+                              aria-hidden="true"
+                            />
+                          </div>
+                        ) : null}
+
+                        {activaItem ? (
+                          <div className="mb-2">
+                            <ColaJuntadaItem
+                              item={activaItem}
+                              variant="activa"
+                              showAgregadoAvatar={false}
+                            />
+                          </div>
+                        ) : null}
+
+                        {pendientes.length > 0 ? (
+                          <SortableContext
+                            items={pendientesIds}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-2">
+                              {pendientes.map((item, index) => (
+                                <SortableColaIndividualRow
+                                  key={item.id}
+                                  item={item}
+                                  items={items}
+                                  listIndex={index}
+                                  nombreRevealGeneration={nombreRevealGeneration}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+
+                  <ColaDragDeleteZone
+                    visible={activeDragId !== null}
+                    highlighted={dragOverDelete}
+                  />
+                </div>
+              </div>
+
+              <DragOverlay dropAnimation={null} style={{ zIndex: COLA_MODAL_LAYER_Z + 2 }}>
+                {activeDragItem ? (
+                  <div className="opacity-80 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+                    <ColaJuntadaItem
+                      item={activeDragItem}
+                      variant={getIndividualVariant(activeDragItem, items)}
+                      showAgregadoAvatar={false}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+
+            <DoubleConfirmDialog
+              open={showDeleteAllDialog}
+              step1Message="¿Querés borrar TODA la cola individual?"
+              step2Message="¿Estás seguro? Esta acción no se puede deshacer."
+              zIndex={COLA_MODAL_LAYER_Z + 10}
+              onCancel={() => setShowDeleteAllDialog(false)}
+              onConfirm={() => {
+                setShowDeleteAllDialog(false);
+                void onDeleteAll();
+              }}
+            />
+          </>,
+          document.body,
+        )
+      : null;
 
   return (
-    <div className="shrink-0 border-t border-border bg-bg-dark">
-      <button
-        type="button"
-        onClick={() => setExpandido((open) => !open)}
-        className="flex h-[52px] w-full items-center gap-2 px-4"
-      >
-        <ListMusic className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
-        <span className="text-sm text-text-secondary">Cola individual</span>
-        <span className="text-xs text-text-muted">{pendientesCount}</span>
-        <span className="ml-auto text-text-muted">
-          {expandido ? (
-            <ChevronDown className="size-4" aria-hidden="true" />
-          ) : (
-            <ChevronUp className="size-4" aria-hidden="true" />
-          )}
-        </span>
-      </button>
+    <>
+      {!presentacionOculta ? (
+        <div
+          className="pointer-events-none fixed inset-x-0 z-30"
+          style={{ bottom: floatingBottom, height: 0, overflow: "visible" }}
+        >
+          <div className="pointer-events-auto absolute bottom-0 right-4 flex flex-col items-end gap-2">
+            {onExpand ? (
+              <TapButton
+                type="button"
+                aria-label="Expandir letra a pantalla completa"
+                onClick={onExpand}
+                className={`sala-expand-attention flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
+              >
+                <Maximize2 className="size-4 text-accent" aria-hidden="true" />
+                <span>Expandir</span>
+              </TapButton>
+            ) : null}
 
-      {expandido ? (
-        <div className="max-h-[280px] overflow-y-auto">{lista}</div>
+            {tieneActiva ? (
+              <TapButton
+                type="button"
+                disabled={pendientesCount === 0}
+                onClick={() => void handleSiguiente()}
+                className={`flex items-center gap-2 px-4 py-2 text-sm ${FLOAT_BTN_SECONDARY} ${
+                  pendientesCount === 0 ? FLOAT_BTN_DISABLED : ""
+                }`}
+              >
+                <span>Siguiente</span>
+                <SkipForward className="size-4" aria-hidden="true" />
+              </TapButton>
+            ) : null}
+
+            <ColaFilaFloatButton
+              pendientesCount={pendientesCount}
+              colaAviso={colaAviso}
+              colaAvisoExiting={colaAvisoExiting}
+              onClick={openCola}
+            />
+          </div>
+        </div>
       ) : null}
-    </div>
+
+      {colaModalLayer}
+    </>
   );
 }

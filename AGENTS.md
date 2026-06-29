@@ -4,6 +4,49 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Nomenclatura oficial del proyecto (v2)
+
+Esta es la terminología canónica de CantemosTodosApp. Usarla siempre en código,
+comentarios, nombres de componentes y prompts. No inventar sinónimos.
+
+### Modos de pantalla
+- **Modo control** — el usuario interactúa con la app. Footer visible, botones activos,
+  puede buscar, abrir la cola, navegar entre secciones.
+- **Modo lectura** — la letra ocupa toda la pantalla. Solo visibles: botón flotante
+  y control de auto-scroll. Todo lo demás desaparece.
+
+### Secciones principales (tabs del footer)
+- **Home** — pantalla principal de uso individual. Buscador + letra + cola individual.
+- **Salas** — listado de salas disponibles y sala activa.
+- **Cancionero** — cancionero Global y Mis canciones.
+
+### Subsecciones del Cancionero
+- **Global** — canciones disponibles para todos los usuarios.
+- **Mis canciones** — cancionero personal permanente del usuario registrado.
+
+### Colas
+- **Cola individual** — setlist personal del momento. Vive en Home. Solo visible
+  para el usuario que la creó.
+- **Cola de la juntada** — setlist compartido y sincronizado en tiempo real.
+  Vive en Sala. Tiene botón "Siguiente" para avanzar la canción activa.
+
+### Componentes de UI
+- **Sheet** — panel que aparece desde abajo con animación suave. Usado para
+  cola individual, cola de la juntada y afinador.
+- **Overlay** — capa semitransparente sobre la letra. Usado en modo lectura
+  para mostrar controles secundarios (buscador, afinador, footer).
+- **Modal** — pantalla que cubre todo. Usado para el buscador de canciones.
+- **Snackbar** — notificación breve desde abajo, desaparece automáticamente a los 3 segundos.
+- **Botón flotante** — botón fijo sobre la letra, siempre visible en modo lectura.
+
+### Estados de items en la cola de la juntada
+- **tocada** — ya fue reproducida. Se muestran las últimas dos.
+- **activa** — la canción que todos están viendo ahora. Fondo blanco.
+- **próxima** — la primera pendiente. Muestra badge "Próx".
+- **pendiente** — las siguientes en la cola. Draggables con @dnd-kit.
+
+---
+
 ## Layout: letra activa (sala)
 
 **Leer esta sección antes de editar** `SalaPageShell.tsx`, `CancionActivaSection.tsx`, `ColaBottomSheet.tsx`, `LetraViewer.tsx` o `lib/sala-layout.ts`.

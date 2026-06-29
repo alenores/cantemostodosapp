@@ -3,7 +3,8 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
-import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
+import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
+// import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import {
   deriveCancionActivaFromCola,
@@ -12,7 +13,7 @@ import {
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
-import { COLA_AVISO_SHOW_DELAY_MS, COLA_BAR_STACK_OFFSET_CSS } from "@/lib/sala-layout";
+import { COLA_AVISO_SHOW_DELAY_MS } from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
 import { getColaLocalItems } from "@/lib/offline/cola-local-store";
 import { flushColaLocalToSupabase } from "@/lib/offline/cola-local-sync";
@@ -42,25 +43,10 @@ export default function SalaPageShell({
   onClose,
 }: SalaPageShellProps) {
   const online = useOnlineStatus();
-  const closeDrawerRef = useRef<() => void>(() => {});
-  const openDrawerRef = useRef<() => void>(() => {});
-  const drawerWasOpenBeforeBuscadorRef = useRef(false);
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [drawerProgress, setDrawerProgress] = useState(0);
   const [colaAviso, setColaAviso] = useState<string | null>(null);
-
-  const handleDrawerProgressChange = useCallback((progress: number) => {
-    setDrawerProgress(progress);
-  }, []);
-
-  const handleRegisterDrawerClose = useCallback((close: () => void) => {
-    closeDrawerRef.current = close;
-  }, []);
-
-  const handleRegisterDrawerOpen = useCallback((open: () => void) => {
-    openDrawerRef.current = open;
-  }, []);
+  const [colaAvisoEntered, setColaAvisoEntered] = useState(false);
 
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
@@ -87,27 +73,12 @@ export default function SalaPageShell({
   }, []);
 
   const handleOpenBuscador = useCallback(() => {
-    drawerWasOpenBeforeBuscadorRef.current = drawerProgress > 0.05;
     setBuscadorOpen(true);
-  }, [drawerProgress]);
-
-  const settleDrawerAfterBuscadorClose = useCallback(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (drawerWasOpenBeforeBuscadorRef.current) {
-          openDrawerRef.current();
-          return;
-        }
-
-        closeDrawerRef.current();
-      });
-    });
   }, []);
 
   const handleBuscadorClose = useCallback(() => {
     setBuscadorOpen(false);
-    settleDrawerAfterBuscadorClose();
-  }, [settleDrawerAfterBuscadorClose]);
+  }, []);
 
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
@@ -168,6 +139,24 @@ export default function SalaPageShell({
     },
     [updateCancionFromSesion],
   );
+
+  useEffect(() => {
+    if (!colaAviso) {
+      setColaAvisoEntered(false);
+      return;
+    }
+
+    setColaAvisoEntered(false);
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setColaAvisoEntered(true);
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [colaAviso]);
 
   useEffect(() => {
     if (!online) {
@@ -267,8 +256,6 @@ export default function SalaPageShell({
     };
   }, [online, salaId, loadColaCompleta, handleSesionChange]);
 
-  const lyricsDimmed = drawerProgress > 0.05;
-
   return (
     <div
       className="relative flex flex-col overflow-hidden overscroll-none bg-bg-app"
@@ -317,12 +304,7 @@ export default function SalaPageShell({
         </div>
       </header>
 
-      <main
-        className="relative flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity duration-150"
-        style={{
-          opacity: lyricsDimmed ? 1 - drawerProgress * 0.6 : 1,
-        }}
-      >
+      <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <CancionActivaSection
           cancionNombre={cancionActiva?.nombre ?? null}
           artista={cancionActiva?.artista ?? null}
@@ -331,32 +313,30 @@ export default function SalaPageShell({
         />
       </main>
 
-      {lyricsDimmed && (
-        <button
-          type="button"
-          aria-label="Cerrar cola"
-          className="absolute inset-x-0 top-0 z-10 bg-black/40"
-          style={{
-            bottom: COLA_BAR_STACK_OFFSET_CSS,
-            opacity: drawerProgress,
-            pointerEvents: drawerProgress > 0.35 ? "auto" : "none",
-          }}
-          onClick={() => closeDrawerRef.current()}
-        />
-      )}
-
-      <ColaBottomSheet
+      <ColaJuntadaSheet
         items={colaItems}
         salaId={salaId}
         offlineMode={!online}
         onColaChange={loadColaCompleta}
         onItemsReordered={handleColaItemsReordered}
         onOpenBuscador={handleOpenBuscador}
-        avisoMensaje={colaAviso}
-        onProgressChange={handleDrawerProgressChange}
-        onRegisterClose={handleRegisterDrawerClose}
-        onRegisterOpen={handleRegisterDrawerOpen}
       />
+
+      {colaAviso ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`pointer-events-none fixed left-1/2 z-40 w-fit max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-[10px] border border-accent/30 bg-bg-cola-aviso px-3.5 py-2 text-center text-sm font-semibold whitespace-nowrap text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.38)] transition-[opacity,transform] duration-300 ease-out ${
+            colaAvisoEntered ? "opacity-100" : "translate-y-2 opacity-0"
+          }`}
+          style={{
+            bottom:
+              "calc(56px + 16px + 72px + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          {colaAviso}
+        </div>
+      ) : null}
 
       {buscadorOpen && (
         <BuscadorModal

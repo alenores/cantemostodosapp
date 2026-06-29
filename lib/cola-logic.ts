@@ -631,3 +631,41 @@ export async function agregarAGuardadas(
     throw error;
   }
 }
+
+export async function reorderColaByDrag(
+  supabase: SupabaseClient,
+  items: ColaItem[],
+  activeId: number,
+  overId: number,
+): Promise<OrdenUpdate[]> {
+  const pendientes = items
+    .filter((item) => item.estado === "pendiente")
+    .sort((a, b) => a.orden - b.orden);
+
+  const activeIndex = pendientes.findIndex((item) => item.id === activeId);
+  const overIndex = pendientes.findIndex((item) => item.id === overId);
+
+  if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
+    return [];
+  }
+
+  const reordered = [...pendientes];
+  const [moved] = reordered.splice(activeIndex, 1);
+  reordered.splice(overIndex, 0, moved);
+
+  const anchorOrden = Math.max(
+    0,
+    ...items
+      .filter((item) => item.estado !== "pendiente")
+      .map((item) => item.orden),
+  );
+
+  const updates: OrdenUpdate[] = reordered.map((item, index) => ({
+    id: item.id,
+    orden: anchorOrden + index + 1,
+  }));
+
+  await persistColaOrden(supabase, updates);
+
+  return updates;
+}

@@ -9,7 +9,7 @@ import {
 } from "@/lib/splash-theme";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const INLINE_SPLASH_ID = "inline-splash";
 
@@ -25,14 +25,19 @@ function hideInlineSplash() {
   inlineSplash.setAttribute("aria-hidden", "true");
 }
 
-function isSettledRoute(pathname: string): boolean {
-  return pathname !== "";
+function isRouteSettled(pathname: string): boolean {
+  if (pathname !== "") {
+    return true;
+  }
+
+  return typeof window !== "undefined" && window.location.pathname !== "";
 }
 
 export default function SplashScreen() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+  const appReadyRef = useRef(false);
 
   useEffect(() => {
     hideInlineSplash();
@@ -46,10 +51,14 @@ export default function SplashScreen() {
   useEffect(() => {
     let dismissed = false;
     let minElapsed = false;
-    let appReady = false;
 
     const dismiss = () => {
-      if (dismissed || !minElapsed || !appReady || !isSettledRoute(pathname)) {
+      if (
+        dismissed ||
+        !minElapsed ||
+        !appReadyRef.current ||
+        !isRouteSettled(pathname)
+      ) {
         return;
       }
 
@@ -62,7 +71,7 @@ export default function SplashScreen() {
     };
 
     const onAppReady = () => {
-      appReady = true;
+      appReadyRef.current = true;
       dismiss();
     };
 
@@ -72,12 +81,13 @@ export default function SplashScreen() {
     }, SPLASH_MIN_VISIBLE_MS);
 
     const maxTimer = window.setTimeout(() => {
-      appReady = true;
+      appReadyRef.current = true;
       minElapsed = true;
       dismiss();
     }, SPLASH_MAX_VISIBLE_MS);
 
     window.addEventListener(APP_READY_EVENT, onAppReady);
+    dismiss();
 
     return () => {
       window.clearTimeout(minTimer);

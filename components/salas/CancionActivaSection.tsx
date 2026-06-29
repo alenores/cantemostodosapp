@@ -1,24 +1,22 @@
 "use client";
 
-import LetraAutoScrollBar from "@/components/salas/LetraAutoScrollBar";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
-import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
+import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
 import {
-  getLetraSourceKind,
+  getEmbedBottomClipPx,
+  getEmbedTopClipPx,
   resolveLetraContenido,
+  shouldApplyEmbedInitialOffset,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
 import {
-  LETRA_EMBED_INITIAL_OFFSET_PX,
-  LETRA_EMBED_BOTTOM_PADDING,
-  LETRA_SECTION_BOTTOM_PADDING,
-  LETRA_SECTION_TEXT_BOTTOM_PADDING,
-  LETRA_TEXT_SCROLL_END_PADDING,
+  getLetraEmbedBottomPadding,
+  getLetraSectionBottomPadding,
+  getLetraSectionTextBottomPadding,
+  getLetraTextScrollEndPadding,
 } from "@/lib/sala-layout";
-import { Loader2, Maximize2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { TapButton } from "@/components/ui/TapFeedback";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -26,7 +24,7 @@ type CancionActivaSectionProps = {
   urlLetra?: string | null;
   letraTexto?: string | null;
   modoLectura?: boolean;
-  onExpand?: () => void;
+  letraScrollRef?: RefObject<HTMLDivElement | null>;
 };
 
 export default function CancionActivaSection({
@@ -35,12 +33,13 @@ export default function CancionActivaSection({
   urlLetra = null,
   letraTexto = null,
   modoLectura = false,
-  onExpand,
+  letraScrollRef: letraScrollRefProp,
 }: CancionActivaSectionProps) {
-  const letraScrollRef = useRef<HTMLDivElement>(null);
+  const letraScrollRefLocal = useRef<HTMLDivElement>(null);
+  const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
-  const [cifraTopRevealed, setCifraTopRevealed] = useState(false);
+  const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
 
   const hasCancion = Boolean(cancionNombre);
   const hasManualText = Boolean(letraTexto?.trim());
@@ -99,7 +98,7 @@ export default function CancionActivaSection({
   }, [hasManualText, hasUrl, urlLetra]);
 
   useEffect(() => {
-    setCifraTopRevealed(false);
+    setEmbedTopRevealed(false);
   }, [urlLetra]);
 
   const needsExtract =
@@ -124,73 +123,43 @@ export default function CancionActivaSection({
   const showTexto = contenido?.mode === "texto";
   const showEmbed = contenido?.mode === "embed";
 
-  const cancionContentKey = hasCancion
-    ? `${cancionNombre ?? ""}|${artista ?? ""}|${urlLetra ?? ""}|${letraTexto ?? ""}`
-    : null;
-
-  const { autoScrollLevel, accelerate, decelerate } = useLetraAutoScroll(
-    letraScrollRef,
-    {
-      enabled: showTexto,
-      contentKey: cancionContentKey,
-    },
-  );
-
-  const isCifraclubEmbed =
+  const embedConRecorteInicial =
     showEmbed &&
     contenido?.mode === "embed" &&
-    getLetraSourceKind(contenido.url) === "cifraclub";
+    shouldApplyEmbedInitialOffset(contenido.url);
 
-  const cifraclubEmbedOffsetPx =
-    isCifraclubEmbed && !cifraTopRevealed
-      ? LETRA_EMBED_INITIAL_OFFSET_PX
+  const embedTopClipPx =
+    embedConRecorteInicial && !embedTopRevealed
+      ? getEmbedTopClipPx(contenido.url)
       : undefined;
 
-  const expandButton =
-    !modoLectura && onExpand ? (
-      <TapButton
-        type="button"
-        aria-label="Expandir letra a pantalla completa"
-        onClick={onExpand}
-        className="absolute z-20 flex items-center justify-center rounded-xl border border-accent/50 bg-bg-dark p-2 shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
-        style={{ top: 12, right: 12 }}
-      >
-        <Maximize2 className="size-5 text-accent" aria-hidden="true" />
-      </TapButton>
-    ) : null;
+  const embedBottomClipPx =
+    showEmbed && contenido?.mode === "embed"
+      ? getEmbedBottomClipPx(contenido.url)
+      : undefined;
 
   if (showTexto && contenido?.mode === "texto") {
     return (
       <section
-        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app ${
+        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala ${
           modoLectura ? "px-0 pt-0" : "px-2 pt-0"
         }`}
         style={{
           paddingBottom: modoLectura
             ? "env(safe-area-inset-bottom, 0px)"
-            : LETRA_SECTION_TEXT_BOTTOM_PADDING,
+            : getLetraSectionTextBottomPadding(),
         }}
       >
         {!modoLectura ? (
-          <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-1.5">
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-bold leading-tight text-text-primary">
-                  {cancionNombre}
-                </h2>
-                {artista && (
-                  <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
-                    {artista}
-                  </p>
-                )}
-              </div>
-              <LetraAutoScrollBar
-                enabled
-                autoScrollLevel={autoScrollLevel}
-                onAccelerate={accelerate}
-                onDecelerate={decelerate}
-              />
-            </div>
+          <header className="shrink-0 border-b border-border bg-bg-sala px-2 py-1.5">
+            <h2 className="text-xl font-bold leading-tight text-text-primary">
+              {cancionNombre}
+            </h2>
+            {artista && (
+              <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
+                {artista}
+              </p>
+            )}
           </header>
         ) : null}
 
@@ -201,15 +170,15 @@ export default function CancionActivaSection({
             modoLectura ? "" : "rounded-[12px]"
           }`}
         >
-          {expandButton}
           <LetraTexto
             texto={contenido.texto}
             edgeToEdge
             fillViewport
+            compactHorizontalPadding={modoLectura}
             scrollEndPadding={
               modoLectura
                 ? "calc(16px + env(safe-area-inset-bottom, 0px))"
-                : LETRA_TEXT_SCROLL_END_PADDING
+                : getLetraTextScrollEndPadding()
             }
           />
         </div>
@@ -219,10 +188,10 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app ${
+      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-sala ${
         modoLectura
           ? "overflow-hidden px-0 pb-0 pt-0"
-          : `px-2 pt-3 ${
+          : `px-2 pt-0 ${
               showEmbed
                 ? "overflow-hidden pb-0"
                 : "overflow-y-auto overscroll-y-contain pb-3"
@@ -233,8 +202,8 @@ export default function CancionActivaSection({
           ? undefined
           : {
               paddingBottom: showEmbed
-                ? LETRA_EMBED_BOTTOM_PADDING
-                : LETRA_SECTION_BOTTOM_PADDING,
+                ? getLetraEmbedBottomPadding()
+                : getLetraSectionBottomPadding(),
             }
       }
     >
@@ -255,15 +224,14 @@ export default function CancionActivaSection({
 
           {waitingForExtract && (
             <div
-              className={`flex items-center gap-2 text-sm text-text-muted ${
-                modoLectura ? "flex-1 justify-center px-4" : "mt-4"
+              className={`relative min-h-0 flex-1 overflow-hidden rounded-[12px] bg-letra-bg ${
+                modoLectura ? "mx-0" : "mt-2"
               }`}
+              role="status"
+              aria-live="polite"
+              aria-label="Cargando letra"
             >
-              <Loader2
-                className="size-4 animate-spin text-accent"
-                aria-hidden="true"
-              />
-              <span>Cargando letra...</span>
+              <SalaLetraLinesSkeleton />
             </div>
           )}
 
@@ -285,15 +253,15 @@ export default function CancionActivaSection({
                   : "relative mt-2 min-h-0 w-full flex-1"
               }
             >
-              {expandButton}
               <LetraViewer
                 url={contenido.url}
                 title="Letra de la canción activa"
                 fill
-                initialScrollOffsetPx={cifraclubEmbedOffsetPx}
+                initialScrollOffsetPx={embedTopClipPx}
+                initialScrollBottomOffsetPx={embedBottomClipPx}
                 onRevealTop={
-                  isCifraclubEmbed
-                    ? () => setCifraTopRevealed(true)
+                  embedConRecorteInicial
+                    ? () => setEmbedTopRevealed(true)
                     : undefined
                 }
               />

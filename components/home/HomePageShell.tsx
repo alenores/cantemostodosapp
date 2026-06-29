@@ -2,6 +2,7 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
+import { LETRA_AUTO_SCROLL_MAX_LEVEL } from "@/hooks/useLetraAutoScroll";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import { avanzarColaIndividual, getColaIndividual } from "@/lib/cola-individual";
@@ -46,8 +47,7 @@ export default function HomePageShell() {
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [colaSheetAbierta, setColaSheetAbierta] = useState(false);
-  const [autoScrollActivo, setAutoScrollActivo] = useState(false);
-  const [autoScrollVelocidad, setAutoScrollVelocidad] = useState(1);
+  const [autoScrollLevel, setAutoScrollLevel] = useState(0);
   const [pendientesCount, setPendientesCount] = useState(0);
   const [colaRefreshToken, setColaRefreshToken] = useState(0);
 
@@ -239,10 +239,15 @@ export default function HomePageShell() {
           />
 
           <AutoScrollControl
-            activo={autoScrollActivo}
-            velocidad={autoScrollVelocidad}
-            onToggle={() => setAutoScrollActivo((active) => !active)}
-            onVelocidadChange={setAutoScrollVelocidad}
+            level={autoScrollLevel}
+            onAccelerate={() =>
+              setAutoScrollLevel((level) =>
+                Math.min(LETRA_AUTO_SCROLL_MAX_LEVEL, level + 1),
+              )
+            }
+            onDecelerate={() =>
+              setAutoScrollLevel((level) => Math.max(0, level - 1))
+            }
           />
 
           <div

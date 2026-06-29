@@ -19,8 +19,11 @@ import {
   resolverNombreArtistaDisplay,
   resultadoKey,
 } from "@/lib/buscador";
-import { shouldApplyEmbedInitialOffset } from "@/lib/letra-display";
-import { LETRA_EMBED_INITIAL_OFFSET_PX } from "@/lib/sala-layout";
+import {
+  getEmbedBottomClipPx,
+  getEmbedTopClipPx,
+  shouldApplyEmbedInitialOffset,
+} from "@/lib/letra-display";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { type CancionInput } from "@/lib/cola-logic";
@@ -796,8 +799,13 @@ export default function BuscadorModal({
   );
 
   const previewEmbedOffsetPx =
-    previewIframeConRecorteInicial && !embedTopRevealed
-      ? LETRA_EMBED_INITIAL_OFFSET_PX
+    previewIframeConRecorteInicial && !embedTopRevealed && seleccionado
+      ? getEmbedTopClipPx(seleccionado.url)
+      : undefined;
+
+  const previewEmbedBottomClipPx =
+    previewIframeConRecorteInicial && seleccionado
+      ? getEmbedBottomClipPx(seleccionado.url)
       : undefined;
 
   function handleGuardarTap() {
@@ -1028,6 +1036,7 @@ export default function BuscadorModal({
                       elevated
                       fill
                       initialScrollOffsetPx={previewEmbedOffsetPx}
+                      initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
                       onRevealTop={
                         previewIframeConRecorteInicial
                           ? () => setEmbedTopRevealed(true)

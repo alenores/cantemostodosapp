@@ -13,6 +13,8 @@ type LetraViewerProps = {
   fill?: boolean;
   /** Recorte visual superior: simula un scroll inicial sin tocar el DOM del iframe. */
   initialScrollOffsetPx?: number;
+  /** Recorte visual inferior: oculta propagandas y barras flotantes al pie del sitio. */
+  initialScrollBottomOffsetPx?: number;
   /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
   onRevealTop?: () => void;
 };
@@ -33,16 +35,21 @@ function containerRadiusClass(
 }
 
 function getIframeScrollSimulationStyle(
-  offsetPx?: number,
+  topOffsetPx?: number,
+  bottomOffsetPx?: number,
 ): CSSProperties | undefined {
-  if (!offsetPx || offsetPx <= 0) {
+  const top = topOffsetPx && topOffsetPx > 0 ? topOffsetPx : 0;
+  const bottom = bottomOffsetPx && bottomOffsetPx > 0 ? bottomOffsetPx : 0;
+
+  if (top === 0 && bottom === 0) {
     return undefined;
   }
 
   return {
-    height: `calc(100% + ${offsetPx}px)`,
-    marginTop: `-${offsetPx}px`,
+    height: `calc(100% + ${top + bottom}px)`,
+    marginTop: top > 0 ? `-${top}px` : undefined,
     width: "100%",
+    filter: "saturate(0.1) contrast(1.3)",
   };
 }
 
@@ -51,6 +58,7 @@ type LetraIframeProps = {
   title: string;
   className: string;
   initialScrollOffsetPx?: number;
+  initialScrollBottomOffsetPx?: number;
 };
 
 function LetraIframe({
@@ -58,8 +66,12 @@ function LetraIframe({
   title,
   className,
   initialScrollOffsetPx,
+  initialScrollBottomOffsetPx,
 }: LetraIframeProps) {
-  const offsetStyle = getIframeScrollSimulationStyle(initialScrollOffsetPx);
+  const offsetStyle = getIframeScrollSimulationStyle(
+    initialScrollOffsetPx,
+    initialScrollBottomOffsetPx,
+  );
 
   return (
     <iframe
@@ -114,6 +126,7 @@ export default function LetraViewer({
   minHeight,
   fill = false,
   initialScrollOffsetPx,
+  initialScrollBottomOffsetPx,
   onRevealTop,
 }: LetraViewerProps) {
   const radiusClass = containerRadiusClass(edgeToEdge, flushBottom);
@@ -132,6 +145,7 @@ export default function LetraViewer({
           title={title}
           className="h-full w-full border-0"
           initialScrollOffsetPx={initialScrollOffsetPx}
+          initialScrollBottomOffsetPx={initialScrollBottomOffsetPx}
         />
       </EmbedShell>
     );
@@ -150,6 +164,7 @@ export default function LetraViewer({
         title={title}
         className="size-full min-h-[320px] flex-1 border-0"
         initialScrollOffsetPx={initialScrollOffsetPx}
+        initialScrollBottomOffsetPx={initialScrollBottomOffsetPx}
       />
     </EmbedShell>
   );

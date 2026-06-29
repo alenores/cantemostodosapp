@@ -8,6 +8,7 @@ type DoubleConfirmDialogProps = {
   step2Message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  zIndex?: number;
 };
 
 export default function DoubleConfirmDialog({
@@ -16,6 +17,7 @@ export default function DoubleConfirmDialog({
   step2Message,
   onConfirm,
   onCancel,
+  zIndex = 50,
 }: DoubleConfirmDialogProps) {
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -48,7 +50,10 @@ export default function DoubleConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center px-4"
+      style={{ zIndex }}
+    >
       <button
         type="button"
         aria-label="Cerrar diálogo"

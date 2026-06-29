@@ -1,4 +1,3 @@
-import SalaPageShell from "@/components/salas/SalaPageShell";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -63,5 +62,5 @@ export default async function SalaPage({ params }: SalasPageProps) {
     notFound();
   }
 
-  return <SalaPageShell salaId={sala.id} salaNombre={sala.nombre} />;
+  return null;
 }

@@ -5,8 +5,9 @@ import AutoScrollControl from "@/components/home/AutoScrollControl";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
-// import ColaBottomSheet from "@/components/salas/ColaBottomSheet";
-import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
+import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
+import { TapButton } from "@/components/ui/TapFeedback";
 import {
   deriveCancionActivaFromCola,
   fetchColaCompleta,
@@ -14,11 +15,20 @@ import {
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
-import { COLA_AVISO_SHOW_DELAY_MS } from "@/lib/sala-layout";
+import {
+  COLA_AVISO_SHOW_DELAY_MS,
+  getLetraModoLecturaHorizontalPadding,
+  getLecturaFabMenuTopCss,
+  getLecturaTopChromeTopCss,
+  getSalaFloatControlsBottomCss,
+  getSalaMainFooterPaddingCss,
+  LECTURA_TOP_CHROME_SIDE_PX,
+} from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
 import { getColaLocalItems } from "@/lib/offline/cola-local-store";
 import { flushColaLocalToSupabase } from "@/lib/offline/cola-local-sync";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, PresenceUsuario, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -30,20 +40,16 @@ import {
   Music2,
   SkipForward,
   SlidersHorizontal,
-  WifiOff,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const GIT_COMMIT_SHA = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA ?? "dev";
-const SHOW_BUILD_SHA =
-  process.env.NODE_ENV === "production" && GIT_COMMIT_SHA !== "dev";
-
 const FLOAT_BTN_SECONDARY =
   "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
-const FLOAT_BTN_PRIMARY =
-  "rounded-full border-none bg-accent shadow-[0_4px_20px_rgba(244,132,95,0.5)]";
 const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
+const LECTURA_TOP_CHIP =
+  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
+const LECTURA_FAB_CASCADE_STEP_MS = 55;
 
 type SalaPageShellProps = {
   salaId: number;
@@ -53,43 +59,57 @@ type SalaPageShellProps = {
   onClose?: () => void;
 };
 
-type SalaModoLecturaOverlayOptionProps = {
+type SalaModoLecturaFabOptionProps = {
   icon: LucideIcon;
   label: string;
   onClick: () => void;
-  muted?: boolean;
   disabled?: boolean;
-  secondary?: boolean;
+  muted?: boolean;
+  iconAfter?: boolean;
+  cascadeIndex: number;
 };
 
-function SalaModoLecturaOverlayOption({
+function SalaModoLecturaFabOption({
   icon: Icon,
   label,
   onClick,
-  muted = false,
   disabled = false,
-  secondary = false,
-}: SalaModoLecturaOverlayOptionProps) {
+  muted = false,
+  iconAfter = false,
+  cascadeIndex,
+}: SalaModoLecturaFabOptionProps) {
+  const iconNode = (
+    <Icon
+      className={`size-4 shrink-0 ${muted ? "text-text-muted" : ""}`}
+      aria-hidden="true"
+    />
+  );
+
   return (
-    <button
+    <TapButton
       type="button"
+      role="menuitem"
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-[200px] items-center gap-3 px-6 py-4 text-sm font-medium ${
-        secondary
-          ? `${FLOAT_BTN_SECONDARY} ${disabled ? FLOAT_BTN_DISABLED : ""}`
-          : `rounded-2xl border border-border bg-bg-dark/95 ${
-              disabled
-                ? FLOAT_BTN_DISABLED
-                : muted
-                  ? "text-text-muted"
-                  : "text-text-primary"
-            }`
+      className={`sala-lectura-fab-item pointer-events-auto flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY} ${
+        disabled ? FLOAT_BTN_DISABLED : ""
       }`}
+      style={{
+        animationDelay: `${cascadeIndex * LECTURA_FAB_CASCADE_STEP_MS}ms`,
+      }}
     >
-      <Icon className="size-5 shrink-0" aria-hidden="true" />
-      {label}
-    </button>
+      {iconAfter ? (
+        <>
+          <span className={muted ? "text-text-muted" : undefined}>{label}</span>
+          {iconNode}
+        </>
+      ) : (
+        <>
+          {iconNode}
+          <span className={muted ? "text-text-muted" : undefined}>{label}</span>
+        </>
+      )}
+    </TapButton>
   );
 }
 
@@ -114,55 +134,62 @@ function SalaModoLecturaOverlay({
     return null;
   }
 
+  const menuTop = getLecturaFabMenuTopCss();
+
   return (
-    <div
-      className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-6"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(2px)",
-      }}
-      onClick={onCerrar}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Controles de modo lectura"
-    >
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-40 cursor-default"
+        aria-label="Cerrar menú de controles"
+        onClick={onCerrar}
+      />
+
       <div
-        className="flex flex-col items-center gap-6"
-        onClick={(event) => event.stopPropagation()}
+        className="pointer-events-none fixed z-40 flex flex-col items-end gap-2"
+        style={{
+          top: menuTop,
+          right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+        }}
+        role="menu"
+        aria-label="Controles de modo lectura"
       >
-        <SalaModoLecturaOverlayOption
+        <SalaModoLecturaFabOption
           icon={Minimize2}
           label="Contraer"
-          muted
+          cascadeIndex={0}
           onClick={onContraer}
         />
-        <SalaModoLecturaOverlayOption
+        <SalaModoLecturaFabOption
           icon={SkipForward}
           label="Siguiente"
-          secondary
+          iconAfter
+          cascadeIndex={1}
           disabled={pendientesCount === 0}
           onClick={() => {
             onCerrar();
             onSiguiente();
           }}
         />
-        <SalaModoLecturaOverlayOption
+        <SalaModoLecturaFabOption
           icon={ListMusic}
-          label="Cola"
+          label={`Fila · ${pendientesCount}`}
+          cascadeIndex={2}
           onClick={() => {
             onCerrar();
             onCola();
           }}
         />
-        <SalaModoLecturaOverlayOption
+        <SalaModoLecturaFabOption
           icon={Music2}
           label="Afinador"
+          cascadeIndex={3}
           onClick={() => {
             console.log("TODO: afinador");
           }}
         />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -175,14 +202,16 @@ export default function SalaPageShell({
   const online = useOnlineStatus();
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const colaChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressColaRealtimeUntil = useRef(0);
+  const initialColaLoadPendingRef = useRef(true);
   const openColaRef = useRef<(() => void) | null>(null);
   const handleSiguienteRef = useRef<(() => void) | null>(null);
   const [colaAviso, setColaAviso] = useState<string | null>(null);
   const [colaAvisoEntered, setColaAvisoEntered] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
-  const [autoScrollActivo, setAutoScrollActivo] = useState(false);
-  const [autoScrollVelocidad, setAutoScrollVelocidad] = useState(1);
+  const letraScrollRef = useRef<HTMLDivElement>(null);
 
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
@@ -221,6 +250,7 @@ export default function SalaPageShell({
     null,
   );
   const [colaItems, setColaItems] = useState<ColaItem[]>([]);
+  const [colaBootstrapping, setColaBootstrapping] = useState(true);
   const [presenceUsuarios, setPresenceUsuarios] = useState<PresenceUsuario[]>(
     [],
   );
@@ -229,6 +259,22 @@ export default function SalaPageShell({
     () => colaItems.filter((item) => item.estado === "pendiente").length,
     [colaItems],
   );
+
+  const cancionActivaScrollKey = cancionActiva
+    ? `${cancionActiva.nombre}::${cancionActiva.url_letra}`
+    : null;
+
+  const {
+    autoScrollLevel,
+    accelerate: accelerateAutoScroll,
+    decelerate: decelerateAutoScroll,
+  } = useLetraAutoScroll(letraScrollRef, {
+    enabled: modoLectura,
+    contentKey: cancionActivaScrollKey,
+  });
+
+  const presenceBarVisible =
+    !modoLectura && online && presenceUsuarios.length > 0;
 
   const salirModoLectura = useCallback(() => {
     setOverlayAbierto(false);
@@ -268,13 +314,34 @@ export default function SalaPageShell({
   }, [presenceUsuarios]);
 
   const handleColaItemsReordered = useCallback((items: ColaItem[]) => {
+    console.log(
+      "[sala] handleColaItemsReordered llamado:",
+      items.map((i) => i.nombre),
+    );
     setColaItems(items);
     setCancionActiva(deriveCancionActivaFromCola(items));
+  }, []);
+
+  const suppressColaRealtime = useCallback((ms: number) => {
+    suppressColaRealtimeUntil.current = Date.now() + ms;
+  }, []);
+
+  const finishInitialColaLoad = useCallback(() => {
+    if (!initialColaLoadPendingRef.current) {
+      return;
+    }
+
+    initialColaLoadPendingRef.current = false;
+    setColaBootstrapping(false);
   }, []);
 
   const loadColaCompleta = useCallback(async () => {
     if (!online) {
       const items = await getColaLocalItems(salaId);
+      console.log(
+        "[sala] loadColaCompleta setColaItems:",
+        items.map((i) => i.nombre),
+      );
       setColaItems(items);
       setCancionActiva(deriveCancionActivaFromCola(items));
       return;
@@ -296,6 +363,10 @@ export default function SalaPageShell({
 
     const items = await fetchColaCompleta(supabase, salaId);
 
+    console.log(
+      "[sala] loadColaCompleta setColaItems:",
+      items.map((i) => i.nombre),
+    );
     setColaItems(items);
     setCancionActiva(deriveCancionActivaFromCola(items));
   }, [online, salaId]);
@@ -340,9 +411,12 @@ export default function SalaPageShell({
   }, [colaAviso]);
 
   useEffect(() => {
+    initialColaLoadPendingRef.current = true;
+    setColaBootstrapping(true);
+
     if (!online) {
       setPresenceUsuarios([]);
-      void loadColaCompleta();
+      void loadColaCompleta().finally(finishInitialColaLoad);
       return;
     }
 
@@ -355,11 +429,15 @@ export default function SalaPageShell({
     async function subscribeChannels() {
       const authed = await ensureRealtimeAuth(supabase);
 
-      if (!authed || cancelled) {
+      if (cancelled) {
         return;
       }
 
-      void loadColaCompleta();
+      void loadColaCompleta().finally(finishInitialColaLoad);
+
+      if (!authed) {
+        return;
+      }
 
       sesionChannel = supabase
         .channel(`sesion-${salaId}`)
@@ -399,7 +477,17 @@ export default function SalaPageShell({
           },
           (payload) => {
             console.log("[cola] evento:", payload.eventType, payload.new);
-            void loadColaCompleta();
+            if (colaChangeDebounceRef.current) {
+              clearTimeout(colaChangeDebounceRef.current);
+            }
+            colaChangeDebounceRef.current = setTimeout(() => {
+              if (Date.now() < suppressColaRealtimeUntil.current) {
+                colaChangeDebounceRef.current = null;
+                return;
+              }
+              void loadColaCompleta();
+              colaChangeDebounceRef.current = null;
+            }, 600);
           },
         )
         .subscribe((status, err) => {
@@ -463,6 +551,10 @@ export default function SalaPageShell({
         clearTimeout(colaAvisoHideTimerRef.current);
       }
 
+      if (colaChangeDebounceRef.current) {
+        clearTimeout(colaChangeDebounceRef.current);
+      }
+
       if (sesionChannel) {
         void supabase.removeChannel(sesionChannel);
       }
@@ -475,92 +567,110 @@ export default function SalaPageShell({
         void supabase.removeChannel(presenceChannel);
       }
     };
-  }, [online, salaId, loadColaCompleta, handleSesionChange]);
+  }, [online, salaId, loadColaCompleta, handleSesionChange, finishInitialColaLoad]);
 
   return (
     <div
-      className="flex flex-col overflow-hidden bg-bg-app"
+      className="flex flex-col overflow-hidden bg-bg-sala"
       style={{ height: "100dvh" }}
     >
-      {!modoLectura ? (
-        <header className="shrink-0 border-b border-accent/35 bg-accent-dim px-2 py-1.5">
-          <div className="flex items-center gap-1">
-            {embedded ? (
-              <TapButton
-                aria-label="Volver a salas"
-                onClick={onClose}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
-              >
-                <ArrowLeft className="size-5" aria-hidden="true" />
-              </TapButton>
-            ) : (
-              <TapLink
-                href="/salas"
-                ariaLabel="Volver a salas"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-primary"
-              >
-                <ArrowLeft className="size-5" aria-hidden="true" />
-              </TapLink>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-semibold leading-tight text-accent">
-                sala
-                {SHOW_BUILD_SHA && (
-                  <span className="normal-case tracking-normal text-text-muted">
-                    {" "}
-                    · {GIT_COMMIT_SHA}
-                  </span>
-                )}
-              </p>
-              <h1 className="truncate text-base font-extrabold leading-tight text-text-primary">
-                {salaNombre}
-              </h1>
-              {!online && (
-                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-text-muted">
-                  <WifiOff className="size-3 shrink-0" aria-hidden="true" />
-                  Lista local en este celular
-                </p>
-              )}
-            </div>
-          </div>
-        </header>
+      {embedded && !modoLectura ? (
+        <TapButton
+          aria-label="Volver a salas"
+          onClick={onClose}
+          className="fixed z-30 flex size-9 items-center justify-center rounded-full border border-border/60 bg-bg-dark/90 text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+          style={{ top: 12, left: 12 }}
+        >
+          <ArrowLeft className="size-5" aria-hidden="true" />
+        </TapButton>
       ) : null}
 
       <main
         className={`relative flex min-h-0 flex-col ${
           modoLectura ? "overflow-hidden" : "flex-1 overflow-hidden"
         }`}
-        style={modoLectura ? { height: "100dvh" } : undefined}
+        style={
+          modoLectura
+            ? { height: "100dvh" }
+            : {
+                paddingBottom: getSalaMainFooterPaddingCss(),
+              }
+        }
       >
-        <CancionActivaSection
-          cancionNombre={cancionActiva?.nombre ?? null}
-          artista={cancionActiva?.artista ?? null}
-          urlLetra={cancionActiva?.url_letra ?? null}
-          letraTexto={cancionActiva?.letra_texto ?? null}
-          modoLectura={modoLectura}
-          onExpand={modoLectura ? undefined : () => setModoLectura(true)}
-        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {colaBootstrapping && !modoLectura ? (
+            <SalaColaBootstrapSkeleton />
+          ) : (
+            <CancionActivaSection
+              cancionNombre={cancionActiva?.nombre ?? null}
+              artista={cancionActiva?.artista ?? null}
+              urlLetra={cancionActiva?.url_letra ?? null}
+              letraTexto={cancionActiva?.letra_texto ?? null}
+              modoLectura={modoLectura}
+              letraScrollRef={letraScrollRef}
+            />
+          )}
+        </div>
+
+        {presenceBarVisible ? (
+          <SalaPresenceBar usuarios={presenceUsuarios} />
+        ) : null}
 
         <ColaJuntadaSheet
           items={colaItems}
           salaId={salaId}
           offlineMode={!online}
-          presenceUsuarios={presenceUsuarios}
+          presenceBarVisible={presenceBarVisible}
           onColaChange={loadColaCompleta}
           onItemsReordered={handleColaItemsReordered}
           onOpenBuscador={handleOpenBuscador}
           presentacionOculta={modoLectura}
+          onExpand={
+            !modoLectura && cancionActiva
+              ? () => setModoLectura(true)
+              : undefined
+          }
           onRequestOpen={(open) => {
             openColaRef.current = open;
           }}
           onRequestSiguiente={(siguiente) => {
             handleSiguienteRef.current = siguiente;
           }}
+          onDragEnd={() => suppressColaRealtime(1500)}
         />
       </main>
 
       {modoLectura ? (
         <>
+          {cancionActiva?.nombre ? (
+            <div
+              className={`pointer-events-none fixed z-[45] max-w-[min(75vw,calc(100%-3.25rem))] px-2.5 py-1.5 ${LECTURA_TOP_CHIP}`}
+              style={{
+                top: getLecturaTopChromeTopCss(),
+                left: getLetraModoLecturaHorizontalPadding(),
+              }}
+            >
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-accent">
+                  {cancionActiva.nombre}
+                </span>
+                {cancionActiva.artista ? (
+                  <>
+                    <span
+                      className="shrink-0 text-[10px] leading-snug text-text-muted/70"
+                      aria-hidden="true"
+                    >
+                      ·
+                    </span>
+                    <span className="max-w-[38%] shrink-0 truncate text-[10px] leading-snug text-text-muted">
+                      {cancionActiva.artista}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           <TapButton
             type="button"
             aria-label={
@@ -569,13 +679,21 @@ export default function SalaPageShell({
                 : "Abrir controles de modo lectura"
             }
             onClick={() => setOverlayAbierto((open) => !open)}
-            className={`fixed z-50 flex size-11 items-center justify-center ${FLOAT_BTN_PRIMARY}`}
-            style={{ top: 16, right: 16 }}
+            className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP} ${
+              overlayAbierto ? "border-accent/45" : ""
+            }`}
+            style={{
+              top: getLecturaTopChromeTopCss(),
+              right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+            }}
           >
             {overlayAbierto ? (
-              <X className="size-5 text-white" aria-hidden="true" />
+              <X className="size-4 text-text-primary" aria-hidden="true" />
             ) : (
-              <SlidersHorizontal className="size-5 text-white" aria-hidden="true" />
+              <SlidersHorizontal
+                className="size-4 text-accent"
+                aria-hidden="true"
+              />
             )}
           </TapButton>
 
@@ -589,10 +707,10 @@ export default function SalaPageShell({
           />
 
           <AutoScrollControl
-            activo={autoScrollActivo}
-            velocidad={autoScrollVelocidad}
-            onToggle={() => setAutoScrollActivo((active) => !active)}
-            onVelocidadChange={setAutoScrollVelocidad}
+            level={autoScrollLevel}
+            enabled={Boolean(cancionActiva)}
+            onAccelerate={accelerateAutoScroll}
+            onDecelerate={decelerateAutoScroll}
           />
         </>
       ) : null}
@@ -605,8 +723,7 @@ export default function SalaPageShell({
             colaAvisoEntered ? "opacity-100" : "translate-y-2 opacity-0"
           }`}
           style={{
-            bottom:
-              "calc(56px + 16px + 72px + env(safe-area-inset-bottom, 0px))",
+            bottom: `calc(${getSalaFloatControlsBottomCss(presenceBarVisible)} + 72px)`,
           }}
         >
           {colaAviso}

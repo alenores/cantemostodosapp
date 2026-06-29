@@ -48,10 +48,6 @@ function readSalaFooterState() {
   };
 }
 
-function truncateSalaNombre(nombre: string) {
-  return nombre.length > 10 ? `${nombre.slice(0, 10)}...` : nombre;
-}
-
 export default function AppFooter() {
   const pathname = usePathname();
   const [modoLecturaHidden, setModoLecturaHidden] = useState(false);
@@ -93,21 +89,20 @@ export default function AppFooter() {
       className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-bg-dark"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <nav className="flex h-[56px] w-full flex-row items-center justify-around">
+      <nav className="flex h-[56px] w-full flex-row items-center">
         {TABS.map(({ href, label, icon: Icon, isActive }) => {
           const active = isActive(pathname);
           const colorClass = active ? "text-accent" : "text-text-muted";
           const isSalasTab = href === "/salas";
           const inSala = isSalasTab && salaNombre !== null;
-          const displayLabel =
-            inSala && salaNombre ? truncateSalaNombre(salaNombre) : label;
+          const displayLabel = inSala && salaNombre ? salaNombre : label;
           const showBadge = isSalasTab && conectados > 0;
 
           return (
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center justify-center gap-0.5 ${colorClass}`}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 ${colorClass}`}
             >
               <span className="relative">
                 <Icon className="size-5" aria-hidden="true" />
@@ -125,11 +120,12 @@ export default function AppFooter() {
                 ) : null}
               </span>
               <span
-                className={`font-medium ${
+                className={`w-full text-center font-medium ${
                   inSala
-                    ? "max-w-16 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] text-accent"
+                    ? "overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-accent"
                     : "text-[10px]"
                 }`}
+                title={inSala && salaNombre ? salaNombre : undefined}
               >
                 {displayLabel}
               </span>

@@ -86,7 +86,6 @@ function SortableColaIndividualRow({
       <ColaJuntadaItem
         item={item}
         variant={variant}
-        isDragging={isDragging}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -255,7 +254,6 @@ export default function ColaIndividual({
             <ColaJuntadaItem
               item={activeDragItem}
               variant={getIndividualVariant(activeDragItem, items)}
-              isDragging
             />
           </div>
         ) : null}

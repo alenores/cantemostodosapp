@@ -2,6 +2,10 @@
 
 import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
+import {
+  LETRA_AUTO_SCROLL_MAX_LEVEL,
+  LETRA_AUTO_SCROLL_SPEEDS,
+} from "@/hooks/useLetraAutoScroll";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionCancionero } from "@/types";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X } from "lucide-react";
@@ -22,10 +26,6 @@ const HEADER_CLASS =
   "shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14 select-none";
 const BOTTOM_NAV_CLASS =
   "shrink-0 border-t border-border bg-bg-dark px-3 py-1.5 select-none";
-/** px/s por nivel (1 = muy suave). Escalones más separados para notar cada paso. */
-const AUTO_SCROLL_SPEEDS = [14, 30, 52, 82, 120];
-const AUTO_SCROLL_MAX_LEVEL = AUTO_SCROLL_SPEEDS.length;
-
 type GestureMode = "undecided" | "carousel" | "scroll";
 
 type ActiveGesture = {
@@ -135,7 +135,7 @@ function CancionNavBar({
           <TapButton
             type="button"
             aria-label="Acelerar desplazamiento de la letra"
-            disabled={!tieneLetra || autoScrollLevel >= AUTO_SCROLL_MAX_LEVEL}
+            disabled={!tieneLetra || autoScrollLevel >= LETRA_AUTO_SCROLL_MAX_LEVEL}
             onClick={onAutoScrollAccelerate}
             className="flex size-7 items-center justify-center rounded-full disabled:opacity-30"
           >
@@ -282,7 +282,7 @@ export default function CancioneroVerModal({
 
   const handleAutoScrollAccelerate = useCallback(() => {
     setAutoScrollLevel((level) => {
-      if (level >= AUTO_SCROLL_MAX_LEVEL) {
+      if (level >= LETRA_AUTO_SCROLL_MAX_LEVEL) {
         return level;
       }
 
@@ -431,7 +431,7 @@ export default function CancioneroVerModal({
 
       const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
-      const speed = AUTO_SCROLL_SPEEDS[level - 1] ?? AUTO_SCROLL_SPEEDS[0];
+      const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
       autoScrollOffsetRef.current += speed * deltaSeconds;
 
       if (autoScrollOffsetRef.current >= maxScroll) {

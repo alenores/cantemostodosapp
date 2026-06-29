@@ -1,66 +1,67 @@
 "use client";
 
-import { Minus, Pause, Play, Plus } from "lucide-react";
+import { TapButton } from "@/components/ui/TapFeedback";
+import { LETRA_AUTO_SCROLL_MAX_LEVEL } from "@/hooks/useLetraAutoScroll";
+import { getLecturaAutoScrollBottomCss } from "@/lib/sala-layout";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type AutoScrollControlProps = {
-  activo: boolean;
-  velocidad: number;
-  onToggle: () => void;
-  onVelocidadChange: (v: number) => void;
+  level: number;
+  maxLevel?: number;
+  enabled?: boolean;
+  onAccelerate: () => void;
+  onDecelerate: () => void;
 };
 
 export default function AutoScrollControl({
-  activo,
-  velocidad,
-  onToggle,
-  onVelocidadChange,
+  level,
+  maxLevel = LETRA_AUTO_SCROLL_MAX_LEVEL,
+  enabled = true,
+  onAccelerate,
+  onDecelerate,
 }: AutoScrollControlProps) {
+  const isScrolling = level > 0;
+
   return (
     <div
-      className="fixed z-[45] flex flex-row items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2"
+      className={`fixed z-[45] flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-dark/90 p-0.5 backdrop-blur-md ${
+        isScrolling ? "border-accent/30" : "border-border/50"
+      }`}
       style={{
-        bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+        bottom: getLecturaAutoScrollBottomCss(),
         right: 16,
+        boxShadow: "0 2px 10px rgba(0,0,0,0.28)",
       }}
     >
-      <button
+      <TapButton
         type="button"
-        aria-label={activo ? "Pausar auto-scroll" : "Iniciar auto-scroll"}
-        onClick={onToggle}
-        className={`flex items-center justify-center rounded-lg p-1 ${
-          activo ? "bg-accent/20 text-accent" : "text-text-muted"
-        }`}
+        aria-label="Desacelerar desplazamiento de la letra"
+        disabled={!enabled || level === 0}
+        onClick={onDecelerate}
+        className="flex size-9 items-center justify-center rounded-xl bg-black/20 disabled:opacity-30"
       >
-        {activo ? (
-          <Pause className="size-4" aria-hidden="true" />
-        ) : (
-          <Play className="size-4" aria-hidden="true" />
-        )}
-      </button>
+        <ChevronUp className="size-4 text-accent" aria-hidden="true" />
+      </TapButton>
 
-      <span className="h-4 w-px bg-border" aria-hidden="true" />
+      {level > 0 ? (
+        <span
+          className="w-[14px] shrink-0 text-center text-[11px] font-bold leading-none text-white"
+          aria-live="polite"
+          aria-label={`Velocidad de desplazamiento: ${level}`}
+        >
+          {level}
+        </span>
+      ) : null}
 
-      <button
+      <TapButton
         type="button"
-        aria-label="Reducir velocidad"
-        onClick={() => onVelocidadChange(Math.max(0.5, velocidad - 0.5))}
-        className="flex items-center justify-center text-text-muted"
+        aria-label="Acelerar desplazamiento de la letra"
+        disabled={!enabled || level >= maxLevel}
+        onClick={onAccelerate}
+        className="flex size-9 items-center justify-center rounded-xl bg-black/20 disabled:opacity-30"
       >
-        <Minus className="size-3" aria-hidden="true" />
-      </button>
-
-      <span className="min-w-[28px] text-center text-xs text-text-secondary">
-        {velocidad}x
-      </span>
-
-      <button
-        type="button"
-        aria-label="Aumentar velocidad"
-        onClick={() => onVelocidadChange(Math.min(3, velocidad + 0.5))}
-        className="flex items-center justify-center text-text-muted"
-      >
-        <Plus className="size-3" aria-hidden="true" />
-      </button>
+        <ChevronDown className="size-4 text-accent" aria-hidden="true" />
+      </TapButton>
     </div>
   );
 }

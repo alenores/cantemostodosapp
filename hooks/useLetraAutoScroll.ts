@@ -3,8 +3,8 @@
 import { triggerHaptic } from "@/lib/haptic";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
-/** px/s por nivel (1 = muy suave). */
-export const LETRA_AUTO_SCROLL_SPEEDS = [14, 30, 52, 82, 120];
+/** px/s por nivel (1 = muy suave). Escalones uniformes y moderados. */
+export const LETRA_AUTO_SCROLL_SPEEDS = [14, 21, 28];
 export const LETRA_AUTO_SCROLL_MAX_LEVEL = LETRA_AUTO_SCROLL_SPEEDS.length;
 
 type UseLetraAutoScrollOptions = {

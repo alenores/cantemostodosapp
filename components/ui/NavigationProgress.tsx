@@ -107,6 +107,13 @@ export default function NavigationProgressProvider({
         return;
       }
 
+      const isSalaEntry =
+        destination.startsWith("/salas/") && destination !== "/salas";
+
+      if (isSalaEntry) {
+        return;
+      }
+
       startNavigation();
     }
 

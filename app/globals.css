@@ -625,3 +625,10 @@ html.splash-active body {
   }
 }
 
+/* Ocultar indicador de errores de Next.js en mobile */
+@media (max-width: 768px) {
+  nextjs-portal {
+    display: none !important;
+  }
+}
+

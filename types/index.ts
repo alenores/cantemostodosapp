@@ -75,6 +75,7 @@ export type ColaIndividualItem = {
   artista: string | null;
   url_letra: string | null;
   letra_texto: string | null;
+  estado: EstadoCola;
   orden: number;
   created_at: string;
 };

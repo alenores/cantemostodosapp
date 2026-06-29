@@ -1,4 +1,4 @@
-import type { ColaIndividualItem } from "@/types";
+import type { ColaIndividualItem, EstadoCola } from "@/types";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 function throwColaIndividualError(
@@ -10,6 +10,39 @@ function throwColaIndividualError(
       ? " Falta GRANT en Supabase: ejecutá supabase/cola-individual-grants.sql"
       : "";
   throw new Error(`${action}: ${error.message}${hint}`);
+}
+
+async function getUserId(supabase: SupabaseClient): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error("Se requiere sesión activa para operar la cola individual");
+  }
+
+  return userId;
+}
+
+async function getMaxOrden(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { data: maxRow, error } = await supabase
+    .from("cola_individual")
+    .select("orden")
+    .eq("user_id", userId)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return maxRow?.orden ?? -1;
 }
 
 export async function getColaIndividual(
@@ -36,28 +69,39 @@ export async function agregarAColaIndividual(
     letra_texto?: string | null;
   },
 ): Promise<void> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const userId = await getUserId(supabase);
 
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    throw new Error("Se requiere sesión activa para agregar a la cola individual");
-  }
-
-  const { data: maxRow, error: maxError } = await supabase
+  const { count, error: countError } = await supabase
     .from("cola_individual")
-    .select("orden")
-    .order("orden", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
 
-  if (maxError) {
-    throw maxError;
+  if (countError) {
+    throw countError;
   }
 
-  const nextOrden = (maxRow?.orden ?? -1) + 1;
+  let estado: EstadoCola = "pendiente";
+
+  if ((count ?? 0) === 0) {
+    estado = "activa";
+  } else {
+    const { data: activa, error: activaError } = await supabase
+      .from("cola_individual")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("estado", "activa")
+      .maybeSingle();
+
+    if (activaError) {
+      throw activaError;
+    }
+
+    if (!activa) {
+      estado = "activa";
+    }
+  }
+
+  const nextOrden = (await getMaxOrden(supabase, userId)) + 1;
 
   const { error } = await supabase.from("cola_individual").insert({
     user_id: userId,
@@ -66,7 +110,106 @@ export async function agregarAColaIndividual(
     url_letra: item.url_letra ?? null,
     letra_texto: item.letra_texto ?? null,
     orden: nextOrden,
+    estado,
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function avanzarColaIndividual(
+  supabase: SupabaseClient,
+): Promise<void> {
+  const userId = await getUserId(supabase);
+
+  const { data: activa, error: activaError } = await supabase
+    .from("cola_individual")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("estado", "activa")
+    .maybeSingle();
+
+  if (activaError) {
+    throw activaError;
+  }
+
+  if (!activa) {
+    return;
+  }
+
+  const { data: tocadas, error: tocadasError } = await supabase
+    .from("cola_individual")
+    .select("id, orden")
+    .eq("user_id", userId)
+    .eq("estado", "tocada")
+    .order("orden", { ascending: true });
+
+  if (tocadasError) {
+    throw tocadasError;
+  }
+
+  const maxOrden = await getMaxOrden(supabase, userId);
+
+  if (tocadas && tocadas.length >= 2) {
+    const oldest = tocadas[0];
+    const { error: recycleError } = await supabase
+      .from("cola_individual")
+      .update({ estado: "pendiente", orden: maxOrden + 1 })
+      .eq("id", oldest.id);
+
+    if (recycleError) {
+      throw recycleError;
+    }
+  }
+
+  const { error: tocadaError } = await supabase
+    .from("cola_individual")
+    .update({ estado: "tocada" })
+    .eq("id", activa.id);
+
+  if (tocadaError) {
+    throw tocadaError;
+  }
+
+  const { data: primerPendiente, error: pendienteError } = await supabase
+    .from("cola_individual")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("estado", "pendiente")
+    .order("orden", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (pendienteError) {
+    throw pendienteError;
+  }
+
+  if (!primerPendiente) {
+    return;
+  }
+
+  const { error: promoteError } = await supabase
+    .from("cola_individual")
+    .update({ estado: "activa" })
+    .eq("id", primerPendiente.id);
+
+  if (promoteError) {
+    throw promoteError;
+  }
+}
+
+export async function volverAPendienteIndividual(
+  supabase: SupabaseClient,
+  itemId: number,
+): Promise<void> {
+  const userId = await getUserId(supabase);
+  const nextOrden = (await getMaxOrden(supabase, userId)) + 1;
+
+  const { error } = await supabase
+    .from("cola_individual")
+    .update({ estado: "pendiente", orden: nextOrden })
+    .eq("id", itemId);
 
   if (error) {
     throw error;
@@ -92,10 +235,10 @@ export async function persistirOrdenColaIndividual(
   items: ColaIndividualItem[],
 ): Promise<void> {
   await Promise.all(
-    items.map(async (item, index) => {
+    items.map(async (item) => {
       const { error } = await supabase
         .from("cola_individual")
-        .update({ orden: index })
+        .update({ orden: item.orden })
         .eq("id", item.id);
 
       if (error) {

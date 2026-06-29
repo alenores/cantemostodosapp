@@ -4,16 +4,19 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
+import { avanzarColaIndividual, getColaIndividual } from "@/lib/cola-individual";
+import { createClient } from "@/lib/supabase/client";
 import type { ColaIndividualItem } from "@/types";
 import {
   ListMusic,
   Maximize2,
   Music,
   Search,
+  SkipForward,
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const LETRA_TEST_PLACEHOLDER = [
   "Verso 1",
@@ -38,12 +41,15 @@ const LETRA_TEST_PLACEHOLDER = [
 ];
 
 export default function HomePageShell() {
+  const supabase = useMemo(() => createClient(), []);
   const [cancionActiva, setCancionActiva] = useState<string | null>(null);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [colaSheetAbierta, setColaSheetAbierta] = useState(false);
   const [autoScrollActivo, setAutoScrollActivo] = useState(false);
   const [autoScrollVelocidad, setAutoScrollVelocidad] = useState(1);
+  const [pendientesCount, setPendientesCount] = useState(0);
+  const [colaRefreshToken, setColaRefreshToken] = useState(0);
 
   useEffect(() => {
     if (modoLectura) {
@@ -78,6 +84,26 @@ export default function HomePageShell() {
     setCancionActiva(item.nombre);
     setColaSheetAbierta(false);
   }, []);
+
+  const handleSiguienteIndividual = useCallback(async () => {
+    if (pendientesCount === 0) {
+      return;
+    }
+
+    try {
+      await avanzarColaIndividual(supabase);
+      setColaRefreshToken((token) => token + 1);
+      const cola = await getColaIndividual(supabase);
+      const activa = cola.find((item) => item.estado === "activa");
+      if (activa) {
+        setCancionActiva(activa.nombre);
+      }
+    } catch (error) {
+      console.error("[cola-individual] error al avanzar", error);
+    }
+  }, [pendientesCount, supabase]);
+
+  const siguienteDisabled = pendientesCount === 0;
 
   return (
     <div
@@ -170,11 +196,21 @@ export default function HomePageShell() {
         <ColaIndividualSheet
           modo="colapsable"
           onActivarCancion={handleActivarCancion}
+          onPendientesCountChange={setPendientesCount}
+          refreshToken={colaRefreshToken}
         />
       )}
 
       {modoLectura && (
         <>
+          <ColaIndividualSheet
+            modo="colapsable"
+            presentacionOculta
+            onActivarCancion={handleActivarCancion}
+            onPendientesCountChange={setPendientesCount}
+            refreshToken={colaRefreshToken}
+          />
+
           <button
             type="button"
             aria-label={
@@ -209,18 +245,34 @@ export default function HomePageShell() {
             onVelocidadChange={setAutoScrollVelocidad}
           />
 
-          <button
-            type="button"
-            onClick={() => setColaSheetAbierta(true)}
-            className="fixed z-[45] flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary"
+          <div
+            className="fixed z-[45] flex flex-col items-start gap-2"
             style={{
               bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
               left: 16,
             }}
           >
-            <ListMusic className="size-4" aria-hidden="true" />
-            Cola
-          </button>
+            <button
+              type="button"
+              disabled={siguienteDisabled}
+              onClick={() => void handleSiguienteIndividual()}
+              className={`flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary ${
+                siguienteDisabled ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              <span>Siguiente</span>
+              <SkipForward className="size-4" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setColaSheetAbierta(true)}
+              className="flex items-center gap-2 rounded-2xl border border-border bg-bg-dark/90 px-3 py-2 text-xs text-text-primary"
+            >
+              <ListMusic className="size-4" aria-hidden="true" />
+              Cola · {pendientesCount}
+            </button>
+          </div>
 
           {colaSheetAbierta && (
             <div
@@ -244,6 +296,8 @@ export default function HomePageShell() {
               <ColaIndividualSheet
                 modo="sheet"
                 onActivarCancion={handleActivarCancion}
+                onPendientesCountChange={setPendientesCount}
+                refreshToken={colaRefreshToken}
               />
             </div>
           )}

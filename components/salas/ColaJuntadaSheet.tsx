@@ -1,14 +1,12 @@
 "use client";
 
 import ColaJuntadaItem from "@/components/salas/ColaJuntadaItem";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
 import AddButton, { COLA_ADD_BUTTON_SIZE } from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
   applyOrdenUpdates,
-  avanzarCancion,
   deleteColaCompleta,
   finalizarCancionActiva,
   getColaVariant,
@@ -16,10 +14,10 @@ import {
 } from "@/lib/cola-logic";
 import { triggerHaptic } from "@/lib/haptic";
 import {
-  avanzarColaLocal,
   deleteColaLocalCompleta,
   finalizarColaLocalActiva,
   persistColaLocalOrden,
+  replaceColaLocalItems,
 } from "@/lib/offline/cola-local-store";
 import { COLA_FINALIZE_BUTTON_MS } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
@@ -41,8 +39,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ListMusic, SkipForward, Trash2, X } from "lucide-react";
+import { ListMusic, SkipForward, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+const FLOAT_BTN_SECONDARY =
+  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
+const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
 
 type ColaJuntadaSheetProps = {
   items: ColaItem[];
@@ -52,19 +54,17 @@ type ColaJuntadaSheetProps = {
   onItemsReordered: (items: ColaItem[]) => void;
   onOpenBuscador: () => void;
   onSettledOpenChange?: (open: boolean) => void;
+  onRequestOpen?: (open: () => void) => void;
+  onRequestSiguiente?: (siguiente: () => void) => void;
+  presentacionOculta?: boolean;
 };
 
 type SortableColaJuntadaRowProps = {
   item: ColaItem;
   items: ColaItem[];
-  onActivar: (id: number) => void;
 };
 
-function SortableColaJuntadaRow({
-  item,
-  items,
-  onActivar,
-}: SortableColaJuntadaRowProps) {
+function SortableColaJuntadaRow({ item, items }: SortableColaJuntadaRowProps) {
   const variant = getColaVariant(item, items);
   const {
     attributes,
@@ -91,7 +91,6 @@ function SortableColaJuntadaRow({
         variant={variant}
         isDragging={isDragging}
         dragHandleProps={{ ...attributes, ...listeners }}
-        onActivar={onActivar}
       />
     </div>
   );
@@ -105,9 +104,11 @@ export default function ColaJuntadaSheet({
   onItemsReordered,
   onOpenBuscador,
   onSettledOpenChange,
+  onRequestOpen,
+  onRequestSiguiente,
+  presentacionOculta = false,
 }: ColaJuntadaSheetProps) {
   const [abierto, setAbierto] = useState(false);
-  const [advanceItemId, setAdvanceItemId] = useState<number | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
 
@@ -118,23 +119,41 @@ export default function ColaJuntadaSheet({
     [items],
   );
 
-  const pendientesIds = useMemo(
+  const tocadas = useMemo(
     () =>
       sortedItems
-        .filter((item) => item.estado === "pendiente")
-        .map((item) => item.id),
+        .filter((item) => item.estado === "tocada")
+        .sort((a, b) => b.orden - a.orden),
     [sortedItems],
   );
 
-  const pendientesCount = items.filter((item) => item.estado === "pendiente").length;
-  const tieneActiva = items.some((item) => item.estado === "activa");
+  const activaItem = useMemo(
+    () => sortedItems.find((item) => item.estado === "activa") ?? null,
+    [sortedItems],
+  );
+
+  const pendientes = useMemo(
+    () =>
+      sortedItems
+        .filter((item) => item.estado === "pendiente")
+        .sort((a, b) => a.orden - b.orden),
+    [sortedItems],
+  );
+
+  const pendientesIds = useMemo(
+    () => pendientes.map((item) => item.id),
+    [pendientes],
+  );
+
+  const pendientesCount = pendientes.length;
+  const tieneActiva = activaItem !== null;
 
   const activeDragItem = useMemo(
     () =>
       activeDragId === null
         ? null
-        : (sortedItems.find((item) => item.id === activeDragId) ?? null),
-    [activeDragId, sortedItems],
+        : (pendientes.find((item) => item.id === activeDragId) ?? null),
+    [activeDragId, pendientes],
   );
 
   const sensors = useSensors(
@@ -142,7 +161,7 @@ export default function ColaJuntadaSheet({
       activationConstraint: { distance: 8 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 },
+      activationConstraint: { delay: 200, tolerance: 8 },
     }),
   );
 
@@ -150,14 +169,13 @@ export default function ColaJuntadaSheet({
     onSettledOpenChange?.(abierto);
   }, [abierto, onSettledOpenChange]);
 
+  useEffect(() => {
+    onRequestOpen?.(() => setAbierto(true));
+  }, [onRequestOpen]);
+
   useHardwareBack(abierto, () => {
     if (showDeleteAllDialog) {
       setShowDeleteAllDialog(false);
-      return;
-    }
-
-    if (advanceItemId !== null) {
-      setAdvanceItemId(null);
       return;
     }
 
@@ -167,28 +185,6 @@ export default function ColaJuntadaSheet({
   function handleOpenBuscador() {
     setAbierto(false);
     onOpenBuscador();
-  }
-
-  async function handleConfirmAdvance() {
-    if (advanceItemId === null) {
-      return;
-    }
-
-    if (offlineMode) {
-      await avanzarColaLocal(salaId, advanceItemId);
-      setAdvanceItemId(null);
-      setAbierto(false);
-      await onColaChange();
-      listScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-
-    const supabase = createClient();
-    await avanzarCancion(supabase, salaId, advanceItemId);
-    setAdvanceItemId(null);
-    setAbierto(false);
-    await onColaChange();
-    listScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleConfirmDeleteAll() {
@@ -206,6 +202,10 @@ export default function ColaJuntadaSheet({
   }
 
   async function handleSiguiente() {
+    if (pendientesCount === 0) {
+      return;
+    }
+
     triggerHaptic();
     await new Promise((resolve) =>
       setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
@@ -219,6 +219,48 @@ export default function ColaJuntadaSheet({
 
     const supabase = createClient();
     await finalizarCancionActiva(supabase, salaId);
+    await onColaChange();
+  }
+
+  const handleSiguienteRef = useRef(handleSiguiente);
+  handleSiguienteRef.current = handleSiguiente;
+
+  useEffect(() => {
+    onRequestSiguiente?.(() => void handleSiguienteRef.current());
+  }, [onRequestSiguiente]);
+
+  async function handleVolverAPendiente(itemId: number) {
+    const item = items.find((colaItem) => colaItem.id === itemId);
+
+    if (!item || item.estado !== "tocada") {
+      return;
+    }
+
+    const maxOrden = Math.max(0, ...items.map((colaItem) => colaItem.orden));
+    const nextOrden = maxOrden + 1;
+
+    if (offlineMode) {
+      const nextItems = items.map((colaItem) =>
+        colaItem.id === itemId
+          ? { ...colaItem, estado: "pendiente" as const, orden: nextOrden }
+          : colaItem,
+      );
+      onItemsReordered(nextItems);
+      await replaceColaLocalItems(salaId, nextItems);
+      await onColaChange();
+      return;
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("cola_juntada")
+      .update({ estado: "pendiente", orden: nextOrden })
+      .eq("id", itemId);
+
+    if (error) {
+      throw error;
+    }
+
     await onColaChange();
   }
 
@@ -239,9 +281,6 @@ export default function ColaJuntadaSheet({
     const overId = Number(over.id);
 
     if (offlineMode) {
-      const pendientes = items
-        .filter((item) => item.estado === "pendiente")
-        .sort((a, b) => a.orden - b.orden);
       const activeIndex = pendientes.findIndex((item) => item.id === activeId);
       const overIndex = pendientes.findIndex((item) => item.id === overId);
 
@@ -292,32 +331,45 @@ export default function ColaJuntadaSheet({
   const floatingBottom =
     "calc(56px + 16px + env(safe-area-inset-bottom, 0px))";
 
+  const listaVacia = sortedItems.length === 0;
+
   return (
     <>
-      <div
-        className="fixed right-4 z-30 flex flex-col items-end gap-2"
-        style={{ bottom: floatingBottom }}
-      >
-        {tieneActiva ? (
-          <TapButton
-            type="button"
-            onClick={() => void handleSiguiente()}
-            className="flex items-center gap-2 rounded-full border border-border bg-bg-dark px-4 py-2 text-sm text-text-secondary"
-          >
-            <span>Siguiente</span>
-            <SkipForward className="size-4" aria-hidden="true" />
-          </TapButton>
-        ) : null}
-
-        <TapButton
-          type="button"
-          onClick={() => setAbierto(true)}
-          className="flex items-center gap-2 rounded-full border border-accent bg-accent/20 px-4 py-2 text-sm font-medium text-accent"
+      {!presentacionOculta ? (
+        <div
+          className="pointer-events-none fixed inset-x-0 z-30"
+          style={{
+            bottom: floatingBottom,
+            height: 0,
+            overflow: "visible",
+          }}
         >
-          <ListMusic className="size-4" aria-hidden="true" />
-          <span>Cola · {pendientesCount}</span>
-        </TapButton>
-      </div>
+          <div className="pointer-events-auto absolute bottom-0 right-4 flex flex-col items-end gap-2">
+            {tieneActiva ? (
+              <TapButton
+                type="button"
+                disabled={pendientesCount === 0}
+                onClick={() => void handleSiguiente()}
+                className={`flex items-center gap-2 px-4 py-2 text-sm ${FLOAT_BTN_SECONDARY} ${
+                  pendientesCount === 0 ? FLOAT_BTN_DISABLED : ""
+                }`}
+              >
+                <span>Siguiente</span>
+                <SkipForward className="size-4" aria-hidden="true" />
+              </TapButton>
+            ) : null}
+
+            <TapButton
+              type="button"
+              onClick={() => setAbierto(true)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
+            >
+              <ListMusic className="size-4" aria-hidden="true" />
+              <span>Cola · {pendientesCount}</span>
+            </TapButton>
+          </div>
+        </div>
+      ) : null}
 
       {abierto ? (
         <>
@@ -336,15 +388,6 @@ export default function ColaJuntadaSheet({
             aria-label="Fila de canciones"
           >
             <header className="relative shrink-0 border-b border-border bg-bg-cola-sheet px-4 pb-3 pt-1.5">
-              <TapButton
-                type="button"
-                aria-label="Cerrar cola"
-                onClick={() => setAbierto(false)}
-                className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full text-text-muted"
-              >
-                <X className="size-5" aria-hidden="true" />
-              </TapButton>
-
               <div className="flex shrink-0 justify-center pb-2 pt-1">
                 <div
                   className="h-1 w-10 rounded-full bg-cola-sheet-pill"
@@ -352,7 +395,7 @@ export default function ColaJuntadaSheet({
                 />
               </div>
 
-              <div className="flex items-center gap-2 pr-10">
+              <div className="flex items-center gap-2">
                 <TapButton
                   type="button"
                   aria-label="Borrar toda la lista"
@@ -362,9 +405,24 @@ export default function ColaJuntadaSheet({
                   <Trash2 className="size-4" aria-hidden="true" />
                 </TapButton>
 
-                <h2 className="min-w-0 flex-1 text-center text-lg font-bold text-text-primary">
-                  Fila de canciones
-                </h2>
+                <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+                  <h2 className="text-lg font-bold text-text-primary">
+                    Fila de canciones
+                  </h2>
+                  <TapButton
+                    type="button"
+                    aria-label="Siguiente canción"
+                    disabled={pendientesCount === 0}
+                    onClick={() => void handleSiguiente()}
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary ${
+                      pendientesCount === 0
+                        ? "pointer-events-none opacity-40"
+                        : ""
+                    }`}
+                  >
+                    <SkipForward className="size-4" aria-hidden="true" />
+                  </TapButton>
+                </div>
 
                 <AddButton
                   ariaLabel="Agregar canción"
@@ -384,42 +442,63 @@ export default function ColaJuntadaSheet({
               >
                 <div
                   ref={listScrollRef}
-                  className="min-h-0 flex-1 touch-pan-y space-y-2 overflow-y-auto overscroll-none px-3 py-3"
+                  className="min-h-0 flex-1 touch-pan-y select-none overflow-y-auto overscroll-none px-3 py-3"
                   style={{
                     paddingBottom:
                       "max(0.75rem, env(safe-area-inset-bottom, 0px))",
                   }}
                 >
-                  {sortedItems.length === 0 ? (
+                  {listaVacia ? (
                     <p className="py-8 text-center text-sm text-text-muted">
                       La fila está vacía · Agregá una canción con el +
                     </p>
                   ) : (
-                    <SortableContext
-                      items={pendientesIds}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {sortedItems.map((item) => {
-                        if (item.estado === "pendiente") {
-                          return (
-                            <SortableColaJuntadaRow
+                    <>
+                      {tocadas.length > 0 ? (
+                        <div className="mb-2 space-y-0.5">
+                          {tocadas.map((item) => (
+                            <ColaJuntadaItem
                               key={item.id}
                               item={item}
-                              items={items}
-                              onActivar={setAdvanceItemId}
+                              variant="tocada"
+                              onVolverAPendiente={(id) =>
+                                void handleVolverAPendiente(id)
+                              }
                             />
-                          );
-                        }
-
-                        return (
-                          <ColaJuntadaItem
-                            key={item.id}
-                            item={item}
-                            variant={getColaVariant(item, items)}
+                          ))}
+                          <div
+                            className="mx-1 my-2 border-b border-border/40"
+                            aria-hidden="true"
                           />
-                        );
-                      })}
-                    </SortableContext>
+                        </div>
+                      ) : null}
+
+                      {activaItem ? (
+                        <div className="mx-2.5 mb-2">
+                          <ColaJuntadaItem
+                            item={activaItem}
+                            variant="activa"
+                          />
+                        </div>
+                      ) : null}
+
+                      {pendientes.length > 0 ? (
+                        <SortableContext
+                          items={pendientesIds}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {pendientes.map((item) => (
+                              <SortableColaJuntadaRow
+                                key={item.id}
+                                item={item}
+                                items={items}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      ) : null}
+                    </>
                   )}
                 </div>
 
@@ -439,13 +518,6 @@ export default function ColaJuntadaSheet({
           </div>
         </>
       ) : null}
-
-      <ConfirmDialog
-        open={advanceItemId !== null}
-        message="¿Cambiar la canción? Todos en la sala van a ver la nueva letra."
-        onCancel={() => setAdvanceItemId(null)}
-        onConfirm={() => void handleConfirmAdvance()}
-      />
 
       <DoubleConfirmDialog
         open={showDeleteAllDialog}

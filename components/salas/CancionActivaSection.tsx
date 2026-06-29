@@ -16,14 +16,17 @@ import {
   LETRA_SECTION_TEXT_BOTTOM_PADDING,
   LETRA_TEXT_SCROLL_END_PADDING,
 } from "@/lib/sala-layout";
-import { Loader2 } from "lucide-react";
+import { Loader2, Maximize2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TapButton } from "@/components/ui/TapFeedback";
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
   artista?: string | null;
   urlLetra?: string | null;
   letraTexto?: string | null;
+  modoLectura?: boolean;
+  onExpand?: () => void;
 };
 
 export default function CancionActivaSection({
@@ -31,6 +34,8 @@ export default function CancionActivaSection({
   artista = null,
   urlLetra = null,
   letraTexto = null,
+  modoLectura = false,
+  onExpand,
 }: CancionActivaSectionProps) {
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const [extractedText, setExtractedText] = useState<string | null>(null);
@@ -141,43 +146,71 @@ export default function CancionActivaSection({
       ? LETRA_EMBED_INITIAL_OFFSET_PX
       : undefined;
 
+  const expandButton =
+    !modoLectura && onExpand ? (
+      <TapButton
+        type="button"
+        aria-label="Expandir letra a pantalla completa"
+        onClick={onExpand}
+        className="absolute z-20 flex items-center justify-center rounded-xl border border-accent/50 bg-bg-dark p-2 shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+        style={{ top: 12, right: 12 }}
+      >
+        <Maximize2 className="size-5 text-accent" aria-hidden="true" />
+      </TapButton>
+    ) : null;
+
   if (showTexto && contenido?.mode === "texto") {
     return (
       <section
-        className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app px-2 pt-0"
-        style={{ paddingBottom: LETRA_SECTION_TEXT_BOTTOM_PADDING }}
+        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app ${
+          modoLectura ? "px-0 pt-0" : "px-2 pt-0"
+        }`}
+        style={{
+          paddingBottom: modoLectura
+            ? "env(safe-area-inset-bottom, 0px)"
+            : LETRA_SECTION_TEXT_BOTTOM_PADDING,
+        }}
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-1.5">
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold leading-tight text-text-primary">
-                {cancionNombre}
-              </h2>
-              {artista && (
-                <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
-                  {artista}
-                </p>
-              )}
+        {!modoLectura ? (
+          <header className="shrink-0 border-b border-border bg-bg-dark px-2 py-1.5">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl font-bold leading-tight text-text-primary">
+                  {cancionNombre}
+                </h2>
+                {artista && (
+                  <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
+                    {artista}
+                  </p>
+                )}
+              </div>
+              <LetraAutoScrollBar
+                enabled
+                autoScrollLevel={autoScrollLevel}
+                onAccelerate={accelerate}
+                onDecelerate={decelerate}
+              />
             </div>
-            <LetraAutoScrollBar
-              enabled
-              autoScrollLevel={autoScrollLevel}
-              onAccelerate={accelerate}
-              onDecelerate={decelerate}
-            />
-          </div>
-        </header>
+          </header>
+        ) : null}
 
         <div
           ref={letraScrollRef}
           data-cancionero-letra-scroll=""
-          className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
+          className={`relative min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain bg-letra-bg ${
+            modoLectura ? "" : "rounded-[12px]"
+          }`}
         >
+          {expandButton}
           <LetraTexto
             texto={contenido.texto}
             edgeToEdge
             fillViewport
-            scrollEndPadding={LETRA_TEXT_SCROLL_END_PADDING}
+            scrollEndPadding={
+              modoLectura
+                ? "calc(16px + env(safe-area-inset-bottom, 0px))"
+                : LETRA_TEXT_SCROLL_END_PADDING
+            }
           />
         </div>
       </section>
@@ -186,30 +219,46 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app px-2 pt-3 ${
-        showEmbed
-          ? "overflow-hidden pb-0"
-          : "overflow-y-auto overscroll-y-contain pb-3"
+      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-app ${
+        modoLectura
+          ? "overflow-hidden px-0 pb-0 pt-0"
+          : `px-2 pt-3 ${
+              showEmbed
+                ? "overflow-hidden pb-0"
+                : "overflow-y-auto overscroll-y-contain pb-3"
+            }`
       }`}
-      style={{
-        paddingBottom: showEmbed
-          ? LETRA_EMBED_BOTTOM_PADDING
-          : LETRA_SECTION_BOTTOM_PADDING,
-      }}
+      style={
+        modoLectura
+          ? undefined
+          : {
+              paddingBottom: showEmbed
+                ? LETRA_EMBED_BOTTOM_PADDING
+                : LETRA_SECTION_BOTTOM_PADDING,
+            }
+      }
     >
       {hasCancion ? (
         <>
-          <h2 className="shrink-0 text-xl font-bold text-text-primary">
-            {cancionNombre}
-          </h2>
-          {artista && (
-            <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
-              {artista}
-            </p>
-          )}
+          {!modoLectura ? (
+            <>
+              <h2 className="shrink-0 text-xl font-bold text-text-primary">
+                {cancionNombre}
+              </h2>
+              {artista && (
+                <p className="mt-0.5 shrink-0 text-[13px] text-text-muted">
+                  {artista}
+                </p>
+              )}
+            </>
+          ) : null}
 
           {waitingForExtract && (
-            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+            <div
+              className={`flex items-center gap-2 text-sm text-text-muted ${
+                modoLectura ? "flex-1 justify-center px-4" : "mt-4"
+              }`}
+            >
               <Loader2
                 className="size-4 animate-spin text-accent"
                 aria-hidden="true"
@@ -219,17 +268,27 @@ export default function CancionActivaSection({
           )}
 
           {!contenido && !waitingForExtract && (
-            <p className="mt-6 text-center text-sm text-text-muted">
+            <p
+              className={`text-center text-sm text-text-muted ${
+                modoLectura ? "flex flex-1 items-center justify-center px-4" : "mt-6"
+              }`}
+            >
               Esta canción no tiene letra disponible.
             </p>
           )}
 
           {showEmbed && contenido.mode === "embed" && (
-            <div className="mt-2 min-h-0 w-full flex-1">
+            <div
+              className={
+                modoLectura
+                  ? "relative min-h-0 w-full flex-1"
+                  : "relative mt-2 min-h-0 w-full flex-1"
+              }
+            >
+              {expandButton}
               <LetraViewer
                 url={contenido.url}
                 title="Letra de la canción activa"
-                flushBottom
                 fill
                 initialScrollOffsetPx={cifraclubEmbedOffsetPx}
                 onRevealTop={

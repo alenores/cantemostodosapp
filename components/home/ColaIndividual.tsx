@@ -1,14 +1,19 @@
 "use client";
 
+import ColaJuntadaItem, {
+  type ColaJuntadaItemVariant,
+} from "@/components/salas/ColaJuntadaItem";
 import type { ColaIndividualItem } from "@/types";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -17,26 +22,47 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 type ColaIndividualProps = {
   items: ColaIndividualItem[];
   onReorder: (items: ColaIndividualItem[]) => void;
-  onEliminar: (id: number) => void;
-  onActivar: (item: ColaIndividualItem) => void;
+  onVolverAPendiente: (id: number) => void;
 };
 
-type SortableColaItemProps = {
+function getIndividualVariant(
+  item: ColaIndividualItem,
+  items: ColaIndividualItem[],
+): ColaJuntadaItemVariant {
+  if (item.estado === "tocada") {
+    return "tocada";
+  }
+
+  if (item.estado === "activa") {
+    return "activa";
+  }
+
+  const firstPendiente = items
+    .filter((colaItem) => colaItem.estado === "pendiente")
+    .sort((a, b) => a.orden - b.orden)[0];
+
+  if (firstPendiente?.id === item.id) {
+    return "proxima";
+  }
+
+  return "pendiente";
+}
+
+type SortableColaIndividualRowProps = {
   item: ColaIndividualItem;
-  onEliminar: (id: number) => void;
-  onActivar: (item: ColaIndividualItem) => void;
+  items: ColaIndividualItem[];
 };
 
-function SortableColaItem({
+function SortableColaIndividualRow({
   item,
-  onEliminar,
-  onActivar,
-}: SortableColaItemProps) {
+  items,
+}: SortableColaIndividualRowProps) {
+  const variant = getIndividualVariant(item, items);
   const {
     attributes,
     listeners,
@@ -55,41 +81,14 @@ function SortableColaItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 rounded-xl border border-border bg-bg-card px-3 py-2.5 ${
-        isDragging ? "bg-bg-card-hover opacity-50" : ""
-      }`}
+      className={isDragging ? "relative z-10" : undefined}
     >
-      <button
-        type="button"
-        aria-label={`Reordenar ${item.nombre}`}
-        className="flex shrink-0 touch-none items-center justify-center text-text-muted/50"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" aria-hidden="true" />
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onActivar(item)}
-        className="min-w-0 flex-1 text-left"
-      >
-        <p className="truncate text-sm font-medium text-text-primary">
-          {item.nombre}
-        </p>
-        {item.artista ? (
-          <p className="truncate text-xs text-text-muted">{item.artista}</p>
-        ) : null}
-      </button>
-
-      <button
-        type="button"
-        aria-label={`Eliminar ${item.nombre}`}
-        onClick={() => onEliminar(item.id)}
-        className="flex shrink-0 items-center justify-center text-text-muted/50"
-      >
-        <X className="size-4" aria-hidden="true" />
-      </button>
+      <ColaJuntadaItem
+        item={item}
+        variant={variant}
+        isDragging={isDragging}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
     </div>
   );
 }
@@ -97,54 +96,170 @@ function SortableColaItem({
 export default function ColaIndividual({
   items,
   onReorder,
-  onEliminar,
-  onActivar,
+  onVolverAPendiente,
 }: ColaIndividualProps) {
+  const [activeDragId, setActiveDragId] = useState<number | null>(null);
+
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => a.orden - b.orden),
+    [items],
+  );
+
+  const tocadas = useMemo(
+    () =>
+      sortedItems
+        .filter((item) => item.estado === "tocada")
+        .sort((a, b) => b.orden - a.orden),
+    [sortedItems],
+  );
+
+  const activaItem = useMemo(
+    () => sortedItems.find((item) => item.estado === "activa") ?? null,
+    [sortedItems],
+  );
+
+  const pendientes = useMemo(
+    () =>
+      sortedItems
+        .filter((item) => item.estado === "pendiente")
+        .sort((a, b) => a.orden - b.orden),
+    [sortedItems],
+  );
+
+  const pendientesIds = useMemo(
+    () => pendientes.map((item) => item.id),
+    [pendientes],
+  );
+
+  const activeDragItem = useMemo(
+    () =>
+      activeDragId === null
+        ? null
+        : (pendientes.find((item) => item.id === activeDragId) ?? null),
+    [activeDragId, pendientes],
+  );
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 },
+      activationConstraint: { delay: 200, tolerance: 8 },
     }),
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(Number(event.active.id));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
+
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    const oldIndex = items.findIndex((item) => item.id === active.id);
-    const newIndex = items.findIndex((item) => item.id === over.id);
+    const activeIndex = pendientes.findIndex((item) => item.id === active.id);
+    const overIndex = pendientes.findIndex((item) => item.id === over.id);
 
-    if (oldIndex === -1 || newIndex === -1) {
+    if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
       return;
     }
 
-    onReorder(arrayMove(items, oldIndex, newIndex));
+    const reorderedPendientes = arrayMove(pendientes, activeIndex, overIndex);
+    const anchorOrden = Math.max(
+      0,
+      ...items
+        .filter((item) => item.estado !== "pendiente")
+        .map((item) => item.orden),
+    );
+
+    const updatedPendientes = reorderedPendientes.map((item, index) => ({
+      ...item,
+      orden: anchorOrden + index + 1,
+    }));
+
+    const nextItems = items.map((item) => {
+      const updated = updatedPendientes.find(
+        (pendiente) => pendiente.id === item.id,
+      );
+      return updated ?? item;
+    });
+
+    onReorder(nextItems);
   };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+  };
+
+  if (sortedItems.length === 0) {
+    return null;
+  }
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
-      <SortableContext
-        items={items.map((item) => item.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="space-y-2 px-3 pb-3">
-          {items.map((item) => (
-            <SortableColaItem
-              key={item.id}
-              item={item}
-              onEliminar={onEliminar}
-              onActivar={onActivar}
+      <div className="select-none px-3 pb-3">
+        {tocadas.length > 0 ? (
+          <div className="mb-2 space-y-0.5">
+            {tocadas.map((item) => (
+              <ColaJuntadaItem
+                key={item.id}
+                item={item}
+                variant="tocada"
+                onVolverAPendiente={onVolverAPendiente}
+              />
+            ))}
+            <div
+              className="mx-1 my-2 border-b border-border/40"
+              aria-hidden="true"
             />
-          ))}
-        </div>
-      </SortableContext>
+          </div>
+        ) : null}
+
+        {activaItem ? (
+          <div className="mx-2.5 mb-2">
+            <ColaJuntadaItem item={activaItem} variant="activa" />
+          </div>
+        ) : null}
+
+        {pendientes.length > 0 ? (
+          <SortableContext
+            items={pendientesIds}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {pendientes.map((item) => (
+                <SortableColaIndividualRow
+                  key={item.id}
+                  item={item}
+                  items={items}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        ) : null}
+      </div>
+
+      <DragOverlay>
+        {activeDragItem ? (
+          <div className="opacity-80 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+            <ColaJuntadaItem
+              item={activeDragItem}
+              variant={getIndividualVariant(activeDragItem, items)}
+              isDragging
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

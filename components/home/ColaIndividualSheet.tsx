@@ -2,9 +2,9 @@
 
 import ColaIndividual from "@/components/home/ColaIndividual";
 import {
-  eliminarDeColaIndividual,
   getColaIndividual,
   persistirOrdenColaIndividual,
+  volverAPendienteIndividual,
 } from "@/lib/cola-individual";
 import { createClient } from "@/lib/supabase/client";
 import { formatDatabaseError } from "@/lib/supabase/errors";
@@ -16,6 +16,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type ColaIndividualSheetProps = {
   modo: "colapsable" | "sheet";
   onActivarCancion: (item: ColaIndividualItem) => void;
+  onPendientesCountChange?: (count: number) => void;
+  refreshToken?: number;
+  presentacionOculta?: boolean;
 };
 
 function ColaVaciaMessage() {
@@ -29,6 +32,9 @@ function ColaVaciaMessage() {
 export default function ColaIndividualSheet({
   modo,
   onActivarCancion,
+  onPendientesCountChange,
+  refreshToken = 0,
+  presentacionOculta = false,
 }: ColaIndividualSheetProps) {
   const supabase = useMemo(() => createClient(), []);
   const [items, setItems] = useState<ColaIndividualItem[]>([]);
@@ -36,6 +42,15 @@ export default function ColaIndividualSheet({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [usuario, setUsuario] = useState<UsuarioActivo | null>(null);
   const [expandido, setExpandido] = useState(false);
+
+  const pendientesCount = useMemo(
+    () => items.filter((item) => item.estado === "pendiente").length,
+    [items],
+  );
+
+  useEffect(() => {
+    onPendientesCountChange?.(pendientesCount);
+  }, [onPendientesCountChange, pendientesCount]);
 
   const loadCola = useCallback(async () => {
     setLoading(true);
@@ -100,6 +115,24 @@ export default function ColaIndividualSheet({
     };
   }, [loadCola, supabase]);
 
+  useEffect(() => {
+    if (refreshToken > 0) {
+      void loadCola();
+    }
+  }, [loadCola, refreshToken]);
+
+  const handleVolverAPendiente = useCallback(
+    async (id: number) => {
+      try {
+        await volverAPendienteIndividual(supabase, id);
+        await loadCola();
+      } catch (error) {
+        console.error("[cola-individual] error al volver a pendiente", error);
+      }
+    },
+    [loadCola, supabase],
+  );
+
   const handleReorder = useCallback(
     (newItems: ColaIndividualItem[]) => {
       setItems(newItems);
@@ -110,24 +143,11 @@ export default function ColaIndividualSheet({
     [supabase],
   );
 
-  const handleEliminar = useCallback(
-    (id: number) => {
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      void eliminarDeColaIndividual(supabase, id).catch((error) => {
-        console.error("[cola-individual] error al eliminar", error);
-      });
-    },
-    [supabase],
-  );
-
-  const handleActivar = useCallback(
-    (item: ColaIndividualItem) => {
-      onActivarCancion(item);
-    },
-    [onActivarCancion],
-  );
-
   if (loading || usuario === null) {
+    return null;
+  }
+
+  if (presentacionOculta) {
     return null;
   }
 
@@ -140,8 +160,7 @@ export default function ColaIndividualSheet({
       <ColaIndividual
         items={items}
         onReorder={handleReorder}
-        onEliminar={handleEliminar}
-        onActivar={handleActivar}
+        onVolverAPendiente={(id) => void handleVolverAPendiente(id)}
       />
     );
 
@@ -158,7 +177,7 @@ export default function ColaIndividualSheet({
       >
         <ListMusic className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
         <span className="text-sm text-text-secondary">Cola individual</span>
-        <span className="text-xs text-text-muted">{items.length}</span>
+        <span className="text-xs text-text-muted">{pendientesCount}</span>
         <span className="ml-auto text-text-muted">
           {expandido ? (
             <ChevronDown className="size-4" aria-hidden="true" />

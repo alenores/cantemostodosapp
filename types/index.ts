@@ -68,6 +68,12 @@ export type UsuarioActivo = {
   avatar_url: string | null;
 };
 
+export type PresenceUsuario = {
+  user_id: string;
+  nombre: string;
+  avatar_url: string | null;
+};
+
 export type ColaIndividualItem = {
   id: number;
   user_id: string;

@@ -20,7 +20,7 @@ import { getColaLocalItems } from "@/lib/offline/cola-local-store";
 import { flushColaLocalToSupabase } from "@/lib/offline/cola-local-sync";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
-import type { ColaItem, SesionSala } from "@/types";
+import type { ColaItem, PresenceUsuario, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -221,7 +221,9 @@ export default function SalaPageShell({
     null,
   );
   const [colaItems, setColaItems] = useState<ColaItem[]>([]);
-  const [conectados, setConectados] = useState(0);
+  const [presenceUsuarios, setPresenceUsuarios] = useState<PresenceUsuario[]>(
+    [],
+  );
 
   const pendientesCount = useMemo(
     () => colaItems.filter((item) => item.estado === "pendiente").length,
@@ -255,12 +257,15 @@ export default function SalaPageShell({
   }, [salaNombre]);
 
   useEffect(() => {
-    document.body.setAttribute("data-sala-conectados", String(conectados));
+    document.body.setAttribute(
+      "data-sala-conectados",
+      String(presenceUsuarios.length),
+    );
 
     return () => {
       document.body.removeAttribute("data-sala-conectados");
     };
-  }, [conectados]);
+  }, [presenceUsuarios]);
 
   const handleColaItemsReordered = useCallback((items: ColaItem[]) => {
     setColaItems(items);
@@ -336,7 +341,7 @@ export default function SalaPageShell({
 
   useEffect(() => {
     if (!online) {
-      setConectados(0);
+      setPresenceUsuarios([]);
       void loadColaCompleta();
       return;
     }
@@ -409,8 +414,10 @@ export default function SalaPageShell({
           }
 
           const state = presenceChannel.presenceState();
-          const count = Object.keys(state).length;
-          setConectados(count);
+          const usuarios = Object.values(state)
+            .flat()
+            .map((p: unknown) => p as PresenceUsuario);
+          setPresenceUsuarios(usuarios);
         })
         .subscribe(async (status) => {
           if (status !== "SUBSCRIBED" || !presenceChannel) {
@@ -538,6 +545,7 @@ export default function SalaPageShell({
           items={colaItems}
           salaId={salaId}
           offlineMode={!online}
+          presenceUsuarios={presenceUsuarios}
           onColaChange={loadColaCompleta}
           onItemsReordered={handleColaItemsReordered}
           onOpenBuscador={handleOpenBuscador}

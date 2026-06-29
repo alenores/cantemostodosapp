@@ -21,7 +21,7 @@ import {
 } from "@/lib/offline/cola-local-store";
 import { COLA_FINALIZE_BUTTON_MS } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
-import type { ColaItem } from "@/types";
+import type { ColaItem, PresenceUsuario } from "@/types";
 import {
   DndContext,
   DragOverlay,
@@ -46,10 +46,25 @@ const FLOAT_BTN_SECONDARY =
   "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
 const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
 
+const PRESENCE_AVATAR_COLORS = [
+  "#4A90D9",
+  "#7B68EE",
+  "#50C878",
+  "#FF6B6B",
+  "#FFB347",
+  "#20B2AA",
+] as const;
+
+function colorPorUsuario(userId: string) {
+  const index = userId.charCodeAt(0) % PRESENCE_AVATAR_COLORS.length;
+  return PRESENCE_AVATAR_COLORS[index];
+}
+
 type ColaJuntadaSheetProps = {
   items: ColaItem[];
   salaId: number;
   offlineMode?: boolean;
+  presenceUsuarios?: PresenceUsuario[];
   onColaChange: () => Promise<void>;
   onItemsReordered: (items: ColaItem[]) => void;
   onOpenBuscador: () => void;
@@ -100,6 +115,7 @@ export default function ColaJuntadaSheet({
   items,
   salaId,
   offlineMode = false,
+  presenceUsuarios = [],
   onColaChange,
   onItemsReordered,
   onOpenBuscador,
@@ -430,6 +446,56 @@ export default function ColaJuntadaSheet({
                   onClick={handleOpenBuscador}
                 />
               </div>
+
+              {presenceUsuarios.length > 0 ? (
+                <div className="flex items-center gap-2 pb-2">
+                  <div className="flex items-center">
+                    {presenceUsuarios.slice(0, 4).map((usuario, index) => (
+                      <div
+                        key={`${usuario.user_id}-${index}`}
+                        className={index > 0 ? "-ml-2" : undefined}
+                      >
+                        {usuario.avatar_url ? (
+                          <img
+                            src={usuario.avatar_url}
+                            alt={usuario.nombre}
+                            className="size-7 rounded-full border-2 border-bg-dark object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="flex size-7 items-center justify-center rounded-full border-2 border-bg-dark text-xs font-bold text-white"
+                            style={{
+                              background: colorPorUsuario(usuario.user_id),
+                            }}
+                          >
+                            {usuario.nombre.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {presenceUsuarios.length > 4 ? (
+                      <div className="-ml-2 flex size-7 items-center justify-center rounded-full border-2 border-bg-dark bg-bg-card text-[10px] text-text-muted">
+                        +{presenceUsuarios.length - 4}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex-1" aria-hidden="true" />
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-text-muted">
+                      {presenceUsuarios.length} en la sala
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-green-400">
+                      <span
+                        className="size-1.5 shrink-0 rounded-full bg-green-400"
+                        aria-hidden="true"
+                      />
+                      en vivo
+                    </span>
+                  </div>
+                </div>
+              ) : null}
             </header>
 
             <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">

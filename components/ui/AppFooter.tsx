@@ -1,6 +1,7 @@
 "use client";
 
-import { Home, Users, Wrench } from "lucide-react";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { Home, Users, WifiOff, Wrench } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TapLink } from "@/components/ui/TapFeedback";
@@ -51,6 +52,7 @@ function readSalaFooterState() {
 
 export default function AppFooter() {
   const pathname = usePathname();
+  const online = useOnlineStatus();
   const [modoLecturaHidden, setModoLecturaHidden] = useState(false);
   const [salaNombre, setSalaNombre] = useState<string | null>(null);
   const [conectados, setConectados] = useState(0);
@@ -93,21 +95,34 @@ export default function AppFooter() {
       <nav className="flex h-[56px] w-full flex-row items-center">
         {TABS.map(({ href, label, icon: Icon, isActive }) => {
           const active = isActive(pathname);
-          const colorClass = active ? "text-accent" : "text-text-muted";
           const isSalasTab = href === "/salas";
-          const inSala = isSalasTab && salaNombre !== null;
+          const salasUnavailable = isSalasTab && !online;
+          const inSala = isSalasTab && salaNombre !== null && online;
           const displayLabel = inSala && salaNombre ? salaNombre : label;
-          const showBadge = isSalasTab && conectados > 0;
+          const showBadge = isSalasTab && conectados > 0 && online;
+          const tabColorClass = salasUnavailable
+            ? "text-text-faint"
+            : active
+              ? "text-accent"
+              : "text-text-muted";
 
           return (
             <TapLink
               key={href}
               href={href}
-              ariaLabel={displayLabel}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 ${colorClass}`}
+              ariaLabel={
+                salasUnavailable ? "Salas no disponible sin conexión" : displayLabel
+              }
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 ${tabColorClass}`}
             >
               <span className="relative">
-                <Icon className="size-5" aria-hidden="true" />
+                <Icon className={`size-5 ${salasUnavailable ? "opacity-50" : ""}`} aria-hidden="true" />
+                {salasUnavailable ? (
+                  <WifiOff
+                    className="absolute -right-1.5 -top-1 size-3 text-text-faint"
+                    aria-hidden="true"
+                  />
+                ) : null}
                 {showBadge ? (
                   <span
                     className="absolute rounded-[10px] border-[1.5px] border-bg-dark px-[5px] py-px text-[8px] font-bold text-white"

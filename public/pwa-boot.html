@@ -119,11 +119,11 @@
           }
 
           if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            window.location.replace("/salas");
+            window.location.replace("/");
             return;
           }
 
-          var rendered = await renderCached("/salas");
+          var rendered = await renderCached("/");
           if (rendered) {
             return;
           }

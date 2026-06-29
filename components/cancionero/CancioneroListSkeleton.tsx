@@ -119,7 +119,7 @@ function CancioneroSkeletonHeader() {
       {[0, 1, 2, 3, 4].map((index) => (
         <span
           key={index}
-          className="cancionero-skeleton-eq-bar w-1 rounded-full bg-text-faint/45"
+          className="cancionero-skeleton-eq-bar w-1 rounded-full"
           style={{ animationDelay: `${index * 0.14}s` }}
         />
       ))}

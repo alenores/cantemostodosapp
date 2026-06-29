@@ -101,6 +101,13 @@ export function getLetraModoLecturaHorizontalPaddingRight(): string {
   return `max(${LETRA_MODO_LECTURA_HORIZONTAL_PADDING_PX}px, env(safe-area-inset-right, 0px))`;
 }
 
+/** Aire entre el borde superior y el contenedor de letra en Home (lupa centrada). */
+export const HOME_SEARCH_CHROME_HEIGHT_PX = 52;
+
+export function getHomeSearchChromeHeightCss(): string {
+  return `calc(${HOME_SEARCH_CHROME_HEIGHT_PX}px + env(safe-area-inset-top, 0px))`;
+}
+
 /** Cromo superior en modo lectura (chip de canción + botón de controles). */
 export const LECTURA_TOP_CHROME_INSET_PX = 6;
 export const LECTURA_TOP_CHROME_HEIGHT_PX = 36;
@@ -143,10 +150,14 @@ export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - COLA_BAR_
 
 /** Recorte superior del iframe embebido por sitio (calibrar en móvil). */
 export const CIFRACLUB_EMBED_TOP_CLIP_PX = 450;
-export const ACORDESDCANCIONES_EMBED_TOP_CLIP_PX = 200;
+export const ACORDESDCANCIONES_EMBED_TOP_CLIP_PX = 750;
 
-/** Recorte inferior del iframe (propagandas y barra flotante de Cifra Club). Calibrar en móvil. */
-export const LETRA_EMBED_BOTTOM_CLIP_PX = 160;
+/** Recorte inferior del iframe (propagandas y controles flotantes). Calibrar en móvil. */
+export const CIFRACLUB_EMBED_BOTTOM_CLIP_PX = 160;
+export const ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX = 160;
+
+/** @deprecated Usar CIFRACLUB_EMBED_BOTTOM_CLIP_PX */
+export const LETRA_EMBED_BOTTOM_CLIP_PX = CIFRACLUB_EMBED_BOTTOM_CLIP_PX;
 
 export function getColaOpenHeight(
   viewportHeight: number,

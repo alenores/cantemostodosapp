@@ -89,7 +89,7 @@ export default function LoginPageClient() {
 
   function handleContinueOffline() {
     startNavigation();
-    router.push("/salas");
+    router.push("/");
   }
 
   if (checkingSession) {
@@ -114,8 +114,8 @@ export default function LoginPageClient() {
             className="mb-4 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-center text-sm text-text-muted"
             role="status"
           >
-            Sin conexión · podés continuar con la copia local si ya entraste
-            antes en este celular
+            Sin conexión · podés continuar en Home con la copia local del
+            celular
           </p>
         )}
 

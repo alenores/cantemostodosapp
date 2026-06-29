@@ -1,5 +1,6 @@
 /** Rutas principales disponibles offline (con prefetch o visita previa con WiFi). */
 export const OFFLINE_NAVIGABLE_PATHS = new Set([
+  "/",
   "/salas",
   "/cancionero",
   "/cancionero/global",
@@ -17,6 +18,7 @@ export function isOfflineNavigableRoute(href: string): boolean {
 }
 
 export const OFFLINE_PREFETCH_ROUTES = [
+  "/",
   "/cancionero",
   "/cancionero/global",
   "/salas",

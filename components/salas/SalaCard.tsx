@@ -1,20 +1,28 @@
 "use client";
 
+import PresenceAvatarStack from "@/components/salas/PresenceAvatarStack";
 import { TapButton } from "@/components/ui/TapFeedback";
-import type { Sala } from "@/types";
+import type { PresenceUsuario, Sala } from "@/types";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 type SalaCardProps = {
   sala: Pick<Sala, "id" | "nombre" | "descripcion">;
+  disabled?: boolean;
+  usuariosActivos?: PresenceUsuario[];
   onOpen: (sala: Pick<Sala, "id" | "nombre" | "descripcion">) => void;
 };
 
-export default function SalaCard({ sala, onOpen }: SalaCardProps) {
+export default function SalaCard({
+  sala,
+  disabled = false,
+  usuariosActivos = [],
+  onOpen,
+}: SalaCardProps) {
   const [pending, setPending] = useState(false);
 
   function handleOpen() {
-    if (pending) {
+    if (pending || disabled) {
       return;
     }
 
@@ -24,10 +32,16 @@ export default function SalaCard({ sala, onOpen }: SalaCardProps) {
 
   return (
     <TapButton
-      aria-label={`Abrir ${sala.nombre}`}
+      aria-label={
+        disabled
+          ? `${sala.nombre} no disponible sin conexión`
+          : usuariosActivos.length > 0
+            ? `Abrir ${sala.nombre}, ${usuariosActivos.length} en la sala`
+            : `Abrir ${sala.nombre}`
+      }
       onClick={handleOpen}
-      disabled={pending}
-      className="relative flex min-h-11 w-full items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left disabled:opacity-90"
+      disabled={pending || disabled}
+      className="relative flex min-h-11 w-full items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left disabled:opacity-50"
     >
       {pending && (
         <span
@@ -45,6 +59,19 @@ export default function SalaCard({ sala, onOpen }: SalaCardProps) {
           <p className="truncate text-sm text-text-muted">{sala.descripcion}</p>
         )}
       </div>
+      {usuariosActivos.length > 0 ? (
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <PresenceAvatarStack
+            usuarios={usuariosActivos}
+            maxVisible={3}
+            sizeClassName="size-6"
+            borderClassName="border-bg-card"
+          />
+          <span className="text-[10px] text-text-muted">
+            {usuariosActivos.length} en la sala
+          </span>
+        </div>
+      ) : null}
       <ArrowRight className="size-5 shrink-0 text-text-muted" aria-hidden="true" />
     </TapButton>
   );

@@ -17,6 +17,7 @@ type AfinadorModalProps = {
   onRequestMic: () => void;
   detection: NoteDetection | null;
   micError: string | null;
+  micPermissionGranted: boolean;
   micReady: boolean;
   micStarting: boolean;
 };
@@ -90,6 +91,17 @@ function TunerDial({
   );
 }
 
+function MicConnectingPanel() {
+  return (
+    <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full border border-border bg-bg-card">
+        <Mic className="size-8 text-accent" aria-hidden="true" />
+      </div>
+      <p className="text-sm text-text-muted">Conectando micrófono...</p>
+    </div>
+  );
+}
+
 function MicPermissionPanel({
   micError,
   micStarting,
@@ -140,6 +152,7 @@ export default function AfinadorModal({
   onRequestMic,
   detection,
   micError,
+  micPermissionGranted,
   micReady,
   micStarting,
 }: AfinadorModalProps) {
@@ -185,11 +198,15 @@ export default function AfinadorModal({
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-6">
           {!micReady ? (
-            <MicPermissionPanel
-              micError={micError}
-              micStarting={micStarting}
-              onRequestMic={onRequestMic}
-            />
+            !micPermissionGranted || micError ? (
+              <MicPermissionPanel
+                micError={micError}
+                micStarting={micStarting}
+                onRequestMic={onRequestMic}
+              />
+            ) : (
+              <MicConnectingPanel />
+            )
           ) : (
             <>
               <div className="text-center">

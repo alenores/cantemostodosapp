@@ -29,12 +29,14 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type PointerEvent,
 } from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
 const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_CANCEL_PX = 10;
 const SNACKBAR_MS = 3000;
 
 function filterMisCanciones(
@@ -96,6 +98,7 @@ function MiCancionItem({
 }: MiCancionItemProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClickRef = useRef(false);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -118,7 +121,8 @@ function MiCancionItem({
     onOpenActions();
   }
 
-  function handlePointerDown() {
+  function handlePointerDown(event: PointerEvent<HTMLElement>) {
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
     clearLongPressTimer();
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
@@ -126,7 +130,27 @@ function MiCancionItem({
     }, LONG_PRESS_MS);
   }
 
+  function handlePointerMove(event: PointerEvent<HTMLElement>) {
+    const start = pointerStartRef.current;
+
+    if (!start || !longPressTimerRef.current) {
+      return;
+    }
+
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+
+    if (
+      Math.abs(dx) >= LONG_PRESS_MOVE_CANCEL_PX ||
+      Math.abs(dy) >= LONG_PRESS_MOVE_CANCEL_PX
+    ) {
+      pointerStartRef.current = null;
+      clearLongPressTimer();
+    }
+  }
+
   function handlePointerEnd() {
+    pointerStartRef.current = null;
     clearLongPressTimer();
   }
 
@@ -151,12 +175,13 @@ function MiCancionItem({
 
   return (
     <article
-      className={`relative cursor-pointer rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
+      className={`relative cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
         actionsOpen
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
       }`}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerLeave={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
@@ -195,7 +220,8 @@ function MiCancionItem({
           <button
             type="button"
             aria-label="Cerrar acciones"
-            className="fixed inset-0 z-40"
+            data-no-tap-feedback
+            className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none"
             onClick={onCloseActions}
           />
           <div className="absolute right-3 top-1/2 z-50 -translate-y-1/2">

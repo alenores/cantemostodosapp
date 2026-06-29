@@ -37,7 +37,9 @@ export default function CancioneroSubpageShell({
 
       <main
         className={`flex min-h-0 flex-1 flex-col gap-3 px-4 py-4 pb-8 ${
-          modalOpen ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain"
+          modalOpen
+            ? "overflow-hidden"
+            : "touch-pan-y overflow-y-auto overscroll-y-contain"
         }`}
       >
         {children}

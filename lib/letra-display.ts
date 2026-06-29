@@ -1,8 +1,9 @@
 import { isUsefulExtractedLetra } from "@/lib/letra-extract";
 import {
+  ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX,
   ACORDESDCANCIONES_EMBED_TOP_CLIP_PX,
+  CIFRACLUB_EMBED_BOTTOM_CLIP_PX,
   CIFRACLUB_EMBED_TOP_CLIP_PX,
-  LETRA_EMBED_BOTTOM_CLIP_PX,
 } from "@/lib/sala-layout";
 
 export type LetraSourceKind =
@@ -46,9 +47,10 @@ export function shouldApplyEmbedInitialOffset(url: string): boolean {
   return kind === "cifraclub" || kind === "acordesdcanciones";
 }
 
-/** Recorte inferior del iframe (propagandas y controles flotantes de Cifra Club). */
+/** Recorte inferior del iframe (propagandas y controles flotantes). */
 export function shouldApplyEmbedBottomClip(url: string): boolean {
-  return getLetraSourceKind(url) === "cifraclub";
+  const kind = getLetraSourceKind(url);
+  return kind === "cifraclub" || kind === "acordesdcanciones";
 }
 
 /** Píxeles de recorte superior según el sitio embebido. */
@@ -68,8 +70,14 @@ export function getEmbedTopClipPx(url: string): number | undefined {
 
 /** Píxeles de recorte inferior según el sitio embebido. */
 export function getEmbedBottomClipPx(url: string): number | undefined {
-  if (shouldApplyEmbedBottomClip(url)) {
-    return LETRA_EMBED_BOTTOM_CLIP_PX;
+  const kind = getLetraSourceKind(url);
+
+  if (kind === "cifraclub") {
+    return CIFRACLUB_EMBED_BOTTOM_CLIP_PX;
+  }
+
+  if (kind === "acordesdcanciones") {
+    return ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX;
   }
 
   return undefined;

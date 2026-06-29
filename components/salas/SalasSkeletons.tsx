@@ -90,7 +90,7 @@ function SalasSectionLabelSkeleton() {
 
 function SalasHeaderSkeleton() {
   return (
-    <header className="border-b border-accent/40 bg-accent px-4 py-3">
+    <header className="border-b border-border bg-bg-dark px-4 py-3">
       <div className="flex items-center gap-2.5">
         <ShimmerBlock className="size-8 shrink-0 rounded-lg" />
         <ShimmerBlock className="h-6 flex-1 rounded-lg" />
@@ -208,10 +208,6 @@ export function HerramientasHubSkeleton() {
       aria-live="polite"
       aria-label="Cargando herramientas"
     >
-      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
-        <ShimmerBlock className="h-6 w-32 rounded-lg" />
-      </header>
-
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
         <div className="grid grid-cols-2 gap-[10px]">
           <HerramientasHubCardSkeleton />

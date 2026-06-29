@@ -1,7 +1,6 @@
 "use client";
 
 import SalaPageShell from "@/components/salas/SalaPageShell";
-import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -19,12 +18,8 @@ type SalaRef = {
   nombre: string;
 };
 
-type EnterSalaOptions = {
-  offline?: boolean;
-};
-
 type SalasNavigationContextValue = {
-  enterSala: (sala: SalaRef, options?: EnterSalaOptions) => void;
+  enterSala: (sala: SalaRef) => void;
   registerSalaNames: (salas: SalaRef[]) => void;
 };
 
@@ -64,7 +59,6 @@ export default function SalasRouteCoordinator({
   const routeSalaId = parseSalaIdFromPath(pathname);
 
   const [optimisticSala, setOptimisticSala] = useState<SalaRef | null>(null);
-  const [embeddedMode, setEmbeddedMode] = useState(false);
   const [nombreById, setNombreById] = useState<Record<number, string>>({});
 
   const registerSalaNames = useCallback((salas: SalaRef[]) => {
@@ -80,24 +74,13 @@ export default function SalasRouteCoordinator({
   }, []);
 
   const enterSala = useCallback(
-    (sala: SalaRef, options?: EnterSalaOptions) => {
+    (sala: SalaRef) => {
       setNombreById((current) => ({ ...current, [sala.id]: sala.nombre }));
       setOptimisticSala(sala);
-      setEmbeddedMode(Boolean(options?.offline));
-
-      if (!options?.offline) {
-        router.push(`/salas/${sala.id}`);
-      }
+      router.push(`/salas/${sala.id}`);
     },
     [router],
   );
-
-  const closeEmbeddedSala = useCallback(() => {
-    setOptimisticSala(null);
-    setEmbeddedMode(false);
-  }, []);
-
-  useHardwareBack(embeddedMode, closeEmbeddedSala);
 
   useEffect(() => {
     if (!optimisticSala || !routeSalaId || routeSalaId !== optimisticSala.id) {
@@ -109,7 +92,6 @@ export default function SalasRouteCoordinator({
       [routeSalaId]: optimisticSala.nombre,
     }));
     setOptimisticSala(null);
-    setEmbeddedMode(false);
   }, [optimisticSala, routeSalaId]);
 
   useEffect(() => {
@@ -143,10 +125,6 @@ export default function SalasRouteCoordinator({
   }, [nombreById, routeSalaId]);
 
   const shellSala = useMemo((): SalaRef | null => {
-    if (embeddedMode && optimisticSala) {
-      return optimisticSala;
-    }
-
     if (optimisticSala && (!routeSalaId || routeSalaId === optimisticSala.id)) {
       return optimisticSala;
     }
@@ -159,7 +137,7 @@ export default function SalasRouteCoordinator({
     }
 
     return null;
-  }, [embeddedMode, nombreById, optimisticSala, routeSalaId]);
+  }, [nombreById, optimisticSala, routeSalaId]);
 
   const navigationValue = useMemo(
     () => ({
@@ -180,8 +158,6 @@ export default function SalasRouteCoordinator({
           key={shellSala.id}
           salaId={shellSala.id}
           salaNombre={shellSala.nombre}
-          embedded={embeddedMode}
-          onClose={embeddedMode ? closeEmbeddedSala : undefined}
         />
       ) : null}
     </SalasNavigationContext.Provider>

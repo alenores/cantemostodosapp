@@ -16,13 +16,6 @@ import {
 } from "@/lib/cola-logic";
 import { triggerHaptic } from "@/lib/haptic";
 import {
-  deleteColaLocalCompleta,
-  deleteColaLocalItem,
-  finalizarColaLocalActiva,
-  persistColaLocalOrden,
-  replaceColaLocalItems,
-} from "@/lib/offline/cola-local-store";
-import {
   COLA_FINALIZE_BUTTON_MS,
   COLA_MODAL_HORIZONTAL_INSET_PX,
   COLA_MODAL_TOP_INSET_PX,
@@ -119,7 +112,8 @@ function ColaDragDeleteZone({ visible, highlighted }: ColaDragDeleteZoneProps) {
 type ColaJuntadaSheetProps = {
   items: ColaItem[];
   salaId: number;
-  offlineMode?: boolean;
+  /** Oculta fila, buscador y controles (p. ej. sin conexión en sala). */
+  controlsHidden?: boolean;
   presenceBarVisible?: boolean;
   onColaChange: () => Promise<void>;
   onItemsReordered: (items: ColaItem[]) => void;
@@ -195,7 +189,7 @@ function SortableColaJuntadaRow({
 export default function ColaJuntadaSheet({
   items,
   salaId,
-  offlineMode = false,
+  controlsHidden = false,
   presenceBarVisible = false,
   onColaChange,
   onItemsReordered,
@@ -320,6 +314,12 @@ export default function ColaJuntadaSheet({
     onRequestOpen?.(openCola);
   }, [onRequestOpen, openCola]);
 
+  useEffect(() => {
+    if (controlsHidden) {
+      closeCola();
+    }
+  }, [controlsHidden, closeCola]);
+
   useHardwareBack(sheetVisible && !sheetExiting, () => {
     if (showDeleteAllDialog) {
       setShowDeleteAllDialog(false);
@@ -335,13 +335,6 @@ export default function ColaJuntadaSheet({
   }
 
   async function handleConfirmDeleteAll() {
-    if (offlineMode) {
-      await deleteColaLocalCompleta(salaId);
-      setShowDeleteAllDialog(false);
-      await onColaChange();
-      return;
-    }
-
     const supabase = createClient();
     await deleteColaCompleta(supabase, salaId);
     setShowDeleteAllDialog(false);
@@ -358,12 +351,6 @@ export default function ColaJuntadaSheet({
     await new Promise((resolve) =>
       setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
     );
-
-    if (offlineMode) {
-      await finalizarColaLocalActiva(salaId);
-      await onColaChange();
-      return;
-    }
 
     const supabase = createClient();
     await finalizarCancionActiva(supabase, salaId);
@@ -386,18 +373,6 @@ export default function ColaJuntadaSheet({
 
     const maxOrden = Math.max(0, ...items.map((colaItem) => colaItem.orden));
     const nextOrden = maxOrden + 1;
-
-    if (offlineMode) {
-      const nextItems = items.map((colaItem) =>
-        colaItem.id === itemId
-          ? { ...colaItem, estado: "pendiente" as const, orden: nextOrden }
-          : colaItem,
-      );
-      onItemsReordered(nextItems);
-      await replaceColaLocalItems(salaId, nextItems);
-      await onColaChange();
-      return;
-    }
 
     const supabase = createClient();
     const { error } = await supabase
@@ -428,12 +403,6 @@ export default function ColaJuntadaSheet({
     triggerHaptic();
     const nextItems = items.filter((colaItem) => colaItem.id !== itemId);
     onItemsReordered(nextItems);
-
-    if (offlineMode) {
-      await deleteColaLocalItem(salaId, itemId);
-      await onColaChange();
-      return;
-    }
 
     const supabase = createClient();
     await deleteColaItem(supabase, itemId);
@@ -467,37 +436,6 @@ export default function ColaJuntadaSheet({
     }
     const overId = Number(over.id);
 
-    if (offlineMode) {
-      const activeIndex = pendientes.findIndex((item) => item.id === activeId);
-      const overIndex = pendientes.findIndex((item) => item.id === overId);
-
-      if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
-        return;
-      }
-
-      const reordered = [...pendientes];
-      const [moved] = reordered.splice(activeIndex, 1);
-      reordered.splice(overIndex, 0, moved);
-
-      const anchorOrden = Math.max(
-        0,
-        ...items
-          .filter((item) => item.estado !== "pendiente")
-          .map((item) => item.orden),
-      );
-
-      const updates = reordered.map((item, index) => ({
-        id: item.id,
-        orden: anchorOrden + index + 1,
-      }));
-
-      onItemsReordered(applyOrdenUpdates(items, updates));
-      triggerNombreRevealCascade();
-      await persistColaLocalOrden(salaId, items, updates);
-      await onColaChange();
-      return;
-    }
-
     const supabase = createClient();
     const updates = await reorderColaByDrag(
       supabase,
@@ -525,6 +463,10 @@ export default function ColaJuntadaSheet({
   const modalBottom = getColaModalBottomCss();
 
   const listaVacia = sortedItems.length === 0;
+
+  if (controlsHidden) {
+    return null;
+  }
 
   const colaModalLayer =
     sheetVisible && portalMounted

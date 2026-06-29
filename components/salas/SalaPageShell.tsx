@@ -27,21 +27,22 @@ import {
   LECTURA_TOP_CHROME_SIDE_PX,
 } from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
-import { getColaLocalItems } from "@/lib/offline/cola-local-store";
 import { flushColaLocalToSupabase } from "@/lib/offline/cola-local-sync";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
+import { parsePresenceState } from "@/lib/presence";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, PresenceUsuario, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowLeft,
   ListMusic,
   Minimize2,
   Music2,
   SkipForward,
   SlidersHorizontal,
+  WifiOff,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -57,9 +58,6 @@ const LECTURA_FAB_CASCADE_STEP_MS = 55;
 type SalaPageShellProps = {
   salaId: number;
   salaNombre: string;
-  /** Solo para overlay offline desde Salas: cierra sin navegar. */
-  embedded?: boolean;
-  onClose?: () => void;
 };
 
 type SalaModoLecturaFabOptionProps = {
@@ -119,6 +117,7 @@ function SalaModoLecturaFabOption({
 type SalaModoLecturaOverlayProps = {
   abierto: boolean;
   pendientesCount: number;
+  collaborationDisabled?: boolean;
   onCerrar: () => void;
   onContraer: () => void;
   onSiguiente: () => void;
@@ -129,6 +128,7 @@ type SalaModoLecturaOverlayProps = {
 function SalaModoLecturaOverlay({
   abierto,
   pendientesCount,
+  collaborationDisabled = false,
   onCerrar,
   onContraer,
   onSiguiente,
@@ -165,35 +165,39 @@ function SalaModoLecturaOverlay({
           cascadeIndex={0}
           onClick={onContraer}
         />
-        <SalaModoLecturaFabOption
-          icon={SkipForward}
-          label="Siguiente"
-          iconAfter
-          cascadeIndex={1}
-          disabled={pendientesCount === 0}
-          onClick={() => {
-            onCerrar();
-            onSiguiente();
-          }}
-        />
-        <SalaModoLecturaFabOption
-          icon={ListMusic}
-          label={`Fila · ${pendientesCount}`}
-          cascadeIndex={2}
-          onClick={() => {
-            onCerrar();
-            onCola();
-          }}
-        />
-        <SalaModoLecturaFabOption
-          icon={Music2}
-          label="Afinador"
-          cascadeIndex={3}
-          onClick={() => {
-            onCerrar();
-            onAfinador();
-          }}
-        />
+        {!collaborationDisabled ? (
+          <>
+            <SalaModoLecturaFabOption
+              icon={SkipForward}
+              label="Siguiente"
+              iconAfter
+              cascadeIndex={1}
+              disabled={pendientesCount === 0}
+              onClick={() => {
+                onCerrar();
+                onSiguiente();
+              }}
+            />
+            <SalaModoLecturaFabOption
+              icon={ListMusic}
+              label={`Fila · ${pendientesCount}`}
+              cascadeIndex={2}
+              onClick={() => {
+                onCerrar();
+                onCola();
+              }}
+            />
+            <SalaModoLecturaFabOption
+              icon={Music2}
+              label="Afinador"
+              cascadeIndex={3}
+              onClick={() => {
+                onCerrar();
+                onAfinador();
+              }}
+            />
+          </>
+        ) : null}
       </div>
     </>
   );
@@ -202,11 +206,11 @@ function SalaModoLecturaOverlay({
 export default function SalaPageShell({
   salaId,
   salaNombre,
-  embedded = false,
-  onClose,
 }: SalaPageShellProps) {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const disconnected = !online;
+  const [hadOnlineSession, setHadOnlineSession] = useState(false);
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaAvisoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const colaChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,6 +295,20 @@ export default function SalaPageShell({
   const presenceBarVisible =
     !modoLectura && online && presenceUsuarios.length > 0;
 
+  const handleLeaveSala = useCallback(() => {
+    navigateWithProgress("/salas");
+  }, [navigateWithProgress]);
+
+  useHardwareBack(disconnected && !modoLectura, handleLeaveSala);
+
+  useEffect(() => {
+    if (disconnected) {
+      setBuscadorOpen(false);
+      setOverlayAbierto(false);
+      setPresenceUsuarios([]);
+    }
+  }, [disconnected]);
+
   useEffect(() => {
     const revealKey = cancionActiva
       ? `${cancionActiva.nombre}::${cancionActiva.url_letra}`
@@ -372,17 +390,6 @@ export default function SalaPageShell({
   }, []);
 
   const loadColaCompleta = useCallback(async () => {
-    if (!online) {
-      const items = await getColaLocalItems(salaId);
-      console.log(
-        "[sala] loadColaCompleta setColaItems:",
-        items.map((i) => i.nombre),
-      );
-      setColaItems(items);
-      setCancionActiva(deriveCancionActivaFromCola(items));
-      return;
-    }
-
     const supabase = createClient();
 
     try {
@@ -405,7 +412,7 @@ export default function SalaPageShell({
     );
     setColaItems(items);
     setCancionActiva(deriveCancionActivaFromCola(items));
-  }, [online, salaId]);
+  }, [salaId]);
 
   const updateCancionFromSesion = useCallback(async (sesion: SesionSala) => {
     const colaItemId = getColaItemIdFromSesion(sesion);
@@ -429,14 +436,14 @@ export default function SalaPageShell({
   );
 
   useEffect(() => {
-    initialColaLoadPendingRef.current = true;
-    setColaBootstrapping(true);
-
     if (!online) {
-      setPresenceUsuarios([]);
-      void loadColaCompleta().finally(finishInitialColaLoad);
+      finishInitialColaLoad();
       return;
     }
+
+    initialColaLoadPendingRef.current = true;
+    setColaBootstrapping(true);
+    setHadOnlineSession(true);
 
     const supabase = createClient();
     let sesionChannel: RealtimeChannel | null = null;
@@ -519,11 +526,7 @@ export default function SalaPageShell({
             return;
           }
 
-          const state = presenceChannel.presenceState();
-          const usuarios = Object.values(state)
-            .flat()
-            .map((p: unknown) => p as PresenceUsuario);
-          setPresenceUsuarios(usuarios);
+          setPresenceUsuarios(parsePresenceState(presenceChannel.presenceState()));
         })
         .subscribe(async (status) => {
           if (status !== "SUBSCRIBED" || !presenceChannel) {
@@ -592,15 +595,35 @@ export default function SalaPageShell({
       className="flex flex-col overflow-hidden bg-bg-sala"
       style={{ height: "100dvh" }}
     >
-      {embedded && !modoLectura ? (
-        <TapButton
-          aria-label="Volver a salas"
-          onClick={onClose}
-          className="fixed z-30 flex size-9 items-center justify-center rounded-full border border-border/60 bg-bg-dark/90 text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
-          style={{ top: 12, left: 12 }}
+      {disconnected && !modoLectura ? (
+        <div
+          className="shrink-0 border-b border-border bg-bg-card px-4 py-3"
+          role="status"
         >
-          <ArrowLeft className="size-5" aria-hidden="true" />
-        </TapButton>
+          <div className="flex items-start gap-2.5">
+            <WifiOff
+              className="mt-0.5 size-4 shrink-0 text-text-muted"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-primary">
+                Sin conexión
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">
+                {hadOnlineSession
+                  ? "Podés seguir leyendo la canción. Salí de la sala cuando termines."
+                  : "Las salas necesitan internet. Volvé cuando tengas señal."}
+              </p>
+            </div>
+            <TapButton
+              aria-label="Volver a salas"
+              onClick={handleLeaveSala}
+              className="shrink-0 rounded-[10px] border border-border px-3 py-1.5 text-xs font-semibold text-text-primary"
+            >
+              Salir
+            </TapButton>
+          </div>
+        </div>
       ) : null}
 
       <main
@@ -638,14 +661,14 @@ export default function SalaPageShell({
         <ColaJuntadaSheet
           items={colaItems}
           salaId={salaId}
-          offlineMode={!online}
+          controlsHidden={disconnected}
           presenceBarVisible={presenceBarVisible}
           onColaChange={loadColaCompleta}
           onItemsReordered={handleColaItemsReordered}
           onOpenBuscador={handleOpenBuscador}
           presentacionOculta={modoLectura}
           onExpand={
-            !modoLectura && cancionActiva
+            !modoLectura && cancionActiva && !disconnected
               ? () => setModoLectura(true)
               : undefined
           }
@@ -730,6 +753,7 @@ export default function SalaPageShell({
           <SalaModoLecturaOverlay
             abierto={overlayAbierto}
             pendientesCount={pendientesCount}
+            collaborationDisabled={disconnected}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}

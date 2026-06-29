@@ -1,6 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import AfinadorModal from "@/components/ui/AfinadorModal";
 import { useAfinador } from "@/hooks/useAfinador";
@@ -8,19 +9,21 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { CANCIONERO_HUB_MODULES } from "@/lib/cancionero-hub-modules";
+import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
+import type { UsuarioActivo } from "@/types";
 import { WifiOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type CancioneroHubPageClientProps = {
-  usuarioId: string | null;
+  usuario: UsuarioActivo;
   globalCountInicial: number;
 };
 
 export default function CancioneroHubPageClient({
-  usuarioId,
+  usuario,
   globalCountInicial,
 }: CancioneroHubPageClientProps) {
   const pathname = usePathname();
@@ -32,6 +35,7 @@ export default function CancioneroHubPageClient({
   const {
     detection: afinadorDetection,
     micError: afinadorMicError,
+    micPermissionGranted: afinadorMicPermissionGranted,
     micReady: afinadorMicReady,
     micStarting: afinadorMicStarting,
     start: startAfinador,
@@ -73,6 +77,8 @@ export default function CancioneroHubPageClient({
     setPendingModuleId(null);
   }, [pathname]);
 
+  const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
+
   function handleModuleClick(moduleId: string, href?: string) {
     const moduleDef = CANCIONERO_HUB_MODULES.find((item) => item.id === moduleId);
 
@@ -80,12 +86,15 @@ export default function CancioneroHubPageClient({
       return;
     }
 
-    if (moduleDef.requiresAuth && !usuarioId) {
+    if (moduleDef.requiresAuth && !isLoggedIn) {
       return;
     }
 
     if (moduleDef.kind === "afinador") {
       setAfinadorOpen(true);
+      if (afinadorMicPermissionGranted) {
+        void startAfinador();
+      }
       return;
     }
 
@@ -96,17 +105,16 @@ export default function CancioneroHubPageClient({
   }
 
   const visibleModules = CANCIONERO_HUB_MODULES.filter(
-    (module) => !module.requiresAuth || usuarioId !== null,
+    (module) => !module.requiresAuth || isLoggedIn,
   );
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app">
       <AppReadyMarker />
-      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
-        <h1 className="text-lg font-extrabold text-text-primary">Herramientas</h1>
-      </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-6">
+        <PwaInstallBanners />
+
         {!online && (
           <p
             className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
@@ -153,7 +161,7 @@ export default function CancioneroHubPageClient({
           })}
         </div>
 
-        {!usuarioId && (
+        {!isLoggedIn && (
           <p className="text-center text-sm text-text-muted">
             Iniciá sesión para acceder a Mis canciones.
           </p>
@@ -164,6 +172,7 @@ export default function CancioneroHubPageClient({
         open={afinadorOpen}
         detection={afinadorDetection}
         micError={afinadorMicError}
+        micPermissionGranted={afinadorMicPermissionGranted}
         micReady={afinadorMicReady}
         micStarting={afinadorMicStarting}
         onRequestMic={() => void startAfinador()}

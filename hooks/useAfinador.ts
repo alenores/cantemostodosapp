@@ -13,6 +13,28 @@ const MIC_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: false,
 };
 
+const MIC_GRANTED_STORAGE_KEY = "cantemos-afinador-mic-granted";
+
+function readStoredMicGranted(): boolean {
+  try {
+    return localStorage.getItem(MIC_GRANTED_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistMicGranted(granted: boolean): void {
+  try {
+    if (granted) {
+      localStorage.setItem(MIC_GRANTED_STORAGE_KEY, "1");
+    } else {
+      localStorage.removeItem(MIC_GRANTED_STORAGE_KEY);
+    }
+  } catch {
+    // localStorage unavailable (private mode, etc.)
+  }
+}
+
 function getMicErrorMessage(error: unknown): string {
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
@@ -38,6 +60,7 @@ function getMicErrorMessage(error: unknown): string {
 type UseAfinadorResult = {
   detection: NoteDetection | null;
   micError: string | null;
+  micPermissionGranted: boolean;
   micReady: boolean;
   micStarting: boolean;
   start: () => Promise<void>;
@@ -47,6 +70,9 @@ type UseAfinadorResult = {
 export function useAfinador(): UseAfinadorResult {
   const [detection, setDetection] = useState<NoteDetection | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
+  const [micPermissionGranted, setMicPermissionGranted] = useState(
+    readStoredMicGranted,
+  );
   const [micReady, setMicReady] = useState(false);
   const [micStarting, setMicStarting] = useState(false);
 
@@ -81,6 +107,42 @@ export function useAfinador(): UseAfinadorResult {
     setDetection(null);
     setMicReady(false);
   }, []);
+
+  useEffect(() => {
+    if (!navigator.permissions?.query) {
+      return;
+    }
+
+    let disposed = false;
+
+    void navigator.permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((status) => {
+        if (disposed) {
+          return;
+        }
+
+        const granted = status.state === "granted";
+        setMicPermissionGranted(granted);
+        persistMicGranted(granted);
+
+        status.onchange = () => {
+          const nextGranted = status.state === "granted";
+          setMicPermissionGranted(nextGranted);
+          persistMicGranted(nextGranted);
+          if (!nextGranted) {
+            stopAudio();
+          }
+        };
+      })
+      .catch(() => {
+        // Permissions API unsupported for microphone (e.g. some iOS versions).
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [stopAudio]);
 
   const start = useCallback(async () => {
     if (runningRef.current || micStarting) {
@@ -133,6 +195,8 @@ export function useAfinador(): UseAfinadorResult {
         new ArrayBuffer(analyser.fftSize * Float32Array.BYTES_PER_ELEMENT),
       );
       runningRef.current = true;
+      setMicPermissionGranted(true);
+      persistMicGranted(true);
       setMicReady(true);
       setMicStarting(false);
 
@@ -172,6 +236,16 @@ export function useAfinador(): UseAfinadorResult {
       animationFrameRef.current = requestAnimationFrame(updatePitch);
     } catch (error) {
       stopAudio();
+
+      if (
+        error instanceof DOMException &&
+        (error.name === "NotAllowedError" ||
+          error.name === "PermissionDeniedError")
+      ) {
+        setMicPermissionGranted(false);
+        persistMicGranted(false);
+      }
+
       setMicError(getMicErrorMessage(error));
     }
   }, [micStarting, stopAudio]);
@@ -185,6 +259,7 @@ export function useAfinador(): UseAfinadorResult {
   return {
     detection,
     micError,
+    micPermissionGranted,
     micReady,
     micStarting,
     start,

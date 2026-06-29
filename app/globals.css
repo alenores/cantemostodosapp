@@ -61,6 +61,14 @@
   --transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
   --transition-duration: 350ms;
 
+  /* Skeleton — grises neutros, sin tinte de acento */
+  --skeleton-base: #2a2a2a;
+  --skeleton-mid: #353535;
+  --skeleton-shine: #404040;
+  --skeleton-base-light: #dcdcdc;
+  --skeleton-mid-light: #e8e8e8;
+  --skeleton-shine-light: #f2f2f2;
+
   /* Afinador */
   --tuner-in-tune: #54c864;
   --tuner-flat-sharp: #e05555;
@@ -98,6 +106,17 @@
 html,
 body {
   overscroll-behavior-y: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 body {
@@ -642,7 +661,7 @@ html.splash-active body {
   animation: ios-icon-shine 3.5s ease-out infinite;
 }
 
-@keyframes cancionero-shimmer {
+@keyframes skeleton-shimmer {
   0% {
     background-position: 200% 0;
   }
@@ -651,37 +670,37 @@ html.splash-active body {
   }
 }
 
-.cancionero-skeleton-shimmer {
-  background-image: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--bg-card-hover) 92%, transparent) 0%,
-    color-mix(in srgb, var(--text-faint) 22%, var(--bg-card-hover)) 42%,
-    color-mix(in srgb, var(--bg-card-hover) 92%, transparent) 84%
-  );
-  background-size: 200% 100%;
-  animation: cancionero-shimmer 2.6s ease-in-out infinite;
-}
-
+.cancionero-skeleton-shimmer,
 .sala-skeleton-shimmer {
+  background-color: var(--skeleton-base);
   background-image: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--bg-card) 88%, transparent) 0%,
-    color-mix(in srgb, var(--text-faint) 16%, var(--bg-card)) 42%,
-    color-mix(in srgb, var(--bg-card) 88%, transparent) 84%
+    var(--skeleton-base) 0%,
+    var(--skeleton-base) 32%,
+    var(--skeleton-mid) 42%,
+    var(--skeleton-shine) 50%,
+    var(--skeleton-mid) 58%,
+    var(--skeleton-base) 68%,
+    var(--skeleton-base) 100%
   );
   background-size: 200% 100%;
-  animation: cancionero-shimmer 2.6s ease-in-out infinite;
+  animation: skeleton-shimmer 2.6s ease-in-out infinite;
 }
 
 .sala-letra-skeleton-line {
+  background-color: var(--skeleton-base-light);
   background-image: linear-gradient(
     90deg,
-    color-mix(in srgb, #d8d8d8 72%, var(--letra-bg)) 0%,
-    color-mix(in srgb, #ececec 88%, var(--letra-bg)) 42%,
-    color-mix(in srgb, #d8d8d8 72%, var(--letra-bg)) 84%
+    var(--skeleton-base-light) 0%,
+    var(--skeleton-base-light) 32%,
+    var(--skeleton-mid-light) 42%,
+    var(--skeleton-shine-light) 50%,
+    var(--skeleton-mid-light) 58%,
+    var(--skeleton-base-light) 68%,
+    var(--skeleton-base-light) 100%
   );
   background-size: 200% 100%;
-  animation: cancionero-shimmer 2.8s ease-in-out infinite;
+  animation: skeleton-shimmer 2.8s ease-in-out infinite;
 }
 
 @keyframes cancionero-eq-breathe {
@@ -698,6 +717,7 @@ html.splash-active body {
 
 .cancionero-skeleton-eq-bar {
   height: 6px;
+  background-color: var(--skeleton-mid);
   animation: cancionero-eq-breathe 1.8s ease-in-out infinite;
 }
 
@@ -730,6 +750,22 @@ html.splash-active body {
 
 .sala-lectura-fab-item {
   animation: sala-lectura-fab-in 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes cancionero-action-fab-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cancionero-action-fab-item {
+  animation: cancionero-action-fab-in 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes sala-cola-aviso-in {
@@ -869,6 +905,7 @@ html.splash-active body {
   .cancionero-skeleton-eq-bar,
   .cancionero-item-cascade,
   .sala-lectura-fab-item,
+  .cancionero-action-fab-item,
   .sala-cola-aviso-in,
   .sala-cola-aviso-out,
   .sala-fila-aviso-text-in,
@@ -886,6 +923,7 @@ html.splash-active body {
 
   .cancionero-item-cascade,
   .sala-lectura-fab-item,
+  .cancionero-action-fab-item,
   .sala-cola-aviso-in,
   .sala-cola-aviso-out,
   .sala-fila-aviso-slot {

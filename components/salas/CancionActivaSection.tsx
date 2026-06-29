@@ -11,12 +11,71 @@ import {
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
 import {
+  getHomeSearchChromeHeightCss,
   getLetraEmbedBottomPadding,
   getLetraSectionBottomPadding,
   getLetraSectionTextBottomPadding,
   getLetraTextScrollEndPadding,
 } from "@/lib/sala-layout";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+
+function HeaderActionSlot({
+  action,
+  extendBottomPx = 0,
+}: {
+  action: ReactNode;
+  extendBottomPx?: number;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-end px-0.5"
+      style={extendBottomPx > 0 ? { bottom: `-${extendBottomPx}px` } : { bottom: 0 }}
+    >
+      <div className="pointer-events-auto">{action}</div>
+    </div>
+  );
+}
+
+function CancionActivaTitulo({
+  cancionNombre,
+  artista,
+  nombreRevealKey,
+  nombreRevealClass,
+  reserveHeaderActionSpace = false,
+  variant = "embed",
+}: {
+  cancionNombre: string | null;
+  artista: string | null;
+  nombreRevealKey: string;
+  nombreRevealClass: string;
+  reserveHeaderActionSpace?: boolean;
+  variant?: "embed" | "texto";
+}) {
+  const isTexto = variant === "texto";
+
+  return (
+    <div className={`min-w-0 flex-1 ${reserveHeaderActionSpace ? "pr-11" : ""}`}>
+      <h2
+        className={`text-xl font-bold text-accent ${
+          isTexto ? "leading-tight" : "overflow-hidden"
+        }`}
+      >
+        <span key={nombreRevealKey} className={nombreRevealClass}>
+          {cancionNombre}
+        </span>
+      </h2>
+      {artista ? (
+        <p
+          className={`mt-0.5 text-[13px] text-text-muted ${
+            isTexto ? "leading-tight" : ""
+          }`}
+        >
+          {artista}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 type CancionActivaSectionProps = {
   cancionNombre?: string | null;
@@ -179,22 +238,20 @@ export default function CancionActivaSection({
         }}
       >
         {!modoLectura ? (
-          <header className="flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala px-2 py-1.5">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold leading-tight text-accent">
-                <span key={nombreRevealKey} className={nombreRevealClass}>
-                  {cancionNombre}
-                </span>
-              </h2>
-              {artista && (
-                <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
-                  {artista}
-                </p>
-              )}
-            </div>
-            {headerAction ? (
-              <div className="shrink-0 pt-0.5">{headerAction}</div>
-            ) : null}
+          <header
+            className={`flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala px-2 py-1.5 ${
+              headerAction ? "relative" : ""
+            }`}
+          >
+            <CancionActivaTitulo
+              cancionNombre={cancionNombre}
+              artista={artista}
+              nombreRevealKey={nombreRevealKey}
+              nombreRevealClass={nombreRevealClass}
+              reserveHeaderActionSpace={Boolean(headerAction)}
+              variant="texto"
+            />
+            {headerAction ? <HeaderActionSlot action={headerAction} /> : null}
           </header>
         ) : null}
 
@@ -245,19 +302,18 @@ export default function CancionActivaSection({
       {hasCancion ? (
         <>
           {!modoLectura ? (
-            <div className="flex shrink-0 items-start gap-2">
-              <div className="min-w-0 flex-1">
-                <h2 className="overflow-hidden text-xl font-bold text-accent">
-                  <span key={nombreRevealKey} className={nombreRevealClass}>
-                    {cancionNombre}
-                  </span>
-                </h2>
-                {artista && (
-                  <p className="mt-0.5 text-[13px] text-text-muted">{artista}</p>
-                )}
+            <div className={headerAction ? "relative shrink-0" : "shrink-0"}>
+              <div className="flex shrink-0 items-start gap-2">
+                <CancionActivaTitulo
+                  cancionNombre={cancionNombre}
+                  artista={artista}
+                  nombreRevealKey={nombreRevealKey}
+                  nombreRevealClass={nombreRevealClass}
+                  reserveHeaderActionSpace={Boolean(headerAction)}
+                />
               </div>
               {headerAction ? (
-                <div className="shrink-0 pt-0.5">{headerAction}</div>
+                <HeaderActionSlot action={headerAction} extendBottomPx={8} />
               ) : null}
             </div>
           ) : null}
@@ -311,7 +367,10 @@ export default function CancionActivaSection({
       ) : (
         <>
           {!modoLectura && headerAction ? (
-            <div className="flex shrink-0 justify-end px-0.5 pb-1">
+            <div
+              className="flex shrink-0 items-center justify-end px-0.5"
+              style={{ minHeight: getHomeSearchChromeHeightCss() }}
+            >
               {headerAction}
             </div>
           ) : null}

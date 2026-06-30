@@ -25,6 +25,7 @@ import {
 } from "@/lib/voz";
 import {
   getMsIntoCurrentBeat,
+  getMsPerBeatAtTime,
   getRitmoPhaseAtTime,
   getRitmoVoiceCompliance,
   type VozRitmoVoiceSample,
@@ -60,12 +61,16 @@ export function useVoz() {
   const detectionRef = useRef(afinador.detection);
   const beatMarkersRef = useRef(ritmo.beatMarkers);
   const ritmoBpmRef = useRef(ritmo.ritmoBpm);
-  const ritmoPatternRef = useRef(ritmo.ritmoPattern);
+  const ritmoBeatPatternRef = useRef(ritmo.ritmoBeatPattern);
+  const ritmoPatternLengthRef = useRef(ritmo.ritmoPatternLength);
+  const ritmoBeatDurationsRef = useRef(ritmo.ritmoBeatDurations);
 
   detectionRef.current = afinador.detection;
   beatMarkersRef.current = ritmo.beatMarkers;
   ritmoBpmRef.current = ritmo.ritmoBpm;
-  ritmoPatternRef.current = ritmo.ritmoPattern;
+  ritmoBeatPatternRef.current = ritmo.ritmoBeatPattern;
+  ritmoPatternLengthRef.current = ritmo.ritmoPatternLength;
+  ritmoBeatDurationsRef.current = ritmo.ritmoBeatDurations;
   const inBurstRef = useRef(false);
   const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
@@ -270,16 +275,32 @@ export function useVoz() {
       lastRitmoVoiceSampleAtRef.current = now;
 
       const bpm = ritmoBpmRef.current;
-      const ritmoPattern = ritmoPatternRef.current;
-      const msPerBeat = 60000 / bpm;
+      const ritmoBeatPattern = ritmoBeatPatternRef.current;
+      const ritmoPatternLength = ritmoPatternLengthRef.current;
+      const ritmoBeatDurations = ritmoBeatDurationsRef.current;
+      const msPerBeat = getMsPerBeatAtTime(
+        now,
+        beatMarkers,
+        bpm,
+        ritmoBeatDurations,
+        ritmoPatternLength,
+      );
       const expectedPhase =
         getRitmoPhaseAtTime(
           now,
           beatMarkers,
           bpm,
-          ritmoPattern,
+          ritmoBeatPattern,
+          ritmoPatternLength,
+          ritmoBeatDurations,
         ) ?? "silencio";
-      const msIntoBeat = getMsIntoCurrentBeat(now, beatMarkers, bpm);
+      const msIntoBeat = getMsIntoCurrentBeat(
+        now,
+        beatMarkers,
+        bpm,
+        ritmoBeatDurations,
+        ritmoPatternLength,
+      );
       const hasVoice = detectionRef.current !== null;
 
       const sample: VozRitmoVoiceSample = {

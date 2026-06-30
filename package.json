@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "generate-icons": "node scripts/generate-icons.mjs",
-    "build": "npm run generate-icons && next build",
+    "fetch-compositor-samples": "node scripts/fetch-compositor-samples.mjs",
+    "build": "npm run generate-icons && npm run fetch-compositor-samples && next build",
     "start": "next start",
     "lint": "eslint"
   },

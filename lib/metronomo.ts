@@ -9,6 +9,357 @@ export const BEATS_PER_MEASURE_DEFAULT = 4;
 export const METRONOME_PATTERN_LENGTH = BEATS_PER_MEASURE_MAX;
 export const METRONOME_PATTERN_LENGTH_DEFAULT = BEATS_PER_MEASURE_DEFAULT;
 
+export type MetronomeBeatDuration =
+  | "redonda"
+  | "blanca"
+  | "negra"
+  | "corchea"
+  | "semicorchea";
+
+export const METRONOME_BEAT_DURATION_OPTIONS = [
+  { id: "redonda" as const, label: "Redonda" },
+  { id: "blanca" as const, label: "Blanca" },
+  { id: "negra" as const, label: "Negra" },
+  { id: "corchea" as const, label: "Corchea" },
+  { id: "semicorchea" as const, label: "Semicorchea" },
+] as const;
+
+export const METRONOME_BEAT_DURATION_DEFAULT: MetronomeBeatDuration = "negra";
+
+export type MetronomeBeatDurationPattern = MetronomeBeatDuration[];
+
+export const METRONOME_BEAT_DURATION_PATTERN_DEFAULT: MetronomeBeatDurationPattern =
+  Array.from(
+    { length: METRONOME_PATTERN_LENGTH },
+    () => METRONOME_BEAT_DURATION_DEFAULT,
+  );
+
+const BEAT_DURATION_MULTIPLIERS: Record<MetronomeBeatDuration, number> = {
+  redonda: 4,
+  blanca: 2,
+  negra: 1,
+  corchea: 0.5,
+  semicorchea: 0.25,
+};
+
+export function getBeatDurationMultiplier(
+  duration: MetronomeBeatDuration,
+): number {
+  return BEAT_DURATION_MULTIPLIERS[duration] ?? 1;
+}
+
+export function getBeatDurationLabel(
+  duration: MetronomeBeatDuration,
+): string {
+  return (
+    METRONOME_BEAT_DURATION_OPTIONS.find((option) => option.id === duration)
+      ?.label ?? duration
+  );
+}
+
+export function getBeatDurationRelativeToNegraLabel(
+  duration: MetronomeBeatDuration,
+): string {
+  switch (duration) {
+    case "redonda":
+      return "4 tiempos de negra";
+    case "blanca":
+      return "2 tiempos de negra";
+    case "negra":
+      return "1 tiempo de negra";
+    case "corchea":
+      return "½ tiempo de negra";
+    case "semicorchea":
+      return "¼ tiempo de negra";
+    default:
+      return "";
+  }
+}
+
+export function getBeatDurationOptionIndex(
+  duration: MetronomeBeatDuration,
+): number {
+  const index = METRONOME_BEAT_DURATION_OPTIONS.findIndex(
+    (option) => option.id === duration,
+  );
+
+  return index === -1 ? 2 : index;
+}
+
+export function getBeatDurationAtIndex(index: number): MetronomeBeatDuration {
+  const wrapped =
+    ((index % METRONOME_BEAT_DURATION_OPTIONS.length) +
+      METRONOME_BEAT_DURATION_OPTIONS.length) %
+    METRONOME_BEAT_DURATION_OPTIONS.length;
+
+  return METRONOME_BEAT_DURATION_OPTIONS[wrapped]!.id;
+}
+
+export function normalizeBeatDurationPattern(
+  pattern: MetronomeBeatDuration[],
+): MetronomeBeatDurationPattern {
+  const normalized = pattern.slice(0, METRONOME_PATTERN_LENGTH);
+
+  while (normalized.length < METRONOME_PATTERN_LENGTH) {
+    normalized.push(METRONOME_BEAT_DURATION_DEFAULT);
+  }
+
+  return normalized;
+}
+
+export function getActiveBeatDurationSlice(
+  pattern: MetronomeBeatDurationPattern,
+  patternLength: number,
+): MetronomeBeatDuration[] {
+  return normalizeBeatDurationPattern(pattern).slice(
+    0,
+    getActivePatternLength(patternLength),
+  );
+}
+
+export function setBeatDurationAtSlot(
+  pattern: MetronomeBeatDurationPattern,
+  slotIndex: number,
+  duration: MetronomeBeatDuration,
+): MetronomeBeatDurationPattern {
+  const next = normalizeBeatDurationPattern(pattern);
+  const index = Math.max(
+    0,
+    Math.min(METRONOME_PATTERN_LENGTH - 1, slotIndex),
+  );
+  next[index] = duration;
+  return next;
+}
+
+export function getCycleMs(
+  bpm: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+): number {
+  return getActiveBeatDurationSlice(beatDurations, patternLength).reduce(
+    (sum, duration) => sum + getMsPerBeat(bpm, duration),
+    0,
+  );
+}
+
+export function getBeatDurationPatternSummary(
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+): string {
+  const active = getActiveBeatDurationSlice(beatDurations, patternLength);
+  const first = active[0] ?? METRONOME_BEAT_DURATION_DEFAULT;
+
+  if (active.every((duration) => duration === first)) {
+    return getBeatDurationLabel(first);
+  }
+
+  return "Figuras variadas";
+}
+
+export type BeatPositionAtTime = {
+  beatIndex: number;
+  msIntoBeat: number;
+  msPerBeat: number;
+  beatStartMs: number;
+};
+
+export function getBeatPositionAtTime(
+  now: number,
+  beatMarkers: { timestamp: number; beatIndex: number }[],
+  bpm: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+): BeatPositionAtTime | null {
+  if (beatMarkers.length === 0) {
+    return null;
+  }
+
+  const activeLength = getActivePatternLength(patternLength);
+  const durations = getActiveBeatDurationSlice(beatDurations, patternLength);
+
+  let anchor = beatMarkers[0]!;
+
+  for (const marker of beatMarkers) {
+    if (marker.timestamp <= now) {
+      anchor = marker;
+    } else {
+      break;
+    }
+  }
+
+  let beatIndex = anchor.beatIndex;
+  let beatStartMs = anchor.timestamp;
+  let msPerBeat = getMsPerBeat(
+    bpm,
+    durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+  );
+
+  if (now < beatStartMs) {
+    return {
+      beatIndex,
+      msIntoBeat: 0,
+      msPerBeat,
+      beatStartMs,
+    };
+  }
+
+  let safety = 0;
+  const maxIterations = activeLength * 256;
+
+  while (beatStartMs + msPerBeat <= now && safety < maxIterations) {
+    beatStartMs += msPerBeat;
+    beatIndex = (beatIndex + 1) % activeLength;
+    msPerBeat = getMsPerBeat(
+      bpm,
+      durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    safety += 1;
+  }
+
+  return {
+    beatIndex,
+    msIntoBeat: now - beatStartMs,
+    msPerBeat,
+    beatStartMs,
+  };
+}
+
+export function getUpcomingBeatMarkers(
+  beatMarkers: MetronomeBeatMarker[],
+  now: number,
+  bpm: number,
+  patternLength: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  lookAheadMs: number,
+): MetronomeBeatMarker[] {
+  if (beatMarkers.length === 0) {
+    return [];
+  }
+
+  const activeLength = getActivePatternLength(patternLength);
+  const durations = getActiveBeatDurationSlice(beatDurations, patternLength);
+  const lastBeat = beatMarkers[beatMarkers.length - 1]!;
+  const upcoming: MetronomeBeatMarker[] = [];
+
+  let nextTime = lastBeat.timestamp;
+  let nextIndex = lastBeat.beatIndex;
+  let msForBeat = getMsPerBeat(
+    bpm,
+    durations[nextIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+  );
+
+  nextTime += msForBeat;
+  nextIndex = (nextIndex + 1) % activeLength;
+
+  while (nextTime <= now + lookAheadMs) {
+    if (nextTime > now) {
+      upcoming.push({ timestamp: nextTime, beatIndex: nextIndex });
+    }
+
+    msForBeat = getMsPerBeat(
+      bpm,
+      durations[nextIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    nextTime += msForBeat;
+    nextIndex = (nextIndex + 1) % activeLength;
+  }
+
+  return upcoming;
+}
+
+export type BeatTimelineSegment = {
+  beatIndex: number;
+  startMs: number;
+  endMs: number;
+};
+
+export function getBeatTimelineSegmentsInWindow(
+  beatMarkers: { timestamp: number; beatIndex: number }[],
+  bpm: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+  windowStartMs: number,
+  windowEndMs: number,
+): BeatTimelineSegment[] {
+  if (beatMarkers.length === 0) {
+    return [];
+  }
+
+  const activeLength = getActivePatternLength(patternLength);
+  const durations = getActiveBeatDurationSlice(beatDurations, patternLength);
+  const position = getBeatPositionAtTime(
+    windowStartMs,
+    beatMarkers,
+    bpm,
+    beatDurations,
+    patternLength,
+  );
+
+  if (!position) {
+    return [];
+  }
+
+  let beatIndex = position.beatIndex;
+  let beatStartMs = position.beatStartMs;
+  let msPerBeat = position.msPerBeat;
+  const segments: BeatTimelineSegment[] = [];
+  let safety = 0;
+  const maxIterations = activeLength * 512;
+
+  while (beatStartMs > windowStartMs && safety < maxIterations) {
+    const previousIndex = (beatIndex - 1 + activeLength) % activeLength;
+    const previousMs = getMsPerBeat(
+      bpm,
+      durations[previousIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    beatStartMs -= previousMs;
+    beatIndex = previousIndex;
+    msPerBeat = getMsPerBeat(
+      bpm,
+      durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    safety += 1;
+  }
+
+  safety = 0;
+
+  while (beatStartMs < windowEndMs && safety < maxIterations) {
+    const endMs = beatStartMs + msPerBeat;
+
+    if (endMs > windowStartMs) {
+      segments.push({
+        beatIndex,
+        startMs: beatStartMs,
+        endMs,
+      });
+    }
+
+    beatStartMs = endMs;
+    beatIndex = (beatIndex + 1) % activeLength;
+    msPerBeat = getMsPerBeat(
+      bpm,
+      durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    safety += 1;
+  }
+
+  return segments;
+}
+
+export function getMsPerBeat(
+  bpm: number,
+  beatDuration: MetronomeBeatDuration = METRONOME_BEAT_DURATION_DEFAULT,
+): number {
+  return (60000 / bpm) * getBeatDurationMultiplier(beatDuration);
+}
+
+export function getSecondsPerBeat(
+  bpm: number,
+  beatDuration: MetronomeBeatDuration = METRONOME_BEAT_DURATION_DEFAULT,
+): number {
+  return getMsPerBeat(bpm, beatDuration) / 1000;
+}
+
 export function clampPatternLength(value: number): number {
   return Math.max(
     BEATS_PER_MEASURE_MIN,
@@ -43,18 +394,10 @@ export const METRONOME_BEAT_LEVELS: MetronomeBeatLevel[] = [
   "fuerte",
 ];
 
-export const METRONOME_PATTERN_DEFAULT: MetronomeBeatPattern = [
-  "fuerte",
-  "medio",
-  "medio",
-  "medio",
-  "silencio",
-  "silencio",
-  "silencio",
-  "silencio",
-  "silencio",
-  "silencio",
-];
+export const METRONOME_PATTERN_DEFAULT: MetronomeBeatPattern = Array.from(
+  { length: METRONOME_PATTERN_LENGTH },
+  () => "medio",
+);
 
 export function normalizeMetronomePattern(
   pattern: MetronomeBeatLevel[],
@@ -62,7 +405,7 @@ export function normalizeMetronomePattern(
   const normalized = pattern.slice(0, METRONOME_PATTERN_LENGTH);
 
   while (normalized.length < METRONOME_PATTERN_LENGTH) {
-    normalized.push("silencio");
+    normalized.push("medio");
   }
 
   return normalized;
@@ -89,6 +432,33 @@ export function cycleMetronomePatternSlot(
   return next;
 }
 
+export function setBeatLevelAtSlot(
+  pattern: MetronomeBeatPattern,
+  slotIndex: number,
+  level: MetronomeBeatLevel,
+): MetronomeBeatPattern {
+  const next = normalizeMetronomePattern(pattern);
+  const index = Math.max(
+    0,
+    Math.min(METRONOME_PATTERN_LENGTH - 1, slotIndex),
+  );
+  next[index] = level;
+  return next;
+}
+
+export function getBeatLevelAtOffset(
+  level: MetronomeBeatLevel,
+  delta: number,
+): MetronomeBeatLevel {
+  const index = METRONOME_BEAT_LEVELS.indexOf(level);
+  const safeIndex = index === -1 ? 0 : index;
+
+  return METRONOME_BEAT_LEVELS[
+    (safeIndex + delta + METRONOME_BEAT_LEVELS.length) %
+      METRONOME_BEAT_LEVELS.length
+  ]!;
+}
+
 export function resizeMetronomePatternLength(
   pattern: MetronomeBeatLevel[],
   currentLength: number,
@@ -100,7 +470,7 @@ export function resizeMetronomePatternLength(
 
   for (let index = safeCurrent; index < clampedLength; index += 1) {
     if (normalized[index] === "silencio") {
-      normalized[index] = index === 0 ? "fuerte" : "medio";
+      normalized[index] = "medio";
     }
   }
 
@@ -193,8 +563,9 @@ export const TIMELINE_MEASURE_CYCLES = 5;
 export function getTimelineWindowMs(
   bpm: number,
   patternLength = METRONOME_PATTERN_LENGTH,
+  beatDurations: MetronomeBeatDurationPattern = METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
 ): number {
-  return (60000 / bpm) * patternLength * TIMELINE_MEASURE_CYCLES;
+  return getCycleMs(bpm, beatDurations, patternLength) * TIMELINE_MEASURE_CYCLES;
 }
 
 export function getHitAccuracy(deltaMs: number): HitAccuracy {
@@ -426,6 +797,7 @@ export type MetronomeEngine = {
     bpm: number,
     pattern: MetronomeBeatPattern,
     patternLength: number,
+    beatDurations: MetronomeBeatDurationPattern,
     onBeat: (beatIndex: number, expectedTimeMs: number) => void,
   ): void;
   stop(): void;
@@ -438,6 +810,9 @@ export function createMetronomeEngine(
   let bpm = BPM_DEFAULT;
   let pattern: MetronomeBeatPattern = [...METRONOME_PATTERN_DEFAULT];
   let patternLength = METRONOME_PATTERN_LENGTH_DEFAULT;
+  let beatDurations: MetronomeBeatDurationPattern = [
+    ...METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
+  ];
   let nextBeatTime = 0;
   let currentBeatIndex = 0;
   let schedulerTimer: ReturnType<typeof setInterval> | null = null;
@@ -483,12 +858,19 @@ export function createMetronomeEngine(
       return;
     }
 
-    const secondsPerBeat = 60 / bpm;
+    const activeDurations = getActiveBeatDurationSlice(
+      beatDurations,
+      patternLength,
+    );
 
     while (nextBeatTime < audioContext.currentTime + LOOK_AHEAD_SECONDS) {
       const beatIndex = currentBeatIndex;
       const beatTime = nextBeatTime;
       const level = pattern[beatIndex] ?? "silencio";
+      const secondsPerBeat = getSecondsPerBeat(
+        bpm,
+        activeDurations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+      );
 
       scheduleClick(audioContext, beatTime, level);
       scheduleBeatCallback(beatIndex, beatTime);
@@ -503,6 +885,7 @@ export function createMetronomeEngine(
       nextBpm: number,
       nextPattern: MetronomeBeatPattern,
       nextPatternLength: number,
+      nextBeatDurations: MetronomeBeatDurationPattern,
       nextOnBeat: (beatIndex: number, expectedTimeMs: number) => void,
     ) {
       if (running) {
@@ -512,6 +895,7 @@ export function createMetronomeEngine(
       bpm = nextBpm;
       pattern = normalizeMetronomePattern(nextPattern);
       patternLength = getActivePatternLength(nextPatternLength);
+      beatDurations = normalizeBeatDurationPattern(nextBeatDurations);
       onBeat = nextOnBeat;
       running = true;
       currentBeatIndex = 0;

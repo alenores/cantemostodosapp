@@ -13,6 +13,7 @@ type HubModuleCardProps = {
   onClick: () => void;
   disabled?: boolean;
   pending?: boolean;
+  badge?: string;
   cta: ReactNode;
 };
 
@@ -24,6 +25,7 @@ export default function HubModuleCard({
   onClick,
   disabled = false,
   pending = false,
+  badge,
   cta,
 }: HubModuleCardProps) {
   return (
@@ -33,6 +35,11 @@ export default function HubModuleCard({
       disabled={disabled || pending}
       className="relative flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4 disabled:opacity-40"
     >
+      {badge ? (
+        <span className="absolute right-2 top-2 rounded-full bg-bg-cola-sheet px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-text-muted">
+          {badge}
+        </span>
+      ) : null}
       {pending && (
         <span
           className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-bg-app/55"

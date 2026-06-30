@@ -12,9 +12,16 @@ import {
   type VozTarget,
 } from "@/lib/voz";
 import type {
+  MetronomeBeatDuration,
+  MetronomeBeatDurationPattern,
+  MetronomeBeatLevel,
+  MetronomeBeatPattern,
+} from "@/lib/metronomo";
+import type {
   VozRitmoBeatMarker,
   VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
+import { ENTRENADOR_VOCAL_TAGLINE } from "@/lib/herramientas-product";
 import { Mic, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -48,8 +55,20 @@ type EntrenadorVocalModalProps = {
   onStopRitmo: () => void;
   ritmoBpm: number;
   onSetRitmoBpm: (value: number) => void;
-  ritmoPattern: boolean[];
-  onToggleRitmoPatternSlot: (slotIndex: number) => void;
+  ritmoBeatPattern: MetronomeBeatPattern;
+  ritmoPatternLength: number;
+  ritmoBeatDurations: MetronomeBeatDurationPattern;
+  onSetRitmoPatternLength: (value: number) => void;
+  onSetRitmoBeatDurationAtSlot: (
+    slotIndex: number,
+    duration: MetronomeBeatDuration,
+  ) => void;
+  onSetRitmoBeatLevelAtSlot: (
+    slotIndex: number,
+    level: MetronomeBeatLevel,
+  ) => void;
+  ritmoTapTempoTapCount: number;
+  onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
 };
@@ -140,8 +159,14 @@ export default function EntrenadorVocalModal({
   onStopRitmo,
   ritmoBpm,
   onSetRitmoBpm,
-  ritmoPattern,
-  onToggleRitmoPatternSlot,
+  ritmoBeatPattern,
+  ritmoPatternLength,
+  onSetRitmoPatternLength,
+  ritmoBeatDurations,
+  onSetRitmoBeatDurationAtSlot,
+  onSetRitmoBeatLevelAtSlot,
+  ritmoTapTempoTapCount,
+  onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
 }: EntrenadorVocalModalProps) {
@@ -183,13 +208,18 @@ export default function EntrenadorVocalModal({
         className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
-          <div className="flex items-center gap-3">
-            <h2
-              id="entrenador-vocal-titulo"
-              className="min-w-0 flex-1 text-lg font-extrabold text-accent"
-            >
-              Entrenador Vocal
-            </h2>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h2
+                id="entrenador-vocal-titulo"
+                className="text-lg font-extrabold text-accent"
+              >
+                Entrenador Vocal
+              </h2>
+              <p className="mt-1 text-xs leading-snug text-text-muted">
+                {ENTRENADOR_VOCAL_TAGLINE}
+              </p>
+            </div>
             <button
               type="button"
               aria-label="Cerrar entrenador vocal"
@@ -241,8 +271,14 @@ export default function EntrenadorVocalModal({
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoBpm={ritmoBpm}
               onSetRitmoBpm={onSetRitmoBpm}
-              ritmoPattern={ritmoPattern}
-              onToggleRitmoPatternSlot={onToggleRitmoPatternSlot}
+              ritmoBeatPattern={ritmoBeatPattern}
+              ritmoPatternLength={ritmoPatternLength}
+              onSetRitmoPatternLength={onSetRitmoPatternLength}
+              ritmoBeatDurations={ritmoBeatDurations}
+              onSetRitmoBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
+              onSetRitmoBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
+              ritmoTapTempoTapCount={ritmoTapTempoTapCount}
+              onTapRitmoTempo={onTapRitmoTempo}
               beatMarkers={beatMarkers}
               ritmoVoiceSamples={ritmoVoiceSamples}
               ritmoEvaluarTono={ritmoEvaluarTono}

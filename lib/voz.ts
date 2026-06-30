@@ -80,7 +80,7 @@ export function clampHoldTargetSeconds(value: number): number {
     Math.min(VOZ_HOLD_TARGET_MAX, Math.round(value)),
   );
 }
-export const VOZ_INSTANT_ATTEMPTS_MAX = 12;
+export const VOZ_INSTANT_ATTEMPTS_MAX = 10;
 
 export type VozInstantAttempt = {
   id: number;

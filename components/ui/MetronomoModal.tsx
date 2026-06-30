@@ -1,35 +1,41 @@
 "use client";
 
 import {
-  ToolConfigSection,
   ToolPracticeSection,
 } from "@/components/ui/ToolModalSections";
 import PlayingEqIndicator from "@/components/ui/PlayingEqIndicator";
+import {
+  BeatPatternEditor,
+  RitmoConfigSection,
+} from "@/components/ui/ToolRitmoConfig";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
-  BEATS_PER_MEASURE_MAX,
-  BEATS_PER_MEASURE_MIN,
-  BPM_MAX,
-  BPM_MIN,
   computeOnTimeStreak,
   getActivePatternSlice,
-  getBeatLevelBarAppearance,
   getBeatLevelBarHeightPercent,
   getBeatLevelConfigColor,
   getBeatLevelLabel,
+  getBeatDurationPatternSummary,
+  getCycleMs,
   getHitAccuracy,
   getHitAccuracyColor,
   getHitFeedbackLabel,
   getTimelineWindowMs,
+  getUpcomingBeatMarkers,
+  type MetronomeBeatDuration,
+  type MetronomeBeatDurationPattern,
   type MetronomeBeatLevel,
   type MetronomeBeatMarker,
   type MetronomeBeatPattern,
   type MetronomeHit,
 } from "@/lib/metronomo";
-import { ChevronDown, Mic, Play, Square, Volume2, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-
-type BpmInputMode = "botones" | "tap";
+import { METRONOMO_TAGLINE } from "@/lib/herramientas-product";
+import {
+  formatRitmoConfigSummary,
+  RITMO_LABEL_TEMPO,
+} from "@/lib/ritmo-terminologia";
+import { Mic, Play, Square, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type MetronomoModalProps = {
   open: boolean;
@@ -38,6 +44,7 @@ type MetronomoModalProps = {
   isPlaying: boolean;
   beatPattern: MetronomeBeatPattern;
   patternLength: number;
+  beatDurations: MetronomeBeatDurationPattern;
   currentBeat: number | null;
   micActivo: boolean;
   micPermissionGranted: boolean;
@@ -51,384 +58,18 @@ type MetronomoModalProps = {
   onStop: () => void;
   onSetBpm: (value: number) => void;
   onSetPatternLength: (value: number) => void;
-  onCycleBeatPatternSlot: (slotIndex: number) => void;
+  onSetBeatDurationAtSlot: (
+    slotIndex: number,
+    duration: MetronomeBeatDuration,
+  ) => void;
+  onSetBeatLevelAtSlot: (
+    slotIndex: number,
+    level: MetronomeBeatLevel,
+  ) => void;
   onTapTempo: () => void;
   onToggleMic: () => void;
   onRequestMic: () => void;
 };
-
-function CollapsibleConfigBlock({
-  title,
-  collapsedSummary,
-  isPlaying,
-  modalOpen,
-  defaultExpanded = true,
-  children,
-}: {
-  title: string;
-  collapsedSummary: string;
-  isPlaying: boolean;
-  modalOpen: boolean;
-  defaultExpanded?: boolean;
-  children: ReactNode;
-}) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-
-  useEffect(() => {
-    if (modalOpen) {
-      setExpanded(defaultExpanded);
-    }
-  }, [defaultExpanded, modalOpen]);
-
-  useEffect(() => {
-    if (isPlaying) {
-      setExpanded(false);
-    }
-  }, [isPlaying]);
-
-  return (
-    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center justify-between gap-2 text-left"
-        aria-expanded={expanded}
-      >
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wide text-voz-config">
-            {title}
-          </p>
-          {!expanded ? (
-            <p className="mt-0.5 truncate text-[11px] text-text-secondary">
-              {collapsedSummary}
-            </p>
-          ) : null}
-        </div>
-        <ChevronDown
-          className={`size-5 shrink-0 text-text-muted transition-transform ${
-            expanded ? "rotate-180" : ""
-          }`}
-          aria-hidden="true"
-        />
-      </button>
-      {expanded ? <div className="mt-3 space-y-3">{children}</div> : null}
-    </div>
-  );
-}
-
-function BpmSetupPanel({
-  bpm,
-  isPlaying,
-  tapTempoTapCount,
-  onSetBpm,
-  onTapTempo,
-}: {
-  bpm: number;
-  isPlaying: boolean;
-  tapTempoTapCount: number;
-  onSetBpm: (value: number) => void;
-  onTapTempo: () => void;
-}) {
-  const [mode, setMode] = useState<BpmInputMode>("botones");
-
-  useEffect(() => {
-    if (isPlaying) {
-      setMode("botones");
-    }
-  }, [isPlaying]);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-1 rounded-full border border-border bg-bg-darker p-0.5">
-        {(
-          [
-            { id: "botones" as const, label: "Botones" },
-            { id: "tap" as const, label: "Marcar a mano" },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            disabled={isPlaying}
-            onClick={() => setMode(tab.id)}
-            className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-bold disabled:opacity-50 ${
-              mode === tab.id
-                ? "bg-voz-config text-white"
-                : "text-text-muted"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-3 min-h-[5.5rem]">
-        {mode === "botones" ? (
-          <div className="flex items-center justify-center gap-3">
-            <TapButton
-              type="button"
-              aria-label="Reducir BPM"
-              disabled={isPlaying || bpm <= BPM_MIN}
-              onClick={() => onSetBpm(bpm - 1)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-xl font-bold text-text-primary disabled:opacity-40"
-            >
-              −
-            </TapButton>
-            <p className="w-16 text-center text-sm text-text-muted">Ajustá</p>
-            <TapButton
-              type="button"
-              aria-label="Aumentar BPM"
-              disabled={isPlaying || bpm >= BPM_MAX}
-              onClick={() => onSetBpm(bpm + 1)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-xl font-bold text-text-primary disabled:opacity-40"
-            >
-              +
-            </TapButton>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[11px] text-text-muted">
-              {isPlaying
-                ? "Detené el metrónomo para marcar el tempo con TAP."
-                : "Tocá 2–4 veces al ritmo. No suena nada mientras tocás."}
-            </p>
-            <TapButton
-              type="button"
-              disabled={isPlaying}
-              onClick={onTapTempo}
-              className={`w-full rounded-[12px] border px-4 py-3 text-sm font-bold disabled:opacity-40 ${
-                tapTempoTapCount > 0 && !isPlaying
-                  ? "border-voz-config bg-voz-config/15 text-voz-config"
-                  : "border-border bg-bg-cola-sheet text-text-primary"
-              }`}
-            >
-              TAP
-            </TapButton>
-            {tapTempoTapCount > 0 && !isPlaying ? (
-              <p
-                className="text-center text-xs text-voz-config"
-                aria-live="polite"
-              >
-                {tapTempoTapCount === 1
-                  ? "1 golpe · tocá una vez más"
-                  : `${tapTempoTapCount} golpes registrados`}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </div>
-
-      <div
-        className="mt-3 rounded-[10px] border border-border bg-bg-card px-3 py-3 text-center"
-        aria-live="polite"
-      >
-        <p className="text-5xl font-extrabold leading-none text-text-primary">
-          {bpm}
-        </p>
-        <p className="mt-1 text-sm text-text-muted">BPM que va a sonar</p>
-      </div>
-    </div>
-  );
-}
-
-function PatternLengthControl({
-  patternLength,
-  disabled,
-  onSetPatternLength,
-}: {
-  patternLength: number;
-  disabled?: boolean;
-  onSetPatternLength: (value: number) => void;
-}) {
-  return (
-    <div>
-      <p className="text-sm font-semibold text-text-primary">
-        Cantidad de tiempos
-      </p>
-      <p className="mt-0.5 text-[11px] text-text-muted">
-        Cuántos golpes forman un ciclo ({BEATS_PER_MEASURE_MIN}–
-        {BEATS_PER_MEASURE_MAX})
-      </p>
-      <div className="mt-2 flex items-center justify-center gap-3">
-        <TapButton
-          type="button"
-          aria-label="Reducir cantidad de tiempos"
-          disabled={disabled || patternLength <= BEATS_PER_MEASURE_MIN}
-          onClick={() => onSetPatternLength(patternLength - 1)}
-          className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
-        >
-          −
-        </TapButton>
-        <label className="sr-only" htmlFor="metronomo-pattern-length">
-          Cantidad de tiempos en el ciclo
-        </label>
-        <input
-          id="metronomo-pattern-length"
-          type="number"
-          inputMode="numeric"
-          min={BEATS_PER_MEASURE_MIN}
-          max={BEATS_PER_MEASURE_MAX}
-          disabled={disabled}
-          value={patternLength}
-          onChange={(event) => {
-            const parsed = Number.parseInt(event.target.value, 10);
-            if (!Number.isNaN(parsed)) {
-              onSetPatternLength(parsed);
-            }
-          }}
-          onBlur={(event) => {
-            const parsed = Number.parseInt(event.target.value, 10);
-            onSetPatternLength(
-              Number.isNaN(parsed) ? BEATS_PER_MEASURE_MIN : parsed,
-            );
-          }}
-          className="w-14 rounded-[10px] border border-border bg-bg-card py-2 text-center text-xl font-extrabold text-text-primary disabled:opacity-40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-        <TapButton
-          type="button"
-          aria-label="Aumentar cantidad de tiempos"
-          disabled={disabled || patternLength >= BEATS_PER_MEASURE_MAX}
-          onClick={() => onSetPatternLength(patternLength + 1)}
-          className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
-        >
-          +
-        </TapButton>
-      </div>
-    </div>
-  );
-}
-
-function BeatPatternEditor({
-  pattern,
-  patternLength,
-  disabled = false,
-  variant = "config",
-  currentBeat = null,
-  onCycleSlot,
-}: {
-  pattern: MetronomeBeatPattern;
-  patternLength: number;
-  disabled?: boolean;
-  variant?: "config" | "practice";
-  currentBeat?: number | null;
-  onCycleSlot?: (slotIndex: number) => void;
-}) {
-  const activePattern = getActivePatternSlice(pattern, patternLength);
-  const interactive = variant === "config";
-  const beatLevels: MetronomeBeatLevel[] = [
-    "silencio",
-    "suave",
-    "medio",
-    "fuerte",
-  ];
-
-  const bars = (
-    <div className={`flex gap-1 ${variant === "config" ? "mt-3" : ""}`}>
-      {activePattern.map((level, index) => {
-        const heightPercent = Math.max(
-          getBeatLevelBarHeightPercent(level),
-          level === "silencio" ? 0 : 8,
-        );
-        const isActive = currentBeat === index;
-        const barAppearance = getBeatLevelBarAppearance(level);
-
-        if (!interactive) {
-          return (
-            <span
-              key={`beat-slot-${index}`}
-              className="flex min-w-0 flex-1 flex-col items-center justify-end"
-              title={`Tiempo ${index + 1}: ${getBeatLevelLabel(level)}`}
-            >
-              <span
-                className={`w-full rounded-full transition-colors ${
-                  isActive
-                    ? "ring-2 ring-text-primary ring-offset-1 ring-offset-bg-card"
-                    : ""
-                }`}
-                style={{
-                  height: `${Math.max(heightPercent * 0.28, level === "silencio" ? 4 : 10)}px`,
-                  backgroundColor: barAppearance.backgroundColor,
-                  border: barAppearance.border,
-                }}
-              />
-            </span>
-          );
-        }
-
-        return (
-          <button
-            key={`beat-slot-${index}`}
-            type="button"
-            disabled={disabled}
-            onClick={() => onCycleSlot?.(index)}
-            aria-label={`Tiempo ${index + 1}: ${getBeatLevelLabel(level)}`}
-            aria-pressed={level !== "silencio"}
-            className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 disabled:opacity-50"
-          >
-            <span
-              className="w-full rounded-full"
-              style={{
-                height: `${Math.max(heightPercent * 0.32, level === "silencio" ? 6 : 12)}px`,
-                backgroundColor: barAppearance.backgroundColor,
-                border: barAppearance.border,
-              }}
-            />
-            <span className="text-[9px] font-bold text-text-muted">
-              {index + 1}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  const legend = (
-    <div className="mt-3 flex items-start gap-2">
-      <Volume2
-        className="mt-0.5 size-3.5 shrink-0 text-text-muted"
-        aria-hidden="true"
-      />
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-text-muted">
-        {beatLevels.map((level) => {
-          const barAppearance = getBeatLevelBarAppearance(level);
-
-          return (
-            <span key={level} className="inline-flex items-center gap-1">
-              <span
-                className="inline-block w-3 rounded-full"
-                style={{
-                  height: `${Math.max(getBeatLevelBarHeightPercent(level) * 0.12, 4)}px`,
-                  backgroundColor: barAppearance.backgroundColor,
-                  border: barAppearance.border,
-                }}
-              />
-              {getBeatLevelLabel(level)}
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  if (variant === "config") {
-    return (
-      <div className="border-t border-border pt-3">
-        <div className="rounded-lg border border-border bg-bg-card px-3 py-3">
-          <p className="text-sm font-semibold text-text-primary">
-            Volumen de cada tiempo
-          </p>
-          <p className="mt-0.5 text-[11px] leading-snug text-text-muted">
-            Tocá cada barra: silencio → suave → medio → fuerte
-          </p>
-          {bars}
-          {legend}
-        </div>
-      </div>
-    );
-  }
-
-  return <div>{bars}</div>;
-}
 
 function PracticePlaybackSummary({
   bpm,
@@ -450,7 +91,7 @@ function PracticePlaybackSummary({
           {bpm}
         </p>
         <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-          BPM
+          {RITMO_LABEL_TEMPO}
         </p>
       </div>
       <div className="min-w-0 flex-1">
@@ -490,41 +131,13 @@ function useTimelineNow(active: boolean): number {
   return now;
 }
 
-function getUpcomingBeats(
-  beatMarkers: MetronomeBeatMarker[],
-  now: number,
-  bpm: number,
-  patternLength: number,
-  lookAheadMs: number,
-): MetronomeBeatMarker[] {
-  if (beatMarkers.length === 0) {
-    return [];
-  }
-
-  const msPerBeat = 60000 / bpm;
-  const lastBeat = beatMarkers[beatMarkers.length - 1]!;
-  const upcoming: MetronomeBeatMarker[] = [];
-  let nextTime = lastBeat.timestamp + msPerBeat;
-  let nextIndex = (lastBeat.beatIndex + 1) % patternLength;
-
-  while (nextTime <= now + lookAheadMs) {
-    if (nextTime > now) {
-      upcoming.push({ timestamp: nextTime, beatIndex: nextIndex });
-    }
-
-    nextTime += msPerBeat;
-    nextIndex = (nextIndex + 1) % patternLength;
-  }
-
-  return upcoming;
-}
-
 function ScrollingRhythmTimeline({
   beatMarkers,
   hits,
   bpm,
   beatPattern,
   patternLength,
+  beatDurations,
   isPlaying,
 }: {
   beatMarkers: MetronomeBeatMarker[];
@@ -532,13 +145,13 @@ function ScrollingRhythmTimeline({
   bpm: number;
   beatPattern: MetronomeBeatPattern;
   patternLength: number;
+  beatDurations: MetronomeBeatDurationPattern;
   isPlaying: boolean;
 }) {
   const pattern = getActivePatternSlice(beatPattern, patternLength);
   const now = useTimelineNow(isPlaying || hits.length > 0);
-  const windowMs = getTimelineWindowMs(bpm, patternLength);
-  const msPerBeat = 60000 / bpm;
-  const msPerCycle = msPerBeat * pattern.length;
+  const windowMs = getTimelineWindowMs(bpm, patternLength, beatDurations);
+  const msPerCycle = getCycleMs(bpm, beatDurations, patternLength);
   const lookAheadMs = msPerCycle;
   const totalSpan = windowMs + lookAheadMs;
   const nowLinePercent = (windowMs / totalSpan) * 100;
@@ -553,13 +166,22 @@ function ScrollingRhythmTimeline({
       beat.timestamp >= now - windowMs && beat.timestamp <= now + lookAheadMs,
   );
   const upcomingBeats = isPlaying
-    ? getUpcomingBeats(beatMarkers, now, bpm, patternLength, lookAheadMs)
+    ? getUpcomingBeatMarkers(
+        beatMarkers,
+        now,
+        bpm,
+        patternLength,
+        beatDurations,
+        lookAheadMs,
+      )
     : [];
   const visibleBeats = [...pastBeats, ...upcomingBeats];
   const visibleHits = hits.filter((hit) => hit.timestamp >= now - windowMs);
 
   const measureLines: number[] = [];
-  const firstLine = Math.floor((now - windowMs) / msPerCycle) * msPerCycle;
+  const anchor = beatMarkers[0]?.timestamp ?? now;
+  const firstLine =
+    anchor + Math.floor((now - windowMs - anchor) / msPerCycle) * msPerCycle;
 
   for (let time = firstLine; time <= now + lookAheadMs; time += msPerCycle) {
     measureLines.push(time);
@@ -707,6 +329,7 @@ function HitTimingFeedback({
   bpm,
   beatPattern,
   patternLength,
+  beatDurations,
 }: {
   hits: MetronomeHit[];
   beatMarkers: MetronomeBeatMarker[];
@@ -714,6 +337,7 @@ function HitTimingFeedback({
   bpm: number;
   beatPattern: MetronomeBeatPattern;
   patternLength: number;
+  beatDurations: MetronomeBeatDurationPattern;
 }) {
   const lastHit = hits.length > 0 ? hits[hits.length - 1] : null;
   const streak = useMemo(() => computeOnTimeStreak(hits), [hits]);
@@ -768,6 +392,7 @@ function HitTimingFeedback({
         bpm={bpm}
         beatPattern={beatPattern}
         patternLength={patternLength}
+        beatDurations={beatDurations}
         isPlaying={isPlaying}
       />
     </div>
@@ -836,6 +461,7 @@ export default function MetronomoModal({
   isPlaying,
   beatPattern,
   patternLength,
+  beatDurations,
   currentBeat,
   micActivo,
   micPermissionGranted,
@@ -849,7 +475,8 @@ export default function MetronomoModal({
   onStop,
   onSetBpm,
   onSetPatternLength,
-  onCycleBeatPatternSlot,
+  onSetBeatDurationAtSlot,
+  onSetBeatLevelAtSlot,
   onTapTempo,
   onToggleMic,
   onRequestMic,
@@ -857,6 +484,12 @@ export default function MetronomoModal({
   if (!open) {
     return null;
   }
+
+  const configSummary = formatRitmoConfigSummary(
+    patternLength,
+    getBeatDurationPatternSummary(beatDurations, patternLength),
+    bpm,
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
@@ -873,13 +506,18 @@ export default function MetronomoModal({
         className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
-          <div className="flex items-center gap-3">
-            <h2
-              id="metronomo-titulo"
-              className="min-w-0 flex-1 text-lg font-extrabold text-accent"
-            >
-              Metrónomo
-            </h2>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h2
+                id="metronomo-titulo"
+                className="text-lg font-extrabold text-accent"
+              >
+                Metrónomo
+              </h2>
+              <p className="mt-1 text-xs leading-snug text-text-muted">
+                {METRONOMO_TAGLINE}
+              </p>
+            </div>
             <button
               type="button"
               aria-label="Cerrar metrónomo"
@@ -891,50 +529,30 @@ export default function MetronomoModal({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-          <ToolConfigSection>
-            <CollapsibleConfigBlock
-              title="Compás"
-              collapsedSummary={`${patternLength} tiempos en el ciclo`}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+          <div className="space-y-3">
+            <RitmoConfigSection
+              collapsedSummary={configSummary}
+              autoCollapseWhen={isPlaying}
+              beatPattern={beatPattern}
+              patternLength={patternLength}
+              beatDurations={beatDurations}
+              bpm={bpm}
               isPlaying={isPlaying}
-              modalOpen={open}
-              defaultExpanded
-            >
-              <PatternLengthControl
-                patternLength={patternLength}
-                disabled={isPlaying}
-                onSetPatternLength={onSetPatternLength}
-              />
-              <BeatPatternEditor
-                pattern={beatPattern}
-                patternLength={patternLength}
-                disabled={isPlaying}
-                onCycleSlot={onCycleBeatPatternSlot}
-              />
-            </CollapsibleConfigBlock>
+              tapTempoTapCount={tapTempoTapCount}
+              patternLengthInputId="metronomo-pattern-length"
+              onSetPatternLength={onSetPatternLength}
+              onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
+              onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
+              onSetBpm={onSetBpm}
+              onTapTempo={onTapTempo}
+            />
 
-            <CollapsibleConfigBlock
-              title="Tempo"
-              collapsedSummary={`${bpm} BPM`}
-              isPlaying={isPlaying}
-              modalOpen={open}
-              defaultExpanded={false}
-            >
-              <BpmSetupPanel
-                bpm={bpm}
-                isPlaying={isPlaying}
-                tapTempoTapCount={tapTempoTapCount}
-                onSetBpm={onSetBpm}
-                onTapTempo={onTapTempo}
-              />
-            </CollapsibleConfigBlock>
-          </ToolConfigSection>
-
-          <ToolPracticeSection>
+            <ToolPracticeSection subtitle="Seguí el ritmo del metrónomo y, si querés, detectá tus golpes con el micrófono.">
             {isPlaying ? (
               <div className="flex items-center justify-end">
                 <PlayingEqIndicator
-                  color="var(--voz-config)"
+                  color="var(--tool-practice)"
                   ariaLabel="Metrónomo sonando"
                 />
               </div>
@@ -1011,12 +629,14 @@ export default function MetronomoModal({
                       bpm={bpm}
                       beatPattern={beatPattern}
                       patternLength={patternLength}
+                      beatDurations={beatDurations}
                     />
                   )}
                 </div>
               ) : null}
             </div>
           </ToolPracticeSection>
+          </div>
         </div>
       </div>
     </div>

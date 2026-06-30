@@ -1,4 +1,18 @@
-import { BPM_DEFAULT, BPM_MAX, BPM_MIN } from "@/lib/metronomo";
+import {
+  BPM_DEFAULT,
+  BPM_MAX,
+  BPM_MIN,
+  clampPatternLength,
+  getActivePatternSlice,
+  getBeatPositionAtTime,
+  getCycleMs,
+  getMsPerBeat,
+  METRONOME_BEAT_DURATION_DEFAULT,
+  METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
+  type MetronomeBeatDurationPattern,
+  type MetronomeBeatLevel,
+  type MetronomeBeatPattern,
+} from "@/lib/metronomo";
 import type { VozAccuracy } from "@/lib/voz";
 
 export { BPM_DEFAULT, BPM_MAX, BPM_MIN };
@@ -12,16 +26,18 @@ export type VozRitmoBeatMarker = {
   isPhaseStart: boolean;
 };
 
-export const VOZ_RITMO_PATTERN_LENGTH = 8;
-export const VOZ_RITMO_PATTERN_DEFAULT: readonly boolean[] = [
-  true,
-  false,
-  true,
-  false,
-  true,
-  false,
-  true,
-  false,
+export const VOZ_RITMO_PATTERN_LENGTH_DEFAULT = 8;
+export const VOZ_RITMO_BEAT_PATTERN_DEFAULT: MetronomeBeatPattern = [
+  "fuerte",
+  "silencio",
+  "fuerte",
+  "silencio",
+  "fuerte",
+  "silencio",
+  "fuerte",
+  "silencio",
+  "silencio",
+  "silencio",
 ];
 export const VOZ_RITMO_TIMELINE_CYCLES = 4;
 /** Fracción del ancho a la izquierda de «ahora» (resto = futuro visible). */
@@ -36,70 +52,51 @@ export type VozRitmoVoiceSample = {
   compliance: VozRitmoVoiceCompliance;
 };
 
-const LOOK_AHEAD_SECONDS = 0.1;
-const SCHEDULE_INTERVAL_MS = 25;
-
 export function clampRitmoBpm(value: number): number {
   return Math.max(BPM_MIN, Math.min(BPM_MAX, Math.round(value)));
 }
 
-export type VozRitmoPattern = boolean[];
-
-export function normalizeRitmoPattern(pattern: boolean[]): VozRitmoPattern {
-  const normalized = pattern.slice(0, VOZ_RITMO_PATTERN_LENGTH);
-
-  while (normalized.length < VOZ_RITMO_PATTERN_LENGTH) {
-    normalized.push(false);
-  }
-
-  return normalized;
+export function beatLevelToPhase(level: MetronomeBeatLevel): VozRitmoPhase {
+  return level === "silencio" ? "silencio" : "cantar";
 }
 
-export function toggleRitmoPatternSlot(
-  pattern: boolean[],
-  slotIndex: number,
-): VozRitmoPattern {
-  const next = normalizeRitmoPattern(pattern);
-  const index = Math.max(0, Math.min(VOZ_RITMO_PATTERN_LENGTH - 1, slotIndex));
-  next[index] = !next[index];
-  return next;
-}
-
-export function getCycleBeats(pattern: boolean[]): number {
-  return normalizeRitmoPattern(pattern).length;
+export function getCycleBeats(patternLength: number): number {
+  return clampPatternLength(patternLength);
 }
 
 export function getPhaseAtBeat(
   beatIndex: number,
-  pattern: boolean[],
+  pattern: MetronomeBeatPattern,
+  patternLength: number,
 ): VozRitmoPhase {
-  const cycle = getCycleBeats(pattern);
+  const active = getActivePatternSlice(pattern, patternLength);
+  const cycle = active.length;
   const position = ((beatIndex % cycle) + cycle) % cycle;
 
-  return normalizeRitmoPattern(pattern)[position] ? "cantar" : "silencio";
+  return beatLevelToPhase(active[position]!);
 }
 
 export function isPhaseStartAtBeat(
   beatIndex: number,
-  pattern: boolean[],
+  pattern: MetronomeBeatPattern,
+  patternLength: number,
 ): boolean {
   if (beatIndex === 0) {
     return true;
   }
 
   return (
-    getPhaseAtBeat(beatIndex, pattern) !==
-    getPhaseAtBeat(beatIndex - 1, pattern)
+    getPhaseAtBeat(beatIndex, pattern, patternLength) !==
+    getPhaseAtBeat(beatIndex - 1, pattern, patternLength)
   );
 }
 
 export function getRitmoTimelineWindowMs(
   bpm: number,
-  pattern: boolean[],
+  patternLength: number,
+  beatDurations: MetronomeBeatDurationPattern = METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
 ): number {
-  return (
-    (60000 / bpm) * getCycleBeats(pattern) * VOZ_RITMO_TIMELINE_CYCLES
-  );
+  return getCycleMs(bpm, beatDurations, patternLength) * VOZ_RITMO_TIMELINE_CYCLES;
 }
 
 export function getRitmoNowLinePercent(
@@ -125,39 +122,67 @@ export function getRitmoPhaseAtTime(
   now: number,
   beatMarkers: VozRitmoBeatMarker[],
   bpm: number,
-  pattern: boolean[],
+  pattern: MetronomeBeatPattern,
+  patternLength: number,
+  beatDurations: MetronomeBeatDurationPattern = METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
 ): VozRitmoPhase | null {
   if (beatMarkers.length === 0) {
     return null;
   }
 
-  const msPerBeat = 60000 / bpm;
-  const anchor = beatMarkers[0]!;
-  const elapsed = now - anchor.timestamp;
+  const position = getBeatPositionAtTime(
+    now,
+    beatMarkers,
+    bpm,
+    beatDurations,
+    patternLength,
+  );
 
-  if (elapsed < 0) {
-    return getPhaseAtBeat(anchor.beatIndex, pattern);
+  if (!position) {
+    return null;
   }
 
-  const beatsElapsed = Math.floor(elapsed / msPerBeat);
-
-  return getPhaseAtBeat(anchor.beatIndex + beatsElapsed, pattern);
+  return getPhaseAtBeat(position.beatIndex, pattern, patternLength);
 }
 
 export function getMsIntoCurrentBeat(
   now: number,
   beatMarkers: VozRitmoBeatMarker[],
   bpm: number,
+  beatDurations: MetronomeBeatDurationPattern = METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
+  patternLength: number,
 ): number {
   if (beatMarkers.length === 0) {
     return 0;
   }
 
-  const msPerBeat = 60000 / bpm;
-  const anchor = beatMarkers[0]!;
-  const elapsed = Math.max(0, now - anchor.timestamp);
+  const position = getBeatPositionAtTime(
+    now,
+    beatMarkers,
+    bpm,
+    beatDurations,
+    patternLength,
+  );
 
-  return elapsed % msPerBeat;
+  return position?.msIntoBeat ?? 0;
+}
+
+export function getMsPerBeatAtTime(
+  now: number,
+  beatMarkers: VozRitmoBeatMarker[],
+  bpm: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+): number {
+  const position = getBeatPositionAtTime(
+    now,
+    beatMarkers,
+    bpm,
+    beatDurations,
+    patternLength,
+  );
+
+  return position?.msPerBeat ?? getMsPerBeat(bpm, METRONOME_BEAT_DURATION_DEFAULT);
 }
 
 export function getRitmoVoiceCompliance(
@@ -200,19 +225,18 @@ export function getPhaseLabel(phase: VozRitmoPhase): string {
   return phase === "cantar" ? "Cantá" : "Silencio";
 }
 
-export function getPatternDescription(pattern: boolean[]): string {
-  const normalized = normalizeRitmoPattern(pattern);
-  const singCount = normalized.filter(Boolean).length;
-  const restCount = normalized.length - singCount;
+export function getPatternDescription(
+  pattern: MetronomeBeatPattern,
+  patternLength: number,
+): string {
+  const active = getActivePatternSlice(pattern, patternLength);
+  const singCount = active.filter((level) => level !== "silencio").length;
+  const restCount = active.length - singCount;
   const singLabel = singCount === 1 ? "1 tiempo" : `${singCount} tiempos`;
   const restLabel = restCount === 1 ? "1 tiempo" : `${restCount} tiempos`;
 
   return `${singLabel} cantando · ${restLabel} en silencio`;
 }
-
-/** Colores de parametrización (no semáforo de juego). */
-export const VOZ_RITMO_SETUP_SOUND_COLOR = "var(--voz-config)";
-export const VOZ_RITMO_SETUP_SILENCE_COLOR = "var(--cola-sheet-pill)";
 
 /** Referencia del patrón durante la práctica (neutro, sin color de config). */
 export const VOZ_RITMO_PRACTICE_SOUND_COLOR =
@@ -246,165 +270,16 @@ export function getRitmoPhaseFeedback(
   return null;
 }
 
-function scheduleVozRitmoClick(
-  audioContext: AudioContext,
-  time: number,
-  phase: VozRitmoPhase,
-  isPhaseStart: boolean,
-): void {
-  const isSing = phase === "cantar";
-  const frequency = isSing
-    ? isPhaseStart
-      ? 880
-      : 660
-    : isPhaseStart
-      ? 330
-      : 247;
-  const peakGain = isSing
-    ? isPhaseStart
-      ? 0.62
-      : 0.24
-    : isPhaseStart
-      ? 0.4
-      : 0.14;
-  const duration = isPhaseStart ? 0.055 : 0.028;
-
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-
-  oscillator.type = "sine";
-  oscillator.frequency.value = frequency;
-
-  gainNode.gain.setValueAtTime(peakGain, time);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  oscillator.start(time);
-  oscillator.stop(time + duration);
-}
-
-export type VozRitmoEngine = {
-  start(
-    bpm: number,
-    pattern: boolean[],
-    onBeat: (marker: VozRitmoBeatMarker) => void,
-  ): void;
-  stop(): void;
-};
-
-export function createVozRitmoEngine(
-  audioContext: AudioContext,
-): VozRitmoEngine {
-  let running = false;
-  let bpm = BPM_DEFAULT;
-  let pattern: boolean[] = [...VOZ_RITMO_PATTERN_DEFAULT];
-  let nextBeatTime = 0;
-  let globalBeatIndex = 0;
-  let schedulerTimer: ReturnType<typeof setInterval> | null = null;
-  let onBeat: ((marker: VozRitmoBeatMarker) => void) | null = null;
-  const beatTimeouts = new Set<ReturnType<typeof setTimeout>>();
-
-  function audioTimeToPerformanceMs(audioTime: number): number {
-    return (
-      performance.now() + (audioTime - audioContext.currentTime) * 1000
-    );
-  }
-
-  function clearBeatTimeouts(): void {
-    for (const timeoutId of beatTimeouts) {
-      clearTimeout(timeoutId);
-    }
-
-    beatTimeouts.clear();
-  }
-
-  function scheduleBeatCallback(
-    marker: VozRitmoBeatMarker,
-    beatAudioTime: number,
-  ): void {
-    const delayMs = Math.max(
-      0,
-      (beatAudioTime - audioContext.currentTime) * 1000,
-    );
-
-    const timeoutId = setTimeout(() => {
-      beatTimeouts.delete(timeoutId);
-
-      if (!running || !onBeat) {
-        return;
-      }
-
-      onBeat(marker);
-    }, delayMs);
-
-    beatTimeouts.add(timeoutId);
-  }
-
-  function scheduler(): void {
-    if (!running) {
-      return;
-    }
-
-    const secondsPerBeat = 60 / bpm;
-
-    while (nextBeatTime < audioContext.currentTime + LOOK_AHEAD_SECONDS) {
-      const beatIndex = globalBeatIndex;
-      const beatTime = nextBeatTime;
-      const phase = getPhaseAtBeat(beatIndex, pattern);
-      const phaseStart = isPhaseStartAtBeat(beatIndex, pattern);
-
-      scheduleVozRitmoClick(audioContext, beatTime, phase, phaseStart);
-      scheduleBeatCallback(
-        {
-          timestamp: audioTimeToPerformanceMs(beatTime),
-          beatIndex,
-          phase,
-          isPhaseStart: phaseStart,
-        },
-        beatTime,
-      );
-
-      nextBeatTime += secondsPerBeat;
-      globalBeatIndex += 1;
-    }
-  }
-
+export function createVozRitmoBeatMarker(
+  beatIndex: number,
+  timestamp: number,
+  pattern: MetronomeBeatPattern,
+  patternLength: number,
+): VozRitmoBeatMarker {
   return {
-    start(
-      nextBpm: number,
-      nextPattern: boolean[],
-      nextOnBeat: (marker: VozRitmoBeatMarker) => void,
-    ) {
-      if (running) {
-        clearBeatTimeouts();
-      }
-
-      bpm = nextBpm;
-      pattern = normalizeRitmoPattern(nextPattern);
-      onBeat = nextOnBeat;
-      running = true;
-      globalBeatIndex = 0;
-      nextBeatTime = audioContext.currentTime;
-
-      if (schedulerTimer !== null) {
-        clearInterval(schedulerTimer);
-      }
-
-      scheduler();
-      schedulerTimer = setInterval(scheduler, SCHEDULE_INTERVAL_MS);
-    },
-    stop() {
-      running = false;
-      onBeat = null;
-
-      if (schedulerTimer !== null) {
-        clearInterval(schedulerTimer);
-        schedulerTimer = null;
-      }
-
-      clearBeatTimeouts();
-    },
+    timestamp,
+    beatIndex,
+    phase: getPhaseAtBeat(beatIndex, pattern, patternLength),
+    isPhaseStart: isPhaseStartAtBeat(beatIndex, pattern, patternLength),
   };
 }

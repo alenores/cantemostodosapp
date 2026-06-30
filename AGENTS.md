@@ -25,6 +25,72 @@ comentarios, nombres de componentes y prompts. No inventar sinónimos.
 - **Cancionero** (`/cancionero/global`) — canciones disponibles para todos los usuarios.
 - **Mis canciones** (`/cancionero/mis-canciones`) — cancionero personal permanente del usuario registrado.
 - **Afinador** — modal desde el hub.
+- **Metrónomo** — modal desde el hub. Solo tiempo; módulo cerrado (ver roadmap).
+- **Entrenador Vocal** — modal desde el hub. Carrusel de modos de práctica vocal (ver roadmap).
+- **Compositor** — modal desde el hub. Ver roadmap, `lib/compositor.ts` y `lib/ritmo-terminologia.ts`.
+
+### Nomenclatura ritmo y Compositor
+
+Usar siempre estos términos en UI y documentación (`lib/ritmo-terminologia.ts`):
+
+| Término | Significado breve |
+|---------|-------------------|
+| **Tempo** | Velocidad (BPM), compartida |
+| **Ciclo** | Cuántos golpes tiene una vuelta | Tab **Golpes** + línea «Ciclo» en el gráfico |
+| **Compás** | Sección de ciclo + figura + dinámica |
+| **Figura** | Negra, corchea… (rejilla compartida) |
+| **Golpe** | Cada posición del ciclo (1, 2, 3…) |
+| **Dinámica** | Silencio / suave / medio / fuerte por golpe y capa |
+| **Capa** | Piano, guitarra o batería (On/Off + edición) |
+| **Contenido** | Nota del golpe (piano, guitarra) | Tab **Contenido** (solo Compositor) |
+| **Timbre** | Ataque o elemento de batería por golpe | Tab **Timbre** (guitarra, batería) |
+| **Sustento** | Duración del timbre al aire (casi fijo en v1) |
+
+### Roadmap Herramientas (decisiones de producto)
+
+Documentación de dirección acordada. **No implementar** lo marcado como visión futura hasta nueva decisión explícita.
+
+#### Metrónomo — cerrado
+
+- Rol único: que el alumno practique **tiempos**.
+- Sin selector de instrumento ni samples: el timbre del click no aporta al objetivo.
+- Módulo estable; no sumar complejidad salvo bugs o mejoras menores de UX.
+
+#### Entrenador Vocal — estado actual (sin cambios por ahora)
+
+- Mantener el **carrusel horizontal** tal como está hoy (4 slides: Encajar, Sostener, Ritmo, Combo).
+- No reestructurar slides ni renombrar modos hasta decantar la idea en uso real.
+
+#### Entrenador Vocal — visión futura (referencia, no implementar aún)
+
+Escalera pedagógica propuesta para cuando se decida avanzar:
+
+| Modo | Rol |
+|------|-----|
+| Encajar | Igual que hoy — pinchazo corto en una nota |
+| Sostener | Igual que hoy — una nota, mantenerla |
+| Melodía (nuevo) | Varias notas por ciclo, tiempo uniforme; foco en cambiar y sostener nota (sin cronómetro de meta) |
+| Ritmo | Patrón de tiempos; **sin** evaluar tono (evitar duplicar Ritmo-Nota) |
+| Ritmo-Nota | Hoy llamado Combo — patrón rítmico + **una** nota fija |
+| Combo (nuevo) | Patrón rítmico + **nota distinta en cada tiempo** |
+
+Agrupación visual posible más adelante (no obligatoria en v1 de la reestructura):
+
+- **Tono**: Encajar → Sostener → Melodía
+- **Ritmo + voz**: Ritmo → Ritmo-Nota → Combo
+
+#### Compositor — v1 (implementado)
+
+- **Nombre oficial**: Compositor.
+- **Rol**: armar ritmos y melodías propias del usuario (crear / experimentar), separado del Entrenador Vocal (practicar / evaluar).
+- **v1**: tres capas (Piano, Guitarra, Batería); UI Configurar/Practicar; tabs Golpes · Figura · Dinámica · Contenido · Timbre; **samples reales** (piano, batería acústica, guitarra); guardado local de una pieza (`compositor-piece-v1`).
+- **Pendiente**: biblioteca de varias piezas guardadas, integración con Entrenador Vocal, multi-sample piano (más rangos), sustento configurable por golpe.
+
+Tres herramientas, tres preguntas:
+
+- ¿Llego al tiempo? → Metrónomo
+- ¿Canto bien en X situación? → Entrenador Vocal
+- ¿Qué quiero que suene? → Compositor
 
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida

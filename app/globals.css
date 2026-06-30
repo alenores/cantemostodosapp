@@ -81,6 +81,15 @@
   --voz-config-dim: rgba(123, 154, 184, 0.12);
   --voz-config-border: rgba(123, 154, 184, 0.38);
   --voz-config-bg: rgba(123, 154, 184, 0.08);
+
+  /* Compositor — creación musical */
+  --compositor-config: #b88bc9;
+  --compositor-config-dim: rgba(184, 139, 201, 0.14);
+  --compositor-config-border: rgba(184, 139, 201, 0.4);
+  --compositor-config-bg: rgba(184, 139, 201, 0.1);
+
+  /* Herramientas — práctica (contrasta con configuración) */
+  --tool-practice: #5cb87a;
 }
 
 @theme inline {
@@ -110,6 +119,8 @@
   --color-cola-proxima-bg: var(--cola-proxima-bg);
   --color-cola-proxima-border: var(--cola-proxima-border);
   --color-voz-config: var(--voz-config);
+  --color-compositor-config: var(--compositor-config);
+  --color-tool-practice: var(--tool-practice);
   --font-sans: var(--font-app);
 }
 
@@ -340,6 +351,27 @@ html.splash-active body {
   100% {
     transform: scale(1);
   }
+}
+
+@keyframes ritmo-beat-select-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ritmo-beat-select-halo {
+  animation: ritmo-beat-select-breathe 2.6s ease-in-out infinite;
+}
+
+.ritmo-beat-playing-flash {
+  animation: metronomo-hit-flash 0.22s ease-out;
 }
 
 /* Shimmer interno en botón Expandir (modo control, sala). Revertir: quitar clase + este bloque. */

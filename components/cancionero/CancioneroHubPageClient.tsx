@@ -1,12 +1,20 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import {
+  HerramientasHubPracticeIntro,
+  HerramientasHubSectionLabel,
+  HUB_SECTION_CANCIONES_LABEL,
+  HUB_SECTION_PRACTICA_LABEL,
+} from "@/components/cancionero/HerramientasHubSections";
 import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import AfinadorModal from "@/components/ui/AfinadorModal";
+import CompositorModal from "@/components/ui/CompositorModal";
 import EntrenadorVocalModal from "@/components/ui/EntrenadorVocalModal";
 import MetronomoModal from "@/components/ui/MetronomoModal";
 import { useAfinador } from "@/hooks/useAfinador";
+import { useCompositor } from "@/hooks/useCompositor";
 import { useMetronomo } from "@/hooks/useMetronomo";
 import { useVoz } from "@/hooks/useVoz";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
@@ -37,6 +45,8 @@ export default function CancioneroHubPageClient({
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [metronomoOpen, setMetronomoOpen] = useState(false);
   const [vozOpen, setVozOpen] = useState(false);
+  const [compositorOpen, setCompositorOpen] = useState(false);
+  const compositor = useCompositor();
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
   const {
     detection: afinadorDetection,
@@ -52,6 +62,7 @@ export default function CancioneroHubPageClient({
     isPlaying: metronomoIsPlaying,
     beatPattern: metronomoBeatPattern,
     patternLength: metronomoPatternLength,
+    beatDurations: metronomoBeatDurations,
     currentBeat: metronomoCurrentBeat,
     micActivo: metronomoMicActivo,
     micPermissionGranted: metronomoMicPermissionGranted,
@@ -64,7 +75,8 @@ export default function CancioneroHubPageClient({
     stop: stopMetronomo,
     setBpm: setMetronomoBpm,
     setPatternLength: setMetronomoPatternLength,
-    cycleBeatPatternSlot: cycleMetronomoBeatPatternSlot,
+    setBeatDurationAtSlot: setMetronomoBeatDurationAtSlot,
+    setBeatLevelAtSlot: setMetronomoBeatLevelAtSlot,
     tapTempo: tapMetronomoTempo,
     tapTempoTapCount: metronomoTapTempoTapCount,
     toggleMic: toggleMetronomoMic,
@@ -97,8 +109,14 @@ export default function CancioneroHubPageClient({
     stopRitmo: stopVozRitmo,
     ritmoBpm: vozRitmoBpm,
     setRitmoBpm: setVozRitmoBpm,
-    ritmoPattern: vozRitmoPattern,
-    toggleRitmoPatternSlot: toggleVozRitmoPatternSlot,
+    ritmoBeatPattern: vozRitmoBeatPattern,
+    ritmoPatternLength: vozRitmoPatternLength,
+    ritmoBeatDurations: vozRitmoBeatDurations,
+    setRitmoPatternLength: setVozRitmoPatternLength,
+    setRitmoBeatDurationAtSlot: setVozRitmoBeatDurationAtSlot,
+    setRitmoBeatLevelAtSlot: setVozRitmoBeatLevelAtSlot,
+    ritmoTapTempoTapCount: vozRitmoTapTempoTapCount,
+    tapRitmoTempo: tapVozRitmoTempo,
     beatMarkers: vozBeatMarkers,
     ritmoVoiceSamples: vozRitmoVoiceSamples,
     start: startVoz,
@@ -146,6 +164,11 @@ export default function CancioneroHubPageClient({
     setVozOpen(false);
   });
 
+  useHardwareBack(compositorOpen, () => {
+    compositor.stop();
+    setCompositorOpen(false);
+  });
+
   useEffect(() => {
     setPendingModuleId(null);
   }, [pathname]);
@@ -184,6 +207,11 @@ export default function CancioneroHubPageClient({
       return;
     }
 
+    if (moduleDef.kind === "compositor") {
+      setCompositorOpen(true);
+      return;
+    }
+
     if (href) {
       setPendingModuleId(moduleId);
       navigateWithProgress(href);
@@ -193,8 +221,66 @@ export default function CancioneroHubPageClient({
   const visibleModules = CANCIONERO_HUB_MODULES.filter(
     (module) => !module.requiresAuth || isLoggedIn,
   );
+  const cancionesModules = visibleModules.filter(
+    (module) => module.section === "canciones",
+  );
+  const practicaModules = visibleModules.filter(
+    (module) => module.section === "practica",
+  );
 
-  const toolModalOpen = afinadorOpen || metronomoOpen || vozOpen;
+  const toolModalOpen =
+    afinadorOpen || metronomoOpen || vozOpen || compositorOpen;
+
+  function getModuleAriaLabel(
+    kind: (typeof CANCIONERO_HUB_MODULES)[number]["kind"],
+    label: string,
+  ): string {
+    switch (kind) {
+      case "afinador":
+        return "Abrir afinador";
+      case "metronomo":
+        return "Abrir metrónomo";
+      case "voz":
+        return "Abrir entrenador vocal";
+      case "compositor":
+        return "Abrir compositor";
+      default:
+        return `Abrir ${label}`;
+    }
+  }
+
+  function renderModuleCard(
+    module: (typeof CANCIONERO_HUB_MODULES)[number],
+  ) {
+    const ctaClassName =
+      module.ctaVariant === "accent"
+        ? "w-full rounded-lg bg-accent px-3 py-[9px] text-center text-sm font-bold text-white"
+        : "w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white";
+
+    const ctaContent =
+      module.id === "cancionero" ? (
+        <div className={ctaClassName}>
+          <span className="font-bold">{module.ctaLabel} </span>
+          <span className="font-normal opacity-70">({globalCount})</span>
+        </div>
+      ) : (
+        <span className={ctaClassName}>{module.ctaLabel}</span>
+      );
+
+    return (
+      <HubModuleCard
+        key={module.id}
+        label={module.label}
+        icon={module.icon}
+        iconColor={module.iconColor}
+        ariaLabel={getModuleAriaLabel(module.kind, module.label)}
+        onClick={() => handleModuleClick(module.id, module.href)}
+        pending={pendingModuleId === module.id}
+        badge={module.comingSoon ? "Próx." : undefined}
+        cta={ctaContent}
+      />
+    );
+  }
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
@@ -220,44 +306,19 @@ export default function CancioneroHubPageClient({
           </p>
         )}
 
+        <HerramientasHubSectionLabel label={HUB_SECTION_CANCIONES_LABEL} />
+
         <div className="grid grid-cols-2 gap-[10px]">
-          {visibleModules.map((module) => {
-            const ctaClassName =
-              module.ctaVariant === "accent"
-                ? "w-full rounded-lg bg-accent px-3 py-[9px] text-center text-sm font-bold text-white"
-                : "w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white";
+          {cancionesModules.map((module) => renderModuleCard(module))}
+        </div>
 
-            const ctaContent =
-              module.id === "cancionero" ? (
-                <div className={ctaClassName}>
-                  <span className="font-bold">{module.ctaLabel} </span>
-                  <span className="font-normal opacity-70">({globalCount})</span>
-                </div>
-              ) : (
-                <span className={ctaClassName}>{module.ctaLabel}</span>
-              );
+        <div className="mt-1 space-y-2">
+          <HerramientasHubSectionLabel label={HUB_SECTION_PRACTICA_LABEL} />
+          <HerramientasHubPracticeIntro />
+        </div>
 
-            return (
-              <HubModuleCard
-                key={module.id}
-                label={module.label}
-                icon={module.icon}
-                iconColor={module.iconColor}
-                ariaLabel={
-                  module.kind === "afinador"
-                    ? "Abrir afinador"
-                    : module.kind === "metronomo"
-                      ? "Abrir metrónomo"
-                      : module.kind === "voz"
-                        ? "Abrir entrenador vocal"
-                        : `Abrir ${module.label}`
-                }
-                onClick={() => handleModuleClick(module.id, module.href)}
-                pending={pendingModuleId === module.id}
-                cta={ctaContent}
-              />
-            );
-          })}
+        <div className="grid grid-cols-2 gap-[10px]">
+          {practicaModules.map((module) => renderModuleCard(module))}
         </div>
 
         {!isLoggedIn && (
@@ -310,8 +371,14 @@ export default function CancioneroHubPageClient({
         onStopRitmo={stopVozRitmo}
         ritmoBpm={vozRitmoBpm}
         onSetRitmoBpm={setVozRitmoBpm}
-        ritmoPattern={vozRitmoPattern}
-        onToggleRitmoPatternSlot={toggleVozRitmoPatternSlot}
+        ritmoBeatPattern={vozRitmoBeatPattern}
+        ritmoPatternLength={vozRitmoPatternLength}
+        ritmoBeatDurations={vozRitmoBeatDurations}
+        onSetRitmoPatternLength={setVozRitmoPatternLength}
+        onSetRitmoBeatDurationAtSlot={setVozRitmoBeatDurationAtSlot}
+        onSetRitmoBeatLevelAtSlot={setVozRitmoBeatLevelAtSlot}
+        ritmoTapTempoTapCount={vozRitmoTapTempoTapCount}
+        onTapRitmoTempo={tapVozRitmoTempo}
         beatMarkers={vozBeatMarkers}
         ritmoVoiceSamples={vozRitmoVoiceSamples}
         onRequestMic={() => void startVoz()}
@@ -327,6 +394,7 @@ export default function CancioneroHubPageClient({
         isPlaying={metronomoIsPlaying}
         beatPattern={metronomoBeatPattern}
         patternLength={metronomoPatternLength}
+        beatDurations={metronomoBeatDurations}
         currentBeat={metronomoCurrentBeat}
         micActivo={metronomoMicActivo}
         micPermissionGranted={metronomoMicPermissionGranted}
@@ -339,7 +407,8 @@ export default function CancioneroHubPageClient({
         onStop={stopMetronomo}
         onSetBpm={setMetronomoBpm}
         onSetPatternLength={setMetronomoPatternLength}
-        onCycleBeatPatternSlot={cycleMetronomoBeatPatternSlot}
+        onSetBeatDurationAtSlot={setMetronomoBeatDurationAtSlot}
+        onSetBeatLevelAtSlot={setMetronomoBeatLevelAtSlot}
         onTapTempo={tapMetronomoTempo}
         tapTempoTapCount={metronomoTapTempoTapCount}
         onToggleMic={toggleMetronomoMic}
@@ -348,6 +417,12 @@ export default function CancioneroHubPageClient({
           stopMetronomo();
           setMetronomoOpen(false);
         }}
+      />
+
+      <CompositorModal
+        open={compositorOpen}
+        onClose={() => setCompositorOpen(false)}
+        {...compositor}
       />
     </div>
   );

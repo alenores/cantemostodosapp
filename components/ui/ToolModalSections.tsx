@@ -19,15 +19,24 @@ const TOOL_SECTION_STYLES = {
     sectionBg: "color-mix(in srgb, var(--voz-config) 7%, var(--bg-card))",
     dividerBorder:
       "color-mix(in srgb, var(--voz-config) 22%, var(--border))",
-    dotClass: "bg-voz-config",
-    titleClass: "text-voz-config",
+    accentColor: "var(--voz-config)",
   },
   practice: {
-    sectionBorder: "var(--border)",
-    sectionBg: "var(--bg-dark)",
-    dividerBorder: "var(--border)",
-    dotClass: "bg-text-primary",
-    titleClass: "text-text-primary",
+    sectionBorder:
+      "color-mix(in srgb, var(--tool-practice) 38%, var(--border))",
+    sectionBg: "color-mix(in srgb, var(--tool-practice) 7%, var(--bg-card))",
+    dividerBorder:
+      "color-mix(in srgb, var(--tool-practice) 22%, var(--border))",
+    accentColor: "var(--tool-practice)",
+  },
+  compositorConfig: {
+    sectionBorder:
+      "color-mix(in srgb, var(--compositor-config) 38%, var(--border))",
+    sectionBg:
+      "color-mix(in srgb, var(--compositor-config) 7%, var(--bg-card))",
+    dividerBorder:
+      "color-mix(in srgb, var(--compositor-config) 22%, var(--border))",
+    accentColor: "var(--compositor-config)",
   },
 } as const;
 
@@ -60,11 +69,13 @@ function ToolModalSection({
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
         <span
-          className={`size-2 shrink-0 rounded-full ${styles.dotClass}`}
+          className="size-2 shrink-0 rounded-full"
+          style={{ backgroundColor: styles.accentColor }}
           aria-hidden="true"
         />
         <h3
-          className={`text-xs font-bold uppercase tracking-wide ${styles.titleClass}`}
+          className="text-xs font-bold uppercase tracking-wide"
+          style={{ color: styles.accentColor }}
         >
           {title}
         </h3>
@@ -150,9 +161,45 @@ export function ToolPracticeSection({
   title = "Practicar",
   subtitle,
   children,
+  collapsible,
+  collapsedSummary,
+  autoCollapseWhen,
+  defaultExpanded,
 }: ToolModalSectionProps) {
   return (
-    <ToolModalSection variant="practice" title={title} subtitle={subtitle}>
+    <ToolModalSection
+      variant="practice"
+      title={title}
+      subtitle={subtitle}
+      collapsible={collapsible}
+      collapsedSummary={collapsedSummary}
+      autoCollapseWhen={autoCollapseWhen}
+      defaultExpanded={defaultExpanded}
+    >
+      {children}
+    </ToolModalSection>
+  );
+}
+
+export function CompositorConfigSection({
+  title = "Configurar",
+  subtitle,
+  children,
+  collapsible,
+  collapsedSummary,
+  autoCollapseWhen,
+  defaultExpanded,
+}: ToolModalSectionProps) {
+  return (
+    <ToolModalSection
+      variant="compositorConfig"
+      title={title}
+      subtitle={subtitle}
+      collapsible={collapsible}
+      collapsedSummary={collapsedSummary}
+      autoCollapseWhen={autoCollapseWhen}
+      defaultExpanded={defaultExpanded}
+    >
       {children}
     </ToolModalSection>
   );

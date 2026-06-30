@@ -1,26 +1,27 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
+import { RitmoConfigSection } from "@/components/ui/ToolRitmoConfig";
 import type { NoteDetection } from "@/lib/afinador";
+import type {
+  MetronomeBeatDuration,
+  MetronomeBeatDurationPattern,
+  MetronomeBeatLevel,
+  MetronomeBeatPattern,
+} from "@/lib/metronomo";
+import { getBeatDurationPatternSummary, getBeatTimelineSegmentsInWindow } from "@/lib/metronomo";
 import {
-  BPM_MAX,
-  BPM_MIN,
-  getPatternDescription,
   getPhaseAtBeat,
   getPhaseLabel,
   getRitmoComplianceColor,
   getRitmoNowLinePercent,
   getRitmoPhaseAtTime,
   getRitmoTimelineWindowMs,
-  normalizeRitmoPattern,
   ritmoTimeToPercent,
   VOZ_RITMO_PRACTICE_SILENCE_COLOR,
   VOZ_RITMO_PRACTICE_SOUND_COLOR,
-  VOZ_RITMO_SETUP_SILENCE_COLOR,
-  VOZ_RITMO_SETUP_SOUND_COLOR,
   VOZ_RITMO_TIMELINE_PAST_RATIO,
   type VozRitmoBeatMarker,
-  type VozRitmoPattern,
   type VozRitmoPhase,
   type VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
@@ -425,13 +426,16 @@ function InstantAttemptsStrip({
         Tus intentos
       </p>
       <div
-        className="flex flex-wrap justify-center gap-2"
+        className="grid w-full gap-[clamp(4px,1.4vw,10px)]"
+        style={{
+          gridTemplateColumns: `repeat(${VOZ_INSTANT_ATTEMPTS_MAX}, minmax(0, 1fr))`,
+        }}
         aria-label={`${attempts.length} de ${VOZ_INSTANT_ATTEMPTS_MAX} intentos`}
       >
         {slots.map((attempt, index) => (
           <span
             key={attempt?.id ?? `slot-${index}`}
-            className="h-3.5 w-3.5 shrink-0 rounded-full border-2"
+            className="aspect-square w-full min-w-0 rounded-full border-2"
             style={
               attempt
                 ? {
@@ -716,7 +720,10 @@ function HoldTimerPanel({
       </div>
 
       <div className="rounded-[12px] border border-border bg-bg-card px-3 py-3">
-        <div className="mt-1">
+        <div className="flex flex-col items-center">
+          <p className="mb-0.5 text-lg font-extrabold tabular-nums leading-none text-voz-config">
+            {holdTargetSeconds} s
+          </p>
           <HoldClockDial
             progress={progress}
             holdTargetSeconds={holdTargetSeconds}
@@ -726,14 +733,11 @@ function HoldTimerPanel({
             cents={cents}
             calibre={calibre}
           />
-          <div className="mt-1 flex items-baseline justify-center gap-1.5">
+          <div className="mt-1 flex items-baseline justify-center gap-1">
             <span className="text-xl font-extrabold leading-none tabular-nums text-text-primary">
               {displaySeconds}
             </span>
             <span className="text-sm font-semibold text-text-muted">s</span>
-            <span className="text-sm font-medium text-text-muted">
-              de {holdTargetSeconds} s
-            </span>
           </div>
         </div>
 
@@ -1046,93 +1050,6 @@ function PitchHistoryChart({
   );
 }
 
-function RitmoPatternEditor({
-  pattern,
-  disabled = false,
-  interactive = true,
-  compact = false,
-  onToggleSlot,
-}: {
-  pattern: VozRitmoPattern;
-  disabled?: boolean;
-  interactive?: boolean;
-  compact?: boolean;
-  onToggleSlot?: (slotIndex: number) => void;
-}) {
-  const normalized = normalizeRitmoPattern(pattern);
-
-  return (
-    <div>
-      {interactive ? (
-        <p className="mb-2 text-[10px] leading-snug text-text-muted">
-          Tocá cada tiempo para marcar dónde cantás. El resto queda en silencio.
-        </p>
-      ) : null}
-
-      <div className="flex gap-1">
-        {normalized.map((isSound, index) => {
-          const sharedClass = compact
-            ? "h-2.5 min-w-0 flex-1 rounded-full"
-            : "min-h-[2.75rem] min-w-0 flex-1 rounded-full text-[10px] font-bold";
-
-          if (!interactive) {
-            return (
-              <span
-                key={`ritmo-slot-${index}`}
-                className={sharedClass}
-                style={{
-                  backgroundColor: isSound
-                    ? VOZ_RITMO_SETUP_SOUND_COLOR
-                    : VOZ_RITMO_SETUP_SILENCE_COLOR,
-                  opacity: isSound ? 1 : 0.55,
-                }}
-                title={`Tiempo ${index + 1}: ${isSound ? "cantar" : "silencio"}`}
-              />
-            );
-          }
-
-          return (
-            <button
-              key={`ritmo-slot-${index}`}
-              type="button"
-              disabled={disabled}
-              onClick={() => onToggleSlot?.(index)}
-              aria-label={`Tiempo ${index + 1}: ${isSound ? "cantar" : "silencio"}`}
-              aria-pressed={isSound}
-              className={`${sharedClass} transition-colors disabled:opacity-50 ${
-                isSound
-                  ? "bg-voz-config text-white shadow-[inset_0_-1px_0_rgba(0,0,0,0.18)]"
-                  : "border border-border bg-bg-darker text-text-muted"
-              }`}
-            >
-              {compact ? null : index + 1}
-            </button>
-          );
-        })}
-      </div>
-
-      {interactive && !compact ? (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-text-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: VOZ_RITMO_SETUP_SOUND_COLOR }}
-            />
-            Cantar
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="size-2 rounded-full border border-border"
-              style={{ backgroundColor: VOZ_RITMO_SETUP_SILENCE_COLOR }}
-            />
-            Silencio
-          </span>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 type RitmoBeatSegment = {
   startMs: number;
   endMs: number;
@@ -1143,60 +1060,48 @@ function getRitmoBeatSegments(
   beatMarkers: VozRitmoBeatMarker[],
   now: number,
   bpm: number,
-  pattern: VozRitmoPattern,
+  pattern: MetronomeBeatPattern,
+  patternLength: number,
+  beatDurations: MetronomeBeatDurationPattern,
   totalSpanMs: number,
   pastRatio: number,
 ): RitmoBeatSegment[] {
-  if (beatMarkers.length === 0) {
-    return [];
-  }
-
-  const msPerBeat = 60000 / bpm;
   const windowStart = now - totalSpanMs * pastRatio;
   const windowEnd = windowStart + totalSpanMs;
-  const anchor = beatMarkers[0]!;
-  const elapsed = windowStart - anchor.timestamp;
-  let beatIndex =
-    anchor.beatIndex + Math.floor(elapsed / msPerBeat);
 
-  let beatStart =
-    anchor.timestamp + (beatIndex - anchor.beatIndex) * msPerBeat;
-
-  if (beatStart > windowStart) {
-    beatIndex -= 1;
-    beatStart -= msPerBeat;
-  }
-
-  const segments: RitmoBeatSegment[] = [];
-
-  while (beatStart < windowEnd) {
-    segments.push({
-      startMs: beatStart,
-      endMs: beatStart + msPerBeat,
-      phase: getPhaseAtBeat(beatIndex, pattern),
-    });
-    beatStart += msPerBeat;
-    beatIndex += 1;
-  }
-
-  return segments;
+  return getBeatTimelineSegmentsInWindow(
+    beatMarkers,
+    bpm,
+    beatDurations,
+    patternLength,
+    windowStart,
+    windowEnd,
+  ).map((segment) => ({
+    startMs: segment.startMs,
+    endMs: segment.endMs,
+    phase: getPhaseAtBeat(segment.beatIndex, pattern, patternLength),
+  }));
 }
 
 function VozRitmoTimeline({
   beatMarkers,
   bpm,
-  pattern,
+  beatPattern,
+  patternLength,
+  beatDurations,
   isPlaying,
   voiceSamples,
 }: {
   beatMarkers: VozRitmoBeatMarker[];
   bpm: number;
-  pattern: VozRitmoPattern;
+  beatPattern: MetronomeBeatPattern;
+  patternLength: number;
+  beatDurations: MetronomeBeatDurationPattern;
   isPlaying: boolean;
   voiceSamples: VozRitmoVoiceSample[];
 }) {
   const now = useTimelineNow(isPlaying || beatMarkers.length > 0);
-  const totalSpanMs = getRitmoTimelineWindowMs(bpm, pattern);
+  const totalSpanMs = getRitmoTimelineWindowMs(bpm, patternLength, beatDurations);
   const nowLinePercent = getRitmoNowLinePercent();
   const beatSegments = useMemo(
     () =>
@@ -1204,11 +1109,13 @@ function VozRitmoTimeline({
         beatMarkers,
         now,
         bpm,
-        pattern,
+        beatPattern,
+        patternLength,
+        beatDurations,
         totalSpanMs,
         VOZ_RITMO_TIMELINE_PAST_RATIO,
       ),
-    [beatMarkers, now, bpm, pattern, totalSpanMs],
+    [beatMarkers, now, bpm, beatPattern, patternLength, beatDurations, totalSpanMs],
   );
 
   const timeToPercent = (timeMs: number) =>
@@ -1308,107 +1215,14 @@ function VozRitmoTimeline({
   );
 }
 
-function VozRitmoSetup({
-  ritmoPattern,
-  ritmoBpm,
-  ritmoPlaying,
-  onTogglePatternSlot,
-  onSetRitmoBpm,
-}: {
-  ritmoPattern: VozRitmoPattern;
-  ritmoBpm: number;
-  ritmoPlaying: boolean;
-  onTogglePatternSlot: (slotIndex: number) => void;
-  onSetRitmoBpm: (value: number) => void;
-}) {
-  const [expanded, setExpanded] = useState(true);
-
-  useEffect(() => {
-    if (ritmoPlaying) {
-      setExpanded(false);
-    }
-  }, [ritmoPlaying]);
-
-  return (
-    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center justify-between gap-2 text-left"
-        aria-expanded={expanded}
-      >
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
-            Ritmo
-          </p>
-          <p className="mt-0.5 text-[11px] text-text-secondary">
-            {getPatternDescription(ritmoPattern)} · {ritmoBpm} BPM
-          </p>
-        </div>
-        <ChevronDown
-          className={`size-5 shrink-0 text-text-muted transition-transform ${
-            expanded ? "rotate-180" : ""
-          }`}
-          aria-hidden="true"
-        />
-      </button>
-
-      {expanded ? (
-        <>
-          <div className="mt-3 rounded-[10px] border border-border bg-bg-dark px-2.5 py-3">
-            <RitmoPatternEditor
-              pattern={ritmoPattern}
-              disabled={ritmoPlaying}
-              onToggleSlot={onTogglePatternSlot}
-            />
-          </div>
-
-          <div className="mt-3 flex items-center justify-center gap-3">
-            <TapButton
-              type="button"
-              aria-label="Reducir BPM"
-              disabled={ritmoPlaying || ritmoBpm <= BPM_MIN}
-              onClick={() => onSetRitmoBpm(ritmoBpm - 1)}
-              className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-            >
-              −
-            </TapButton>
-            <div className="min-w-[4.5rem] text-center">
-              <p className="text-2xl font-extrabold leading-none text-text-primary">
-                {ritmoBpm}
-              </p>
-              <p className="mt-0.5 text-[10px] text-text-muted">BPM</p>
-            </div>
-            <TapButton
-              type="button"
-              aria-label="Aumentar BPM"
-              disabled={ritmoPlaying || ritmoBpm >= BPM_MAX}
-              onClick={() => onSetRitmoBpm(ritmoBpm + 1)}
-              className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-            >
-              +
-            </TapButton>
-          </div>
-        </>
-      ) : (
-        <div className="mt-2">
-          <RitmoPatternEditor
-            pattern={ritmoPattern}
-            interactive={false}
-            compact
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function VozRitmoPractice({
   ritmoPlaying,
   onToggleRitmoPlaying,
   beatMarkers,
   ritmoBpm,
-  ritmoPattern,
+  ritmoBeatPattern,
+  ritmoPatternLength,
+  ritmoBeatDurations,
   voiceSamples,
   showToneToggle,
   evaluarTono,
@@ -1428,7 +1242,9 @@ function VozRitmoPractice({
   onToggleRitmoPlaying: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoBpm: number;
-  ritmoPattern: VozRitmoPattern;
+  ritmoBeatPattern: MetronomeBeatPattern;
+  ritmoPatternLength: number;
+  ritmoBeatDurations: MetronomeBeatDurationPattern;
   voiceSamples: VozRitmoVoiceSample[];
   showToneToggle: boolean;
   evaluarTono: boolean;
@@ -1452,7 +1268,9 @@ function VozRitmoPractice({
           now,
           beatMarkers,
           ritmoBpm,
-          ritmoPattern,
+          ritmoBeatPattern,
+          ritmoPatternLength,
+          ritmoBeatDurations,
         )
       : null;
 
@@ -1495,7 +1313,7 @@ function VozRitmoPractice({
           </p>
         ) : (
           <p className="text-sm text-text-muted">
-            Tono agudo = cantá · grave = silencio
+            Cuando suena, cantá · en silencio, guardá la voz
           </p>
         )}
         <TapButton
@@ -1515,7 +1333,9 @@ function VozRitmoPractice({
       <VozRitmoTimeline
         beatMarkers={beatMarkers}
         bpm={ritmoBpm}
-        pattern={ritmoPattern}
+        beatPattern={ritmoBeatPattern}
+        patternLength={ritmoPatternLength}
+        beatDurations={ritmoBeatDurations}
         isPlaying={ritmoPlaying}
         voiceSamples={voiceSamples}
       />
@@ -1568,8 +1388,20 @@ export type VozModeSlidesProps = {
   onToggleRitmoPlaying: () => void;
   ritmoBpm: number;
   onSetRitmoBpm: (value: number) => void;
-  ritmoPattern: VozRitmoPattern;
-  onToggleRitmoPatternSlot: (slotIndex: number) => void;
+  ritmoBeatPattern: MetronomeBeatPattern;
+  ritmoPatternLength: number;
+  ritmoBeatDurations: MetronomeBeatDurationPattern;
+  onSetRitmoPatternLength: (value: number) => void;
+  onSetRitmoBeatDurationAtSlot: (
+    slotIndex: number,
+    duration: MetronomeBeatDuration,
+  ) => void;
+  onSetRitmoBeatLevelAtSlot: (
+    slotIndex: number,
+    level: MetronomeBeatLevel,
+  ) => void;
+  ritmoTapTempoTapCount: number;
+  onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
   ritmoEvaluarTono: boolean;
@@ -1599,8 +1431,14 @@ export function VozModeSlides({
   onToggleRitmoPlaying,
   ritmoBpm,
   onSetRitmoBpm,
-  ritmoPattern,
-  onToggleRitmoPatternSlot,
+  ritmoBeatPattern,
+  ritmoPatternLength,
+  ritmoBeatDurations,
+  onSetRitmoPatternLength,
+  onSetRitmoBeatDurationAtSlot,
+  onSetRitmoBeatLevelAtSlot,
+  ritmoTapTempoTapCount,
+  onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
   ritmoEvaluarTono,
@@ -1637,14 +1475,23 @@ export function VozModeSlides({
   const holdCalibreLabel =
     VOZ_CALIBRE_OPTIONS.find((option) => option.id === holdCalibre)?.label ??
     holdCalibre;
-  const sostenerConfigSummary = `${formatTargetLabel(targetPicker.target, targetPicker.octaveExact)} · ${holdCalibreLabel} · ${holdTargetSeconds} s`;
+  const targetLabel = formatTargetLabel(
+    targetPicker.target,
+    targetPicker.octaveExact,
+  );
+  const sostenerConfigSummary = `${targetLabel} · ${holdCalibreLabel} · ${holdTargetSeconds} s`;
+  const encajarConfigSummary = targetLabel;
+  const ritmoConfigSummary = `${targetLabel} · Ciclo de ${ritmoPatternLength} golpes · ${getBeatDurationPatternSummary(ritmoBeatDurations, ritmoPatternLength)} · ${ritmoBpm} BPM`;
 
   return (
     <ModeCarouselShell activeIndex={activeIndex} onChangeIndex={onChangeIndex}>
       {slideId === "encajar" ? (
         <div className="space-y-3">
-          <VozConfigSection>
-            <TargetPicker {...targetPicker} />
+          <VozConfigSection
+            collapsible
+            collapsedSummary={encajarConfigSummary}
+          >
+            <TargetPicker {...targetPicker} collapsible={false} />
           </VozConfigSection>
           <VozPracticeSection subtitle="Cantá un pinchazo corto y soltá. Buscá caer en verde al empezar, sin sostener ni medir tiempo.">
             <DetectedNoteDisplay
@@ -1742,26 +1589,32 @@ export function VozModeSlides({
 
         {slideId === "ritmo" ? (
           <div className="space-y-3">
-            <VozConfigSection subtitle="Elegí la nota, armá el patrón de 8 tiempos y ajustá el tempo en BPM.">
-              <TargetPicker
-                {...targetPicker}
-                autoCollapseWhen={ritmoPlaying}
-              />
-              <VozRitmoSetup
-                ritmoPattern={ritmoPattern}
-                ritmoBpm={ritmoBpm}
-                ritmoPlaying={ritmoPlaying}
-                onTogglePatternSlot={onToggleRitmoPatternSlot}
-                onSetRitmoBpm={onSetRitmoBpm}
-              />
-            </VozConfigSection>
+            <RitmoConfigSection
+              collapsedSummary={ritmoConfigSummary}
+              autoCollapseWhen={ritmoPlaying}
+              prefix={<TargetPicker {...targetPicker} collapsible={false} />}
+              beatPattern={ritmoBeatPattern}
+              patternLength={ritmoPatternLength}
+              beatDurations={ritmoBeatDurations}
+              bpm={ritmoBpm}
+              isPlaying={ritmoPlaying}
+              tapTempoTapCount={ritmoTapTempoTapCount}
+              patternLengthInputId="voz-ritmo-pattern-length"
+              onSetPatternLength={onSetRitmoPatternLength}
+              onSetBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
+              onSetBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
+              onSetBpm={onSetRitmoBpm}
+              onTapTempo={onTapRitmoTempo}
+            />
             <VozPracticeSection subtitle="Seguí el ritmo: cantá en los tiempos marcados y guardá silencio en el resto.">
               <VozRitmoPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
                 beatMarkers={beatMarkers}
                 ritmoBpm={ritmoBpm}
-                ritmoPattern={ritmoPattern}
+                ritmoBeatPattern={ritmoBeatPattern}
+                ritmoPatternLength={ritmoPatternLength}
+                ritmoBeatDurations={ritmoBeatDurations}
                 voiceSamples={ritmoVoiceSamples}
                 showToneToggle
                 evaluarTono={ritmoEvaluarTono}
@@ -1783,26 +1636,32 @@ export function VozModeSlides({
 
         {slideId === "combo" ? (
           <div className="space-y-3">
-            <VozConfigSection subtitle="Elegí la nota, el patrón de 8 tiempos y el tempo. En Combo siempre se evalúa el tono.">
-              <TargetPicker
-                {...targetPicker}
-                autoCollapseWhen={ritmoPlaying}
-              />
-              <VozRitmoSetup
-                ritmoPattern={ritmoPattern}
-                ritmoBpm={ritmoBpm}
-                ritmoPlaying={ritmoPlaying}
-                onTogglePatternSlot={onToggleRitmoPatternSlot}
-                onSetRitmoBpm={onSetRitmoBpm}
-              />
-            </VozConfigSection>
+            <RitmoConfigSection
+              collapsedSummary={ritmoConfigSummary}
+              autoCollapseWhen={ritmoPlaying}
+              prefix={<TargetPicker {...targetPicker} collapsible={false} />}
+              beatPattern={ritmoBeatPattern}
+              patternLength={ritmoPatternLength}
+              beatDurations={ritmoBeatDurations}
+              bpm={ritmoBpm}
+              isPlaying={ritmoPlaying}
+              tapTempoTapCount={ritmoTapTempoTapCount}
+              patternLengthInputId="voz-ritmo-pattern-length"
+              onSetPatternLength={onSetRitmoPatternLength}
+              onSetBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
+              onSetBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
+              onSetBpm={onSetRitmoBpm}
+              onTapTempo={onTapRitmoTempo}
+            />
             <VozPracticeSection subtitle="Combiná ritmo y tono: seguí el patrón y mantené la nota cuando cantás.">
               <VozRitmoPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
                 beatMarkers={beatMarkers}
                 ritmoBpm={ritmoBpm}
-                ritmoPattern={ritmoPattern}
+                ritmoBeatPattern={ritmoBeatPattern}
+                ritmoPatternLength={ritmoPatternLength}
+                ritmoBeatDurations={ritmoBeatDurations}
                 voiceSamples={ritmoVoiceSamples}
                 showToneToggle={false}
                 evaluarTono

@@ -71,6 +71,7 @@
 
   /* Afinador */
   --tuner-in-tune: #54c864;
+  --tuner-cerca: #e8c547;
   --tuner-flat-sharp: #e05555;
 }
 
@@ -319,6 +320,16 @@ html.splash-active body {
 
   50% {
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+}
+
+@keyframes metronomo-hit-flash {
+  0% {
+    transform: scale(1.06);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 

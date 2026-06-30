@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Bookmark, FileText, Gauge } from "lucide-react";
+import { Bookmark, FileText, Gauge, MicVocal, Timer } from "lucide-react";
 
-export type HubModuleKind = "route" | "afinador";
+export type HubModuleKind = "route" | "afinador" | "metronomo" | "voz";
 
 export type HubModuleDef = {
   id: string;
@@ -41,6 +41,22 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     label: "Afinador",
     icon: Gauge,
     kind: "afinador",
+    ctaLabel: "Abrir",
+    ctaVariant: "accent",
+  },
+  {
+    id: "metronomo",
+    label: "Metrónomo",
+    icon: Timer,
+    kind: "metronomo",
+    ctaLabel: "Abrir",
+    ctaVariant: "accent",
+  },
+  {
+    id: "entrenador-vocal",
+    label: "Entrenador Vocal",
+    icon: MicVocal,
+    kind: "voz",
     ctaLabel: "Abrir",
     ctaVariant: "accent",
   },

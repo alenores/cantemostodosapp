@@ -75,7 +75,10 @@ function TunerDial({
         strokeLinecap="round"
       />
 
-      <g transform={`rotate(${needleAngle} 120 120)`}>
+      <g
+        transform={`rotate(${needleAngle} 120 120)`}
+        style={{ transition: "transform 0.28s ease-out" }}
+      >
         <line
           x1="120"
           y1="120"

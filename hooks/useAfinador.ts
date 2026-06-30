@@ -2,7 +2,10 @@
 
 import {
   autoCorrelate,
+  ema,
   frequencyToNote,
+  TUNER_CENTS_EMA_ALPHA,
+  TUNER_FREQUENCY_EMA_ALPHA,
   type NoteDetection,
 } from "@/lib/afinador";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -82,7 +85,9 @@ export function useAfinador(): UseAfinadorResult {
   const animationFrameRef = useRef<number | null>(null);
   const dataBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const runningRef = useRef(false);
-  const lastFrequencyRef = useRef<number | null>(null);
+  const smoothedFrequencyRef = useRef<number | null>(null);
+  const smoothedCentsRef = useRef<number | null>(null);
+  const lastNoteRef = useRef<string | null>(null);
 
   const stopAudio = useCallback(() => {
     runningRef.current = false;
@@ -103,7 +108,9 @@ export function useAfinador(): UseAfinadorResult {
 
     analyserRef.current = null;
     dataBufferRef.current = null;
-    lastFrequencyRef.current = null;
+    smoothedFrequencyRef.current = null;
+    smoothedCentsRef.current = null;
+    lastNoteRef.current = null;
     setDetection(null);
     setMicReady(false);
   }, []);
@@ -158,7 +165,9 @@ export function useAfinador(): UseAfinadorResult {
     setMicReady(false);
     setDetection(null);
     setMicStarting(true);
-    lastFrequencyRef.current = null;
+    smoothedFrequencyRef.current = null;
+    smoothedCentsRef.current = null;
+    lastNoteRef.current = null;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -218,16 +227,46 @@ export function useAfinador(): UseAfinadorResult {
         const frequency = autoCorrelate(buffer, context.sampleRate);
 
         if (frequency === null) {
-          if (lastFrequencyRef.current !== null) {
-            lastFrequencyRef.current = null;
+          if (smoothedFrequencyRef.current !== null) {
+            smoothedFrequencyRef.current = null;
+            smoothedCentsRef.current = null;
+            lastNoteRef.current = null;
             setDetection(null);
           }
-        } else if (
-          lastFrequencyRef.current === null ||
-          Math.abs(frequency - lastFrequencyRef.current) > 0.5
-        ) {
-          lastFrequencyRef.current = frequency;
-          setDetection(frequencyToNote(frequency));
+        } else {
+          const smoothedFrequency = ema(
+            smoothedFrequencyRef.current,
+            frequency,
+            TUNER_FREQUENCY_EMA_ALPHA,
+          );
+          smoothedFrequencyRef.current = smoothedFrequency;
+
+          const rawDetection = frequencyToNote(smoothedFrequency);
+          const noteChanged =
+            lastNoteRef.current !== null &&
+            lastNoteRef.current !== rawDetection.note;
+
+          let displayCents: number;
+
+          if (noteChanged || smoothedCentsRef.current === null) {
+            displayCents = rawDetection.cents;
+            smoothedCentsRef.current = rawDetection.cents;
+          } else {
+            displayCents = ema(
+              smoothedCentsRef.current,
+              rawDetection.cents,
+              TUNER_CENTS_EMA_ALPHA,
+            );
+            smoothedCentsRef.current = displayCents;
+          }
+
+          lastNoteRef.current = rawDetection.note;
+
+          setDetection({
+            note: rawDetection.note,
+            frequency: smoothedFrequency,
+            cents: displayCents,
+          });
         }
 
         animationFrameRef.current = requestAnimationFrame(updatePitch);

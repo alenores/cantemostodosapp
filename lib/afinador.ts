@@ -42,6 +42,25 @@ const MIN_DETECTABLE_HZ = 60;
 const MAX_DETECTABLE_HZ = 1200;
 const MIN_RMS = 0.002;
 
+/** Suavizado de frecuencia (~300 ms a 60 fps). */
+export const TUNER_FREQUENCY_EMA_ALPHA = 0.06;
+/** Suavizado de cents para la aguja (~250 ms a 60 fps). */
+export const TUNER_CENTS_EMA_ALPHA = 0.1;
+/** Cents necesarios para llevar la aguja de punta a punta (menor = menos expresiva). */
+export const NEEDLE_FULL_DEFLECTION_CENTS = 22;
+
+export function ema(
+  current: number | null,
+  next: number,
+  alpha: number,
+): number {
+  if (current === null) {
+    return next;
+  }
+
+  return current + alpha * (next - current);
+}
+
 export function computeBufferRms(buffer: Float32Array): number {
   let sum = 0;
 
@@ -176,6 +195,9 @@ export function getClosestStringIndex(frequency: number | null): number | null {
 }
 
 export function centsToNeedleAngle(cents: number): number {
-  const clamped = Math.max(-50, Math.min(50, cents));
-  return (clamped / 50) * 45;
+  const clamped = Math.max(
+    -NEEDLE_FULL_DEFLECTION_CENTS,
+    Math.min(NEEDLE_FULL_DEFLECTION_CENTS, cents),
+  );
+  return (clamped / NEEDLE_FULL_DEFLECTION_CENTS) * 45;
 }

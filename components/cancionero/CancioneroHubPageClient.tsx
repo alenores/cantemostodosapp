@@ -4,7 +4,11 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import AfinadorModal from "@/components/ui/AfinadorModal";
+import EntrenadorVocalModal from "@/components/ui/EntrenadorVocalModal";
+import MetronomoModal from "@/components/ui/MetronomoModal";
 import { useAfinador } from "@/hooks/useAfinador";
+import { useMetronomo } from "@/hooks/useMetronomo";
+import { useVoz } from "@/hooks/useVoz";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -31,6 +35,8 @@ export default function CancioneroHubPageClient({
   const online = useOnlineStatus();
   const [globalCount, setGlobalCount] = useState(globalCountInicial);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
+  const [metronomoOpen, setMetronomoOpen] = useState(false);
+  const [vozOpen, setVozOpen] = useState(false);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
   const {
     detection: afinadorDetection,
@@ -41,6 +47,61 @@ export default function CancioneroHubPageClient({
     start: startAfinador,
     stop: stopAfinador,
   } = useAfinador();
+  const {
+    bpm: metronomoBpm,
+    isPlaying: metronomoIsPlaying,
+    beatsPerMeasure: metronomoBeatsPerMeasure,
+    currentBeat: metronomoCurrentBeat,
+    micActivo: metronomoMicActivo,
+    micPermissionGranted: metronomoMicPermissionGranted,
+    micError: metronomoMicError,
+    micReady: metronomoMicReady,
+    micStarting: metronomoMicStarting,
+    hits: metronomoHits,
+    beatMarkers: metronomoBeatMarkers,
+    start: startMetronomo,
+    stop: stopMetronomo,
+    setBpm: setMetronomoBpm,
+    setBeatsPerMeasure: setMetronomoBeatsPerMeasure,
+    tapTempo: tapMetronomoTempo,
+    tapTempoTapCount: metronomoTapTempoTapCount,
+    toggleMic: toggleMetronomoMic,
+    requestMic: requestMetronomoMic,
+  } = useMetronomo();
+  const {
+    detection: vozDetection,
+    micError: vozMicError,
+    micPermissionGranted: vozMicPermissionGranted,
+    micReady: vozMicReady,
+    micStarting: vozMicStarting,
+    target: vozTarget,
+    setTarget: setVozTarget,
+    octaveExact: vozOctaveExact,
+    setOctaveExact: setVozOctaveExact,
+    targetFrequency: vozTargetFrequency,
+    referenceLabel: vozReferenceLabel,
+    centsFromTarget: vozCentsFromTarget,
+    accuracy: vozAccuracy,
+    feedbackLabel: vozFeedbackLabel,
+    historySamples: vozHistorySamples,
+    instantAttempts: vozInstantAttempts,
+    holdTargetSeconds: vozHoldTargetSeconds,
+    setHoldTargetSeconds: setVozHoldTargetSeconds,
+    celebrationKey: vozCelebrationKey,
+    ritmoPlaying: vozRitmoPlaying,
+    toggleRitmoPlaying: toggleVozRitmoPlaying,
+    stopRitmo: stopVozRitmo,
+    ritmoBpm: vozRitmoBpm,
+    setRitmoBpm: setVozRitmoBpm,
+    singBeats: vozSingBeats,
+    setSingBeats: setVozSingBeats,
+    restBeats: vozRestBeats,
+    setRestBeats: setVozRestBeats,
+    beatMarkers: vozBeatMarkers,
+    ritmoVoiceSamples: vozRitmoVoiceSamples,
+    start: startVoz,
+    stop: stopVoz,
+  } = useVoz();
 
   const refreshGlobalCount = useCallback(async () => {
     const canciones = await getCancioneroLocalAsCancionero();
@@ -73,6 +134,16 @@ export default function CancioneroHubPageClient({
     setAfinadorOpen(false);
   });
 
+  useHardwareBack(metronomoOpen, () => {
+    stopMetronomo();
+    setMetronomoOpen(false);
+  });
+
+  useHardwareBack(vozOpen, () => {
+    stopVoz();
+    setVozOpen(false);
+  });
+
   useEffect(() => {
     setPendingModuleId(null);
   }, [pathname]);
@@ -94,6 +165,19 @@ export default function CancioneroHubPageClient({
       setAfinadorOpen(true);
       if (afinadorMicPermissionGranted) {
         void startAfinador();
+      }
+      return;
+    }
+
+    if (moduleDef.kind === "metronomo") {
+      setMetronomoOpen(true);
+      return;
+    }
+
+    if (moduleDef.kind === "voz") {
+      setVozOpen(true);
+      if (vozMicPermissionGranted) {
+        void startVoz();
       }
       return;
     }
@@ -151,7 +235,11 @@ export default function CancioneroHubPageClient({
                 ariaLabel={
                   module.kind === "afinador"
                     ? "Abrir afinador"
-                    : `Abrir ${module.label}`
+                    : module.kind === "metronomo"
+                      ? "Abrir metrónomo"
+                      : module.kind === "voz"
+                        ? "Abrir entrenador vocal"
+                        : `Abrir ${module.label}`
                 }
                 onClick={() => handleModuleClick(module.id, module.href)}
                 pending={pendingModuleId === module.id}
@@ -179,6 +267,72 @@ export default function CancioneroHubPageClient({
         onClose={() => {
           stopAfinador();
           setAfinadorOpen(false);
+        }}
+      />
+
+      <EntrenadorVocalModal
+        open={vozOpen}
+        detection={vozDetection}
+        micError={vozMicError}
+        micPermissionGranted={vozMicPermissionGranted}
+        micReady={vozMicReady}
+        micStarting={vozMicStarting}
+        target={vozTarget}
+        onSetTarget={setVozTarget}
+        octaveExact={vozOctaveExact}
+        onSetOctaveExact={setVozOctaveExact}
+        targetFrequency={vozTargetFrequency}
+        referenceLabel={vozReferenceLabel}
+        centsFromTarget={vozCentsFromTarget}
+        accuracy={vozAccuracy}
+        feedbackLabel={vozFeedbackLabel}
+        historySamples={vozHistorySamples}
+        instantAttempts={vozInstantAttempts}
+        holdTargetSeconds={vozHoldTargetSeconds}
+        onSetHoldTargetSeconds={setVozHoldTargetSeconds}
+        celebrationKey={vozCelebrationKey}
+        ritmoPlaying={vozRitmoPlaying}
+        onToggleRitmoPlaying={toggleVozRitmoPlaying}
+        onStopRitmo={stopVozRitmo}
+        ritmoBpm={vozRitmoBpm}
+        onSetRitmoBpm={setVozRitmoBpm}
+        singBeats={vozSingBeats}
+        onSetSingBeats={setVozSingBeats}
+        restBeats={vozRestBeats}
+        onSetRestBeats={setVozRestBeats}
+        beatMarkers={vozBeatMarkers}
+        ritmoVoiceSamples={vozRitmoVoiceSamples}
+        onRequestMic={() => void startVoz()}
+        onClose={() => {
+          stopVoz();
+          setVozOpen(false);
+        }}
+      />
+
+      <MetronomoModal
+        open={metronomoOpen}
+        bpm={metronomoBpm}
+        isPlaying={metronomoIsPlaying}
+        beatsPerMeasure={metronomoBeatsPerMeasure}
+        currentBeat={metronomoCurrentBeat}
+        micActivo={metronomoMicActivo}
+        micPermissionGranted={metronomoMicPermissionGranted}
+        micError={metronomoMicError}
+        micReady={metronomoMicReady}
+        micStarting={metronomoMicStarting}
+        hits={metronomoHits}
+        beatMarkers={metronomoBeatMarkers}
+        onStart={startMetronomo}
+        onStop={stopMetronomo}
+        onSetBpm={setMetronomoBpm}
+        onSetBeatsPerMeasure={setMetronomoBeatsPerMeasure}
+        onTapTempo={tapMetronomoTempo}
+        tapTempoTapCount={metronomoTapTempoTapCount}
+        onToggleMic={toggleMetronomoMic}
+        onRequestMic={() => void requestMetronomoMic()}
+        onClose={() => {
+          stopMetronomo();
+          setMetronomoOpen(false);
         }}
       />
     </div>

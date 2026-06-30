@@ -12,8 +12,13 @@ import {
   VOZ_DEFAULT_TARGET,
   VOZ_HISTORY_SAMPLE_INTERVAL_MS,
   VOZ_HOLD_TARGET_DEFAULT,
+  VOZ_CALIBRE_DEFAULT,
   VOZ_INSTANT_ATTEMPTS_MAX,
+  clampHoldTargetSeconds,
+  instantAttemptResultFromAccuracy,
+  mergeInstantAttemptAccuracy,
   type VozAccuracy,
+  type VozCalibre,
   type VozHistorySample,
   type VozInstantAttempt,
   type VozTarget,
@@ -26,14 +31,20 @@ import {
 } from "@/lib/voz-ritmo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+const VOZ_BURST_SILENCE_END_MS = 140;
+
 export function useVoz() {
-  const afinador = useAfinador();
+  const afinador = useAfinador({ profile: "vocal" });
   const ritmo = useVozRitmo();
   const [target, setTarget] = useState<VozTarget>(VOZ_DEFAULT_TARGET);
   const [octaveExact, setOctaveExact] = useState(false);
-  const [holdTargetSeconds, setHoldTargetSeconds] = useState(
+  const [holdTargetSeconds, setHoldTargetSecondsState] = useState(
     VOZ_HOLD_TARGET_DEFAULT,
   );
+  const [holdCalibre, setHoldCalibre] = useState<VozCalibre>(VOZ_CALIBRE_DEFAULT);
+  const setHoldTargetSeconds = useCallback((value: number) => {
+    setHoldTargetSecondsState(clampHoldTargetSeconds(value));
+  }, []);
   const [historySamples, setHistorySamples] = useState<VozHistorySample[]>([]);
   const [instantAttempts, setInstantAttempts] = useState<VozInstantAttempt[]>(
     [],
@@ -49,16 +60,14 @@ export function useVoz() {
   const detectionRef = useRef(afinador.detection);
   const beatMarkersRef = useRef(ritmo.beatMarkers);
   const ritmoBpmRef = useRef(ritmo.ritmoBpm);
-  const singBeatsRef = useRef(ritmo.singBeats);
-  const restBeatsRef = useRef(ritmo.restBeats);
+  const ritmoPatternRef = useRef(ritmo.ritmoPattern);
 
   detectionRef.current = afinador.detection;
   beatMarkersRef.current = ritmo.beatMarkers;
   ritmoBpmRef.current = ritmo.ritmoBpm;
-  singBeatsRef.current = ritmo.singBeats;
-  restBeatsRef.current = ritmo.restBeats;
+  ritmoPatternRef.current = ritmo.ritmoPattern;
   const inBurstRef = useRef(false);
-  const burstHadEnTonoRef = useRef(false);
+  const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
 
   const clearRitmoVoiceSamples = useCallback(() => {
@@ -75,7 +84,7 @@ export function useVoz() {
 
   const clearInstantAttempts = useCallback(() => {
     inBurstRef.current = false;
-    burstHadEnTonoRef.current = false;
+    burstBestAccuracyRef.current = "lejos";
     setInstantAttempts([]);
   }, []);
 
@@ -100,6 +109,9 @@ export function useVoz() {
     [centsFromTarget, afinador.detection],
   );
 
+  const accuracyRef = useRef<VozAccuracy>(accuracy);
+  accuracyRef.current = accuracy;
+
   const feedbackLabel = useMemo(
     () =>
       getVozFeedbackLabel(accuracy, centsFromTarget ?? 0, {
@@ -114,6 +126,10 @@ export function useVoz() {
     clearHistory();
     clearInstantAttempts();
   }, [target.note, target.octave, octaveExact, clearHistory, clearInstantAttempts]);
+
+  useEffect(() => {
+    clearHistory();
+  }, [holdCalibre, clearHistory]);
 
   useEffect(() => {
     if (!afinador.micReady) {
@@ -165,9 +181,12 @@ export function useVoz() {
     if (accuracy !== "silencio") {
       if (!inBurstRef.current) {
         inBurstRef.current = true;
-        burstHadEnTonoRef.current = accuracy === "en-tono";
-      } else if (accuracy === "en-tono") {
-        burstHadEnTonoRef.current = true;
+        burstBestAccuracyRef.current = accuracy;
+      } else {
+        burstBestAccuracyRef.current = mergeInstantAttemptAccuracy(
+          burstBestAccuracyRef.current,
+          accuracy,
+        );
       }
 
       return;
@@ -177,19 +196,31 @@ export function useVoz() {
       return;
     }
 
-    inBurstRef.current = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!inBurstRef.current || accuracyRef.current !== "silencio") {
+        return;
+      }
 
-    setInstantAttempts((previous) => {
-      const next = [
-        ...previous,
-        { id: performance.now(), hit: burstHadEnTonoRef.current },
-      ];
+      inBurstRef.current = false;
 
-      return next.length > VOZ_INSTANT_ATTEMPTS_MAX
-        ? next.slice(next.length - VOZ_INSTANT_ATTEMPTS_MAX)
-        : next;
-    });
-    burstHadEnTonoRef.current = false;
+      const result = instantAttemptResultFromAccuracy(
+        burstBestAccuracyRef.current,
+      );
+      const attemptId = performance.now();
+
+      setInstantAttempts((previous) => {
+        const next = [...previous, { id: attemptId, result }];
+
+        return next.length > VOZ_INSTANT_ATTEMPTS_MAX
+          ? next.slice(next.length - VOZ_INSTANT_ATTEMPTS_MAX)
+          : next;
+      });
+      burstBestAccuracyRef.current = "lejos";
+    }, VOZ_BURST_SILENCE_END_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [accuracy, afinador.micReady]);
 
   useEffect(() => {
@@ -198,7 +229,11 @@ export function useVoz() {
       return;
     }
 
-    const holdMs = computeEnTonoHoldMs(historySamples, performance.now());
+    const holdMs = computeEnTonoHoldMs(
+      historySamples,
+      performance.now(),
+      holdCalibre,
+    );
     const targetMs = holdTargetSeconds * 1000;
 
     if (holdMs >= targetMs && !celebratedHoldRef.current) {
@@ -210,7 +245,7 @@ export function useVoz() {
     if (holdMs < 400) {
       celebratedHoldRef.current = false;
     }
-  }, [historySamples, holdTargetSeconds]);
+  }, [historySamples, holdTargetSeconds, holdCalibre]);
 
   useEffect(() => {
     if (!ritmo.ritmoPlaying || !afinador.micReady) {
@@ -235,16 +270,14 @@ export function useVoz() {
       lastRitmoVoiceSampleAtRef.current = now;
 
       const bpm = ritmoBpmRef.current;
-      const singBeats = singBeatsRef.current;
-      const restBeats = restBeatsRef.current;
+      const ritmoPattern = ritmoPatternRef.current;
       const msPerBeat = 60000 / bpm;
       const expectedPhase =
         getRitmoPhaseAtTime(
           now,
           beatMarkers,
           bpm,
-          singBeats,
-          restBeats,
+          ritmoPattern,
         ) ?? "silencio";
       const msIntoBeat = getMsIntoCurrentBeat(now, beatMarkers, bpm);
       const hasVoice = detectionRef.current !== null;
@@ -308,6 +341,8 @@ export function useVoz() {
     setOctaveExact,
     holdTargetSeconds,
     setHoldTargetSeconds,
+    holdCalibre,
+    setHoldCalibre,
     targetFrequency,
     referenceLabel,
     centsFromTarget,

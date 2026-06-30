@@ -1,7 +1,67 @@
 import { frequencyToNote, NOTE_NAMES } from "@/lib/afinador";
 
-export const VOZ_INTUNE_CENTS = 20;
-export const VOZ_CERCA_CENTS = 45;
+export type VozCalibre = "principiante" | "estandar" | "avanzado";
+
+export type VozCalibreThresholds = {
+  perfectCents: number;
+  intuneCents: number;
+  cercaCents: number;
+  holdCountsCerca: boolean;
+};
+
+export const VOZ_CALIBRE_OPTIONS = [
+  { id: "principiante", label: "Principiante" },
+  { id: "estandar", label: "Estándar" },
+  { id: "avanzado", label: "Avanzado" },
+] as const satisfies ReadonlyArray<{ id: VozCalibre; label: string }>;
+
+export const VOZ_CALIBRE_THRESHOLDS: Record<VozCalibre, VozCalibreThresholds> = {
+  principiante: {
+    perfectCents: 14,
+    intuneCents: 38,
+    cercaCents: 65,
+    holdCountsCerca: true,
+  },
+  estandar: {
+    perfectCents: 10,
+    intuneCents: 28,
+    cercaCents: 50,
+    holdCountsCerca: true,
+  },
+  avanzado: {
+    perfectCents: 5,
+    intuneCents: 20,
+    cercaCents: 45,
+    holdCountsCerca: false,
+  },
+};
+
+export const VOZ_CALIBRE_DEFAULT: VozCalibre = "estandar";
+
+export function getVozCalibreThresholds(
+  calibre: VozCalibre,
+): VozCalibreThresholds {
+  return VOZ_CALIBRE_THRESHOLDS[calibre];
+}
+
+export function getVozCalibreDescription(calibre: VozCalibre): string {
+  const thresholds = getVozCalibreThresholds(calibre);
+
+  switch (calibre) {
+    case "principiante":
+      return `Más tolerancia (±${thresholds.cercaCents} ct) para practicar sin frustrarte.`;
+    case "avanzado":
+      return `Rigor alto (±${thresholds.intuneCents} ct en verde). El cronómetro solo suma en tono.`;
+    default:
+      return `Equilibrio recomendado (±${thresholds.cercaCents} ct aceptables para sostener).`;
+  }
+}
+
+/** Umbrales del calibre estándar (compatibilidad con otros modos). */
+export const VOZ_PERFECT_CENTS =
+  VOZ_CALIBRE_THRESHOLDS.estandar.perfectCents;
+export const VOZ_INTUNE_CENTS = VOZ_CALIBRE_THRESHOLDS.estandar.intuneCents;
+export const VOZ_CERCA_CENTS = VOZ_CALIBRE_THRESHOLDS.estandar.cercaCents;
 export const VOZ_LADDER_SEMITONE_SPAN = 6;
 export const VOZ_HISTORY_WINDOW_MS = 12_000;
 export const VOZ_HISTORY_SAMPLE_INTERVAL_MS = 100;
@@ -10,14 +70,52 @@ export const VOZ_HISTORY_CHART_MAX_CENTS = VOZ_CERCA_CENTS;
 /** Rango vertical del gráfico de tono en ritmo/combo (±6 semitonos). */
 export const VOZ_HISTORY_CHART_WIDE_MAX_CENTS =
   VOZ_LADDER_SEMITONE_SPAN * 100;
-export const VOZ_HOLD_TARGET_OPTIONS = [2, 3, 5, 8] as const;
-export const VOZ_HOLD_TARGET_DEFAULT = 3;
+export const VOZ_HOLD_TARGET_MIN = 1;
+export const VOZ_HOLD_TARGET_MAX = 30;
+export const VOZ_HOLD_TARGET_DEFAULT = 10;
+
+export function clampHoldTargetSeconds(value: number): number {
+  return Math.max(
+    VOZ_HOLD_TARGET_MIN,
+    Math.min(VOZ_HOLD_TARGET_MAX, Math.round(value)),
+  );
+}
 export const VOZ_INSTANT_ATTEMPTS_MAX = 12;
 
 export type VozInstantAttempt = {
   id: number;
-  hit: boolean;
+  result: "en-tono" | "cerca" | "lejos";
 };
+
+const INSTANT_ATTEMPT_RANK: Record<VozAccuracy, number> = {
+  silencio: 0,
+  lejos: 1,
+  cerca: 2,
+  "en-tono": 3,
+};
+
+export function mergeInstantAttemptAccuracy(
+  current: VozAccuracy,
+  next: VozAccuracy,
+): VozAccuracy {
+  if (next === "silencio") {
+    return current;
+  }
+
+  return INSTANT_ATTEMPT_RANK[next] > INSTANT_ATTEMPT_RANK[current]
+    ? next
+    : current;
+}
+
+export function instantAttemptResultFromAccuracy(
+  accuracy: VozAccuracy,
+): VozInstantAttempt["result"] {
+  if (accuracy === "en-tono" || accuracy === "cerca") {
+    return accuracy;
+  }
+
+  return "lejos";
+}
 
 export type VozAccuracy = "en-tono" | "cerca" | "lejos" | "silencio";
 
@@ -28,7 +126,19 @@ export type VozTarget = {
 
 export const VOZ_DEFAULT_TARGET: VozTarget = { note: "A", octave: 3 };
 
-export const VOZ_OCTAVES = [2, 3, 4, 5] as const;
+export const VOZ_OCTAVES = [1, 2, 3, 4, 5] as const;
+
+export function clampTargetOctave(
+  octave: number,
+): (typeof VOZ_OCTAVES)[number] {
+  const match = VOZ_OCTAVES.find((value) => value === octave);
+
+  if (match !== undefined) {
+    return match;
+  }
+
+  return VOZ_OCTAVES[0];
+}
 
 const A4_FREQUENCY = 440;
 
@@ -56,18 +166,23 @@ export function getCentsFromTarget(
   return Math.round(1200 * Math.log2(frequency / targetFrequency));
 }
 
-export function getVozAccuracy(cents: number, hasSignal: boolean): VozAccuracy {
+export function getVozAccuracy(
+  cents: number,
+  hasSignal: boolean,
+  calibre: VozCalibre = "estandar",
+): VozAccuracy {
   if (!hasSignal) {
     return "silencio";
   }
 
+  const { intuneCents, cercaCents } = getVozCalibreThresholds(calibre);
   const abs = Math.abs(cents);
 
-  if (abs <= VOZ_INTUNE_CENTS) {
+  if (abs <= intuneCents) {
     return "en-tono";
   }
 
-  if (abs <= VOZ_CERCA_CENTS) {
+  if (abs <= cercaCents) {
     return "cerca";
   }
 
@@ -111,7 +226,7 @@ export function getCentsForPitchClass(
     semitones += 12;
   }
 
-  return semitones * 100;
+  return semitones * 100 + detected.cents;
 }
 
 export type VozComparison = {
@@ -150,6 +265,7 @@ export function getVozFeedbackLabel(
     targetNote: string;
     detectedNote?: string;
   },
+  calibre: VozCalibre = "estandar",
 ): string {
   if (
     accuracy === "lejos" &&
@@ -163,7 +279,13 @@ export function getVozFeedbackLabel(
 
   switch (accuracy) {
     case "en-tono":
-      return options?.octaveExact ? "¡En tono!" : "¡Nota correcta!";
+      if (isPerfectPitch(cents, calibre)) {
+        return options?.octaveExact ? "¡Tono perfecto!" : "¡Nota perfecta!";
+      }
+
+      return options?.octaveExact
+        ? "En tono · desvío mínimo"
+        : "Nota correcta · desvío mínimo";
     case "cerca":
       return cents > 0
         ? `Cerca · ${cents} ct arriba`
@@ -179,10 +301,62 @@ export function getVozFeedbackLabel(
   }
 }
 
-export function getVozAccuracyColor(accuracy: VozAccuracy): string {
+export function isHoldCountingAccuracy(
+  accuracy: VozAccuracy,
+  calibre: VozCalibre = "estandar",
+): boolean {
+  if (accuracy === "en-tono") {
+    return true;
+  }
+
+  if (accuracy === "cerca") {
+    return getVozCalibreThresholds(calibre).holdCountsCerca;
+  }
+
+  return false;
+}
+
+export function isPerfectPitch(
+  cents: number,
+  calibre: VozCalibre = "estandar",
+): boolean {
+  return Math.abs(cents) <= getVozCalibreThresholds(calibre).perfectCents;
+}
+
+export function getVozSampleColor(
+  cents: number,
+  accuracy: VozAccuracy,
+  calibre: VozCalibre = "estandar",
+): string {
+  if (accuracy === "silencio") {
+    return "var(--text-muted)";
+  }
+
+  if (accuracy === "lejos") {
+    return "var(--tuner-flat-sharp)";
+  }
+
+  if (accuracy === "cerca") {
+    return "var(--tuner-cerca)";
+  }
+
+  return isPerfectPitch(cents, calibre)
+    ? "var(--tuner-in-tune-perfect)"
+    : "var(--tuner-in-tune-sutil)";
+}
+
+export function getVozAccuracyColor(
+  accuracy: VozAccuracy,
+  cents?: number,
+  calibre: VozCalibre = "estandar",
+): string {
+  if (accuracy === "en-tono" && cents !== undefined) {
+    return getVozSampleColor(cents, accuracy, calibre);
+  }
+
   switch (accuracy) {
     case "en-tono":
-      return "var(--tuner-in-tune)";
+      return "var(--tuner-in-tune-sutil)";
     case "cerca":
       return "var(--tuner-cerca)";
     case "silencio":
@@ -405,6 +579,7 @@ export function buildHistorySegmentPath(
 export function computeEnTonoHoldMs(
   samples: VozHistorySample[],
   now: number,
+  calibre: VozCalibre = "estandar",
 ): number {
   if (samples.length === 0) {
     return 0;
@@ -414,8 +589,9 @@ export function computeEnTonoHoldMs(
 
   for (let index = samples.length - 1; index >= 0; index -= 1) {
     const sample = samples[index]!;
+    const accuracy = getVozAccuracy(sample.cents, true, calibre);
 
-    if (sample.accuracy !== "en-tono") {
+    if (!isHoldCountingAccuracy(accuracy, calibre)) {
       break;
     }
 
@@ -427,6 +603,65 @@ export function computeEnTonoHoldMs(
   }
 
   return now - holdStart;
+}
+
+export type HoldRingSegment = {
+  startFraction: number;
+  endFraction: number;
+  color: string;
+};
+
+export function buildHoldRingSegments(
+  samples: VozHistorySample[],
+  now: number,
+  targetMs: number,
+  calibre: VozCalibre = "estandar",
+): HoldRingSegment[] {
+  if (samples.length === 0 || targetMs <= 0) {
+    return [];
+  }
+
+  const streak: VozHistorySample[] = [];
+
+  for (let index = samples.length - 1; index >= 0; index -= 1) {
+    const sample = samples[index]!;
+    const accuracy = getVozAccuracy(sample.cents, true, calibre);
+
+    if (!isHoldCountingAccuracy(accuracy, calibre)) {
+      break;
+    }
+
+    streak.unshift(sample);
+  }
+
+  if (streak.length === 0) {
+    return [];
+  }
+
+  const holdStart = streak[0]!.timestamp;
+  const cappedNow = Math.min(now, holdStart + targetMs);
+  const segments: HoldRingSegment[] = [];
+
+  for (let index = 0; index < streak.length; index += 1) {
+    const sample = streak[index]!;
+    const sampleAccuracy = getVozAccuracy(sample.cents, true, calibre);
+    const nextTimestamp =
+      index < streak.length - 1 ? streak[index + 1]!.timestamp : cappedNow;
+    const startFraction = (sample.timestamp - holdStart) / targetMs;
+    const endFraction = (nextTimestamp - holdStart) / targetMs;
+
+    if (endFraction <= startFraction) {
+      continue;
+    }
+
+    segments.push({
+      startFraction: Math.min(1, Math.max(0, startFraction)),
+      endFraction: Math.min(1, Math.max(0, endFraction)),
+      color: getVozSampleColor(sample.cents, sampleAccuracy, calibre),
+    });
+  }
+
+  return segments;
 }
 
 export function formatHoldDuration(ms: number): string {

@@ -70,9 +70,17 @@
   --skeleton-shine-light: #f2f2f2;
 
   /* Afinador */
+  --tuner-in-tune-perfect: #2a8f42;
+  --tuner-in-tune-sutil: #72d67f;
   --tuner-in-tune: #54c864;
   --tuner-cerca: #e8c547;
   --tuner-flat-sharp: #e05555;
+
+  /* Entrenador vocal — configuración (no juego ni acento naranja) */
+  --voz-config: #7b9ab8;
+  --voz-config-dim: rgba(123, 154, 184, 0.12);
+  --voz-config-border: rgba(123, 154, 184, 0.38);
+  --voz-config-bg: rgba(123, 154, 184, 0.08);
 }
 
 @theme inline {
@@ -101,6 +109,7 @@
   --color-letra-text: var(--letra-text);
   --color-cola-proxima-bg: var(--cola-proxima-bg);
   --color-cola-proxima-border: var(--cola-proxima-border);
+  --color-voz-config: var(--voz-config);
   --font-sans: var(--font-app);
 }
 

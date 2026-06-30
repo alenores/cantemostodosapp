@@ -1,13 +1,14 @@
 "use client";
 
 import {
-  clampPatternBeats,
   clampRitmoBpm,
   createVozRitmoEngine,
-  VOZ_RITMO_REST_BEATS_DEFAULT,
-  VOZ_RITMO_SING_BEATS_DEFAULT,
+  normalizeRitmoPattern,
+  toggleRitmoPatternSlot,
+  VOZ_RITMO_PATTERN_DEFAULT,
   type VozRitmoBeatMarker,
   type VozRitmoEngine,
+  type VozRitmoPattern,
   type VozRitmoPhase,
 } from "@/lib/voz-ritmo";
 import { BPM_DEFAULT } from "@/lib/metronomo";
@@ -18,13 +19,11 @@ const MAX_MARKERS = 96;
 type UseVozRitmoResult = {
   ritmoPlaying: boolean;
   ritmoBpm: number;
-  singBeats: number;
-  restBeats: number;
+  ritmoPattern: VozRitmoPattern;
   currentPhase: VozRitmoPhase | null;
   beatMarkers: VozRitmoBeatMarker[];
   setRitmoBpm: (value: number) => void;
-  setSingBeats: (value: number) => void;
-  setRestBeats: (value: number) => void;
+  toggleRitmoPatternSlot: (slotIndex: number) => void;
   startRitmo: () => void;
   stopRitmo: () => void;
   toggleRitmoPlaying: () => void;
@@ -33,21 +32,20 @@ type UseVozRitmoResult = {
 export function useVozRitmo(): UseVozRitmoResult {
   const [ritmoPlaying, setRitmoPlaying] = useState(false);
   const [ritmoBpm, setRitmoBpmState] = useState(BPM_DEFAULT);
-  const [singBeats, setSingBeatsState] = useState(VOZ_RITMO_SING_BEATS_DEFAULT);
-  const [restBeats, setRestBeatsState] = useState(VOZ_RITMO_REST_BEATS_DEFAULT);
+  const [ritmoPattern, setRitmoPatternState] = useState<VozRitmoPattern>([
+    ...VOZ_RITMO_PATTERN_DEFAULT,
+  ]);
   const [currentPhase, setCurrentPhase] = useState<VozRitmoPhase | null>(null);
   const [beatMarkers, setBeatMarkers] = useState<VozRitmoBeatMarker[]>([]);
 
   const ritmoBpmRef = useRef(ritmoBpm);
-  const singBeatsRef = useRef(singBeats);
-  const restBeatsRef = useRef(restBeats);
+  const ritmoPatternRef = useRef(ritmoPattern);
   const ritmoPlayingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const engineRef = useRef<VozRitmoEngine | null>(null);
 
   ritmoBpmRef.current = ritmoBpm;
-  singBeatsRef.current = singBeats;
-  restBeatsRef.current = restBeats;
+  ritmoPatternRef.current = ritmoPattern;
   ritmoPlayingRef.current = ritmoPlaying;
 
   const closeAudioContext = useCallback(() => {
@@ -115,8 +113,7 @@ export function useVozRitmo(): UseVozRitmoResult {
 
         engine.start(
           ritmoBpmRef.current,
-          singBeatsRef.current,
-          restBeatsRef.current,
+          ritmoPatternRef.current,
           (marker) => {
             setCurrentPhase(marker.phase);
             setBeatMarkers((previous) => {
@@ -154,9 +151,11 @@ export function useVozRitmo(): UseVozRitmoResult {
     [stopRitmo],
   );
 
-  const setSingBeats = useCallback(
-    (value: number) => {
-      setSingBeatsState(clampPatternBeats(value));
+  const handleTogglePatternSlot = useCallback(
+    (slotIndex: number) => {
+      setRitmoPatternState((previous) =>
+        toggleRitmoPatternSlot(previous, slotIndex),
+      );
 
       if (ritmoPlayingRef.current) {
         stopRitmo();
@@ -165,16 +164,9 @@ export function useVozRitmo(): UseVozRitmoResult {
     [stopRitmo],
   );
 
-  const setRestBeats = useCallback(
-    (value: number) => {
-      setRestBeatsState(clampPatternBeats(value));
-
-      if (ritmoPlayingRef.current) {
-        stopRitmo();
-      }
-    },
-    [stopRitmo],
-  );
+  useEffect(() => {
+    ritmoPatternRef.current = normalizeRitmoPattern(ritmoPattern);
+  }, [ritmoPattern]);
 
   useEffect(() => {
     return () => {
@@ -186,13 +178,11 @@ export function useVozRitmo(): UseVozRitmoResult {
   return {
     ritmoPlaying,
     ritmoBpm,
-    singBeats,
-    restBeats,
+    ritmoPattern,
     currentPhase,
     beatMarkers,
     setRitmoBpm,
-    setSingBeats,
-    setRestBeats,
+    toggleRitmoPatternSlot: handleTogglePatternSlot,
     startRitmo,
     stopRitmo,
     toggleRitmoPlaying,

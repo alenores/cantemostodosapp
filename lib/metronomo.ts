@@ -2,6 +2,178 @@ export const BPM_MIN = 40;
 export const BPM_MAX = 240;
 export const BPM_DEFAULT = 80;
 
+export const BEATS_PER_MEASURE_MIN = 1;
+export const BEATS_PER_MEASURE_MAX = 10;
+export const BEATS_PER_MEASURE_DEFAULT = 4;
+
+export const METRONOME_PATTERN_LENGTH = BEATS_PER_MEASURE_MAX;
+export const METRONOME_PATTERN_LENGTH_DEFAULT = BEATS_PER_MEASURE_DEFAULT;
+
+export function clampPatternLength(value: number): number {
+  return Math.max(
+    BEATS_PER_MEASURE_MIN,
+    Math.min(BEATS_PER_MEASURE_MAX, Math.round(value)),
+  );
+}
+
+export function getActivePatternLength(
+  patternLength: number,
+): number {
+  return clampPatternLength(patternLength);
+}
+
+export function getActivePatternSlice(
+  pattern: MetronomeBeatLevel[],
+  patternLength: number,
+): MetronomeBeatLevel[] {
+  return normalizeMetronomePattern(pattern).slice(
+    0,
+    getActivePatternLength(patternLength),
+  );
+}
+
+export type MetronomeBeatLevel = "silencio" | "suave" | "medio" | "fuerte";
+
+export type MetronomeBeatPattern = MetronomeBeatLevel[];
+
+export const METRONOME_BEAT_LEVELS: MetronomeBeatLevel[] = [
+  "silencio",
+  "suave",
+  "medio",
+  "fuerte",
+];
+
+export const METRONOME_PATTERN_DEFAULT: MetronomeBeatPattern = [
+  "fuerte",
+  "medio",
+  "medio",
+  "medio",
+  "silencio",
+  "silencio",
+  "silencio",
+  "silencio",
+  "silencio",
+  "silencio",
+];
+
+export function normalizeMetronomePattern(
+  pattern: MetronomeBeatLevel[],
+): MetronomeBeatPattern {
+  const normalized = pattern.slice(0, METRONOME_PATTERN_LENGTH);
+
+  while (normalized.length < METRONOME_PATTERN_LENGTH) {
+    normalized.push("silencio");
+  }
+
+  return normalized;
+}
+
+export function cycleMetronomeBeatLevel(
+  level: MetronomeBeatLevel,
+): MetronomeBeatLevel {
+  const index = METRONOME_BEAT_LEVELS.indexOf(level);
+  const safeIndex = index === -1 ? 0 : index;
+
+  return METRONOME_BEAT_LEVELS[
+    (safeIndex + 1) % METRONOME_BEAT_LEVELS.length
+  ]!;
+}
+
+export function cycleMetronomePatternSlot(
+  pattern: MetronomeBeatLevel[],
+  slotIndex: number,
+): MetronomeBeatPattern {
+  const next = normalizeMetronomePattern(pattern);
+  const index = Math.max(0, Math.min(METRONOME_PATTERN_LENGTH - 1, slotIndex));
+  next[index] = cycleMetronomeBeatLevel(next[index]!);
+  return next;
+}
+
+export function resizeMetronomePatternLength(
+  pattern: MetronomeBeatLevel[],
+  currentLength: number,
+  nextLength: number,
+): { pattern: MetronomeBeatPattern; patternLength: number } {
+  const normalized = normalizeMetronomePattern(pattern);
+  const clampedLength = clampPatternLength(nextLength);
+  const safeCurrent = clampPatternLength(currentLength);
+
+  for (let index = safeCurrent; index < clampedLength; index += 1) {
+    if (normalized[index] === "silencio") {
+      normalized[index] = index === 0 ? "fuerte" : "medio";
+    }
+  }
+
+  return {
+    pattern: normalized,
+    patternLength: clampedLength,
+  };
+}
+
+export function getBeatLevelLabel(level: MetronomeBeatLevel): string {
+  switch (level) {
+    case "suave":
+      return "Suave";
+    case "medio":
+      return "Medio";
+    case "fuerte":
+      return "Fuerte";
+    default:
+      return "Silencio";
+  }
+}
+
+export function getBeatLevelBarHeightPercent(level: MetronomeBeatLevel): number {
+  switch (level) {
+    case "fuerte":
+      return 100;
+    case "medio":
+      return 68;
+    case "suave":
+      return 42;
+    default:
+      return 0;
+  }
+}
+
+export function getBeatLevelConfigColor(level: MetronomeBeatLevel): string {
+  switch (level) {
+    case "fuerte":
+      return "var(--voz-config)";
+    case "medio":
+      return "color-mix(in srgb, var(--voz-config) 62%, transparent)";
+    case "suave":
+      return "color-mix(in srgb, var(--voz-config) 32%, transparent)";
+    default:
+      return "var(--cola-sheet-pill)";
+  }
+}
+
+export type MetronomeBeatLevelBarAppearance = {
+  backgroundColor: string;
+  border: string;
+};
+
+export function getBeatLevelBarAppearance(
+  level: MetronomeBeatLevel,
+): MetronomeBeatLevelBarAppearance {
+  if (level === "silencio") {
+    return {
+      backgroundColor: getBeatLevelConfigColor(level),
+      border: "1px solid var(--border)",
+    };
+  }
+
+  return {
+    backgroundColor: getBeatLevelConfigColor(level),
+    border: "none",
+  };
+}
+
+export function getPatternLength(patternLength: number): number {
+  return getActivePatternLength(patternLength);
+}
+
 export type MetronomeHit = {
   timestamp: number;
   beatIndex: number;
@@ -20,9 +192,9 @@ export const TIMELINE_MEASURE_CYCLES = 5;
 
 export function getTimelineWindowMs(
   bpm: number,
-  beatsPerMeasure: number,
+  patternLength = METRONOME_PATTERN_LENGTH,
 ): number {
-  return (60000 / bpm) * beatsPerMeasure * TIMELINE_MEASURE_CYCLES;
+  return (60000 / bpm) * patternLength * TIMELINE_MEASURE_CYCLES;
 }
 
 export function getHitAccuracy(deltaMs: number): HitAccuracy {
@@ -205,36 +377,55 @@ export function updateSessionLatencyOffset(
 const LOOK_AHEAD_SECONDS = 0.1;
 const SCHEDULE_INTERVAL_MS = 25;
 
+function getBeatLevelAudio(level: MetronomeBeatLevel): {
+  frequency: number;
+  peakGain: number;
+  duration: number;
+} | null {
+  switch (level) {
+    case "suave":
+      return { frequency: 620, peakGain: 0.14, duration: 0.014 };
+    case "medio":
+      return { frequency: 900, peakGain: 0.38, duration: 0.022 };
+    case "fuerte":
+      return { frequency: 1500, peakGain: 0.72, duration: 0.045 };
+    default:
+      return null;
+  }
+}
+
 function scheduleClick(
   audioContext: AudioContext,
   time: number,
-  beatIndex: number,
+  level: MetronomeBeatLevel,
 ): void {
-  const isDownbeat = beatIndex === 0;
-  const frequency = isDownbeat ? 1500 : 700;
-  const peakGain = isDownbeat ? 0.72 : 0.1;
-  const duration = isDownbeat ? 0.045 : 0.012;
+  const audio = getBeatLevelAudio(level);
+
+  if (!audio) {
+    return;
+  }
 
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
 
   oscillator.type = "sine";
-  oscillator.frequency.value = frequency;
+  oscillator.frequency.value = audio.frequency;
 
-  gainNode.gain.setValueAtTime(peakGain, time);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
+  gainNode.gain.setValueAtTime(audio.peakGain, time);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, time + audio.duration);
 
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
 
   oscillator.start(time);
-  oscillator.stop(time + duration);
+  oscillator.stop(time + audio.duration);
 }
 
 export type MetronomeEngine = {
   start(
     bpm: number,
-    beatsPerMeasure: number,
+    pattern: MetronomeBeatPattern,
+    patternLength: number,
     onBeat: (beatIndex: number, expectedTimeMs: number) => void,
   ): void;
   stop(): void;
@@ -245,7 +436,8 @@ export function createMetronomeEngine(
 ): MetronomeEngine {
   let running = false;
   let bpm = BPM_DEFAULT;
-  let beatsPerMeasure = 4;
+  let pattern: MetronomeBeatPattern = [...METRONOME_PATTERN_DEFAULT];
+  let patternLength = METRONOME_PATTERN_LENGTH_DEFAULT;
   let nextBeatTime = 0;
   let currentBeatIndex = 0;
   let schedulerTimer: ReturnType<typeof setInterval> | null = null;
@@ -296,19 +488,21 @@ export function createMetronomeEngine(
     while (nextBeatTime < audioContext.currentTime + LOOK_AHEAD_SECONDS) {
       const beatIndex = currentBeatIndex;
       const beatTime = nextBeatTime;
+      const level = pattern[beatIndex] ?? "silencio";
 
-      scheduleClick(audioContext, beatTime, beatIndex);
+      scheduleClick(audioContext, beatTime, level);
       scheduleBeatCallback(beatIndex, beatTime);
 
       nextBeatTime += secondsPerBeat;
-      currentBeatIndex = (currentBeatIndex + 1) % beatsPerMeasure;
+      currentBeatIndex = (currentBeatIndex + 1) % patternLength;
     }
   }
 
   return {
     start(
       nextBpm: number,
-      nextBeatsPerMeasure: number,
+      nextPattern: MetronomeBeatPattern,
+      nextPatternLength: number,
       nextOnBeat: (beatIndex: number, expectedTimeMs: number) => void,
     ) {
       if (running) {
@@ -316,7 +510,8 @@ export function createMetronomeEngine(
       }
 
       bpm = nextBpm;
-      beatsPerMeasure = nextBeatsPerMeasure;
+      pattern = normalizeMetronomePattern(nextPattern);
+      patternLength = getActivePatternLength(nextPatternLength);
       onBeat = nextOnBeat;
       running = true;
       currentBeatIndex = 0;

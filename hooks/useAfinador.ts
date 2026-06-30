@@ -2,10 +2,16 @@
 
 import {
   autoCorrelate,
+  createDebouncedNoteState,
   ema,
+  frequencyToMidi,
   frequencyToNote,
+  midiToNoteName,
+  updateDebouncedDisplayNote,
   TUNER_CENTS_EMA_ALPHA,
+  TUNER_DISPLAY_HZ_EMA_ALPHA,
   TUNER_FREQUENCY_EMA_ALPHA,
+  VOCAL_CENTS_EMA_ALPHA,
   type NoteDetection,
 } from "@/lib/afinador";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -60,6 +66,11 @@ function getMicErrorMessage(error: unknown): string {
   return "No se pudo acceder al micrófono. Intentá de nuevo.";
 }
 
+type UseAfinadorOptions = {
+  /** `tuner`: aguja estable. `vocal`: nota al instante para práctica. */
+  profile?: "tuner" | "vocal";
+};
+
 type UseAfinadorResult = {
   detection: NoteDetection | null;
   micError: string | null;
@@ -70,7 +81,11 @@ type UseAfinadorResult = {
   stop: () => void;
 };
 
-export function useAfinador(): UseAfinadorResult {
+export function useAfinador(
+  options: UseAfinadorOptions = {},
+): UseAfinadorResult {
+  const profile = options.profile ?? "tuner";
+  const isVocalProfile = profile === "vocal";
   const [detection, setDetection] = useState<NoteDetection | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [micPermissionGranted, setMicPermissionGranted] = useState(
@@ -86,7 +101,10 @@ export function useAfinador(): UseAfinadorResult {
   const dataBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const runningRef = useRef(false);
   const smoothedFrequencyRef = useRef<number | null>(null);
+  const displayFrequencyRef = useRef<number | null>(null);
   const smoothedCentsRef = useRef<number | null>(null);
+  const displayNoteStateRef = useRef(createDebouncedNoteState());
+  const lastDisplayMidiRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
 
   const stopAudio = useCallback(() => {
@@ -109,7 +127,10 @@ export function useAfinador(): UseAfinadorResult {
     analyserRef.current = null;
     dataBufferRef.current = null;
     smoothedFrequencyRef.current = null;
+    displayFrequencyRef.current = null;
     smoothedCentsRef.current = null;
+    displayNoteStateRef.current = createDebouncedNoteState();
+    lastDisplayMidiRef.current = null;
     lastNoteRef.current = null;
     setDetection(null);
     setMicReady(false);
@@ -166,7 +187,10 @@ export function useAfinador(): UseAfinadorResult {
     setDetection(null);
     setMicStarting(true);
     smoothedFrequencyRef.current = null;
+    displayFrequencyRef.current = null;
     smoothedCentsRef.current = null;
+    displayNoteStateRef.current = createDebouncedNoteState();
+    lastDisplayMidiRef.current = null;
     lastNoteRef.current = null;
 
     try {
@@ -229,44 +253,100 @@ export function useAfinador(): UseAfinadorResult {
         if (frequency === null) {
           if (smoothedFrequencyRef.current !== null) {
             smoothedFrequencyRef.current = null;
+            displayFrequencyRef.current = null;
             smoothedCentsRef.current = null;
+            displayNoteStateRef.current = createDebouncedNoteState();
+            lastDisplayMidiRef.current = null;
             lastNoteRef.current = null;
             setDetection(null);
           }
         } else {
-          const smoothedFrequency = ema(
-            smoothedFrequencyRef.current,
-            frequency,
-            TUNER_FREQUENCY_EMA_ALPHA,
-          );
-          smoothedFrequencyRef.current = smoothedFrequency;
+          const rawDetection = frequencyToNote(frequency);
 
-          const rawDetection = frequencyToNote(smoothedFrequency);
-          const noteChanged =
-            lastNoteRef.current !== null &&
-            lastNoteRef.current !== rawDetection.note;
+          if (isVocalProfile) {
+            const isOnset = smoothedFrequencyRef.current === null;
+            const noteChanged =
+              lastNoteRef.current !== null &&
+              lastNoteRef.current !== rawDetection.note;
 
-          let displayCents: number;
+            if (isOnset || noteChanged) {
+              smoothedCentsRef.current = rawDetection.cents;
+            } else if (smoothedCentsRef.current !== null) {
+              smoothedCentsRef.current = ema(
+                smoothedCentsRef.current,
+                rawDetection.cents,
+                VOCAL_CENTS_EMA_ALPHA,
+              );
+            } else {
+              smoothedCentsRef.current = rawDetection.cents;
+            }
 
-          if (noteChanged || smoothedCentsRef.current === null) {
-            displayCents = rawDetection.cents;
-            smoothedCentsRef.current = rawDetection.cents;
+            smoothedFrequencyRef.current = frequency;
+            lastNoteRef.current = rawDetection.note;
+
+            setDetection({
+              note: rawDetection.note,
+              frequency,
+              cents: smoothedCentsRef.current,
+            });
           } else {
-            displayCents = ema(
-              smoothedCentsRef.current,
-              rawDetection.cents,
-              TUNER_CENTS_EMA_ALPHA,
+            const smoothedFrequency = ema(
+              smoothedFrequencyRef.current,
+              frequency,
+              TUNER_FREQUENCY_EMA_ALPHA,
             );
-            smoothedCentsRef.current = displayCents;
+            smoothedFrequencyRef.current = smoothedFrequency;
+
+            const displayFrequency = ema(
+              displayFrequencyRef.current,
+              smoothedFrequency,
+              TUNER_DISPLAY_HZ_EMA_ALPHA,
+            );
+            displayFrequencyRef.current = displayFrequency;
+
+            const debounced = updateDebouncedDisplayNote(
+              displayNoteStateRef.current,
+              smoothedFrequency,
+              performance.now(),
+            );
+            displayNoteStateRef.current = debounced.state;
+            const displayMidi = debounced.displayMidi;
+
+            const rawCents =
+              displayMidi === null
+                ? 0
+                : (frequencyToMidi(smoothedFrequency) - displayMidi) * 100;
+
+            const noteChanged =
+              lastDisplayMidiRef.current !== null &&
+              displayMidi !== null &&
+              lastDisplayMidiRef.current !== displayMidi;
+
+            lastDisplayMidiRef.current = displayMidi;
+
+            let displayCents: number;
+
+            if (noteChanged || smoothedCentsRef.current === null) {
+              displayCents = rawCents;
+              smoothedCentsRef.current = rawCents;
+            } else {
+              displayCents = ema(
+                smoothedCentsRef.current,
+                rawCents,
+                TUNER_CENTS_EMA_ALPHA,
+              );
+              smoothedCentsRef.current = displayCents;
+            }
+
+            setDetection({
+              note:
+                displayMidi === null
+                  ? "—"
+                  : midiToNoteName(displayMidi),
+              frequency: displayFrequency,
+              cents: displayCents,
+            });
           }
-
-          lastNoteRef.current = rawDetection.note;
-
-          setDetection({
-            note: rawDetection.note,
-            frequency: smoothedFrequency,
-            cents: displayCents,
-          });
         }
 
         animationFrameRef.current = requestAnimationFrame(updatePitch);
@@ -287,7 +367,7 @@ export function useAfinador(): UseAfinadorResult {
 
       setMicError(getMicErrorMessage(error));
     }
-  }, [micStarting, stopAudio]);
+  }, [isVocalProfile, micStarting, stopAudio]);
 
   useEffect(() => {
     return () => {

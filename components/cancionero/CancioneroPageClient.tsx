@@ -335,7 +335,7 @@ export default function CancioneroPageClient({
       <AppReadyMarker />
       <CancioneroSubpageShell
         title="Cancionero"
-        modalOpen={cancionViendo !== null}
+        modalOpen={cancionViendo !== null || formOpen}
         headerAction={
           usuarioLogueado ? (
             <AddButton

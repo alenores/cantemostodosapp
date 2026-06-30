@@ -6,6 +6,7 @@ import type { NoteDetection } from "@/lib/afinador";
 import {
   formatTargetLabel,
   type VozAccuracy,
+  type VozCalibre,
   type VozHistorySample,
   type VozInstantAttempt,
   type VozTarget,
@@ -39,16 +40,16 @@ type EntrenadorVocalModalProps = {
   instantAttempts: VozInstantAttempt[];
   holdTargetSeconds: number;
   onSetHoldTargetSeconds: (value: number) => void;
+  holdCalibre: VozCalibre;
+  onSetHoldCalibre: (value: VozCalibre) => void;
   celebrationKey: number;
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
   onStopRitmo: () => void;
   ritmoBpm: number;
   onSetRitmoBpm: (value: number) => void;
-  singBeats: number;
-  onSetSingBeats: (value: number) => void;
-  restBeats: number;
-  onSetRestBeats: (value: number) => void;
+  ritmoPattern: boolean[];
+  onToggleRitmoPatternSlot: (slotIndex: number) => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
 };
@@ -131,16 +132,16 @@ export default function EntrenadorVocalModal({
   instantAttempts,
   holdTargetSeconds,
   onSetHoldTargetSeconds,
+  holdCalibre,
+  onSetHoldCalibre,
   celebrationKey,
   ritmoPlaying,
   onToggleRitmoPlaying,
   onStopRitmo,
   ritmoBpm,
   onSetRitmoBpm,
-  singBeats,
-  onSetSingBeats,
-  restBeats,
-  onSetRestBeats,
+  ritmoPattern,
+  onToggleRitmoPatternSlot,
   beatMarkers,
   ritmoVoiceSamples,
 }: EntrenadorVocalModalProps) {
@@ -233,15 +234,15 @@ export default function EntrenadorVocalModal({
               historySamples={historySamples}
               holdTargetSeconds={holdTargetSeconds}
               onSetHoldTargetSeconds={onSetHoldTargetSeconds}
+              holdCalibre={holdCalibre}
+              onSetHoldCalibre={onSetHoldCalibre}
               celebrationKey={celebrationKey}
               ritmoPlaying={ritmoPlaying}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoBpm={ritmoBpm}
               onSetRitmoBpm={onSetRitmoBpm}
-              singBeats={singBeats}
-              onSetSingBeats={onSetSingBeats}
-              restBeats={restBeats}
-              onSetRestBeats={onSetRestBeats}
+              ritmoPattern={ritmoPattern}
+              onToggleRitmoPatternSlot={onToggleRitmoPatternSlot}
               beatMarkers={beatMarkers}
               ritmoVoiceSamples={ritmoVoiceSamples}
               ritmoEvaluarTono={ritmoEvaluarTono}

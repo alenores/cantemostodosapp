@@ -50,7 +50,8 @@ export default function CancioneroHubPageClient({
   const {
     bpm: metronomoBpm,
     isPlaying: metronomoIsPlaying,
-    beatsPerMeasure: metronomoBeatsPerMeasure,
+    beatPattern: metronomoBeatPattern,
+    patternLength: metronomoPatternLength,
     currentBeat: metronomoCurrentBeat,
     micActivo: metronomoMicActivo,
     micPermissionGranted: metronomoMicPermissionGranted,
@@ -62,7 +63,8 @@ export default function CancioneroHubPageClient({
     start: startMetronomo,
     stop: stopMetronomo,
     setBpm: setMetronomoBpm,
-    setBeatsPerMeasure: setMetronomoBeatsPerMeasure,
+    setPatternLength: setMetronomoPatternLength,
+    cycleBeatPatternSlot: cycleMetronomoBeatPatternSlot,
     tapTempo: tapMetronomoTempo,
     tapTempoTapCount: metronomoTapTempoTapCount,
     toggleMic: toggleMetronomoMic,
@@ -87,16 +89,16 @@ export default function CancioneroHubPageClient({
     instantAttempts: vozInstantAttempts,
     holdTargetSeconds: vozHoldTargetSeconds,
     setHoldTargetSeconds: setVozHoldTargetSeconds,
+    holdCalibre: vozHoldCalibre,
+    setHoldCalibre: setVozHoldCalibre,
     celebrationKey: vozCelebrationKey,
     ritmoPlaying: vozRitmoPlaying,
     toggleRitmoPlaying: toggleVozRitmoPlaying,
     stopRitmo: stopVozRitmo,
     ritmoBpm: vozRitmoBpm,
     setRitmoBpm: setVozRitmoBpm,
-    singBeats: vozSingBeats,
-    setSingBeats: setVozSingBeats,
-    restBeats: vozRestBeats,
-    setRestBeats: setVozRestBeats,
+    ritmoPattern: vozRitmoPattern,
+    toggleRitmoPatternSlot: toggleVozRitmoPatternSlot,
     beatMarkers: vozBeatMarkers,
     ritmoVoiceSamples: vozRitmoVoiceSamples,
     start: startVoz,
@@ -192,11 +194,20 @@ export default function CancioneroHubPageClient({
     (module) => !module.requiresAuth || isLoggedIn,
   );
 
-  return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app">
-      <AppReadyMarker />
+  const toolModalOpen = afinadorOpen || metronomoOpen || vozOpen;
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-6">
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
+      <div
+        className={`flex min-h-0 flex-1 flex-col ${
+          toolModalOpen
+            ? "overflow-hidden"
+            : "touch-pan-y overflow-y-auto overscroll-y-contain"
+        }`}
+      >
+        <AppReadyMarker />
+
+        <main className="flex flex-col gap-3 px-4 py-6">
         <PwaInstallBanners />
 
         {!online && (
@@ -255,6 +266,7 @@ export default function CancioneroHubPageClient({
           </p>
         )}
       </main>
+      </div>
 
       <AfinadorModal
         open={afinadorOpen}
@@ -290,16 +302,16 @@ export default function CancioneroHubPageClient({
         instantAttempts={vozInstantAttempts}
         holdTargetSeconds={vozHoldTargetSeconds}
         onSetHoldTargetSeconds={setVozHoldTargetSeconds}
+        holdCalibre={vozHoldCalibre}
+        onSetHoldCalibre={setVozHoldCalibre}
         celebrationKey={vozCelebrationKey}
         ritmoPlaying={vozRitmoPlaying}
         onToggleRitmoPlaying={toggleVozRitmoPlaying}
         onStopRitmo={stopVozRitmo}
         ritmoBpm={vozRitmoBpm}
         onSetRitmoBpm={setVozRitmoBpm}
-        singBeats={vozSingBeats}
-        onSetSingBeats={setVozSingBeats}
-        restBeats={vozRestBeats}
-        onSetRestBeats={setVozRestBeats}
+        ritmoPattern={vozRitmoPattern}
+        onToggleRitmoPatternSlot={toggleVozRitmoPatternSlot}
         beatMarkers={vozBeatMarkers}
         ritmoVoiceSamples={vozRitmoVoiceSamples}
         onRequestMic={() => void startVoz()}
@@ -313,7 +325,8 @@ export default function CancioneroHubPageClient({
         open={metronomoOpen}
         bpm={metronomoBpm}
         isPlaying={metronomoIsPlaying}
-        beatsPerMeasure={metronomoBeatsPerMeasure}
+        beatPattern={metronomoBeatPattern}
+        patternLength={metronomoPatternLength}
         currentBeat={metronomoCurrentBeat}
         micActivo={metronomoMicActivo}
         micPermissionGranted={metronomoMicPermissionGranted}
@@ -325,7 +338,8 @@ export default function CancioneroHubPageClient({
         onStart={startMetronomo}
         onStop={stopMetronomo}
         onSetBpm={setMetronomoBpm}
-        onSetBeatsPerMeasure={setMetronomoBeatsPerMeasure}
+        onSetPatternLength={setMetronomoPatternLength}
+        onCycleBeatPatternSlot={cycleMetronomoBeatPatternSlot}
         onTapTempo={tapMetronomoTempo}
         tapTempoTapCount={metronomoTapTempoTapCount}
         onToggleMic={toggleMetronomoMic}

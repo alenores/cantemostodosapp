@@ -2,22 +2,28 @@
 
 import { NOTE_NAMES } from "@/lib/afinador";
 import {
+  clampTargetOctave,
+  formatTargetLabel,
   getNoteAtSemitoneOffset,
   getNoteIndex,
   VOZ_OCTAVES,
   type VozTarget,
 } from "@/lib/voz";
-import { useDrag } from "@use-gesture/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-const NOTE_DRAG_THRESHOLD_PX = 36;
+export {
+  ToolConfigSection as VozConfigSection,
+  ToolPracticeSection as VozPracticeSection,
+} from "@/components/ui/ToolModalSections";
 
 export type TargetPickerProps = {
   target: VozTarget;
   onSetTarget: (target: VozTarget) => void;
   octaveExact: boolean;
   onSetOctaveExact: (value: boolean) => void;
+  autoCollapseWhen?: boolean;
+  collapsible?: boolean;
 };
 
 function wrapIndex(index: number): number {
@@ -38,7 +44,6 @@ export function NoteCarousel({
   target: VozTarget;
   onSetTarget: (target: VozTarget) => void;
 }) {
-  const [dragX, setDragX] = useState(0);
   const noteIndex = getNoteIndex(target.note);
   const safeIndex = noteIndex === -1 ? 0 : noteIndex;
   const prevNote = NOTE_NAMES[wrapIndex(safeIndex - 1)];
@@ -49,24 +54,6 @@ export function NoteCarousel({
       onSetTarget(shiftTargetNote(target, delta));
     },
     [onSetTarget, target],
-  );
-
-  const bind = useDrag(
-    ({ movement: [mx], last }) => {
-      if (last) {
-        if (mx < -NOTE_DRAG_THRESHOLD_PX) {
-          changeNote(1);
-        } else if (mx > NOTE_DRAG_THRESHOLD_PX) {
-          changeNote(-1);
-        }
-
-        setDragX(0);
-        return;
-      }
-
-      setDragX(mx);
-    },
-    { axis: "x", filterTaps: true },
   );
 
   return (
@@ -80,28 +67,35 @@ export function NoteCarousel({
         <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
       </button>
 
-      <div
-        {...bind()}
-        className="relative min-h-[52px] flex-1 touch-pan-y overflow-hidden select-none"
-        aria-label={`Nota objetivo ${target.note}. Deslizá para cambiar.`}
-        role="slider"
-        aria-valuemin={0}
-        aria-valuemax={11}
-        aria-valuenow={safeIndex}
-      >
+      <div className="relative min-w-0 flex-1">
         <div
-          className="flex h-full items-center justify-center gap-5 transition-none"
-          style={{ transform: `translateX(${dragX}px)` }}
+          className="pointer-events-none absolute inset-y-1 left-0 z-10 w-5 rounded-l-[8px] bg-gradient-to-r from-bg-dark via-bg-dark/80 to-transparent"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-y-1 right-0 z-10 w-5 rounded-r-[8px] bg-gradient-to-l from-bg-dark via-bg-dark/80 to-transparent"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-y-1 left-1/2 z-[1] w-[3.75rem] -translate-x-1/2 rounded-[8px] border border-voz-config/35 bg-voz-config/10"
+          aria-hidden="true"
+        />
+
+        <div
+          className="relative flex h-14 items-center justify-center overflow-hidden rounded-[10px] border-2 border-border bg-bg-dark"
+          aria-label={`Nota objetivo ${target.note}`}
         >
-          <span className="w-9 text-center text-lg font-semibold text-text-muted opacity-50">
-            {prevNote}
-          </span>
-          <span className="min-w-[3.5rem] text-center text-[32px] font-extrabold leading-none text-accent">
-            {target.note}
-          </span>
-          <span className="w-9 text-center text-lg font-semibold text-text-muted opacity-50">
-            {nextNote}
-          </span>
+          <div className="flex items-center justify-center gap-4">
+            <span className="w-8 text-center text-base font-semibold text-text-muted opacity-45">
+              {prevNote}
+            </span>
+            <span className="min-w-[3.5rem] text-center text-[32px] font-extrabold leading-none text-voz-config">
+              {target.note}
+            </span>
+            <span className="w-8 text-center text-base font-semibold text-text-muted opacity-45">
+              {nextNote}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -122,45 +116,63 @@ export function TargetPicker({
   onSetTarget,
   octaveExact,
   onSetOctaveExact,
+  autoCollapseWhen = false,
+  collapsible = true,
 }: TargetPickerProps) {
+  const [expanded, setExpanded] = useState(true);
   const octaveIndex = VOZ_OCTAVES.indexOf(
-    target.octave as (typeof VOZ_OCTAVES)[number],
+    clampTargetOctave(target.octave),
   );
-  const safeOctaveIndex = octaveIndex === -1 ? 1 : octaveIndex;
+  const safeOctaveIndex = octaveIndex === -1 ? 0 : octaveIndex;
+  const displayOctave = VOZ_OCTAVES[safeOctaveIndex]!;
+  const collapsedLabel = formatTargetLabel(target, octaveExact);
+
+  useEffect(() => {
+    if (autoCollapseWhen) {
+      setExpanded(false);
+    }
+  }, [autoCollapseWhen]);
+
+  useEffect(() => {
+    if (!octaveExact) {
+      return;
+    }
+
+    const clamped = clampTargetOctave(target.octave);
+
+    if (clamped !== target.octave) {
+      onSetTarget({ ...target, octave: clamped });
+    }
+  }, [octaveExact, onSetTarget, target, target.octave]);
 
   function changeOctave(delta: number) {
     const nextIndex = Math.max(
       0,
       Math.min(VOZ_OCTAVES.length - 1, safeOctaveIndex + delta),
     );
-    onSetTarget({ ...target, octave: VOZ_OCTAVES[nextIndex] });
+    onSetTarget({ ...target, octave: VOZ_OCTAVES[nextIndex]! });
   }
 
-  return (
-    <div className="rounded-[12px] border border-border bg-bg-card px-3 py-3">
-      <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-text-muted">
-        Nota objetivo
-      </p>
+  const pickerContent = (
+    <>
+      <div className={collapsible ? "mt-3" : "mt-2"}>
+        <NoteCarousel target={target} onSetTarget={onSetTarget} />
+      </div>
 
-      <NoteCarousel target={target} onSetTarget={onSetTarget} />
-
-      <div className="mt-3 border-t border-border pt-3">
+      <div className="mt-3 rounded-[10px] border border-border bg-bg-card/80 px-3 py-3">
         <label className="flex cursor-pointer items-center justify-between gap-3">
-          <div className="min-w-0">
-            <span className="block text-sm font-semibold text-text-primary">
-              Octava exacta
-            </span>
-            <span className="mt-0.5 block text-xs text-text-muted">
-              {octaveExact ? "Nota y octava" : "Cualquier octava"}
-            </span>
-          </div>
+          <span className="text-sm font-semibold text-text-primary">
+            Octava exacta
+          </span>
           <button
             type="button"
             role="switch"
             aria-checked={octaveExact}
             onClick={() => onSetOctaveExact(!octaveExact)}
             className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-              octaveExact ? "bg-accent" : "border border-border bg-bg-dark"
+              octaveExact
+                ? "bg-voz-config"
+                : "border border-border bg-bg-dark"
             }`}
           >
             <span
@@ -172,37 +184,83 @@ export function TargetPicker({
         </label>
 
         {octaveExact ? (
-          <div className="mt-3 flex items-center justify-center gap-1 border-t border-border pt-3">
-            <button
-              type="button"
-              aria-label="Octava anterior"
-              disabled={safeOctaveIndex === 0}
-              onClick={() => changeOctave(-1)}
-              className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
-            >
-              <ChevronLeft
-                className="size-4 text-text-primary"
-                aria-hidden="true"
-              />
-            </button>
-            <span className="min-w-[5rem] text-center text-sm font-bold text-text-primary">
-              {target.octave}ª octava
-            </span>
-            <button
-              type="button"
-              aria-label="Octava siguiente"
-              disabled={safeOctaveIndex === VOZ_OCTAVES.length - 1}
-              onClick={() => changeOctave(1)}
-              className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
-            >
-              <ChevronRight
-                className="size-4 text-text-primary"
-                aria-hidden="true"
-              />
-            </button>
-          </div>
+          <>
+            <p className="mb-2 mt-3 text-center text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+              Octava
+            </p>
+            <div className="flex items-center justify-center gap-1">
+              <button
+                type="button"
+                aria-label="Octava anterior"
+                disabled={safeOctaveIndex === 0}
+                onClick={() => changeOctave(-1)}
+                className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
+              >
+                <ChevronLeft
+                  className="size-4 text-text-primary"
+                  aria-hidden="true"
+                />
+              </button>
+              <span className="min-w-[3rem] text-center text-sm font-bold text-text-primary">
+                {displayOctave}ª
+              </span>
+              <button
+                type="button"
+                aria-label="Octava siguiente"
+                disabled={safeOctaveIndex === VOZ_OCTAVES.length - 1}
+                onClick={() => changeOctave(1)}
+                className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
+              >
+                <ChevronRight
+                  className="size-4 text-text-primary"
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+          </>
         ) : null}
       </div>
+    </>
+  );
+
+  if (!collapsible) {
+    return (
+      <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
+          Nota objetivo
+        </p>
+        {pickerContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="flex w-full items-center justify-between gap-2 text-left"
+        aria-expanded={expanded}
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
+            Nota objetivo
+          </p>
+          {!expanded ? (
+            <p className="mt-0.5 truncate text-lg font-extrabold leading-tight text-voz-config">
+              {collapsedLabel}
+            </p>
+          ) : null}
+        </div>
+        <ChevronDown
+          className={`size-5 shrink-0 text-text-muted transition-transform ${
+            expanded ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {expanded ? pickerContent : null}
     </div>
   );
 }

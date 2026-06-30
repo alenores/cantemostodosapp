@@ -5,6 +5,11 @@ import {
   BPM_DEFAULT,
   BPM_MAX,
   BPM_MIN,
+  METRONOME_PATTERN_DEFAULT,
+  METRONOME_PATTERN_LENGTH_DEFAULT,
+  normalizeMetronomePattern,
+  cycleMetronomePatternSlot,
+  resizeMetronomePatternLength,
   computeHitDeltaMs,
   createMetronomeEngine,
   estimateAttackOnsetMs,
@@ -12,6 +17,7 @@ import {
   onsetToPerceivedHitMs,
   updateSessionLatencyOffset,
   type MetronomeBeatMarker,
+  type MetronomeBeatPattern,
   type MetronomeHit,
   type MetronomeEngine,
 } from "@/lib/metronomo";
@@ -85,7 +91,8 @@ type ScheduledBeat = {
 type UseMetronomoResult = {
   bpm: number;
   isPlaying: boolean;
-  beatsPerMeasure: 2 | 3 | 4;
+  beatPattern: MetronomeBeatPattern;
+  patternLength: number;
   currentBeat: number | null;
   micActivo: boolean;
   micPermissionGranted: boolean;
@@ -98,7 +105,8 @@ type UseMetronomoResult = {
   start: () => void;
   stop: () => void;
   setBpm: (value: number) => void;
-  setBeatsPerMeasure: (value: 2 | 3 | 4) => void;
+  setPatternLength: (value: number) => void;
+  cycleBeatPatternSlot: (slotIndex: number) => void;
   tapTempo: () => void;
   toggleMic: () => void;
   requestMic: () => Promise<void>;
@@ -107,7 +115,12 @@ type UseMetronomoResult = {
 export function useMetronomo(): UseMetronomoResult {
   const [bpm, setBpmState] = useState(BPM_DEFAULT);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [beatsPerMeasure, setBeatsPerMeasureState] = useState<2 | 3 | 4>(4);
+  const [beatPattern, setBeatPatternState] = useState<MetronomeBeatPattern>([
+    ...METRONOME_PATTERN_DEFAULT,
+  ]);
+  const [patternLength, setPatternLengthState] = useState(
+    METRONOME_PATTERN_LENGTH_DEFAULT,
+  );
   const [currentBeat, setCurrentBeat] = useState<number | null>(null);
   const [micActivo, setMicActivo] = useState(false);
   const [micPermissionGranted, setMicPermissionGranted] = useState(
@@ -121,7 +134,8 @@ export function useMetronomo(): UseMetronomoResult {
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
 
   const bpmRef = useRef(bpm);
-  const beatsPerMeasureRef = useRef(beatsPerMeasure);
+  const beatPatternRef = useRef(beatPattern);
+  const patternLengthRef = useRef(patternLength);
   const isPlayingRef = useRef(false);
   const tapTimestampsRef = useRef<number[]>([]);
   const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -138,7 +152,8 @@ export function useMetronomo(): UseMetronomoResult {
   const sessionLatencyOffsetRef = useRef(0);
 
   bpmRef.current = bpm;
-  beatsPerMeasureRef.current = beatsPerMeasure;
+  beatPatternRef.current = beatPattern;
+  patternLengthRef.current = patternLength;
   isPlayingRef.current = isPlaying;
 
   const stopMicCapture = useCallback(() => {
@@ -369,7 +384,8 @@ export function useMetronomo(): UseMetronomoResult {
 
       engineRef.current?.start(
         bpmRef.current,
-        beatsPerMeasureRef.current,
+        beatPatternRef.current,
+        patternLengthRef.current,
         handleBeat,
       );
 
@@ -406,10 +422,31 @@ export function useMetronomo(): UseMetronomoResult {
     [restartEngineIfPlaying],
   );
 
-  const setBeatsPerMeasure = useCallback(
-    (value: 2 | 3 | 4) => {
-      setBeatsPerMeasureState(value);
-      beatsPerMeasureRef.current = value;
+  const setPatternLength = useCallback(
+    (value: number) => {
+      const resized = resizeMetronomePatternLength(
+        beatPatternRef.current,
+        patternLengthRef.current,
+        value,
+      );
+      setBeatPatternState(resized.pattern);
+      beatPatternRef.current = resized.pattern;
+      setPatternLengthState(resized.patternLength);
+      patternLengthRef.current = resized.patternLength;
+      restartEngineIfPlaying();
+    },
+    [restartEngineIfPlaying],
+  );
+
+  const handleCycleBeatPatternSlot = useCallback(
+    (slotIndex: number) => {
+      setBeatPatternState((previous) =>
+        cycleMetronomePatternSlot(previous, slotIndex),
+      );
+      beatPatternRef.current = cycleMetronomePatternSlot(
+        beatPatternRef.current,
+        slotIndex,
+      );
       restartEngineIfPlaying();
     },
     [restartEngineIfPlaying],
@@ -568,6 +605,10 @@ export function useMetronomo(): UseMetronomoResult {
   }, [stopMicCapture]);
 
   useEffect(() => {
+    beatPatternRef.current = normalizeMetronomePattern(beatPattern);
+  }, [beatPattern]);
+
+  useEffect(() => {
     return () => {
       stopEngine();
       stopMicCapture();
@@ -581,7 +622,8 @@ export function useMetronomo(): UseMetronomoResult {
   return {
     bpm,
     isPlaying,
-    beatsPerMeasure,
+    beatPattern,
+    patternLength,
     currentBeat,
     micActivo,
     micPermissionGranted,
@@ -594,7 +636,8 @@ export function useMetronomo(): UseMetronomoResult {
     start,
     stop,
     setBpm,
-    setBeatsPerMeasure,
+    setPatternLength,
+    cycleBeatPatternSlot: handleCycleBeatPatternSlot,
     tapTempo,
     toggleMic,
     requestMic,

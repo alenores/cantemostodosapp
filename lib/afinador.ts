@@ -44,10 +44,18 @@ const MIN_RMS = 0.002;
 
 /** Suavizado de frecuencia (~300 ms a 60 fps). */
 export const TUNER_FREQUENCY_EMA_ALPHA = 0.06;
+/** Suavizado de Hz mostrado (~500 ms a 60 fps). */
+export const TUNER_DISPLAY_HZ_EMA_ALPHA = 0.04;
 /** Suavizado de cents para la aguja (~250 ms a 60 fps). */
 export const TUNER_CENTS_EMA_ALPHA = 0.1;
+/** Entrenador vocal: cents dentro de la misma nota. */
+export const VOCAL_CENTS_EMA_ALPHA = 0.45;
 /** Cents necesarios para llevar la aguja de punta a punta (menor = menos expresiva). */
 export const NEEDLE_FULL_DEFLECTION_CENTS = 22;
+/** Distancia desde la nota bloqueada para permitir cambiar de nota (histéresis). */
+export const TUNER_NOTE_SWITCH_THRESHOLD_CENTS = 42;
+/** Tiempo que una nota candidata debe sostenerse antes de actualizar la letra. */
+export const TUNER_NOTE_HOLD_MS = 320;
 
 export function ema(
   current: number | null,
@@ -128,8 +136,116 @@ export function autoCorrelate(
   return frequency;
 }
 
+export function frequencyToMidi(frequency: number): number {
+  return 69 + 12 * Math.log2(frequency / A4_FREQUENCY);
+}
+
+export function midiToNoteName(midi: number): string {
+  const noteIndex = ((Math.round(midi) % 12) + 12) % 12;
+  return NOTE_NAMES[noteIndex];
+}
+
+export type DebouncedNoteState = {
+  displayMidi: number | null;
+  candidateMidi: number | null;
+  candidateSinceMs: number;
+};
+
+export function createDebouncedNoteState(): DebouncedNoteState {
+  return {
+    displayMidi: null,
+    candidateMidi: null,
+    candidateSinceMs: 0,
+  };
+}
+
+/**
+ * Nota visible con retención temporal: la letra solo cambia si el pitch sugiere
+ * otra nota de forma sostenida (~320 ms), evitando parpadeos entre semitonos.
+ */
+export function updateDebouncedDisplayNote(
+  state: DebouncedNoteState,
+  frequency: number,
+  nowMs: number,
+  holdMs = TUNER_NOTE_HOLD_MS,
+): { state: DebouncedNoteState; displayMidi: number | null } {
+  const candidateMidi = Math.round(frequencyToMidi(frequency));
+
+  if (state.displayMidi === null) {
+    return {
+      state: {
+        displayMidi: candidateMidi,
+        candidateMidi: null,
+        candidateSinceMs: nowMs,
+      },
+      displayMidi: candidateMidi,
+    };
+  }
+
+  if (candidateMidi === state.displayMidi) {
+    return {
+      state: { ...state, candidateMidi: null },
+      displayMidi: state.displayMidi,
+    };
+  }
+
+  if (state.candidateMidi !== candidateMidi) {
+    return {
+      state: {
+        ...state,
+        candidateMidi,
+        candidateSinceMs: nowMs,
+      },
+      displayMidi: state.displayMidi,
+    };
+  }
+
+  if (nowMs - state.candidateSinceMs >= holdMs) {
+    return {
+      state: {
+        displayMidi: candidateMidi,
+        candidateMidi: null,
+        candidateSinceMs: nowMs,
+      },
+      displayMidi: candidateMidi,
+    };
+  }
+
+  return { state, displayMidi: state.displayMidi };
+}
+
+/** Nota estable con histéresis: evita saltos entre semitonos por ruido o microdesvíos. */
+export function resolveStableNoteDetection(
+  frequency: number,
+  lockedMidi: number | null,
+  switchThresholdCents = TUNER_NOTE_SWITCH_THRESHOLD_CENTS,
+): NoteDetection & { midi: number } {
+  const midi = frequencyToMidi(frequency);
+
+  let activeMidi: number;
+
+  if (lockedMidi === null) {
+    activeMidi = Math.round(midi);
+  } else {
+    const centsFromLocked = (midi - lockedMidi) * 100;
+
+    if (Math.abs(centsFromLocked) > switchThresholdCents) {
+      activeMidi = Math.round(midi);
+    } else {
+      activeMidi = lockedMidi;
+    }
+  }
+
+  return {
+    note: midiToNoteName(activeMidi),
+    frequency,
+    cents: (midi - activeMidi) * 100,
+    midi: activeMidi,
+  };
+}
+
 export function frequencyToNote(frequency: number): NoteDetection {
-  const midi = 69 + 12 * Math.log2(frequency / A4_FREQUENCY);
+  const midi = frequencyToMidi(frequency);
   const roundedMidi = Math.round(midi);
   const cents = Math.round((midi - roundedMidi) * 100);
   const noteIndex = ((roundedMidi % 12) + 12) % 12;

@@ -36,6 +36,7 @@ import {
 } from "@/lib/ritmo-terminologia";
 import { Mic, Play, Square, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 type MetronomoModalProps = {
   open: boolean;
@@ -491,7 +492,7 @@ export default function MetronomoModal({
     bpm,
   );
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
       <button
         type="button"
@@ -503,7 +504,7 @@ export default function MetronomoModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="metronomo-titulo"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
           <div className="flex items-start gap-3">
@@ -529,7 +530,7 @@ export default function MetronomoModal({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+        <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
           <div className="space-y-3">
             <RitmoConfigSection
               collapsedSummary={configSummary}
@@ -639,6 +640,7 @@ export default function MetronomoModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

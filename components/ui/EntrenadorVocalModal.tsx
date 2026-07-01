@@ -24,6 +24,7 @@ import type {
 import { ENTRENADOR_VOCAL_TAGLINE } from "@/lib/herramientas-product";
 import { Mic, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type EntrenadorVocalModalProps = {
   open: boolean;
@@ -193,7 +194,7 @@ export default function EntrenadorVocalModal({
   const objectiveLabel =
     referenceLabel ?? formatTargetLabel(target, octaveExact);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
       <button
         type="button"
@@ -205,7 +206,7 @@ export default function EntrenadorVocalModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="entrenador-vocal-titulo"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
           <div className="flex items-start gap-3">
@@ -231,7 +232,7 @@ export default function EntrenadorVocalModal({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 py-5">
+        <div className="flex min-h-0 flex-1 flex-col items-center touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-5">
           {!micReady ? (
             !micPermissionGranted || micError ? (
               <MicPermissionPanel
@@ -287,6 +288,7 @@ export default function EntrenadorVocalModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

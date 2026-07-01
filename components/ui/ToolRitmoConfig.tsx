@@ -60,10 +60,35 @@ import {
   type RitmoUiVariant,
 } from "@/lib/ritmo-terminologia";
 import { ToolConfigSection } from "@/components/ui/ToolModalSections";
-import { ChevronLeft, ChevronRight, Volume2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Volume2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 type BpmInputMode = "botones" | "tap";
+
+const VOLUME_BAR_SCALE_CYCLE = 0.36;
+const VOLUME_BAR_SCALE_CAROUSEL = 0.32;
+const VOLUME_BAR_SELECTED_BONUS = 3;
+
+function getVolumeBarHeightPx(
+  level: MetronomeBeatLevel,
+  scale: number,
+  options?: { uniform?: boolean },
+): number {
+  const heightPercent = options?.uniform
+    ? 68
+    : Math.max(getBeatLevelBarHeightPercent(level), level === "silencio" ? 0 : 8);
+  const minPx = options?.uniform ? 14 : level === "silencio" ? 6 : 14;
+
+  return Math.max(heightPercent * scale, minPx);
+}
+
+const MAX_VOLUME_BAR_CYCLE_PX =
+  getVolumeBarHeightPx("fuerte", VOLUME_BAR_SCALE_CYCLE) +
+  VOLUME_BAR_SELECTED_BONUS;
+
+/** Altura fija de cada columna del preview: icono + hueco de barra + número. */
+const COMPAS_CYCLE_COLUMN_HEIGHT_PX =
+  10 + 18 + 8 + MAX_VOLUME_BAR_CYCLE_PX + 8 + 18 + 4;
 
 function BeatDurationNoteIcon({
   duration,
@@ -224,7 +249,9 @@ function BeatDurationCarousel({
           {formatGolpeLabel(beatIndex)}
         </p>
       ) : null}
-      <div className="flex items-center gap-1">
+      <div
+        className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
+      >
       <TapButton
         type="button"
         aria-label="Figura anterior"
@@ -265,7 +292,7 @@ function BeatDurationCarousel({
   );
 }
 
-function BeatVolumeCarousel({
+export function BeatVolumeCarousel({
   level,
   beatIndex,
   disabled = false,
@@ -279,10 +306,7 @@ function BeatVolumeCarousel({
   onSetLevel: (level: MetronomeBeatLevel) => void;
 }) {
   const barAppearance = getBeatLevelBarAppearance(level);
-  const heightPercent = Math.max(
-    getBeatLevelBarHeightPercent(level),
-    level === "silencio" ? 0 : 8,
-  );
+  const barHeightPx = getVolumeBarHeightPx(level, VOLUME_BAR_SCALE_CAROUSEL);
 
   function changeLevel(delta: number) {
     onSetLevel(getBeatLevelAtOffset(level, delta));
@@ -295,15 +319,17 @@ function BeatVolumeCarousel({
           {formatGolpeLabel(beatIndex)}
         </p>
       ) : null}
-      <div className="flex items-center gap-1">
+      <div
+        className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
+      >
         <TapButton
           type="button"
-          aria-label="Dinámica anterior"
+          aria-label="Bajar volumen"
           disabled={disabled}
           onClick={() => changeLevel(-1)}
           className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
         >
-          <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
+          <ChevronDown className="size-4 text-text-primary" aria-hidden="true" />
         </TapButton>
 
         <div
@@ -311,11 +337,11 @@ function BeatVolumeCarousel({
           aria-live="polite"
           aria-label={`Dinámica ${getBeatLevelLabel(level)}`}
         >
-          <div className="flex h-10 items-end justify-center">
+          <div className="flex h-14 items-end justify-center">
             <span
-              className="w-16 rounded-full"
+              className="w-16 rounded-full transition-[height] duration-300 ease-out"
               style={{
-                height: `${Math.max(heightPercent * 0.32, level === "silencio" ? 6 : 12)}px`,
+                height: `${barHeightPx}px`,
                 backgroundColor: barAppearance.backgroundColor,
                 border: barAppearance.border,
               }}
@@ -328,12 +354,12 @@ function BeatVolumeCarousel({
 
         <TapButton
           type="button"
-          aria-label="Dinámica siguiente"
+          aria-label="Subir volumen"
           disabled={disabled}
           onClick={() => changeLevel(1)}
           className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
         >
-          <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
+          <ChevronUp className="size-4 text-text-primary" aria-hidden="true" />
         </TapButton>
       </div>
     </div>
@@ -372,23 +398,20 @@ function CompasCyclePreview({
     <div className="flex items-end gap-1 overflow-visible px-0.5 pt-1">
       {levels.map((level, index) => {
         const flexWeight = getBeatDurationMultiplier(durations[index]!);
-        const heightPercent =
-          visualMode === "uniform"
-            ? 68
-            : Math.max(
-                getBeatLevelBarHeightPercent(level),
-                level === "silencio" ? 0 : 8,
-              );
         const barAppearance =
           visualMode === "uniform"
             ? uniformAppearance
             : getBeatLevelBarAppearance(level);
         const isSelected = selectable && selectedBeatIndex === index;
         const isPlayingBeat = currentBeat === index;
-        const barHeightPx = Math.max(
-          heightPercent * 0.36,
-          visualMode === "uniform" ? 14 : level === "silencio" ? 6 : 14,
+        const barHeightPx = getVolumeBarHeightPx(
+          level,
+          VOLUME_BAR_SCALE_CYCLE,
+          { uniform: visualMode === "uniform" },
         );
+        const renderedBarHeightPx = isSelected
+          ? barHeightPx + VOLUME_BAR_SELECTED_BONUS
+          : barHeightPx;
 
         return (
           <TapButton
@@ -402,11 +425,12 @@ function CompasCyclePreview({
             }}
             style={{
               flex: `${flexWeight} 1 0`,
+              height: `${COMPAS_CYCLE_COLUMN_HEIGHT_PX}px`,
               ["--ritmo-beat-accent" as string]: accent.accentVar,
             }}
             aria-label={`Golpe ${index + 1}: ${getBeatLevelLabel(level)}`}
             aria-pressed={isSelected}
-            className={`group relative isolate flex min-h-[5.75rem] min-w-0 flex-col items-center justify-end gap-2 overflow-visible px-0.5 pb-1 pt-2.5 transition-[transform,opacity] duration-300 ease-out disabled:opacity-50 ${
+            className={`group relative isolate flex min-w-0 flex-col items-center justify-end gap-2 overflow-visible px-0.5 pb-1 pt-2.5 transition-[transform,opacity] duration-300 ease-out disabled:opacity-50 ${
               isSelected
                 ? "-translate-y-1"
                 : selectable
@@ -435,19 +459,24 @@ function CompasCyclePreview({
               }`}
             />
 
-            <span
-              className="w-[72%] rounded-full transition-all duration-300 ease-out"
-              style={{
-                height: `${isSelected ? barHeightPx + 3 : barHeightPx}px`,
-                backgroundColor: barAppearance.backgroundColor,
-                border: barAppearance.border,
-                boxShadow: isSelected
-                  ? `0 0 16px color-mix(in srgb, ${accent.accentVar} 38%, transparent)`
-                  : isPlayingBeat
-                    ? "0 0 10px color-mix(in srgb, var(--text-primary) 25%, transparent)"
-                    : undefined,
-              }}
-            />
+            <div
+              className="flex w-[72%] shrink-0 items-end justify-center"
+              style={{ height: `${MAX_VOLUME_BAR_CYCLE_PX}px` }}
+            >
+              <span
+                className="w-full rounded-full transition-[height,box-shadow] duration-300 ease-out"
+                style={{
+                  height: `${renderedBarHeightPx}px`,
+                  backgroundColor: barAppearance.backgroundColor,
+                  border: barAppearance.border,
+                  boxShadow: isSelected
+                    ? `0 0 16px color-mix(in srgb, ${accent.accentVar} 38%, transparent)`
+                    : isPlayingBeat
+                      ? "0 0 10px color-mix(in srgb, var(--text-primary) 25%, transparent)"
+                      : undefined,
+                }}
+              />
+            </div>
 
             <span
               className={`flex size-[18px] items-center justify-center rounded-full text-[9px] font-bold tabular-nums transition-all duration-300 ${
@@ -495,6 +524,9 @@ const COMPAS_FOCUS_CONTAINER_CLASS =
 
 const COMPAS_SLOT_CONTROLS_CLASS =
   "mt-4 rounded-[10px] border border-border/70 bg-bg-card/90 px-2.5 py-3";
+
+/** Altura compartida del cuerpo de Figura y Dinámica dentro del slot de compás. */
+const COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS = "min-h-[6.5rem]";
 
 export function BpmSetupPanel({
   bpm,
@@ -652,6 +684,7 @@ export function CompasBeatSetupPanel({
   inputId = "tool-ritmo-pattern-length",
   currentBeat = null,
   variant = "default",
+  scope = "full",
   contenido,
   capas,
   onSetPatternLength,
@@ -665,6 +698,7 @@ export function CompasBeatSetupPanel({
   inputId?: string;
   currentBeat?: number | null;
   variant?: RitmoUiVariant;
+  scope?: "cycle" | "full";
   contenido?: CompositorContenidoConfig;
   capas?: CompositorEditCapasConfig;
   onSetPatternLength: (value: number) => void;
@@ -719,10 +753,12 @@ export function CompasBeatSetupPanel({
     activeLevels[editingBeatIndex] ?? ("medio" as MetronomeBeatLevel);
 
   const showContenidoTab =
+    scope === "full" &&
     variant === "compositor" &&
     contenido != null &&
     compositorHasContenidoTab(contenido.instrumentId);
   const showTimbreTab =
+    scope === "full" &&
     variant === "compositor" &&
     contenido != null &&
     compositorHasTimbreTab(contenido.instrumentId);
@@ -730,8 +766,10 @@ export function CompasBeatSetupPanel({
   const compasTabs: { id: CompasSetupTab; label: string }[] = [
     { id: "golpes", label: RITMO_LABEL_GOLPES_TAB },
     { id: "figura", label: RITMO_LABEL_FIGURA },
-    { id: "dinamica", label: RITMO_LABEL_DINAMICA },
   ];
+  if (scope === "full") {
+    compasTabs.push({ id: "dinamica", label: RITMO_LABEL_DINAMICA });
+  }
   if (showContenidoTab) {
     compasTabs.push({ id: "contenido", label: RITMO_LABEL_CONTENIDO });
   }
@@ -760,11 +798,18 @@ export function CompasBeatSetupPanel({
         {RITMO_COMPAS_SETUP_TITLE}
       </p>
 
-      {capas ? (
+      {capas && scope === "full" ? (
         <CompositorCapasStrip
           {...capas}
           disabled={disabled}
         />
+      ) : null}
+
+      {scope === "cycle" ? (
+        <p className="mt-1 text-[11px] leading-snug text-text-muted">
+          El ciclo es compartido por todos los instrumentos. Cada capa coloca sus
+          sonidos en esta línea de tiempo.
+        </p>
       ) : null}
 
       <div
@@ -1152,6 +1197,7 @@ export function ToolRitmoCompasPanel({
   disabled = false,
   patternLengthInputId,
   variant = "default",
+  scope = "full",
   contenido,
   capas,
   onSetPatternLength,
@@ -1164,6 +1210,7 @@ export function ToolRitmoCompasPanel({
   disabled?: boolean;
   patternLengthInputId?: string;
   variant?: RitmoUiVariant;
+  scope?: "cycle" | "full";
   contenido?: CompositorContenidoConfig;
   capas?: CompositorEditCapasConfig;
   onSetPatternLength: (value: number) => void;
@@ -1191,6 +1238,7 @@ export function ToolRitmoCompasPanel({
           disabled={disabled}
           inputId={patternLengthInputId}
           variant={variant}
+          scope={scope}
           contenido={contenido}
           capas={capas}
           onSetPatternLength={onSetPatternLength}

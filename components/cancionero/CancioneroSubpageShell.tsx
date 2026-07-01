@@ -8,6 +8,7 @@ type CancioneroSubpageShellProps = {
   title: string;
   headerAction?: ReactNode;
   children: ReactNode;
+  /** @deprecated El bloqueo de scroll con modales lo hace cada modal en `document.body`. */
   modalOpen?: boolean;
 };
 
@@ -15,10 +16,9 @@ export default function CancioneroSubpageShell({
   title,
   headerAction,
   children,
-  modalOpen = false,
 }: CancioneroSubpageShellProps) {
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
+    <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
       <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
         <div className="flex items-center gap-3">
           <TapLink
@@ -35,15 +35,7 @@ export default function CancioneroSubpageShell({
         </div>
       </header>
 
-      <main
-        className={`flex min-h-0 flex-1 flex-col gap-3 px-4 py-4 pb-8 ${
-          modalOpen
-            ? "overflow-hidden"
-            : "touch-pan-y overflow-y-auto overscroll-y-contain"
-        }`}
-      >
-        {children}
-      </main>
+      <main className="flex flex-col gap-3 px-4 py-4 pb-24">{children}</main>
     </div>
   );
 }

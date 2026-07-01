@@ -1,6 +1,5 @@
 import AppTopHeader from "@/components/ui/AppTopHeader";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { getSalaMainFooterPaddingCss } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/server";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 
@@ -19,10 +18,7 @@ export default async function CancioneroLayout({
     : OFFLINE_GUEST_USUARIO;
 
   return (
-    <div
-      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app"
-      style={{ height: "100dvh", paddingBottom: getSalaMainFooterPaddingCss() }}
-    >
+    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
       <AppTopHeader usuario={usuario} />
       {children}
     </div>

@@ -1,33 +1,30 @@
 "use client";
 
 import {
+  addCompositorTrackEvent,
   createDefaultCompositorPiece,
   getCompositorTrack,
   normalizeCompositorPiece,
   readStoredCompositorPiece,
-  setCompositorBeatDurationAtSlot,
-  setCompositorBeatLevelAtSlot,
-  setCompositorDrumSoundAtSlot,
-  setCompositorGuitarArticulationAtSlot,
-  setCompositorNoteAtSlot,
-  setCompositorPatternLength,
+  removeCompositorTrackEvent,
+  setCompositorCycleBeatDurationAtSlot,
+  setCompositorCycleGolpes,
   toggleCompositorTrack,
+  updateCompositorTrackEvent,
   writeStoredCompositorPiece,
-  type CompositorDrumSound,
-  type CompositorGuitarArticulation,
   type CompositorInstrumentId,
   type CompositorPiece,
-  type CompositorSlotNote,
+  type CompositorTrackEvent,
 } from "@/lib/compositor";
+import { getCompositorGridSteps } from "@/lib/compositor-timeline";
 import { createCompositorEngine, type CompositorEngine } from "@/lib/compositor-audio";
 import { loadCompositorSamples } from "@/lib/compositor-samples";
 import {
   BPM_MAX,
   BPM_MIN,
+  METRONOME_PATTERN_DEFAULT,
   type MetronomeBeatDuration,
   type MetronomeBeatDurationPattern,
-  type MetronomeBeatLevel,
-  type MetronomeBeatPattern,
 } from "@/lib/metronomo";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -41,30 +38,28 @@ function clampBpm(value: number): number {
 export type UseCompositorResult = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
-  beatPattern: MetronomeBeatPattern;
-  patternLength: number;
-  beatDurations: MetronomeBeatDurationPattern;
+  selectedEventId: string | null;
+  cycleGolpes: number;
+  cycleBeatDurations: MetronomeBeatDurationPattern;
   bpm: number;
   isPlaying: boolean;
-  currentBeat: number | null;
+  cycleProgress: number | null;
   tapTempoTapCount: number;
   setActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
+  setSelectedEventId: (eventId: string | null) => void;
   setBpm: (value: number) => void;
-  setPatternLength: (value: number) => void;
-  setBeatDurationAtSlot: (
+  setCycleGolpes: (value: number) => void;
+  setCycleBeatDurationAtSlot: (
     slotIndex: number,
     duration: MetronomeBeatDuration,
   ) => void;
-  setBeatLevelAtSlot: (
-    slotIndex: number,
-    level: MetronomeBeatLevel,
+  addTrackEvent: (instrumentId?: CompositorInstrumentId) => void;
+  updateTrackEvent: (
+    eventId: string,
+    patch: Partial<CompositorTrackEvent>,
+    instrumentId?: CompositorInstrumentId,
   ) => void;
-  setNoteAtSlot: (slotIndex: number, note: CompositorSlotNote) => void;
-  setDrumSoundAtSlot: (slotIndex: number, sound: CompositorDrumSound) => void;
-  setGuitarArticulationAtSlot: (
-    slotIndex: number,
-    articulation: CompositorGuitarArticulation,
-  ) => void;
+  removeTrackEvent: (eventId: string, instrumentId?: CompositorInstrumentId) => void;
   toggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   tapTempo: () => void;
   start: () => Promise<void>;
@@ -78,8 +73,9 @@ export function useCompositor(): UseCompositorResult {
   );
   const [activeTrackId, setActiveTrackIdState] =
     useState<CompositorInstrumentId>("piano");
+  const [selectedEventId, setSelectedEventIdState] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentBeat, setCurrentBeat] = useState<number | null>(null);
+  const [cycleProgress, setCycleProgress] = useState<number | null>(null);
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
   const [hydrated, setHydrated] = useState(false);
 
@@ -101,6 +97,8 @@ export function useCompositor(): UseCompositorResult {
 
     if (stored) {
       setPieceState(stored);
+      const firstEvent = stored.tracks[0]?.events[0];
+      setSelectedEventIdState(firstEvent?.id ?? null);
     }
 
     setHydrated(true);
@@ -114,6 +112,15 @@ export function useCompositor(): UseCompositorResult {
     writeStoredCompositorPiece(piece);
   }, [hydrated, piece]);
 
+  useEffect(() => {
+    if (
+      selectedEventId &&
+      !activeTrack.events.some((event) => event.id === selectedEventId)
+    ) {
+      setSelectedEventIdState(activeTrack.events[0]?.id ?? null);
+    }
+  }, [activeTrack.events, selectedEventId]);
+
   const updatePiece = useCallback(
     (updater: (current: CompositorPiece) => CompositorPiece) => {
       setPieceState((current) => normalizeCompositorPiece(updater(current)));
@@ -125,7 +132,7 @@ export function useCompositor(): UseCompositorResult {
     engineRef.current?.stop();
     setIsPlaying(false);
     isPlayingRef.current = false;
-    setCurrentBeat(null);
+    setCycleProgress(null);
   }, []);
 
   const ensureAudioContext = useCallback(async () => {
@@ -170,17 +177,17 @@ export function useCompositor(): UseCompositorResult {
     return audioContext;
   }, []);
 
-  const handleBeat = useCallback((beatIndex: number) => {
-    setCurrentBeat(beatIndex);
+  const handleProgress = useCallback((progress: number) => {
+    setCycleProgress(progress);
   }, []);
 
   const start = useCallback(async () => {
     try {
       await ensureAudioContext();
-      setCurrentBeat(null);
+      setCycleProgress(0);
 
-      engineRef.current?.start(pieceRef.current, (beatIndex) => {
-        handleBeat(beatIndex);
+      engineRef.current?.start(pieceRef.current, (progress) => {
+        handleProgress(progress);
       });
 
       setIsPlaying(true);
@@ -188,7 +195,7 @@ export function useCompositor(): UseCompositorResult {
     } catch {
       stop();
     }
-  }, [ensureAudioContext, handleBeat, stop]);
+  }, [ensureAudioContext, handleProgress, stop]);
 
   const restartIfPlaying = useCallback(() => {
     if (!isPlayingRef.current) {
@@ -209,67 +216,93 @@ export function useCompositor(): UseCompositorResult {
     [restartIfPlaying, updatePiece],
   );
 
-  const setPatternLength = useCallback(
+  const setCycleGolpes = useCallback(
     (value: number) => {
-      updatePiece((current) => setCompositorPatternLength(current, value));
+      updatePiece((current) => setCompositorCycleGolpes(current, value));
       restartIfPlaying();
     },
     [restartIfPlaying, updatePiece],
   );
 
-  const setBeatDurationAtSlot = useCallback(
+  const setCycleBeatDurationAtSlot = useCallback(
     (slotIndex: number, duration: MetronomeBeatDuration) => {
       updatePiece((current) =>
-        setCompositorBeatDurationAtSlot(current, slotIndex, duration),
+        setCompositorCycleBeatDurationAtSlot(current, slotIndex, duration),
       );
       restartIfPlaying();
     },
     [restartIfPlaying, updatePiece],
   );
 
-  const setBeatLevelAtSlot = useCallback(
-    (slotIndex: number, level: MetronomeBeatLevel) => {
+  const addTrackEvent = useCallback(
+    (instrumentId: CompositorInstrumentId = activeTrackId) => {
+      const gridSteps = getCompositorGridSteps(pieceRef.current);
+      const track = getCompositorTrack(pieceRef.current, instrumentId);
+      const occupied = new Set<number>();
+
+      for (const event of track.events) {
+        for (
+          let step = event.startStep;
+          step < event.startStep + event.durationSteps;
+          step += 1
+        ) {
+          occupied.add(step);
+        }
+      }
+
+      let startStep = 0;
+
+      while (startStep < gridSteps && occupied.has(startStep)) {
+        startStep += 1;
+      }
+
+      updatePiece((current) => {
+        const next = addCompositorTrackEvent(current, instrumentId, {
+          startStep: Math.min(startStep, Math.max(0, gridSteps - 1)),
+          durationSteps: Math.max(1, Math.floor(gridSteps / 10)),
+        });
+        const newEvent = getCompositorTrack(next, instrumentId).events.at(-1);
+
+        if (newEvent) {
+          setSelectedEventIdState(newEvent.id);
+        }
+
+        return next;
+      });
+
+      restartIfPlaying();
+    },
+    [activeTrackId, restartIfPlaying, updatePiece],
+  );
+
+  const updateTrackEvent = useCallback(
+    (
+      eventId: string,
+      patch: Partial<CompositorTrackEvent>,
+      instrumentId: CompositorInstrumentId = activeTrackId,
+    ) => {
       updatePiece((current) =>
-        setCompositorBeatLevelAtSlot(
-          current,
-          activeTrackId,
-          slotIndex,
-          level,
-        ),
+        updateCompositorTrackEvent(current, instrumentId, eventId, patch),
       );
       restartIfPlaying();
     },
     [activeTrackId, restartIfPlaying, updatePiece],
   );
 
-  const setNoteAtSlot = useCallback(
-    (slotIndex: number, note: CompositorSlotNote) => {
+  const removeTrackEvent = useCallback(
+    (
+      eventId: string,
+      instrumentId: CompositorInstrumentId = activeTrackId,
+    ) => {
       updatePiece((current) =>
-        setCompositorNoteAtSlot(current, activeTrackId, slotIndex, note),
+        removeCompositorTrackEvent(current, instrumentId, eventId),
+      );
+      setSelectedEventIdState((current) =>
+        current === eventId ? null : current,
       );
       restartIfPlaying();
     },
     [activeTrackId, restartIfPlaying, updatePiece],
-  );
-
-  const setDrumSoundAtSlot = useCallback(
-    (slotIndex: number, sound: CompositorDrumSound) => {
-      updatePiece((current) =>
-        setCompositorDrumSoundAtSlot(current, slotIndex, sound),
-      );
-      restartIfPlaying();
-    },
-    [restartIfPlaying, updatePiece],
-  );
-
-  const setGuitarArticulationAtSlot = useCallback(
-    (slotIndex: number, articulation: CompositorGuitarArticulation) => {
-      updatePiece((current) =>
-        setCompositorGuitarArticulationAtSlot(current, slotIndex, articulation),
-      );
-      restartIfPlaying();
-    },
-    [restartIfPlaying, updatePiece],
   );
 
   const toggleTrack = useCallback(
@@ -321,8 +354,10 @@ export function useCompositor(): UseCompositorResult {
 
   const resetPiece = useCallback(() => {
     stop();
-    setPieceState(createDefaultCompositorPiece());
+    const next = createDefaultCompositorPiece();
+    setPieceState(next);
     setActiveTrackIdState("piano");
+    setSelectedEventIdState(next.tracks[0]?.events[0]?.id ?? null);
   }, [stop]);
 
   useEffect(() => {
@@ -338,21 +373,21 @@ export function useCompositor(): UseCompositorResult {
   return {
     piece,
     activeTrackId,
-    beatPattern: activeTrack.levels,
-    patternLength: piece.patternLength,
-    beatDurations: piece.beatDurations,
+    selectedEventId,
+    cycleGolpes: piece.cycleGolpes,
+    cycleBeatDurations: piece.cycleBeatDurations,
     bpm: piece.bpm,
     isPlaying,
-    currentBeat,
+    cycleProgress,
     tapTempoTapCount,
     setActiveTrackId: setActiveTrackIdState,
+    setSelectedEventId: setSelectedEventIdState,
     setBpm,
-    setPatternLength,
-    setBeatDurationAtSlot,
-    setBeatLevelAtSlot,
-    setNoteAtSlot,
-    setDrumSoundAtSlot,
-    setGuitarArticulationAtSlot,
+    setCycleGolpes,
+    setCycleBeatDurationAtSlot,
+    addTrackEvent,
+    updateTrackEvent,
+    removeTrackEvent,
     toggleTrack,
     tapTempo,
     start,
@@ -360,3 +395,5 @@ export function useCompositor(): UseCompositorResult {
     resetPiece,
   };
 }
+
+export const COMPOSITOR_DUMMY_BEAT_PATTERN = METRONOME_PATTERN_DEFAULT;

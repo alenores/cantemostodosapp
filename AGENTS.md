@@ -36,15 +36,13 @@ Usar siempre estos términos en UI y documentación (`lib/ritmo-terminologia.ts`
 | Término | Significado breve |
 |---------|-------------------|
 | **Tempo** | Velocidad (BPM), compartida |
-| **Ciclo** | Cuántos golpes tiene una vuelta | Tab **Golpes** + línea «Ciclo» en el gráfico |
-| **Compás** | Sección de ciclo + figura + dinámica |
-| **Figura** | Negra, corchea… (rejilla compartida) |
-| **Golpe** | Cada posición del ciclo (1, 2, 3…) |
-| **Dinámica** | Silencio / suave / medio / fuerte por golpe y capa |
-| **Capa** | Piano, guitarra o batería (On/Off + edición) |
-| **Contenido** | Nota del golpe (piano, guitarra) | Tab **Contenido** (solo Compositor) |
-| **Timbre** | Ataque o elemento de batería por golpe | Tab **Timbre** (guitarra, batería) |
-| **Sustento** | Duración del timbre al aire (casi fijo en v1) |
+| **Ciclo** | Duración compartida de la vuelta (golpes + figura del ciclo) |
+| **Capa** | Piano, guitarra o batería (On/Off en Practicar + edición de su línea) |
+| **Evento** | Un sonido en una capa: cuándo empieza, cuánto dura, qué suena |
+| **Dinámica** | Silencio / suave / medio / fuerte por evento |
+| **Contenido** | Nota (piano, guitarra) |
+| **Timbre** | Púa/rasguido o elemento de batería |
+| **Sustento** | Duración del evento en el ciclo (pasos del bloque) |
 
 ### Roadmap Herramientas (decisiones de producto)
 
@@ -79,12 +77,12 @@ Agrupación visual posible más adelante (no obligatoria en v1 de la reestructur
 - **Tono**: Encajar → Sostener → Melodía
 - **Ritmo + voz**: Ritmo → Ritmo-Nota → Combo
 
-#### Compositor — v1 (implementado)
+#### Compositor — v2 (implementado)
 
 - **Nombre oficial**: Compositor.
 - **Rol**: armar ritmos y melodías propias del usuario (crear / experimentar), separado del Entrenador Vocal (practicar / evaluar).
-- **v1**: tres capas (Piano, Guitarra, Batería); UI Configurar/Practicar; tabs Golpes · Figura · Dinámica · Contenido · Timbre; **samples reales** (piano, batería acústica, guitarra); guardado local de una pieza (`compositor-piece-v1`).
-- **Pendiente**: biblioteca de varias piezas guardadas, integración con Entrenador Vocal, multi-sample piano (más rangos), sustento configurable por golpe.
+- **v2 (implementado)**: ciclo compartido + **línea de tiempo por capa** (eventos con posición, sustento, dinámica, contenido y timbre); superposición entre capas; motor de audio por tiempo absoluto; guardado `compositor-piece-v2` (migra desde v1).
+- **Pendiente**: biblioteca de varias piezas guardadas, integración con Entrenador Vocal, multi-sample piano (más rangos), arrastrar bloques en la línea de tiempo.
 
 Tres herramientas, tres preguntas:
 

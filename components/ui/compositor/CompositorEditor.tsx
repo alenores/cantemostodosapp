@@ -1,8 +1,15 @@
 "use client";
 
-import { CompositorPlaybackCapasStrip } from "@/components/ui/compositor/CompositorCapasStrip";
 import {
-  BeatPatternEditor,
+  CompositorCapasStrip,
+  CompositorPlaybackCapasStrip,
+} from "@/components/ui/compositor/CompositorCapasStrip";
+import { CompositorEventEditor } from "@/components/ui/compositor/CompositorEventEditor";
+import {
+  CompositorMultiTrackTimeline,
+  CompositorTrackTimeline,
+} from "@/components/ui/compositor/CompositorTrackTimeline";
+import {
   ToolRitmoCompasPanel,
   ToolRitmoTempoPanel,
 } from "@/components/ui/ToolRitmoConfig";
@@ -11,56 +18,51 @@ import {
   ToolPracticeSection,
 } from "@/components/ui/ToolModalSections";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { COMPOSITOR_DUMMY_BEAT_PATTERN } from "@/hooks/useCompositor";
 import {
+  formatCompositorCycleSummary,
   getCompositorTrack,
   getInstrumentLabel,
-  type CompositorDrumSound,
-  type CompositorGuitarArticulation,
   type CompositorInstrumentId,
   type CompositorPiece,
-  type CompositorSlotNote,
+  type CompositorTrackEvent,
 } from "@/lib/compositor";
-import { getBeatDurationPatternSummary } from "@/lib/metronomo";
+import { getCompositorCycleDurationSeconds } from "@/lib/compositor-timeline";
 import {
-  formatRitmoConfigSummary,
+  RITMO_LABEL_CICLO,
   RITMO_LABEL_TEMPO,
 } from "@/lib/ritmo-terminologia";
 import type {
   MetronomeBeatDuration,
   MetronomeBeatDurationPattern,
-  MetronomeBeatLevel,
-  MetronomeBeatPattern,
 } from "@/lib/metronomo";
 import { Play, RotateCcw, Square } from "lucide-react";
 
 type CompositorEditorProps = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
-  beatPattern: MetronomeBeatPattern;
-  patternLength: number;
-  beatDurations: MetronomeBeatDurationPattern;
+  selectedEventId: string | null;
+  cycleGolpes: number;
+  cycleBeatDurations: MetronomeBeatDurationPattern;
   bpm: number;
   isPlaying: boolean;
-  currentBeat: number | null;
+  cycleProgress: number | null;
   tapTempoTapCount: number;
   onSetActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
+  onSetSelectedEventId: (eventId: string | null) => void;
   onToggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   onSetBpm: (value: number) => void;
-  onSetPatternLength: (value: number) => void;
-  onSetBeatDurationAtSlot: (
+  onSetCycleGolpes: (value: number) => void;
+  onSetCycleBeatDurationAtSlot: (
     slotIndex: number,
     duration: MetronomeBeatDuration,
   ) => void;
-  onSetBeatLevelAtSlot: (
-    slotIndex: number,
-    level: MetronomeBeatLevel,
+  onAddTrackEvent: () => void;
+  onUpdateTrackEvent: (
+    eventId: string,
+    patch: Partial<CompositorTrackEvent>,
   ) => void;
-  onSetNoteAtSlot: (slotIndex: number, note: CompositorSlotNote) => void;
-  onSetDrumSoundAtSlot: (slotIndex: number, sound: CompositorDrumSound) => void;
-  onSetGuitarArticulationAtSlot: (
-    slotIndex: number,
-    articulation: CompositorGuitarArticulation,
-  ) => void;
+  onRemoveTrackEvent: (eventId: string) => void;
   onTapTempo: () => void;
   onStart: () => void;
   onStop: () => void;
@@ -70,39 +72,38 @@ type CompositorEditorProps = {
 export function CompositorEditor({
   piece,
   activeTrackId,
-  beatPattern,
-  patternLength,
-  beatDurations,
+  selectedEventId,
+  cycleGolpes,
+  cycleBeatDurations,
   bpm,
   isPlaying,
-  currentBeat,
+  cycleProgress,
   tapTempoTapCount,
   onSetActiveTrackId,
+  onSetSelectedEventId,
   onToggleTrack,
   onSetBpm,
-  onSetPatternLength,
-  onSetBeatDurationAtSlot,
-  onSetBeatLevelAtSlot,
-  onSetNoteAtSlot,
-  onSetDrumSoundAtSlot,
-  onSetGuitarArticulationAtSlot,
+  onSetCycleGolpes,
+  onSetCycleBeatDurationAtSlot,
+  onAddTrackEvent,
+  onUpdateTrackEvent,
+  onRemoveTrackEvent,
   onTapTempo,
   onStart,
   onStop,
   onReset,
 }: CompositorEditorProps) {
   const activeTrack = getCompositorTrack(piece, activeTrackId);
-  const practiceVisualTrack =
-    piece.tracks.find((track) => track.enabled) ?? piece.tracks[0]!;
+  const selectedEvent =
+    activeTrack.events.find((event) => event.id === selectedEventId) ??
+    activeTrack.events[0] ??
+    null;
   const enabledLayerCount = piece.tracks.filter((track) => track.enabled).length;
-  const durationSummary = getBeatDurationPatternSummary(
-    beatDurations,
-    patternLength,
-  );
-  const configSummary = `${formatRitmoConfigSummary(patternLength, durationSummary, bpm)} · ${getInstrumentLabel(activeTrackId)}`;
+  const cycleSeconds = getCompositorCycleDurationSeconds(piece);
+  const configSummary = `${formatCompositorCycleSummary(piece)} · ${getInstrumentLabel(activeTrackId)}`;
   const practiceSummary = isPlaying
-    ? `Reproduciendo · ${bpm} BPM · ${enabledLayerCount} capa${enabledLayerCount === 1 ? "" : "s"}`
-    : `Escuchá tu pieza · ${bpm} BPM · ${enabledLayerCount} capa${enabledLayerCount === 1 ? "" : "s"}`;
+    ? `Reproduciendo · ${cycleSeconds.toFixed(1)} s · ${enabledLayerCount} capa${enabledLayerCount === 1 ? "" : "s"}`
+    : `Escuchá tu pieza · ${cycleSeconds.toFixed(1)} s · ${enabledLayerCount} capa${enabledLayerCount === 1 ? "" : "s"}`;
 
   return (
     <div className="space-y-3">
@@ -111,30 +112,62 @@ export function CompositorEditor({
         collapsedSummary={configSummary}
         autoCollapseWhen={isPlaying}
       >
-        <ToolRitmoCompasPanel
-          beatPattern={beatPattern}
-          patternLength={patternLength}
-          beatDurations={beatDurations}
-          disabled={isPlaying}
-          variant="compositor"
-          patternLengthInputId="compositor-pattern-length"
-          onSetPatternLength={onSetPatternLength}
-          onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
-          onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
-          capas={{
-            activeTrackId,
-            onSelectTrack: onSetActiveTrackId,
-          }}
-          contenido={{
-            instrumentId: activeTrackId,
-            notes: activeTrack.notes,
-            drumSounds: activeTrack.drumSounds,
-            guitarArticulations: activeTrack.guitarArticulations,
-            onSetNoteAtSlot: onSetNoteAtSlot,
-            onSetDrumSoundAtSlot: onSetDrumSoundAtSlot,
-            onSetGuitarArticulationAtSlot: onSetGuitarArticulationAtSlot,
-          }}
-        />
+        <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-compositor-config">
+            {RITMO_LABEL_CICLO} compartido
+          </p>
+          <ToolRitmoCompasPanel
+            beatPattern={COMPOSITOR_DUMMY_BEAT_PATTERN}
+            patternLength={cycleGolpes}
+            beatDurations={cycleBeatDurations}
+            disabled={isPlaying}
+            variant="compositor"
+            scope="cycle"
+            patternLengthInputId="compositor-cycle-golpes"
+            onSetPatternLength={onSetCycleGolpes}
+            onSetBeatDurationAtSlot={onSetCycleBeatDurationAtSlot}
+            onSetBeatLevelAtSlot={() => {}}
+          />
+        </div>
+
+        <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+          <CompositorCapasStrip
+            activeTrackId={activeTrackId}
+            disabled={isPlaying}
+            onSelectTrack={onSetActiveTrackId}
+          />
+
+          <div className="mt-3 space-y-3">
+            <CompositorTrackTimeline
+              piece={piece}
+              instrumentId={activeTrackId}
+              events={activeTrack.events}
+              selectedEventId={selectedEvent?.id ?? null}
+              cycleProgress={isPlaying ? cycleProgress : null}
+              disabled={isPlaying}
+              onSelectEvent={onSetSelectedEventId}
+              onAddEvent={onAddTrackEvent}
+              onRemoveEvent={onRemoveTrackEvent}
+            />
+
+            {selectedEvent ? (
+              <CompositorEventEditor
+                piece={piece}
+                instrumentId={activeTrackId}
+                event={selectedEvent}
+                disabled={isPlaying}
+                onUpdateEvent={(patch) =>
+                  onUpdateTrackEvent(selectedEvent.id, patch)
+                }
+              />
+            ) : (
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-text-muted">
+                Agregá un sonido en la línea de tiempo de esta capa.
+              </p>
+            )}
+          </div>
+        </div>
+
         <ToolRitmoTempoPanel
           bpm={bpm}
           isPlaying={isPlaying}
@@ -147,7 +180,7 @@ export function CompositorEditor({
       <ToolPracticeSection
         collapsible
         collapsedSummary={practiceSummary}
-        subtitle="Elegí qué capas suenan y seguí el ciclo en tiempo real."
+        subtitle="Todas las capas suenan juntas en el mismo ciclo, cada una con sus momentos."
       >
         <CompositorPlaybackCapasStrip
           piece={piece}
@@ -155,22 +188,24 @@ export function CompositorEditor({
           onToggleTrack={onToggleTrack}
         />
 
-        <div className="flex items-end gap-3 rounded-[10px] border border-border bg-bg-card px-3 py-3">
-          <div className="shrink-0 text-center" aria-live="polite">
-            <p className="text-3xl font-extrabold leading-none text-text-primary">
-              {bpm}
-            </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-              {RITMO_LABEL_TEMPO}
-            </p>
-          </div>
-          <div className="min-w-0 flex-1">
-            <BeatPatternEditor
-              pattern={practiceVisualTrack.levels}
-              patternLength={patternLength}
-              variant="practice"
-              currentBeat={isPlaying ? currentBeat : null}
-            />
+        <div className="rounded-[10px] border border-border bg-bg-card px-3 py-3">
+          <div className="flex items-end gap-3">
+            <div className="shrink-0 text-center" aria-live="polite">
+              <p className="text-3xl font-extrabold leading-none text-text-primary">
+                {bpm}
+              </p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                {RITMO_LABEL_TEMPO}
+              </p>
+            </div>
+            <div className="min-w-0 flex-1">
+              <CompositorMultiTrackTimeline
+                piece={piece}
+                selectedEventId={selectedEventId}
+                activeTrackId={activeTrackId}
+                cycleProgress={isPlaying ? cycleProgress : null}
+              />
+            </div>
           </div>
         </div>
 

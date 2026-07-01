@@ -4,6 +4,7 @@ import { CompositorEditor } from "@/components/ui/compositor/CompositorEditor";
 import { COMPOSITOR_TAGLINE } from "@/lib/herramientas-product";
 import type { UseCompositorResult } from "@/hooks/useCompositor";
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 type CompositorModalProps = {
   open: boolean;
@@ -15,21 +16,21 @@ export default function CompositorModal({
   onClose,
   piece,
   activeTrackId,
-  beatPattern,
-  patternLength,
-  beatDurations,
+  selectedEventId,
+  cycleGolpes,
+  cycleBeatDurations,
   bpm,
   isPlaying,
-  currentBeat,
+  cycleProgress,
   tapTempoTapCount,
   setActiveTrackId,
+  setSelectedEventId,
   setBpm,
-  setPatternLength,
-  setBeatDurationAtSlot,
-  setBeatLevelAtSlot,
-  setNoteAtSlot,
-  setDrumSoundAtSlot,
-  setGuitarArticulationAtSlot,
+  setCycleGolpes,
+  setCycleBeatDurationAtSlot,
+  addTrackEvent,
+  updateTrackEvent,
+  removeTrackEvent,
   toggleTrack,
   tapTempo,
   start,
@@ -45,7 +46,7 @@ export default function CompositorModal({
     onClose();
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
       <button
         type="button"
@@ -57,7 +58,7 @@ export default function CompositorModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="compositor-titulo"
-        className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
           <div className="flex items-start gap-3">
@@ -83,26 +84,26 @@ export default function CompositorModal({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+        <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
           <CompositorEditor
             piece={piece}
             activeTrackId={activeTrackId}
-            beatPattern={beatPattern}
-            patternLength={patternLength}
-            beatDurations={beatDurations}
+            selectedEventId={selectedEventId}
+            cycleGolpes={cycleGolpes}
+            cycleBeatDurations={cycleBeatDurations}
             bpm={bpm}
             isPlaying={isPlaying}
-            currentBeat={currentBeat}
+            cycleProgress={cycleProgress}
             tapTempoTapCount={tapTempoTapCount}
             onSetActiveTrackId={setActiveTrackId}
+            onSetSelectedEventId={setSelectedEventId}
             onToggleTrack={toggleTrack}
             onSetBpm={setBpm}
-            onSetPatternLength={setPatternLength}
-            onSetBeatDurationAtSlot={setBeatDurationAtSlot}
-            onSetBeatLevelAtSlot={setBeatLevelAtSlot}
-            onSetNoteAtSlot={setNoteAtSlot}
-            onSetDrumSoundAtSlot={setDrumSoundAtSlot}
-            onSetGuitarArticulationAtSlot={setGuitarArticulationAtSlot}
+            onSetCycleGolpes={setCycleGolpes}
+            onSetCycleBeatDurationAtSlot={setCycleBeatDurationAtSlot}
+            onAddTrackEvent={() => addTrackEvent()}
+            onUpdateTrackEvent={updateTrackEvent}
+            onRemoveTrackEvent={removeTrackEvent}
             onTapTempo={tapTempo}
             onStart={() => void start()}
             onStop={stop}
@@ -110,6 +111,7 @@ export default function CompositorModal({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

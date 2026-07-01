@@ -203,7 +203,7 @@ function SalasFooterSpacer() {
 export function HerramientasHubSkeleton() {
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app"
+      className="flex min-h-full flex-1 flex-col bg-bg-app"
       role="status"
       aria-live="polite"
       aria-label="Cargando herramientas"

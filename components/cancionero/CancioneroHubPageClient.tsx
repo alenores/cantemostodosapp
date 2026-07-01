@@ -18,6 +18,7 @@ import { useCompositor } from "@/hooks/useCompositor";
 import { useMetronomo } from "@/hooks/useMetronomo";
 import { useVoz } from "@/hooks/useVoz";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { CANCIONERO_HUB_MODULES } from "@/lib/cancionero-hub-modules";
@@ -231,6 +232,8 @@ export default function CancioneroHubPageClient({
   const toolModalOpen =
     afinadorOpen || metronomoOpen || vozOpen || compositorOpen;
 
+  useBodyScrollLock(toolModalOpen);
+
   function getModuleAriaLabel(
     kind: (typeof CANCIONERO_HUB_MODULES)[number]["kind"],
     label: string,
@@ -283,17 +286,10 @@ export default function CancioneroHubPageClient({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
-      <div
-        className={`flex min-h-0 flex-1 flex-col ${
-          toolModalOpen
-            ? "overflow-hidden"
-            : "touch-pan-y overflow-y-auto overscroll-y-contain"
-        }`}
-      >
-        <AppReadyMarker />
+    <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
+      <AppReadyMarker />
 
-        <main className="flex flex-col gap-3 px-4 py-6">
+      <main className="flex flex-col gap-3 px-4 py-6 pb-24">
         <PwaInstallBanners />
 
         {!online && (
@@ -327,7 +323,6 @@ export default function CancioneroHubPageClient({
           </p>
         )}
       </main>
-      </div>
 
       <AfinadorModal
         open={afinadorOpen}

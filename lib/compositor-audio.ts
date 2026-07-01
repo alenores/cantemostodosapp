@@ -5,22 +5,22 @@ import type {
   CompositorSlotNote,
 } from "@/lib/compositor";
 import {
+  buildCompositorScheduledSounds,
+  getCompositorCycleDurationSeconds,
+  type CompositorScheduledSound,
+} from "@/lib/compositor-timeline";
+import {
   COMPOSITOR_GUITAR_ROOT,
   COMPOSITOR_PIANO_ROOT,
   getCompositorPlaybackRate,
   type CompositorSampleBank,
 } from "@/lib/compositor-samples";
-import {
-  getActiveBeatDurationSlice,
-  getActivePatternLength,
-  getSecondsPerBeat,
-  METRONOME_BEAT_DURATION_DEFAULT,
-  type MetronomeBeatLevel,
-} from "@/lib/metronomo";
+import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import { targetToFrequency } from "@/lib/voz";
 
-const LOOK_AHEAD_SECONDS = 0.1;
+const LOOK_AHEAD_SECONDS = 0.35;
 const SCHEDULE_INTERVAL_MS = 25;
+const MIN_MELODIC_DURATION_SECONDS = 0.04;
 
 const LEVEL_GAIN: Record<Exclude<MetronomeBeatLevel, "silencio">, number> = {
   suave: 0.22,
@@ -36,6 +36,10 @@ function levelToGain(level: MetronomeBeatLevel): number | null {
   return LEVEL_GAIN[level];
 }
 
+function clampMelodicDuration(durationSeconds: number): number {
+  return Math.max(MIN_MELODIC_DURATION_SECONDS, durationSeconds);
+}
+
 function scheduleTone(
   audioContext: AudioContext,
   time: number,
@@ -44,6 +48,7 @@ function scheduleTone(
   duration: number,
   wave: OscillatorType,
 ): void {
+  const safeDuration = clampMelodicDuration(duration);
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
 
@@ -51,13 +56,13 @@ function scheduleTone(
   oscillator.frequency.value = frequency;
 
   gainNode.gain.setValueAtTime(peakGain, time);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, time + safeDuration);
 
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
 
   oscillator.start(time);
-  oscillator.stop(time + duration + 0.01);
+  oscillator.stop(time + safeDuration + 0.01);
 }
 
 function scheduleNoiseBurst(
@@ -108,10 +113,8 @@ function scheduleSample(
   source.playbackRate.value = playbackRate;
 
   const gainNode = audioContext.createGain();
-  const duration = Math.min(
-    buffer.duration / Math.max(playbackRate, 0.01),
-    maxDuration ?? buffer.duration / Math.max(playbackRate, 0.01),
-  );
+  const naturalDuration = buffer.duration / Math.max(playbackRate, 0.01);
+  const duration = Math.min(naturalDuration, maxDuration ?? naturalDuration);
 
   gainNode.gain.setValueAtTime(peakGain, time);
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
@@ -178,8 +181,11 @@ function schedulePianoNote(
   time: number,
   note: CompositorSlotNote,
   level: MetronomeBeatLevel,
+  durationSeconds: number,
   samples: CompositorSampleBank | null,
 ): void {
+  const duration = clampMelodicDuration(durationSeconds);
+
   if (samples) {
     schedulePitchedSample(
       audioContext,
@@ -189,12 +195,12 @@ function schedulePianoNote(
       COMPOSITOR_PIANO_ROOT,
       level,
       0.72,
-      2.4,
+      duration,
     );
     return;
   }
 
-  schedulePitchedNoteSynth(audioContext, time, note, level, "sine", 0.32);
+  schedulePitchedNoteSynth(audioContext, time, note, level, "sine", duration);
 }
 
 function scheduleGuitarNote(
@@ -203,6 +209,7 @@ function scheduleGuitarNote(
   note: CompositorSlotNote,
   level: MetronomeBeatLevel,
   articulation: CompositorGuitarArticulation,
+  durationSeconds: number,
   samples: CompositorSampleBank | null,
 ): void {
   if (articulation === "silencio") {
@@ -215,6 +222,8 @@ function scheduleGuitarNote(
     return;
   }
 
+  const duration = clampMelodicDuration(durationSeconds);
+
   if (samples) {
     if (articulation === "rasguido") {
       schedulePitchedSample(
@@ -225,7 +234,7 @@ function scheduleGuitarNote(
         COMPOSITOR_GUITAR_ROOT,
         level,
         0.58,
-        0.85,
+        duration,
       );
       return;
     }
@@ -238,7 +247,7 @@ function scheduleGuitarNote(
       COMPOSITOR_GUITAR_ROOT,
       level,
       0.62,
-      1.1,
+      duration,
     );
     return;
   }
@@ -249,7 +258,7 @@ function scheduleGuitarNote(
       time,
       targetToFrequency(note),
       gain * 0.42,
-      0.28,
+      duration,
       "triangle",
     );
     scheduleTone(
@@ -257,7 +266,7 @@ function scheduleGuitarNote(
       time,
       targetToFrequency(note) * 1.007,
       gain * 0.18,
-      0.22,
+      duration * 0.85,
       "sine",
     );
     return;
@@ -268,7 +277,7 @@ function scheduleGuitarNote(
     time,
     targetToFrequency(note),
     gain * 0.5,
-    0.1,
+    Math.min(duration, 0.35),
     "triangle",
   );
 }
@@ -355,59 +364,52 @@ function scheduleDrumHit(
   scheduleSample(audioContext, time, buffer, gain * gainScale);
 }
 
-export function scheduleCompositorBeat(
+export function scheduleCompositorSound(
   audioContext: AudioContext,
   time: number,
-  piece: CompositorPiece,
-  beatIndex: number,
+  sound: CompositorScheduledSound,
   samples: CompositorSampleBank | null = null,
 ): void {
-  for (const track of piece.tracks) {
-    if (!track.enabled) {
-      continue;
-    }
-
-    const level = track.levels[beatIndex] ?? "silencio";
-
-    switch (track.instrumentId) {
-      case "piano":
-        schedulePianoNote(
-          audioContext,
-          time,
-          track.notes[beatIndex] ?? { note: "C", octave: 4 },
-          level,
-          samples,
-        );
-        break;
-      case "guitarra":
-        scheduleGuitarNote(
-          audioContext,
-          time,
-          track.notes[beatIndex] ?? { note: "C", octave: 4 },
-          level,
-          track.guitarArticulations[beatIndex] ?? "pua",
-          samples,
-        );
-        break;
-      case "bateria":
-        scheduleDrumHit(
-          audioContext,
-          time,
-          track.drumSounds[beatIndex] ?? "silencio",
-          level,
-          samples,
-        );
-        break;
-      default:
-        break;
-    }
+  switch (sound.instrumentId) {
+    case "piano":
+      schedulePianoNote(
+        audioContext,
+        time,
+        sound.note,
+        sound.level,
+        sound.durationSeconds,
+        samples,
+      );
+      break;
+    case "guitarra":
+      scheduleGuitarNote(
+        audioContext,
+        time,
+        sound.note,
+        sound.level,
+        sound.guitarArticulation,
+        sound.durationSeconds,
+        samples,
+      );
+      break;
+    case "bateria":
+      scheduleDrumHit(
+        audioContext,
+        time,
+        sound.drumSound,
+        sound.level,
+        samples,
+      );
+      break;
+    default:
+      break;
   }
 }
 
 export type CompositorEngine = {
   start(
     piece: CompositorPiece,
-    onBeat: (beatIndex: number, expectedTimeMs: number) => void,
+    onProgress: (cycleProgress: number) => void,
   ): void;
   stop(): void;
 };
@@ -418,47 +420,85 @@ export function createCompositorEngine(
 ): CompositorEngine {
   let running = false;
   let piece: CompositorPiece | null = null;
-  let bpm = 80;
-  let patternLength = 4;
-  let beatDurations = getActiveBeatDurationSlice(
-    [...Array(10).fill("negra")],
-    patternLength,
-  );
-  let nextBeatTime = 0;
-  let currentBeatIndex = 0;
+  let cycleDurationSeconds = 1;
+  let loopStartAudioTime = 0;
+  let scheduledUntilAudioTime = 0;
   let schedulerTimer: ReturnType<typeof setInterval> | null = null;
-  let onBeat: ((beatIndex: number, expectedTimeMs: number) => void) | null =
-    null;
-  const beatTimeouts = new Set<ReturnType<typeof setTimeout>>();
+  let onProgress: ((cycleProgress: number) => void) | null = null;
+  const progressTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
-  function audioTimeToPerformanceMs(audioTime: number): number {
-    return performance.now() + (audioTime - audioContext.currentTime) * 1000;
-  }
-
-  function clearBeatTimeouts(): void {
-    for (const timeoutId of beatTimeouts) {
+  function clearProgressTimeouts(): void {
+    for (const timeoutId of progressTimeouts) {
       clearTimeout(timeoutId);
     }
-    beatTimeouts.clear();
+    progressTimeouts.clear();
   }
 
-  function scheduleBeatCallback(beatIndex: number, beatAudioTime: number): void {
+  function scheduleProgressCallback(
+    cycleProgress: number,
+    audioTime: number,
+  ): void {
     const delayMs = Math.max(
       0,
-      (beatAudioTime - audioContext.currentTime) * 1000,
+      (audioTime - audioContext.currentTime) * 1000,
     );
 
     const timeoutId = setTimeout(() => {
-      beatTimeouts.delete(timeoutId);
+      progressTimeouts.delete(timeoutId);
 
-      if (!running || !onBeat) {
+      if (!running || !onProgress) {
         return;
       }
 
-      onBeat(beatIndex, audioTimeToPerformanceMs(beatAudioTime));
+      onProgress(cycleProgress);
     }, delayMs);
 
-    beatTimeouts.add(timeoutId);
+    progressTimeouts.add(timeoutId);
+  }
+
+  function scheduleSoundsBetween(startAudioTime: number, endAudioTime: number): void {
+    if (!piece || cycleDurationSeconds <= 0) {
+      return;
+    }
+
+    const sounds = buildCompositorScheduledSounds(piece);
+    const startOffset = Math.max(0, startAudioTime - loopStartAudioTime);
+    const endOffset = Math.max(startOffset, endAudioTime - loopStartAudioTime);
+
+    const firstCycle = Math.floor(startOffset / cycleDurationSeconds);
+    const lastCycle = Math.ceil(endOffset / cycleDurationSeconds);
+
+    for (let cycleIndex = firstCycle; cycleIndex <= lastCycle; cycleIndex += 1) {
+      const cycleBase = cycleIndex * cycleDurationSeconds;
+
+      for (const sound of sounds) {
+        const eventOffset = cycleBase + sound.cycleOffsetSeconds;
+        const eventAudioTime = loopStartAudioTime + eventOffset;
+
+        if (eventAudioTime < startAudioTime || eventAudioTime >= endAudioTime) {
+          continue;
+        }
+
+        scheduleCompositorSound(audioContext, eventAudioTime, sound, samples);
+      }
+    }
+
+    const progressStep = cycleDurationSeconds / 24;
+
+    for (
+      let offset = Math.floor(startOffset / progressStep) * progressStep;
+      offset <= endOffset;
+      offset += progressStep
+    ) {
+      const progress = (offset % cycleDurationSeconds) / cycleDurationSeconds;
+      const progressAudioTime = loopStartAudioTime + offset;
+
+      if (progressAudioTime < startAudioTime || progressAudioTime >= endAudioTime) {
+        continue;
+      }
+
+      scheduleProgressCallback(progress, progressAudioTime);
+    }
   }
 
   function scheduler(): void {
@@ -466,45 +506,30 @@ export function createCompositorEngine(
       return;
     }
 
-    while (nextBeatTime < audioContext.currentTime + LOOK_AHEAD_SECONDS) {
-      const beatIndex = currentBeatIndex;
-      const beatTime = nextBeatTime;
-      const secondsPerBeat = getSecondsPerBeat(
-        bpm,
-        beatDurations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
-      );
+    const horizon = audioContext.currentTime + LOOK_AHEAD_SECONDS;
 
-      scheduleCompositorBeat(
-        audioContext,
-        beatTime,
-        piece,
-        beatIndex,
-        samples,
-      );
-      scheduleBeatCallback(beatIndex, beatTime);
-
-      nextBeatTime += secondsPerBeat;
-      currentBeatIndex = (currentBeatIndex + 1) % patternLength;
+    if (scheduledUntilAudioTime < horizon) {
+      const scheduleFrom =
+        scheduledUntilAudioTime > 0
+          ? scheduledUntilAudioTime
+          : audioContext.currentTime;
+      scheduleSoundsBetween(scheduleFrom, horizon);
+      scheduledUntilAudioTime = horizon;
     }
   }
 
   return {
-    start(nextPiece: CompositorPiece, nextOnBeat) {
+    start(nextPiece: CompositorPiece, nextOnProgress) {
       if (running) {
-        clearBeatTimeouts();
+        clearProgressTimeouts();
       }
 
       piece = nextPiece;
-      bpm = nextPiece.bpm;
-      patternLength = getActivePatternLength(nextPiece.patternLength);
-      beatDurations = getActiveBeatDurationSlice(
-        nextPiece.beatDurations,
-        patternLength,
-      );
-      onBeat = nextOnBeat;
+      cycleDurationSeconds = getCompositorCycleDurationSeconds(nextPiece);
+      onProgress = nextOnProgress;
       running = true;
-      currentBeatIndex = 0;
-      nextBeatTime = audioContext.currentTime;
+      loopStartAudioTime = audioContext.currentTime;
+      scheduledUntilAudioTime = 0;
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);
@@ -515,15 +540,16 @@ export function createCompositorEngine(
     },
     stop() {
       running = false;
-      onBeat = null;
+      onProgress = null;
       piece = null;
+      scheduledUntilAudioTime = 0;
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);
         schedulerTimer = null;
       }
 
-      clearBeatTimeouts();
+      clearProgressTimeouts();
     },
   };
 }

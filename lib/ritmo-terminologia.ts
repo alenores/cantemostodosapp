@@ -50,7 +50,7 @@ export const COMPOSITOR_HELP_CAPAS =
   "Activá capas y elegí cuál editás. Al reproducir, suenan juntas con el mismo tempo y compás.";
 
 export const COMPOSITOR_HELP_CAPA_EDITAR =
-  "Elegí qué capa editás en Dinámica, Contenido y Timbre. No afecta qué suena al reproducir.";
+  "Elegí qué capa editás. Cada una tiene su propia línea de tiempo dentro del ciclo compartido.";
 
 export const COMPOSITOR_HELP_CAPAS_REPRODUCIR =
   "Elegí qué capas querés escuchar. Es independiente de la capa que estés editando.";

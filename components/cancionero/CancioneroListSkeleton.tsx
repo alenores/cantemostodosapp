@@ -164,7 +164,7 @@ export default function CancioneroListSkeleton({
 export function CancioneroPageSkeleton() {
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app"
+      className="flex min-h-full flex-1 flex-col bg-bg-app"
       role="status"
       aria-live="polite"
       aria-label="Cargando cancionero"
@@ -186,7 +186,7 @@ export function CancioneroPageSkeleton() {
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-4 pb-24">
+      <main className="flex flex-col gap-3 px-4 py-4 pb-24">
         <SearchFieldSkeleton />
         <div className="flex flex-col gap-3">
           {CARD_LAYOUTS.map((layout, index) => (

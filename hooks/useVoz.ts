@@ -2,6 +2,13 @@
 
 import { useAfinador } from "@/hooks/useAfinador";
 import { useVozRitmo } from "@/hooks/useVozRitmo";
+import { getBeatPositionAtTime } from "@/lib/metronomo";
+import { getActiveNotaSlice } from "@/lib/voz-nota-patron";
+import {
+  buildMelodiaSingPattern,
+  buildUniformBeatDurations,
+  type VozRitmoVoiceSample,
+} from "@/lib/voz-ritmo";
 import {
   computeEnTonoHoldMs,
   getVozAccuracy,
@@ -28,11 +35,12 @@ import {
   getMsPerBeatAtTime,
   getRitmoPhaseAtTime,
   getRitmoVoiceCompliance,
-  type VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const VOZ_BURST_SILENCE_END_MS = 140;
+
+export type RitmoToneEvaluation = "none" | "fixed" | "perBeat";
 
 export function useVoz() {
   const afinador = useAfinador({ profile: "vocal" });
@@ -54,6 +62,9 @@ export function useVoz() {
   const [ritmoVoiceSamples, setRitmoVoiceSamples] = useState<
     VozRitmoVoiceSample[]
   >([]);
+  const [ritmoToneEvaluation, setRitmoToneEvaluation] =
+    useState<RitmoToneEvaluation>("none");
+  const [beatSyncTick, setBeatSyncTick] = useState(0);
 
   const historyRef = useRef<VozHistorySample[]>([]);
   const lastSampleAtRef = useRef(0);
@@ -64,6 +75,13 @@ export function useVoz() {
   const ritmoBeatPatternRef = useRef(ritmo.ritmoBeatPattern);
   const ritmoPatternLengthRef = useRef(ritmo.ritmoPatternLength);
   const ritmoBeatDurationsRef = useRef(ritmo.ritmoBeatDurations);
+  const melodiaPatternLengthRef = useRef(ritmo.melodiaPatternLength);
+  const melodiaBpmRef = useRef(ritmo.melodiaBpm);
+  const melodiaBeatDurationRef = useRef(ritmo.melodiaBeatDuration);
+  const melodiaNotePatternRef = useRef(ritmo.melodiaNotePattern);
+  const comboNotePatternRef = useRef(ritmo.comboNotePattern);
+  const melodiaPlayingRef = useRef(ritmo.melodiaPlaying);
+  const ritmoToneEvaluationRef = useRef(ritmoToneEvaluation);
 
   detectionRef.current = afinador.detection;
   beatMarkersRef.current = ritmo.beatMarkers;
@@ -71,6 +89,13 @@ export function useVoz() {
   ritmoBeatPatternRef.current = ritmo.ritmoBeatPattern;
   ritmoPatternLengthRef.current = ritmo.ritmoPatternLength;
   ritmoBeatDurationsRef.current = ritmo.ritmoBeatDurations;
+  melodiaPatternLengthRef.current = ritmo.melodiaPatternLength;
+  melodiaBpmRef.current = ritmo.melodiaBpm;
+  melodiaBeatDurationRef.current = ritmo.melodiaBeatDuration;
+  melodiaNotePatternRef.current = ritmo.melodiaNotePattern;
+  comboNotePatternRef.current = ritmo.comboNotePattern;
+  melodiaPlayingRef.current = ritmo.melodiaPlaying;
+  ritmoToneEvaluationRef.current = ritmoToneEvaluation;
   const inBurstRef = useRef(false);
   const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
@@ -93,6 +118,75 @@ export function useVoz() {
     setInstantAttempts([]);
   }, []);
 
+  const effectiveTarget = useMemo((): VozTarget => {
+    void beatSyncTick;
+
+    const now = performance.now();
+    const markers = beatMarkersRef.current;
+
+    if (melodiaPlayingRef.current && markers.length > 0) {
+      const patternLength = melodiaPatternLengthRef.current;
+      const melodiaDurations = buildUniformBeatDurations(
+        melodiaBeatDurationRef.current,
+      );
+      const position = getBeatPositionAtTime(
+        now,
+        markers,
+        melodiaBpmRef.current,
+        melodiaDurations,
+        patternLength,
+      );
+      const notes = getActiveNotaSlice(
+        melodiaNotePatternRef.current,
+        patternLength,
+      );
+
+      return notes[position?.beatIndex ?? 0] ?? target;
+    }
+
+    if (
+      ritmo.ritmoPlaying &&
+      ritmoToneEvaluation === "perBeat" &&
+      markers.length > 0
+    ) {
+      const patternLength = ritmoPatternLengthRef.current;
+      const position = getBeatPositionAtTime(
+        now,
+        markers,
+        ritmoBpmRef.current,
+        ritmoBeatDurationsRef.current,
+        patternLength,
+      );
+      const notes = getActiveNotaSlice(
+        comboNotePatternRef.current,
+        patternLength,
+      );
+
+      return notes[position?.beatIndex ?? 0] ?? target;
+    }
+
+    return target;
+  }, [
+    beatSyncTick,
+    ritmo.ritmoPlaying,
+    ritmoToneEvaluation,
+    target,
+  ]);
+
+  useEffect(() => {
+    if (!ritmo.melodiaPlaying && !ritmo.ritmoPlaying) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setBeatSyncTick((previous) => previous + 1);
+    }, 50);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [ritmo.melodiaPlaying, ritmo.ritmoPlaying]);
+
   const comparison = useMemo(() => {
     if (!afinador.detection) {
       return null;
@@ -100,10 +194,10 @@ export function useVoz() {
 
     return resolveTargetComparison(
       afinador.detection.frequency,
-      target,
+      effectiveTarget,
       octaveExact,
     );
-  }, [afinador.detection, target, octaveExact]);
+  }, [afinador.detection, effectiveTarget, octaveExact]);
 
   const centsFromTarget = comparison?.cents ?? null;
   const targetFrequency = comparison?.referenceFrequency ?? null;
@@ -121,10 +215,10 @@ export function useVoz() {
     () =>
       getVozFeedbackLabel(accuracy, centsFromTarget ?? 0, {
         octaveExact,
-        targetNote: target.note,
+        targetNote: effectiveTarget.note,
         detectedNote: afinador.detection?.note,
       }),
-    [accuracy, centsFromTarget, octaveExact, target.note, afinador.detection?.note],
+    [accuracy, centsFromTarget, octaveExact, effectiveTarget.note, afinador.detection?.note],
   );
 
   useEffect(() => {
@@ -253,7 +347,15 @@ export function useVoz() {
   }, [historySamples, holdTargetSeconds, holdCalibre]);
 
   useEffect(() => {
-    if (!ritmo.ritmoPlaying || !afinador.micReady) {
+    if (!ritmo.ritmoPlaying && !ritmo.melodiaPlaying) {
+      clearRitmoVoiceSamples();
+    }
+  }, [ritmo.ritmoPlaying, ritmo.melodiaPlaying, clearRitmoVoiceSamples]);
+
+  useEffect(() => {
+    const rhythmActive = ritmo.ritmoPlaying || ritmo.melodiaPlaying;
+
+    if (!rhythmActive || !afinador.micReady) {
       return;
     }
 
@@ -274,32 +376,44 @@ export function useVoz() {
 
       lastRitmoVoiceSampleAtRef.current = now;
 
-      const bpm = ritmoBpmRef.current;
+      const isMelodia = melodiaPlayingRef.current;
+      const bpm = isMelodia ? melodiaBpmRef.current : ritmoBpmRef.current;
+      const patternLength = isMelodia
+        ? melodiaPatternLengthRef.current
+        : ritmoPatternLengthRef.current;
       const ritmoBeatPattern = ritmoBeatPatternRef.current;
-      const ritmoPatternLength = ritmoPatternLengthRef.current;
-      const ritmoBeatDurations = ritmoBeatDurationsRef.current;
+      const ritmoBeatDurations = isMelodia
+        ? buildUniformBeatDurations(melodiaBeatDurationRef.current)
+        : ritmoBeatDurationsRef.current;
+      const melodiaPattern = buildUniformBeatDurations(
+        melodiaBeatDurationRef.current,
+      );
+      const beatPattern = isMelodia
+        ? buildMelodiaSingPattern(patternLength)
+        : ritmoBeatPattern;
+      const beatDurations = isMelodia ? melodiaPattern : ritmoBeatDurations;
       const msPerBeat = getMsPerBeatAtTime(
         now,
         beatMarkers,
         bpm,
-        ritmoBeatDurations,
-        ritmoPatternLength,
+        beatDurations,
+        patternLength,
       );
       const expectedPhase =
         getRitmoPhaseAtTime(
           now,
           beatMarkers,
           bpm,
-          ritmoBeatPattern,
-          ritmoPatternLength,
-          ritmoBeatDurations,
+          beatPattern,
+          patternLength,
+          beatDurations,
         ) ?? "silencio";
       const msIntoBeat = getMsIntoCurrentBeat(
         now,
         beatMarkers,
         bpm,
-        ritmoBeatDurations,
-        ritmoPatternLength,
+        beatDurations,
+        patternLength,
       );
       const hasVoice = detectionRef.current !== null;
 
@@ -330,13 +444,7 @@ export function useVoz() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [ritmo.ritmoPlaying, afinador.micReady]);
-
-  useEffect(() => {
-    if (!ritmo.ritmoPlaying) {
-      clearRitmoVoiceSamples();
-    }
-  }, [ritmo.ritmoPlaying, clearRitmoVoiceSamples]);
+  }, [ritmo.ritmoPlaying, ritmo.melodiaPlaying, afinador.micReady]);
 
   const stop = useCallback(() => {
     ritmo.stopRitmo();
@@ -373,5 +481,8 @@ export function useVoz() {
     instantAttempts,
     celebrationKey,
     ritmoVoiceSamples,
+    ritmoToneEvaluation,
+    setRitmoToneEvaluation,
+    effectiveTarget,
   };
 }

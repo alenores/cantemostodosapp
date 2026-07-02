@@ -14,8 +14,10 @@ export const RITMO_LABEL_DINAMICA = "Dinámica";
 export const RITMO_LABEL_GOLPE = "Golpe";
 export const RITMO_LABEL_CAPAS = "Capas";
 export const RITMO_LABEL_CONTENIDO = "Contenido";
+export const RITMO_LABEL_NOTAS = "Notas";
 export const RITMO_LABEL_TIMBRE = "Timbre";
 export const RITMO_LABEL_SUSTENTO = "Sustento";
+export const RITMO_LABEL_POSICION = "Posición";
 export const RITMO_LABEL_REJILLA = "Rejilla rítmica";
 
 export const RITMO_HELP_CICLO = "Cuántos golpes tiene cada ciclo.";
@@ -60,6 +62,27 @@ export const COMPOSITOR_HELP_GOLPE_CONTENIDO =
 
 export const COMPOSITOR_HELP_GOLPE_TIMBRE =
   "Elegí el golpe cuyo timbre querés editar.";
+
+export const COMPOSITOR_HELP_EVENTO_POSICION =
+  "En qué paso del ciclo empieza este sonido.";
+
+export const COMPOSITOR_HELP_EVENTO_SUSTENTO =
+  "Cuántos pasos suena este bloque (piano y guitarra usan toda esta duración).";
+
+export const COMPOSITOR_LABEL_SONIDO_SELECCIONADO = "Sonido seleccionado";
+
+export const COMPOSITOR_LABEL_CICLO_COMPARTIDO = "CICLO (Compartido)";
+
+export const COMPOSITOR_LABEL_CAPAS_INSTRUMENTOS = "CAPAS (Instrumentos)";
+
+export const COMPOSITOR_LABEL_AGREGAR_BLOQUE = "Agregar bloque";
+
+export const COMPOSITOR_LABEL_ESCUCHAR_CAPA = "Escuchar capa";
+
+export const COMPOSITOR_LABEL_RESET_ZONA = "Dejar todo en cero";
+
+export const COMPOSITOR_CONFIRM_RESET_MESSAGE =
+  "Se va a restablecer todo el compositor: ciclo compartido, tempo y bloques de piano, guitarra y batería. Las tres capas quedan activas con el contenido inicial. ¿Continuar?";
 
 export const RITMO_CONFIG_SUBTITLE =
   "Elegí el ciclo, la figura y la dinámica de cada golpe, y el tempo en BPM.";

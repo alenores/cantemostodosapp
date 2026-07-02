@@ -2,6 +2,12 @@
 
 import { TapButton } from "@/components/ui/TapFeedback";
 import { RitmoConfigSection } from "@/components/ui/ToolRitmoConfig";
+import {
+  buildMelodiaCompasState,
+  MelodiaConfigSection,
+} from "@/components/ui/entrenador-vocal/VozMelodiaConfig";
+import { getNotaPatternSummary } from "@/lib/voz-nota-patron";
+import type { VozNotaPattern } from "@/lib/voz-nota-patron";
 import type { NoteDetection } from "@/lib/afinador";
 import type {
   MetronomeBeatDuration,
@@ -64,15 +70,24 @@ import {
   type VozInstantAttempt,
   type VozTarget,
 } from "@/lib/voz";
-import { useDrag } from "@use-gesture/react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { triggerHaptic } from "@/lib/haptic";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { TargetPicker, VozConfigSection, VozPracticeSection, type TargetPickerProps } from "./EntrenadorVocalShared";
 
 export const VOZ_MODE_SLIDES = [
   { id: "encajar", label: "Encajar" },
   { id: "sostener", label: "Sostener" },
+  { id: "melodia", label: "Melodía" },
   { id: "ritmo", label: "Ritmo" },
+  { id: "ritmo-nota", label: "Ritmo-Nota" },
   { id: "combo", label: "Combo" },
 ] as const;
 
@@ -81,7 +96,23 @@ export type VozModeSlideId = (typeof VOZ_MODE_SLIDES)[number]["id"];
 const CHART_WIDTH = 320;
 const CHART_HEIGHT_WIDE = 172;
 const CHART_WIDE_PADDING_LEFT = 40;
-const MODE_DRAG_THRESHOLD_PX = 48;
+const MODE_AXIS_LOCK_PX = 8;
+const MODE_SWIPE_COMMIT_RATIO = 0.2;
+const MODE_SWIPE_COMMIT_MIN_PX = 48;
+const MODE_CAROUSEL_TRANSITION_MS = 260;
+
+function isCarouselInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest("button, a, [role='button'], input, textarea, select, label"),
+    )
+  );
+}
+
+function applyModeCarouselRubberBand(offset: number, canGo: boolean): number {
+  return canGo ? offset : offset * 0.32;
+}
 
 function useTimelineNow(active: boolean): number {
   const [now, setNow] = useState(() => performance.now());
@@ -111,151 +142,341 @@ function useTimelineNow(active: boolean): number {
 function ModeCarouselShell({
   activeIndex,
   onChangeIndex,
-  children,
+  renderSlide,
 }: {
   activeIndex: number;
   onChangeIndex: (index: number) => void;
-  children: ReactNode;
+  renderSlide: (index: number) => ReactNode;
 }) {
-  const [dragX, setDragX] = useState(0);
   const slideCount = VOZ_MODE_SLIDES.length;
   const activeSlide = VOZ_MODE_SLIDES[activeIndex] ?? VOZ_MODE_SLIDES[0]!;
+  const prevIndex = activeIndex - 1;
+  const nextIndex = activeIndex + 1;
   const canGoPrev = activeIndex > 0;
   const canGoNext = activeIndex < slideCount - 1;
 
-  const changeSlide = useCallback(
-    (delta: number) => {
-      onChangeIndex(
-        Math.max(0, Math.min(slideCount - 1, activeIndex + delta)),
-      );
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const centerPanelRef = useRef<HTMLDivElement>(null);
+  const lockedRef = useRef(false);
+  const canGoPrevRef = useRef(canGoPrev);
+  const canGoNextRef = useRef(canGoNext);
+  const activeIndexRef = useRef(activeIndex);
+  const onChangeIndexRef = useRef(onChangeIndex);
+  const gestureRef = useRef<{
+    startX: number;
+    startY: number;
+    pointerId: number;
+    mode: "undecided" | "carousel";
+  } | null>(null);
+
+  const [offsetX, setOffsetX] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const node = centerPanelRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const updateHeight = () => {
+      setViewportHeight(node.offsetHeight);
+    };
+
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [activeIndex]);
+
+  useEffect(() => {
+    canGoPrevRef.current = canGoPrev;
+    canGoNextRef.current = canGoNext;
+    activeIndexRef.current = activeIndex;
+    onChangeIndexRef.current = onChangeIndex;
+  }, [canGoPrev, canGoNext, activeIndex, onChangeIndex]);
+
+  useEffect(() => {
+    lockedRef.current = animating;
+  }, [animating]);
+
+  useEffect(() => {
+    setOffsetX(0);
+    setAnimating(false);
+    gestureRef.current = null;
+  }, [activeIndex]);
+
+  const getViewportWidth = useCallback(() => {
+    return viewportRef.current?.offsetWidth ?? 0;
+  }, []);
+
+  const runTransition = useCallback(
+    (targetOffset: number, onDone?: () => void) => {
+      setAnimating(true);
+      setOffsetX(targetOffset);
+
+      window.setTimeout(() => {
+        setAnimating(false);
+        onDone?.();
+      }, MODE_CAROUSEL_TRANSITION_MS);
     },
-    [activeIndex, onChangeIndex, slideCount],
+    [],
   );
 
-  const bind = useDrag(
-    ({ movement: [mx], last }) => {
-      if (last) {
-        if (mx < -MODE_DRAG_THRESHOLD_PX) {
-          changeSlide(1);
-        } else if (mx > MODE_DRAG_THRESHOLD_PX) {
-          changeSlide(-1);
-        }
-
-        setDragX(0);
+  const navigateByDirection = useCallback(
+    (direction: -1 | 1) => {
+      if (lockedRef.current) {
         return;
       }
 
-      const maxDrag = 72;
-      const clamped =
-        !canGoPrev && mx > 0
-          ? mx * 0.25
-          : !canGoNext && mx < 0
-            ? mx * 0.25
-            : mx;
+      const width = getViewportWidth();
+      const currentIndex = activeIndexRef.current;
 
-      setDragX(Math.max(-maxDrag, Math.min(maxDrag, clamped)));
+      if (direction < 0 && canGoPrevRef.current) {
+        runTransition(width, () => {
+          triggerHaptic();
+          onChangeIndexRef.current(currentIndex - 1);
+          setOffsetX(0);
+        });
+        return;
+      }
+
+      if (direction > 0 && canGoNextRef.current) {
+        runTransition(-width, () => {
+          triggerHaptic();
+          onChangeIndexRef.current(currentIndex + 1);
+          setOffsetX(0);
+        });
+      }
     },
-    { axis: "x", filterTaps: true },
+    [getViewportWidth, runTransition],
   );
+
+  const handleRelease = useCallback(
+    (dx: number) => {
+      const width = getViewportWidth();
+      const threshold = Math.max(
+        width * MODE_SWIPE_COMMIT_RATIO,
+        MODE_SWIPE_COMMIT_MIN_PX,
+      );
+
+      if (dx < -threshold && canGoNextRef.current) {
+        navigateByDirection(1);
+        return;
+      }
+
+      if (dx > threshold && canGoPrevRef.current) {
+        navigateByDirection(-1);
+        return;
+      }
+
+      runTransition(0);
+    },
+    [getViewportWidth, navigateByDirection, runTransition],
+  );
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
+      if (isCarouselInteractiveTarget(event.target)) {
+        return;
+      }
+
+      if (lockedRef.current) {
+        return;
+      }
+
+      gestureRef.current = {
+        mode: "undecided",
+        startX: event.clientX,
+        startY: event.clientY,
+        pointerId: event.pointerId,
+      };
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      const gesture = gestureRef.current;
+
+      if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const dx = event.clientX - gesture.startX;
+      const dy = event.clientY - gesture.startY;
+
+      if (gesture.mode === "undecided") {
+        if (
+          Math.abs(dx) < MODE_AXIS_LOCK_PX &&
+          Math.abs(dy) < MODE_AXIS_LOCK_PX
+        ) {
+          return;
+        }
+
+        if (Math.abs(dx) <= Math.abs(dy)) {
+          gestureRef.current = null;
+          return;
+        }
+
+        gesture.mode = "carousel";
+        viewport!.setPointerCapture(event.pointerId);
+      }
+
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+
+      const displayOffset = applyModeCarouselRubberBand(
+        dx,
+        dx < 0
+          ? canGoNextRef.current
+          : dx > 0
+            ? canGoPrevRef.current
+            : true,
+      );
+      setOffsetX(displayOffset);
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      const gesture = gestureRef.current;
+
+      if (!gesture || gesture.pointerId !== event.pointerId) {
+        return;
+      }
+
+      if (gesture.mode === "carousel") {
+        handleRelease(event.clientX - gesture.startX);
+      }
+
+      if (viewport!.hasPointerCapture(event.pointerId)) {
+        viewport!.releasePointerCapture(event.pointerId);
+      }
+
+      gestureRef.current = null;
+    }
+
+    viewport.addEventListener("pointerdown", onPointerDown);
+    viewport.addEventListener("pointermove", onPointerMove);
+    viewport.addEventListener("pointerup", onPointerUp);
+    viewport.addEventListener("pointercancel", onPointerUp);
+
+    return () => {
+      viewport.removeEventListener("pointerdown", onPointerDown);
+      viewport.removeEventListener("pointermove", onPointerMove);
+      viewport.removeEventListener("pointerup", onPointerUp);
+      viewport.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [handleRelease]);
+
+  function renderPanel(index: number) {
+    if (index < 0 || index >= slideCount) {
+      return null;
+    }
+
+    return (
+      <div className="bg-bg-cola-sheet px-3 py-4">{renderSlide(index)}</div>
+    );
+  }
+
+  function renderPanelColumn(index: number, isCenter = false) {
+    return (
+      <div
+        ref={isCenter ? centerPanelRef : undefined}
+        className="w-1/3 shrink-0 self-start"
+      >
+        {renderPanel(index)}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-sm">
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <button
           type="button"
           aria-label="Modo anterior"
-          disabled={!canGoPrev}
-          onClick={() => changeSlide(-1)}
-          className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
+          disabled={!canGoPrev || animating}
+          onClick={() => navigateByDirection(-1)}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
         >
           <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
         </button>
 
-        <div className="flex flex-1 justify-center gap-1.5">
+        <div className="min-w-0 flex-1 text-center">
+          <p className="truncate text-sm font-bold uppercase tracking-wide text-text-primary">
+            {activeSlide.label}
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold text-text-muted">
+            {activeIndex + 1} de {slideCount}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Modo siguiente"
+          disabled={!canGoNext || animating}
+          onClick={() => navigateByDirection(1)}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
+        >
+          <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="overflow-hidden rounded-[14px] border-2 border-border bg-bg-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_6%,transparent)]">
+        <div
+          ref={viewportRef}
+          className="touch-pan-y overflow-hidden transition-[height] duration-200 ease-out"
+          style={viewportHeight !== null ? { height: viewportHeight } : undefined}
+          aria-label={`Modo ${activeSlide.label}. Deslizá horizontalmente para cambiar.`}
+        >
+          <div
+            className="flex items-start will-change-transform"
+            style={{
+              width: "300%",
+              transform: `translateX(calc(-33.333333% + ${offsetX}px))`,
+              transition: animating
+                ? `transform ${MODE_CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.25, 0.82, 0.35, 1)`
+                : "none",
+            }}
+          >
+            {renderPanelColumn(prevIndex)}
+            {renderPanelColumn(activeIndex, true)}
+            {renderPanelColumn(nextIndex)}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-1.5 border-t border-border bg-bg-dark/40 px-3 py-2">
           {VOZ_MODE_SLIDES.map((slide, index) => (
             <button
               key={slide.id}
               type="button"
               aria-label={slide.label}
               aria-current={activeIndex === index}
+              disabled={animating}
               onClick={() => onChangeIndex(index)}
-              className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                activeIndex === index
-                  ? "bg-voz-config text-white"
-                  : "border border-border bg-bg-dark text-text-muted"
-              }`}
+              className="rounded-full p-1 disabled:opacity-60"
             >
-              {slide.label}
+              <span
+                className={`block rounded-full transition-all ${
+                  activeIndex === index
+                    ? "h-1.5 w-4 bg-voz-config"
+                    : "size-1.5 bg-border"
+                }`}
+                aria-hidden="true"
+              />
             </button>
           ))}
-        </div>
-
-        <button
-          type="button"
-          aria-label="Modo siguiente"
-          disabled={!canGoNext}
-          onClick={() => changeSlide(1)}
-          className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
-        >
-          <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="relative overflow-hidden rounded-[14px] border-2 border-border bg-bg-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_6%,transparent)]">
-        {canGoPrev ? (
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 z-20 flex w-7 items-center justify-start bg-gradient-to-r from-bg-dark/90 to-transparent pl-0.5"
-            aria-hidden="true"
-          >
-            <ChevronLeft className="size-3.5 text-text-muted opacity-70" />
-          </div>
-        ) : null}
-        {canGoNext ? (
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 z-20 flex w-7 items-center justify-end bg-gradient-to-l from-bg-dark/90 to-transparent pr-0.5"
-            aria-hidden="true"
-          >
-            <ChevronRight className="size-3.5 text-text-muted opacity-70" />
-          </div>
-        ) : null}
-
-        <div className="flex items-center justify-between gap-2 border-b border-border bg-bg-dark/60 px-3 py-2">
-          <p className="text-xs font-bold uppercase tracking-wide text-text-primary">
-            {activeSlide.label}
-          </p>
-          <span className="text-[10px] font-semibold text-text-muted">
-            {activeIndex + 1} / {slideCount}
-          </span>
-        </div>
-
-        <div
-          {...bind()}
-          className="touch-pan-y select-none"
-          aria-label={`Modo ${activeSlide.label}. Deslizá horizontalmente para cambiar.`}
-        >
-          <div
-            className="bg-bg-cola-sheet px-3 py-4 transition-none"
-            style={{ transform: `translateX(${dragX}px)` }}
-          >
-            {children}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-center gap-1.5 border-t border-border bg-bg-dark/40 px-3 py-2">
-          {VOZ_MODE_SLIDES.map((slide, index) => (
-            <span
-              key={slide.id}
-              className={`h-1.5 rounded-full transition-all ${
-                activeIndex === index
-                  ? "w-4 bg-voz-config"
-                  : "w-1.5 bg-border"
-              }`}
-              aria-hidden="true"
-            />
-          ))}
-          <span className="ml-1 text-[9px] font-semibold uppercase tracking-wide text-text-muted">
-            Deslizá ↔
-          </span>
         </div>
       </div>
     </div>
@@ -1224,9 +1445,7 @@ function VozRitmoPractice({
   ritmoPatternLength,
   ritmoBeatDurations,
   voiceSamples,
-  showToneToggle,
-  evaluarTono,
-  onSetEvaluarTono,
+  evaluateTone,
   detection,
   objectiveLabel,
   targetFrequency,
@@ -1236,7 +1455,7 @@ function VozRitmoPractice({
   cents,
   accuracy,
   historySamples,
-  holdTargetSeconds,
+  holdCalibre,
 }: {
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
@@ -1246,9 +1465,7 @@ function VozRitmoPractice({
   ritmoPatternLength: number;
   ritmoBeatDurations: MetronomeBeatDurationPattern;
   voiceSamples: VozRitmoVoiceSample[];
-  showToneToggle: boolean;
-  evaluarTono: boolean;
-  onSetEvaluarTono?: (value: boolean) => void;
+  evaluateTone: boolean;
   detection: NoteDetection | null;
   objectiveLabel: string;
   targetFrequency: number | null;
@@ -1258,9 +1475,8 @@ function VozRitmoPractice({
   cents: number;
   accuracy: VozAccuracy;
   historySamples: VozHistorySample[];
-  holdTargetSeconds: number;
+  holdCalibre?: VozCalibre;
 }) {
-  const showTone = !showToneToggle || evaluarTono;
   const now = useTimelineNow(ritmoPlaying && beatMarkers.length > 0);
   const livePhase =
     ritmoPlaying && beatMarkers.length > 0
@@ -1276,31 +1492,6 @@ function VozRitmoPractice({
 
   return (
     <>
-      {showToneToggle && onSetEvaluarTono ? (
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-[10px] border border-border bg-bg-card px-3 py-2">
-          <span className="text-sm font-semibold text-text-primary">
-            Evaluar tono
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={evaluarTono}
-            onClick={() => onSetEvaluarTono(!evaluarTono)}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-              evaluarTono
-                ? "border border-text-secondary bg-bg-card"
-                : "border border-border bg-bg-darker"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 size-6 rounded-full bg-white transition-transform ${
-                evaluarTono ? "left-[22px]" : "left-0.5"
-              }`}
-            />
-          </button>
-        </label>
-      ) : null}
-
       <div className="flex items-center justify-between gap-3">
         {ritmoPlaying && livePhase ? (
           <p
@@ -1340,8 +1531,14 @@ function VozRitmoPractice({
         voiceSamples={voiceSamples}
       />
 
-      {showTone ? (
+      {evaluateTone ? (
         <>
+          <DetectedNoteDisplay
+            detection={detection}
+            objectiveLabel={objectiveLabel}
+            targetFrequency={targetFrequency}
+            octaveExact={octaveExact}
+          />
           <PitchLadderBar
             targetNote={targetNote}
             cents={cents}
@@ -1358,6 +1555,7 @@ function VozRitmoPractice({
             detection={detection}
             accuracy={accuracy}
             cents={cents}
+            calibre={holdCalibre}
           />
         </>
       ) : null}
@@ -1365,9 +1563,107 @@ function VozRitmoPractice({
   );
 }
 
+function VozMelodiaPractice({
+  melodiaPlaying,
+  onToggleMelodiaPlaying,
+  beatMarkers,
+  melodiaBpm,
+  melodiaPatternLength,
+  melodiaBeatDuration,
+  detection,
+  objectiveLabel,
+  targetFrequency,
+  octaveExact,
+  targetNote,
+  targetOctave,
+  cents,
+  accuracy,
+  historySamples,
+  holdCalibre,
+}: {
+  melodiaPlaying: boolean;
+  onToggleMelodiaPlaying: () => void;
+  beatMarkers: VozRitmoBeatMarker[];
+  melodiaBpm: number;
+  melodiaPatternLength: number;
+  melodiaBeatDuration: MetronomeBeatDuration;
+  detection: NoteDetection | null;
+  objectiveLabel: string;
+  targetFrequency: number | null;
+  octaveExact: boolean;
+  targetNote: string;
+  targetOctave: number;
+  cents: number;
+  accuracy: VozAccuracy;
+  historySamples: VozHistorySample[];
+  holdCalibre: VozCalibre;
+}) {
+  const melodiaBeatPattern = useMemo(
+    () => buildMelodiaCompasState(melodiaPatternLength, melodiaBeatDuration).beatPattern,
+    [melodiaPatternLength, melodiaBeatDuration],
+  );
+  const melodiaBeatDurations = useMemo(
+    () => buildMelodiaCompasState(melodiaPatternLength, melodiaBeatDuration).beatDurations,
+    [melodiaPatternLength, melodiaBeatDuration],
+  );
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-text-muted">
+          Cantá cada nota del ciclo al ritmo marcado
+        </p>
+        <TapButton
+          type="button"
+          aria-label={melodiaPlaying ? "Detener melodía" : "Iniciar melodía"}
+          onClick={onToggleMelodiaPlaying}
+          className={`rounded-full px-4 py-2 text-sm font-bold ${
+            melodiaPlaying
+              ? "border border-text-secondary bg-bg-card text-text-primary"
+              : "border border-border bg-bg-card text-text-primary"
+          }`}
+        >
+          {melodiaPlaying ? "Detener" : "Iniciar"}
+        </TapButton>
+      </div>
+
+      <VozRitmoTimeline
+        beatMarkers={beatMarkers}
+        bpm={melodiaBpm}
+        beatPattern={melodiaBeatPattern}
+        patternLength={melodiaPatternLength}
+        beatDurations={melodiaBeatDurations}
+        isPlaying={melodiaPlaying}
+        voiceSamples={[]}
+      />
+
+      <DetectedNoteDisplay
+        detection={detection}
+        objectiveLabel={objectiveLabel}
+        targetFrequency={targetFrequency}
+        octaveExact={octaveExact}
+      />
+      <PitchHistoryChart
+        samples={historySamples}
+        active={melodiaPlaying}
+        mode="sostener"
+        targetNote={targetNote}
+        targetOctave={targetOctave}
+        octaveExact={octaveExact}
+        detection={detection}
+        accuracy={accuracy}
+        cents={cents}
+        calibre={holdCalibre}
+      />
+    </>
+  );
+}
+
 export type VozModeSlidesProps = {
   activeIndex: number;
   onChangeIndex: (index: number) => void;
+  onSetRitmoToneEvaluation: (mode: "none" | "fixed" | "perBeat") => void;
+  effectiveTarget: VozTarget;
   targetPicker: TargetPickerProps;
   detection: NoteDetection | null;
   objectiveLabel: string;
@@ -1404,13 +1700,27 @@ export type VozModeSlidesProps = {
   onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
-  ritmoEvaluarTono: boolean;
-  onSetRitmoEvaluarTono: (value: boolean) => void;
+  melodiaPlaying: boolean;
+  onToggleMelodiaPlaying: () => void;
+  melodiaBpm: number;
+  onSetMelodiaBpm: (value: number) => void;
+  melodiaPatternLength: number;
+  onSetMelodiaPatternLength: (value: number) => void;
+  melodiaBeatDuration: MetronomeBeatDuration;
+  onSetMelodiaBeatDuration: (value: MetronomeBeatDuration) => void;
+  melodiaNotePattern: VozNotaPattern;
+  onSetMelodiaNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
+  melodiaTapTempoTapCount: number;
+  onTapMelodiaTempo: () => void;
+  comboNotePattern: VozNotaPattern;
+  onSetComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
 };
 
 export function VozModeSlides({
   activeIndex,
   onChangeIndex,
+  onSetRitmoToneEvaluation,
+  effectiveTarget,
   targetPicker,
   detection,
   objectiveLabel,
@@ -1441,36 +1751,37 @@ export function VozModeSlides({
   onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
-  ritmoEvaluarTono,
-  onSetRitmoEvaluarTono,
+  melodiaPlaying,
+  onToggleMelodiaPlaying,
+  melodiaBpm,
+  onSetMelodiaBpm,
+  melodiaPatternLength,
+  onSetMelodiaPatternLength,
+  melodiaBeatDuration,
+  onSetMelodiaBeatDuration,
+  melodiaNotePattern,
+  onSetMelodiaNoteAtSlot,
+  melodiaTapTempoTapCount,
+  onTapMelodiaTempo,
+  comboNotePattern,
+  onSetComboNoteAtSlot,
 }: VozModeSlidesProps) {
-  const feedbackColor = getVozAccuracyColor(accuracy, centsFromTarget);
-  const slideId = VOZ_MODE_SLIDES[activeIndex]?.id ?? "encajar";
+  useEffect(() => {
+    const slideId = VOZ_MODE_SLIDES[activeIndex]?.id;
+
+    if (slideId === "combo") {
+      onSetRitmoToneEvaluation("perBeat");
+    } else if (slideId === "ritmo-nota") {
+      onSetRitmoToneEvaluation("fixed");
+    } else {
+      onSetRitmoToneEvaluation("none");
+    }
+  }, [activeIndex, onSetRitmoToneEvaluation]);
+
   const hasVoiceSignal = detection !== null;
   const holdAccuracy = useMemo(
     () => getVozAccuracy(centsFromTarget, hasVoiceSignal, holdCalibre),
     [centsFromTarget, hasVoiceSignal, holdCalibre],
-  );
-  const holdFeedbackLabel = useMemo(
-    () =>
-      getVozFeedbackLabel(holdAccuracy, centsFromTarget, {
-        octaveExact,
-        targetNote,
-        detectedNote: detection?.note,
-      }, holdCalibre),
-    [
-      holdAccuracy,
-      centsFromTarget,
-      octaveExact,
-      targetNote,
-      detection?.note,
-      holdCalibre,
-    ],
-  );
-  const holdFeedbackColor = getVozAccuracyColor(
-    holdAccuracy,
-    centsFromTarget,
-    holdCalibre,
   );
   const holdCalibreLabel =
     VOZ_CALIBRE_OPTIONS.find((option) => option.id === holdCalibre)?.label ??
@@ -1481,37 +1792,56 @@ export function VozModeSlides({
   );
   const sostenerConfigSummary = `${targetLabel} · ${holdCalibreLabel} · ${holdTargetSeconds} s`;
   const encajarConfigSummary = targetLabel;
-  const ritmoConfigSummary = `${targetLabel} · Ciclo de ${ritmoPatternLength} golpes · ${getBeatDurationPatternSummary(ritmoBeatDurations, ritmoPatternLength)} · ${ritmoBpm} BPM`;
+  const melodiaCompas = buildMelodiaCompasState(
+    melodiaPatternLength,
+    melodiaBeatDuration,
+  );
+  const melodiaConfigSummary = `${getNotaPatternSummary(
+    melodiaNotePattern,
+    melodiaPatternLength,
+    octaveExact,
+  )} · ${melodiaPatternLength} golpes · ${melodiaBpm} BPM`;
+  const ritmoConfigSummary = `Ciclo de ${ritmoPatternLength} golpes · ${getBeatDurationPatternSummary(ritmoBeatDurations, ritmoPatternLength)} · ${ritmoBpm} BPM`;
+  const ritmoNotaConfigSummary = `${targetLabel} · ${ritmoConfigSummary}`;
+  const comboConfigSummary = `${getNotaPatternSummary(
+    comboNotePattern,
+    ritmoPatternLength,
+    octaveExact,
+  )} · ${ritmoConfigSummary}`;
+  const practiceTargetNote = effectiveTarget.note;
+  const practiceTargetOctave = effectiveTarget.octave;
+  const practiceObjectiveLabel = formatTargetLabel(effectiveTarget, octaveExact);
 
-  return (
-    <ModeCarouselShell activeIndex={activeIndex} onChangeIndex={onChangeIndex}>
-      {slideId === "encajar" ? (
-        <div className="space-y-3">
-          <VozConfigSection
-            collapsible
-            collapsedSummary={encajarConfigSummary}
-          >
-            <TargetPicker {...targetPicker} collapsible={false} />
-          </VozConfigSection>
-          <VozPracticeSection subtitle="Cantá un pinchazo corto y soltá. Buscá caer en verde al empezar, sin sostener ni medir tiempo.">
-            <DetectedNoteDisplay
-              detection={detection}
-              objectiveLabel={objectiveLabel}
-              targetFrequency={targetFrequency}
-              octaveExact={octaveExact}
-            />
-            <PitchLadderBar
-              targetNote={targetNote}
-              cents={centsFromTarget}
-              accuracy={accuracy}
-              detectedNote={detection?.note ?? null}
-            />
-            <InstantAttemptsStrip attempts={instantAttempts} />
-          </VozPracticeSection>
-        </div>
-      ) : null}
-
-        {slideId === "sostener" ? (
+  function renderSlideContent(slideId: VozModeSlideId) {
+    switch (slideId) {
+      case "encajar":
+        return (
+          <div className="space-y-3">
+            <VozConfigSection
+              collapsible
+              collapsedSummary={encajarConfigSummary}
+            >
+              <TargetPicker {...targetPicker} collapsible={false} />
+            </VozConfigSection>
+            <VozPracticeSection subtitle="Cantá un pinchazo corto y soltá. Buscá caer en verde al empezar, sin sostener ni medir tiempo.">
+              <DetectedNoteDisplay
+                detection={detection}
+                objectiveLabel={objectiveLabel}
+                targetFrequency={targetFrequency}
+                octaveExact={octaveExact}
+              />
+              <PitchLadderBar
+                targetNote={targetNote}
+                cents={centsFromTarget}
+                accuracy={accuracy}
+                detectedNote={detection?.note ?? null}
+              />
+              <InstantAttemptsStrip attempts={instantAttempts} />
+            </VozPracticeSection>
+          </div>
+        );
+      case "sostener":
+        return (
           <div className="space-y-3">
             <VozConfigSection
               collapsible
@@ -1585,14 +1915,60 @@ export function VozModeSlides({
               />
             </VozPracticeSection>
           </div>
-        ) : null}
-
-        {slideId === "ritmo" ? (
+        );
+      case "melodia":
+        return (
+          <div className="space-y-3">
+            <MelodiaConfigSection
+              autoCollapseWhen={melodiaPlaying}
+              collapsedSummary={melodiaConfigSummary}
+              patternLength={melodiaPatternLength}
+              beatDuration={melodiaBeatDuration}
+              beatPattern={melodiaCompas.beatPattern}
+              bpm={melodiaBpm}
+              isPlaying={melodiaPlaying}
+              tapTempoTapCount={melodiaTapTempoTapCount}
+              vozNotaPatron={{
+                pattern: melodiaNotePattern,
+                octaveExact,
+                onSetOctaveExact: targetPicker.onSetOctaveExact,
+                onSetAtSlot: onSetMelodiaNoteAtSlot,
+              }}
+              onSetPatternLength={onSetMelodiaPatternLength}
+              onSetBeatDuration={onSetMelodiaBeatDuration}
+              onSetBpm={onSetMelodiaBpm}
+              onTapTempo={onTapMelodiaTempo}
+            />
+            <VozPracticeSection subtitle="Cantá la melodía del ciclo: cada golpe tiene su nota y el tiempo es uniforme.">
+              <VozMelodiaPractice
+                melodiaPlaying={melodiaPlaying}
+                onToggleMelodiaPlaying={onToggleMelodiaPlaying}
+                beatMarkers={beatMarkers}
+                melodiaBpm={melodiaBpm}
+                melodiaPatternLength={melodiaPatternLength}
+                melodiaBeatDuration={melodiaBeatDuration}
+                detection={detection}
+                objectiveLabel={practiceObjectiveLabel}
+                targetFrequency={targetFrequency}
+                octaveExact={octaveExact}
+                targetNote={practiceTargetNote}
+                targetOctave={practiceTargetOctave}
+                cents={centsFromTarget}
+                accuracy={accuracy}
+                historySamples={historySamples}
+                holdCalibre={holdCalibre}
+              />
+            </VozPracticeSection>
+          </div>
+        );
+      case "ritmo":
+        return (
           <div className="space-y-3">
             <RitmoConfigSection
+              compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
               autoCollapseWhen={ritmoPlaying}
-              prefix={<TargetPicker {...targetPicker} collapsible={false} />}
+              hideCompasHelp
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
               beatDurations={ritmoBeatDurations}
@@ -1606,7 +1982,7 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeSection subtitle="Seguí el ritmo: cantá en los tiempos marcados y guardá silencio en el resto.">
+            <VozPracticeSection subtitle="Seguí el ritmo: cantá en los tiempos marcados y guardá silencio en el resto. Sin evaluar tono.">
               <VozRitmoPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -1616,29 +1992,28 @@ export function VozModeSlides({
                 ritmoPatternLength={ritmoPatternLength}
                 ritmoBeatDurations={ritmoBeatDurations}
                 voiceSamples={ritmoVoiceSamples}
-                showToneToggle
-                evaluarTono={ritmoEvaluarTono}
-                onSetEvaluarTono={onSetRitmoEvaluarTono}
+                evaluateTone={false}
                 detection={detection}
-                objectiveLabel={objectiveLabel}
+                objectiveLabel={practiceObjectiveLabel}
                 targetFrequency={targetFrequency}
                 octaveExact={octaveExact}
-                targetNote={targetNote}
-                targetOctave={targetPicker.target.octave}
+                targetNote={practiceTargetNote}
+                targetOctave={practiceTargetOctave}
                 cents={centsFromTarget}
                 accuracy={accuracy}
                 historySamples={historySamples}
-                holdTargetSeconds={holdTargetSeconds}
               />
             </VozPracticeSection>
           </div>
-        ) : null}
-
-        {slideId === "combo" ? (
+        );
+      case "ritmo-nota":
+        return (
           <div className="space-y-3">
             <RitmoConfigSection
-              collapsedSummary={ritmoConfigSummary}
+              compasLayout="flat"
+              collapsedSummary={ritmoNotaConfigSummary}
               autoCollapseWhen={ritmoPlaying}
+              hideCompasHelp
               prefix={<TargetPicker {...targetPicker} collapsible={false} />}
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
@@ -1646,14 +2021,14 @@ export function VozModeSlides({
               bpm={ritmoBpm}
               isPlaying={ritmoPlaying}
               tapTempoTapCount={ritmoTapTempoTapCount}
-              patternLengthInputId="voz-ritmo-pattern-length"
+              patternLengthInputId="voz-ritmo-nota-pattern-length"
               onSetPatternLength={onSetRitmoPatternLength}
               onSetBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
               onSetBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeSection subtitle="Combiná ritmo y tono: seguí el patrón y mantené la nota cuando cantás.">
+            <VozPracticeSection subtitle="Patrón rítmico con una sola nota: seguí el ritmo y mantené el tono al cantar.">
               <VozRitmoPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -1663,8 +2038,7 @@ export function VozModeSlides({
                 ritmoPatternLength={ritmoPatternLength}
                 ritmoBeatDurations={ritmoBeatDurations}
                 voiceSamples={ritmoVoiceSamples}
-                showToneToggle={false}
-                evaluarTono
+                evaluateTone
                 detection={detection}
                 objectiveLabel={objectiveLabel}
                 targetFrequency={targetFrequency}
@@ -1674,11 +2048,73 @@ export function VozModeSlides({
                 cents={centsFromTarget}
                 accuracy={accuracy}
                 historySamples={historySamples}
-                holdTargetSeconds={holdTargetSeconds}
+                holdCalibre={holdCalibre}
               />
             </VozPracticeSection>
           </div>
-        ) : null}
-    </ModeCarouselShell>
+        );
+      case "combo":
+        return (
+          <div className="space-y-3">
+            <RitmoConfigSection
+              compasLayout="flat"
+              collapsedSummary={comboConfigSummary}
+              autoCollapseWhen={ritmoPlaying}
+              hideCompasHelp
+              vozNotaPatron={{
+                pattern: comboNotePattern,
+                octaveExact,
+                onSetOctaveExact: targetPicker.onSetOctaveExact,
+                onSetAtSlot: onSetComboNoteAtSlot,
+              }}
+              beatPattern={ritmoBeatPattern}
+              patternLength={ritmoPatternLength}
+              beatDurations={ritmoBeatDurations}
+              bpm={ritmoBpm}
+              isPlaying={ritmoPlaying}
+              tapTempoTapCount={ritmoTapTempoTapCount}
+              patternLengthInputId="voz-combo-pattern-length"
+              onSetPatternLength={onSetRitmoPatternLength}
+              onSetBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
+              onSetBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
+              onSetBpm={onSetRitmoBpm}
+              onTapTempo={onTapRitmoTempo}
+            />
+            <VozPracticeSection subtitle="Combiná ritmo y melodía: cada golpe tiene su nota y se evalúa el tono al cantar.">
+              <VozRitmoPractice
+                ritmoPlaying={ritmoPlaying}
+                onToggleRitmoPlaying={onToggleRitmoPlaying}
+                beatMarkers={beatMarkers}
+                ritmoBpm={ritmoBpm}
+                ritmoBeatPattern={ritmoBeatPattern}
+                ritmoPatternLength={ritmoPatternLength}
+                ritmoBeatDurations={ritmoBeatDurations}
+                voiceSamples={ritmoVoiceSamples}
+                evaluateTone
+                detection={detection}
+                objectiveLabel={practiceObjectiveLabel}
+                targetFrequency={targetFrequency}
+                octaveExact={octaveExact}
+                targetNote={practiceTargetNote}
+                targetOctave={practiceTargetOctave}
+                cents={centsFromTarget}
+                accuracy={accuracy}
+                historySamples={historySamples}
+                holdCalibre={holdCalibre}
+              />
+            </VozPracticeSection>
+          </div>
+        );
+    }
+  }
+
+  return (
+    <ModeCarouselShell
+      activeIndex={activeIndex}
+      onChangeIndex={onChangeIndex}
+      renderSlide={(index) =>
+        renderSlideContent(VOZ_MODE_SLIDES[index]!.id)
+      }
+    />
   );
 }

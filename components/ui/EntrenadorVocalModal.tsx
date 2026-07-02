@@ -3,6 +3,7 @@
 import { VozModeSlides } from "@/components/ui/entrenador-vocal/VozModeSlides";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { NoteDetection } from "@/lib/afinador";
+import type { RitmoToneEvaluation } from "@/hooks/useVoz";
 import {
   formatTargetLabel,
   type VozAccuracy,
@@ -17,14 +18,16 @@ import type {
   MetronomeBeatLevel,
   MetronomeBeatPattern,
 } from "@/lib/metronomo";
+import type { VozNotaPattern } from "@/lib/voz-nota-patron";
 import type {
   VozRitmoBeatMarker,
   VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
-import { ENTRENADOR_VOCAL_TAGLINE } from "@/lib/herramientas-product";
-import { Mic, X } from "lucide-react";
+import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import { Mic } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { VOZ_MODE_SLIDES } from "@/components/ui/entrenador-vocal/VozModeSlides";
 
 type EntrenadorVocalModalProps = {
   open: boolean;
@@ -51,9 +54,11 @@ type EntrenadorVocalModalProps = {
   holdCalibre: VozCalibre;
   onSetHoldCalibre: (value: VozCalibre) => void;
   celebrationKey: number;
+  effectiveTarget: VozTarget;
+  onSetRitmoToneEvaluation: (mode: RitmoToneEvaluation) => void;
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
-  onStopRitmo: () => void;
+  onStopRhythm: () => void;
   ritmoBpm: number;
   onSetRitmoBpm: (value: number) => void;
   ritmoBeatPattern: MetronomeBeatPattern;
@@ -72,6 +77,20 @@ type EntrenadorVocalModalProps = {
   onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
+  melodiaPlaying: boolean;
+  onToggleMelodiaPlaying: () => void;
+  melodiaBpm: number;
+  onSetMelodiaBpm: (value: number) => void;
+  melodiaPatternLength: number;
+  onSetMelodiaPatternLength: (value: number) => void;
+  melodiaBeatDuration: MetronomeBeatDuration;
+  onSetMelodiaBeatDuration: (value: MetronomeBeatDuration) => void;
+  melodiaNotePattern: VozNotaPattern;
+  onSetMelodiaNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
+  melodiaTapTempoTapCount: number;
+  onTapMelodiaTempo: () => void;
+  comboNotePattern: VozNotaPattern;
+  onSetComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
 };
 
 function MicConnectingPanel() {
@@ -130,6 +149,13 @@ function MicPermissionPanel({
   );
 }
 
+const RHYTHM_SLIDE_IDS = new Set([
+  "melodia",
+  "ritmo",
+  "ritmo-nota",
+  "combo",
+]);
+
 export default function EntrenadorVocalModal({
   open,
   onClose,
@@ -155,37 +181,53 @@ export default function EntrenadorVocalModal({
   holdCalibre,
   onSetHoldCalibre,
   celebrationKey,
+  effectiveTarget,
+  onSetRitmoToneEvaluation,
   ritmoPlaying,
   onToggleRitmoPlaying,
-  onStopRitmo,
+  onStopRhythm,
   ritmoBpm,
   onSetRitmoBpm,
   ritmoBeatPattern,
   ritmoPatternLength,
-  onSetRitmoPatternLength,
   ritmoBeatDurations,
+  onSetRitmoPatternLength,
   onSetRitmoBeatDurationAtSlot,
   onSetRitmoBeatLevelAtSlot,
   ritmoTapTempoTapCount,
   onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
+  melodiaPlaying,
+  onToggleMelodiaPlaying,
+  melodiaBpm,
+  onSetMelodiaBpm,
+  melodiaPatternLength,
+  onSetMelodiaPatternLength,
+  melodiaBeatDuration,
+  onSetMelodiaBeatDuration,
+  melodiaNotePattern,
+  onSetMelodiaNoteAtSlot,
+  melodiaTapTempoTapCount,
+  onTapMelodiaTempo,
+  comboNotePattern,
+  onSetComboNoteAtSlot,
 }: EntrenadorVocalModalProps) {
   const [activeModeIndex, setActiveModeIndex] = useState(0);
-  const [ritmoEvaluarTono, setRitmoEvaluarTono] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setActiveModeIndex(0);
-      setRitmoEvaluarTono(false);
     }
   }, [open]);
 
   useEffect(() => {
-    if (activeModeIndex < 2) {
-      onStopRitmo();
+    const slideId = VOZ_MODE_SLIDES[activeModeIndex]?.id;
+
+    if (!slideId || !RHYTHM_SLIDE_IDS.has(slideId)) {
+      onStopRhythm();
     }
-  }, [activeModeIndex, onStopRitmo]);
+  }, [activeModeIndex, onStopRhythm]);
 
   if (!open) {
     return null;
@@ -208,29 +250,12 @@ export default function EntrenadorVocalModal({
         aria-labelledby="entrenador-vocal-titulo"
         className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h2
-                id="entrenador-vocal-titulo"
-                className="text-lg font-extrabold text-accent"
-              >
-                Entrenador Vocal
-              </h2>
-              <p className="mt-1 text-xs leading-snug text-text-muted">
-                {ENTRENADOR_VOCAL_TAGLINE}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Cerrar entrenador vocal"
-              onClick={onClose}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
-            </button>
-          </div>
-        </header>
+        <ToolModalHeader
+          titleId="entrenador-vocal-titulo"
+          title="Entrenador Vocal"
+          closeAriaLabel="Cerrar entrenador vocal"
+          onClose={onClose}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col items-center touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-5">
           {!micReady ? (
@@ -247,6 +272,8 @@ export default function EntrenadorVocalModal({
             <VozModeSlides
               activeIndex={activeModeIndex}
               onChangeIndex={setActiveModeIndex}
+              onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
+              effectiveTarget={effectiveTarget}
               targetPicker={{
                 target,
                 onSetTarget,
@@ -282,8 +309,20 @@ export default function EntrenadorVocalModal({
               onTapRitmoTempo={onTapRitmoTempo}
               beatMarkers={beatMarkers}
               ritmoVoiceSamples={ritmoVoiceSamples}
-              ritmoEvaluarTono={ritmoEvaluarTono}
-              onSetRitmoEvaluarTono={setRitmoEvaluarTono}
+              melodiaPlaying={melodiaPlaying}
+              onToggleMelodiaPlaying={onToggleMelodiaPlaying}
+              melodiaBpm={melodiaBpm}
+              onSetMelodiaBpm={onSetMelodiaBpm}
+              melodiaPatternLength={melodiaPatternLength}
+              onSetMelodiaPatternLength={onSetMelodiaPatternLength}
+              melodiaBeatDuration={melodiaBeatDuration}
+              onSetMelodiaBeatDuration={onSetMelodiaBeatDuration}
+              melodiaNotePattern={melodiaNotePattern}
+              onSetMelodiaNoteAtSlot={onSetMelodiaNoteAtSlot}
+              melodiaTapTempoTapCount={melodiaTapTempoTapCount}
+              onTapMelodiaTempo={onTapMelodiaTempo}
+              comboNotePattern={comboNotePattern}
+              onSetComboNoteAtSlot={onSetComboNoteAtSlot}
             />
           )}
         </div>

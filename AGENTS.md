@@ -54,25 +54,20 @@ Documentación de dirección acordada. **No implementar** lo marcado como visió
 - Sin selector de instrumento ni samples: el timbre del click no aporta al objetivo.
 - Módulo estable; no sumar complejidad salvo bugs o mejoras menores de UX.
 
-#### Entrenador Vocal — estado actual (sin cambios por ahora)
+#### Entrenador Vocal — escalera de 6 modos (implementado)
 
-- Mantener el **carrusel horizontal** tal como está hoy (4 slides: Encajar, Sostener, Ritmo, Combo).
-- No reestructurar slides ni renombrar modos hasta decantar la idea en uso real.
-
-#### Entrenador Vocal — visión futura (referencia, no implementar aún)
-
-Escalera pedagógica propuesta para cuando se decida avanzar:
+Carrusel horizontal con seis slides:
 
 | Modo | Rol |
 |------|-----|
-| Encajar | Igual que hoy — pinchazo corto en una nota |
-| Sostener | Igual que hoy — una nota, mantenerla |
-| Melodía (nuevo) | Varias notas por ciclo, tiempo uniforme; foco en cambiar y sostener nota (sin cronómetro de meta) |
-| Ritmo | Patrón de tiempos; **sin** evaluar tono (evitar duplicar Ritmo-Nota) |
-| Ritmo-Nota | Hoy llamado Combo — patrón rítmico + **una** nota fija |
-| Combo (nuevo) | Patrón rítmico + **nota distinta en cada tiempo** |
+| Encajar | Pinchazo corto en una nota |
+| Sostener | Una nota, mantenerla con cronómetro |
+| Melodía | Varias notas por ciclo, tiempo uniforme; sin cronómetro de meta |
+| Ritmo | Patrón de tiempos; sin evaluar tono |
+| Ritmo-Nota | Patrón rítmico + una nota fija + evaluar tono |
+| Combo | Patrón rítmico + nota distinta en cada tiempo + evaluar tono |
 
-Agrupación visual posible más adelante (no obligatoria en v1 de la reestructura):
+Agrupación pedagógica:
 
 - **Tono**: Encajar → Sostener → Melodía
 - **Ritmo + voz**: Ritmo → Ritmo-Nota → Combo

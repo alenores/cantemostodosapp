@@ -89,7 +89,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     id: "compositor",
     label: "Compositor",
     icon: Music2,
-    iconColor: "var(--compositor-config)",
+    iconColor: "var(--voz-config)",
     kind: "compositor",
     section: "practica",
     ctaLabel: "Abrir",

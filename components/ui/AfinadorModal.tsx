@@ -9,7 +9,8 @@ import {
   GUITAR_STRINGS,
   type NoteDetection,
 } from "@/lib/afinador";
-import { Mic, X } from "lucide-react";
+import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import { Mic } from "lucide-react";
 import { createPortal } from "react-dom";
 
 type AfinadorModalProps = {
@@ -181,24 +182,12 @@ export default function AfinadorModal({
         aria-labelledby="afinador-titulo"
         className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
-          <div className="flex items-center gap-3">
-            <h2
-              id="afinador-titulo"
-              className="min-w-0 flex-1 text-lg font-extrabold text-accent"
-            >
-              Afinador
-            </h2>
-            <button
-              type="button"
-              aria-label="Cerrar afinador"
-              onClick={onClose}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
-            </button>
-          </div>
-        </header>
+        <ToolModalHeader
+          titleId="afinador-titulo"
+          title="Afinador"
+          closeAriaLabel="Cerrar afinador"
+          onClose={onClose}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-6">
           {!micReady ? (

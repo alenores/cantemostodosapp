@@ -15,6 +15,7 @@ import {
 } from "@/lib/metronomo";
 import type { VozTarget } from "@/lib/voz";
 import { clampTargetOctave } from "@/lib/voz";
+import { clampEventDurationSteps } from "@/lib/compositor-timeline-layout";
 
 export const COMPOSITOR_STORAGE_KEY = "compositor-piece-v2";
 export const COMPOSITOR_LEGACY_STORAGE_KEY = "compositor-piece-v1";
@@ -114,21 +115,13 @@ export function createCompositorEvent(
 function normalizeEvent(
   event: CompositorTrackEvent,
   gridSteps: number,
+  instrumentId: CompositorInstrumentId,
+  subdivisionsPerGolpe: number,
 ): CompositorTrackEvent {
-  const durationSteps = Math.max(
-    1,
-    Math.min(gridSteps, Math.round(event.durationSteps)),
-  );
-  const maxStart = Math.max(0, gridSteps - durationSteps);
-  const startStep = Math.max(
-    0,
-    Math.min(maxStart, Math.round(event.startStep)),
-  );
-
-  return {
+  const draft: CompositorTrackEvent = {
     id: event.id || createEventId(),
-    startStep,
-    durationSteps,
+    startStep: event.startStep,
+    durationSteps: event.durationSteps,
     level: event.level ?? "medio",
     note: {
       note: event.note?.note ?? "C",
@@ -137,15 +130,36 @@ function normalizeEvent(
     drumSound: event.drumSound ?? "kick",
     guitarArticulation: event.guitarArticulation ?? "pua",
   };
+
+  const durationSteps = clampEventDurationSteps(
+    instrumentId,
+    draft,
+    draft.durationSteps,
+    gridSteps,
+    subdivisionsPerGolpe,
+  );
+  const maxStart = Math.max(0, gridSteps - durationSteps);
+  const startStep = Math.max(
+    0,
+    Math.min(maxStart, Math.round(draft.startStep)),
+  );
+
+  return {
+    ...draft,
+    startStep,
+    durationSteps,
+  };
 }
 
 function normalizeTrackEvents(
   events: CompositorTrackEvent[],
   gridSteps: number,
+  instrumentId: CompositorInstrumentId,
+  subdivisionsPerGolpe: number,
 ): CompositorTrackEvent[] {
   const normalized = events
     .slice(0, COMPOSITOR_MAX_EVENTS_PER_TRACK)
-    .map((event) => normalizeEvent(event, gridSteps))
+    .map((event) => normalizeEvent(event, gridSteps, instrumentId, subdivisionsPerGolpe))
     .sort((left, right) => left.startStep - right.startStep);
 
   return normalized;
@@ -263,7 +277,12 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
     tracks: piece.tracks.map((track) => ({
       instrumentId: track.instrumentId,
       enabled: track.enabled,
-      events: normalizeTrackEvents(track.events, gridSteps),
+      events: normalizeTrackEvents(
+        track.events,
+        gridSteps,
+        track.instrumentId,
+        subdivisionsPerGolpe,
+      ),
     })),
   };
 }
@@ -388,6 +407,8 @@ export function addCompositorTrackEvent(
       events: normalizeTrackEvents(
         [...entry.events, createCompositorEvent({ ...partial, startStep })],
         gridSteps,
+        instrumentId,
+        piece.subdivisionsPerGolpe,
       ),
     };
   });
@@ -415,6 +436,8 @@ export function updateCompositorTrackEvent(
           event.id === eventId ? { ...event, ...patch, id: event.id } : event,
         ),
         gridSteps,
+        instrumentId,
+        piece.subdivisionsPerGolpe,
       ),
     };
   });

@@ -1,22 +1,58 @@
 "use client";
 
-import { TapButton } from "@/components/ui/TapFeedback";
+import {
+  COMPOSITOR_CAPA_TAB_ACTIVE_CLASS,
+} from "@/lib/compositor-instrument-colors";
 import {
   COMPOSITOR_INSTRUMENT_OPTIONS,
-  getCompositorTrack,
   type CompositorInstrumentId,
-  type CompositorPiece,
 } from "@/lib/compositor";
 import {
   COMPOSITOR_HELP_CAPA_EDITAR,
-  COMPOSITOR_HELP_CAPAS_REPRODUCIR,
   RITMO_LABEL_CAPAS,
 } from "@/lib/ritmo-terminologia";
-
 export type CompositorEditCapasConfig = {
   activeTrackId: CompositorInstrumentId;
   onSelectTrack: (instrumentId: CompositorInstrumentId) => void;
 };
+
+const CAPA_TAB_ACTIVE_CLASS = COMPOSITOR_CAPA_TAB_ACTIVE_CLASS;
+
+export function CompositorCapasTabs({
+  activeTrackId,
+  disabled = false,
+  onSelectTrack,
+}: CompositorEditCapasConfig & { disabled?: boolean }) {
+  return (
+    <div
+      className="flex min-w-0 flex-1 gap-1 rounded-full border border-border bg-bg-darker p-0.5"
+      role="tablist"
+      aria-label={`${RITMO_LABEL_CAPAS} · editar`}
+    >
+      {COMPOSITOR_INSTRUMENT_OPTIONS.map((option) => {
+        const isActive = activeTrackId === option.id;
+
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            disabled={disabled}
+            onClick={() => onSelectTrack(option.id)}
+            className={`min-w-0 flex-1 rounded-full px-1.5 py-1.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+              isActive
+                ? CAPA_TAB_ACTIVE_CLASS[option.id]
+                : "text-text-muted"
+            }`}
+          >
+            <span className="block truncate">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function CompositorCapasStrip({
   activeTrackId,
@@ -55,63 +91,6 @@ export function CompositorCapasStrip({
 
       <p className="mt-2 text-[10px] leading-snug text-text-muted">
         {COMPOSITOR_HELP_CAPA_EDITAR}
-      </p>
-    </div>
-  );
-}
-
-export type CompositorPlaybackCapasConfig = {
-  piece: CompositorPiece;
-  onToggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
-};
-
-export function CompositorPlaybackCapasStrip({
-  piece,
-  disabled = false,
-  onToggleTrack,
-}: CompositorPlaybackCapasConfig & { disabled?: boolean }) {
-  return (
-    <div className="rounded-[10px] border border-border bg-bg-card px-2.5 py-2.5">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-tool-practice">
-        {RITMO_LABEL_CAPAS} · reproducir
-      </p>
-
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
-        {COMPOSITOR_INSTRUMENT_OPTIONS.map((option) => {
-          const track = getCompositorTrack(piece, option.id);
-          const isOn = track.enabled;
-
-          return (
-            <TapButton
-              key={option.id}
-              type="button"
-              disabled={disabled}
-              onClick={() => onToggleTrack(option.id, !isOn)}
-              aria-label={`${isOn ? "Silenciar" : "Activar"} ${option.label} en la reproducción`}
-              aria-pressed={isOn}
-              className={`rounded-lg border px-2 py-2.5 text-center transition-colors disabled:opacity-50 ${
-                isOn
-                  ? "border-tool-practice/50 bg-tool-practice/15 text-text-primary"
-                  : "border-border/80 bg-bg-dark/80 text-text-muted"
-              }`}
-            >
-              <span className="block truncate text-[11px] font-bold leading-tight">
-                {option.label}
-              </span>
-              <span
-                className={`mt-1 block text-[9px] font-bold uppercase tracking-wide ${
-                  isOn ? "text-tool-practice" : "text-text-muted"
-                }`}
-              >
-                {isOn ? "Suena" : "Muda"}
-              </span>
-            </TapButton>
-          );
-        })}
-      </div>
-
-      <p className="mt-2 text-[10px] leading-snug text-text-muted">
-        {COMPOSITOR_HELP_CAPAS_REPRODUCIR}
       </p>
     </div>
   );

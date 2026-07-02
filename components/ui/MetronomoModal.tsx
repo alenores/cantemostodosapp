@@ -29,12 +29,12 @@ import {
   type MetronomeBeatPattern,
   type MetronomeHit,
 } from "@/lib/metronomo";
-import { METRONOMO_TAGLINE } from "@/lib/herramientas-product";
+import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import {
   formatRitmoConfigSummary,
   RITMO_LABEL_TEMPO,
 } from "@/lib/ritmo-terminologia";
-import { Mic, Play, Square, X } from "lucide-react";
+import { Mic, Play, Square } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -506,33 +506,17 @@ export default function MetronomoModal({
         aria-labelledby="metronomo-titulo"
         className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h2
-                id="metronomo-titulo"
-                className="text-lg font-extrabold text-accent"
-              >
-                Metrónomo
-              </h2>
-              <p className="mt-1 text-xs leading-snug text-text-muted">
-                {METRONOMO_TAGLINE}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Cerrar metrónomo"
-              onClick={onClose}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
-            </button>
-          </div>
-        </header>
+        <ToolModalHeader
+          titleId="metronomo-titulo"
+          title="Metrónomo"
+          closeAriaLabel="Cerrar metrónomo"
+          onClose={onClose}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
           <div className="space-y-3">
             <RitmoConfigSection
+              compasLayout="flat"
               collapsedSummary={configSummary}
               autoCollapseWhen={isPlaying}
               beatPattern={beatPattern}

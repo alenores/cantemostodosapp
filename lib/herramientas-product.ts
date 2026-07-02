@@ -25,15 +25,6 @@ export const HERRAMIENTAS_PRACTICE_PILLARS: HerramientaPracticePillar[] = [
   },
 ];
 
-export const METRONOMO_TAGLINE =
-  "Marcá el tempo y practicá tus tiempos. Sin instrumentos ni melodías: solo ritmo.";
-
-export const ENTRENADOR_VOCAL_TAGLINE =
-  "Entrená tu voz paso a paso: encajar, sostener, ritmo y combo en el carrusel.";
-
-export const COMPOSITOR_TAGLINE =
-  "Armá tus propios ritmos y melodías con varios instrumentos.";
-
 export const COMPOSITOR_COMING_SOON_TITLE = "Compositor en camino";
 
 export const COMPOSITOR_COMING_SOON_LEAD =

@@ -106,11 +106,18 @@ export function eventOverlapsStep(
 
 export function buildCompositorScheduledSounds(
   piece: CompositorPiece,
+  options?: {
+    onlyInstrumentId?: CompositorInstrumentId;
+  },
 ): CompositorScheduledSound[] {
   const sounds: CompositorScheduledSound[] = [];
 
   for (const track of piece.tracks) {
-    if (!track.enabled) {
+    if (options?.onlyInstrumentId) {
+      if (track.instrumentId !== options.onlyInstrumentId) {
+        continue;
+      }
+    } else if (!track.enabled) {
       continue;
     }
 

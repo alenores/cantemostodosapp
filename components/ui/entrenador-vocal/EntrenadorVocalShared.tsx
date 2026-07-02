@@ -24,6 +24,17 @@ export type TargetPickerProps = {
   onSetOctaveExact: (value: boolean) => void;
   autoCollapseWhen?: boolean;
   collapsible?: boolean;
+  disabled?: boolean;
+};
+
+export type TargetPickerBodyProps = {
+  target: VozTarget;
+  onSetTarget: (target: VozTarget) => void;
+  octaveExact: boolean;
+  onSetOctaveExact: (value: boolean) => void;
+  disabled?: boolean;
+  /** Si es false, la octava siempre es editable (sin toggle «octava exacta»). */
+  showOctaveExactToggle?: boolean;
 };
 
 function wrapIndex(index: number): number {
@@ -37,12 +48,14 @@ function shiftTargetNote(target: VozTarget, delta: number): VozTarget {
   };
 }
 
-export function NoteCarousel({
+function NoteCarousel({
   target,
   onSetTarget,
+  disabled = false,
 }: {
   target: VozTarget;
   onSetTarget: (target: VozTarget) => void;
+  disabled?: boolean;
 }) {
   const noteIndex = getNoteIndex(target.note);
   const safeIndex = noteIndex === -1 ? 0 : noteIndex;
@@ -61,8 +74,9 @@ export function NoteCarousel({
       <button
         type="button"
         aria-label="Nota anterior"
+        disabled={disabled}
         onClick={() => changeNote(-1)}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
       >
         <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
       </button>
@@ -102,8 +116,9 @@ export function NoteCarousel({
       <button
         type="button"
         aria-label="Nota siguiente"
+        disabled={disabled}
         onClick={() => changeNote(1)}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
       >
         <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
       </button>
@@ -111,27 +126,18 @@ export function NoteCarousel({
   );
 }
 
-export function TargetPicker({
+export function TargetPickerBody({
   target,
   onSetTarget,
   octaveExact,
   onSetOctaveExact,
-  autoCollapseWhen = false,
-  collapsible = true,
-}: TargetPickerProps) {
-  const [expanded, setExpanded] = useState(true);
-  const octaveIndex = VOZ_OCTAVES.indexOf(
-    clampTargetOctave(target.octave),
-  );
+  disabled = false,
+  showOctaveExactToggle = true,
+}: TargetPickerBodyProps) {
+  const octaveIndex = VOZ_OCTAVES.indexOf(clampTargetOctave(target.octave));
   const safeOctaveIndex = octaveIndex === -1 ? 0 : octaveIndex;
   const displayOctave = VOZ_OCTAVES[safeOctaveIndex]!;
-  const collapsedLabel = formatTargetLabel(target, octaveExact);
-
-  useEffect(() => {
-    if (autoCollapseWhen) {
-      setExpanded(false);
-    }
-  }, [autoCollapseWhen]);
+  const showOctaveControls = showOctaveExactToggle ? octaveExact : true;
 
   useEffect(() => {
     if (!octaveExact) {
@@ -153,74 +159,147 @@ export function TargetPicker({
     onSetTarget({ ...target, octave: VOZ_OCTAVES[nextIndex]! });
   }
 
-  const pickerContent = (
+  return (
     <>
-      <div className={collapsible ? "mt-3" : "mt-2"}>
-        <NoteCarousel target={target} onSetTarget={onSetTarget} />
-      </div>
+      <NoteCarousel
+        target={target}
+        onSetTarget={onSetTarget}
+        disabled={disabled}
+      />
 
-      <div className="mt-3 rounded-[10px] border border-border bg-bg-card/80 px-3 py-3">
-        <label className="flex cursor-pointer items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-text-primary">
-            Octava exacta
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={octaveExact}
-            onClick={() => onSetOctaveExact(!octaveExact)}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-              octaveExact
-                ? "bg-voz-config"
-                : "border border-border bg-bg-dark"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 size-6 rounded-full bg-white transition-transform ${
-                octaveExact ? "left-[22px]" : "left-0.5"
+      {showOctaveExactToggle ? (
+        <div className="mt-3 rounded-[10px] border border-border bg-bg-card/80 px-3 py-3">
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-text-primary">
+              Octava exacta
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={octaveExact}
+              disabled={disabled}
+              onClick={() => onSetOctaveExact(!octaveExact)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+                octaveExact
+                  ? "bg-voz-config"
+                  : "border border-border bg-bg-dark"
               }`}
-            />
-          </button>
-        </label>
+            >
+              <span
+                className={`absolute top-0.5 size-6 rounded-full bg-white transition-transform ${
+                  octaveExact ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </button>
+          </label>
 
-        {octaveExact ? (
-          <>
-            <p className="mb-2 mt-3 text-center text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-              Octava
-            </p>
-            <div className="flex items-center justify-center gap-1">
-              <button
-                type="button"
-                aria-label="Octava anterior"
-                disabled={safeOctaveIndex === 0}
-                onClick={() => changeOctave(-1)}
-                className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
-              >
-                <ChevronLeft
-                  className="size-4 text-text-primary"
-                  aria-hidden="true"
-                />
-              </button>
-              <span className="min-w-[3rem] text-center text-sm font-bold text-text-primary">
-                {displayOctave}ª
-              </span>
-              <button
-                type="button"
-                aria-label="Octava siguiente"
-                disabled={safeOctaveIndex === VOZ_OCTAVES.length - 1}
-                onClick={() => changeOctave(1)}
-                className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
-              >
-                <ChevronRight
-                  className="size-4 text-text-primary"
-                  aria-hidden="true"
-                />
-              </button>
-            </div>
-          </>
-        ) : null}
-      </div>
+          {showOctaveControls ? (
+            <>
+              <p className="mb-2 mt-3 text-center text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                Octava
+              </p>
+              <div className="flex items-center justify-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Octava anterior"
+                  disabled={disabled || safeOctaveIndex === 0}
+                  onClick={() => changeOctave(-1)}
+                  className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
+                >
+                  <ChevronLeft
+                    className="size-4 text-text-primary"
+                    aria-hidden="true"
+                  />
+                </button>
+                <span className="min-w-[3rem] text-center text-sm font-bold text-text-primary">
+                  {displayOctave}ª
+                </span>
+                <button
+                  type="button"
+                  aria-label="Octava siguiente"
+                  disabled={
+                    disabled || safeOctaveIndex === VOZ_OCTAVES.length - 1
+                  }
+                  onClick={() => changeOctave(1)}
+                  className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
+                >
+                  <ChevronRight
+                    className="size-4 text-text-primary"
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : showOctaveControls ? (
+        <div className="mt-3 rounded-[10px] border border-border bg-bg-card/80 px-3 py-3">
+          <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+            Octava
+          </p>
+          <div className="flex items-center justify-center gap-1">
+            <button
+              type="button"
+              aria-label="Octava anterior"
+              disabled={disabled || safeOctaveIndex === 0}
+              onClick={() => changeOctave(-1)}
+              className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
+            >
+              <ChevronLeft
+                className="size-4 text-text-primary"
+                aria-hidden="true"
+              />
+            </button>
+            <span className="min-w-[3rem] text-center text-sm font-bold text-text-primary">
+              {displayOctave}ª
+            </span>
+            <button
+              type="button"
+              aria-label="Octava siguiente"
+              disabled={disabled || safeOctaveIndex === VOZ_OCTAVES.length - 1}
+              onClick={() => changeOctave(1)}
+              className="flex size-8 items-center justify-center rounded-full border border-border bg-bg-dark disabled:opacity-40"
+            >
+              <ChevronRight
+                className="size-4 text-text-primary"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
+  );
+}
+
+export function TargetPicker({
+  target,
+  onSetTarget,
+  octaveExact,
+  onSetOctaveExact,
+  autoCollapseWhen = false,
+  collapsible = true,
+  disabled = false,
+}: TargetPickerProps) {
+  const [expanded, setExpanded] = useState(true);
+  const collapsedLabel = formatTargetLabel(target, octaveExact);
+
+  useEffect(() => {
+    if (autoCollapseWhen) {
+      setExpanded(false);
+    }
+  }, [autoCollapseWhen]);
+
+  const pickerContent = (
+    <div className={collapsible ? "mt-3" : "mt-2"}>
+      <TargetPickerBody
+        target={target}
+        onSetTarget={onSetTarget}
+        octaveExact={octaveExact}
+        onSetOctaveExact={onSetOctaveExact}
+        disabled={disabled}
+      />
+    </div>
   );
 
   if (!collapsible) {
@@ -238,8 +317,9 @@ export function TargetPicker({
     <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center justify-between gap-2 text-left"
+        className="flex w-full items-center justify-between gap-2 text-left disabled:opacity-40"
         aria-expanded={expanded}
       >
         <div className="min-w-0">

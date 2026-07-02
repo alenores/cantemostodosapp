@@ -120,6 +120,22 @@ export default function CancioneroHubPageClient({
     tapRitmoTempo: tapVozRitmoTempo,
     beatMarkers: vozBeatMarkers,
     ritmoVoiceSamples: vozRitmoVoiceSamples,
+    effectiveTarget: vozEffectiveTarget,
+    setRitmoToneEvaluation: setVozRitmoToneEvaluation,
+    melodiaPlaying: vozMelodiaPlaying,
+    toggleMelodiaPlaying: toggleVozMelodiaPlaying,
+    melodiaBpm: vozMelodiaBpm,
+    setMelodiaBpm: setVozMelodiaBpm,
+    melodiaPatternLength: vozMelodiaPatternLength,
+    setMelodiaPatternLength: setVozMelodiaPatternLength,
+    melodiaBeatDuration: vozMelodiaBeatDuration,
+    setMelodiaBeatDuration: setVozMelodiaBeatDuration,
+    melodiaNotePattern: vozMelodiaNotePattern,
+    setMelodiaNoteAtSlot: setVozMelodiaNoteAtSlot,
+    melodiaTapTempoTapCount: vozMelodiaTapTempoTapCount,
+    tapMelodiaTempo: tapVozMelodiaTempo,
+    comboNotePattern: vozComboNotePattern,
+    setComboNoteAtSlot: setVozComboNoteAtSlot,
     start: startVoz,
     stop: stopVoz,
   } = useVoz();
@@ -361,9 +377,11 @@ export default function CancioneroHubPageClient({
         holdCalibre={vozHoldCalibre}
         onSetHoldCalibre={setVozHoldCalibre}
         celebrationKey={vozCelebrationKey}
+        effectiveTarget={vozEffectiveTarget}
+        onSetRitmoToneEvaluation={setVozRitmoToneEvaluation}
         ritmoPlaying={vozRitmoPlaying}
         onToggleRitmoPlaying={toggleVozRitmoPlaying}
-        onStopRitmo={stopVozRitmo}
+        onStopRhythm={stopVozRitmo}
         ritmoBpm={vozRitmoBpm}
         onSetRitmoBpm={setVozRitmoBpm}
         ritmoBeatPattern={vozRitmoBeatPattern}
@@ -376,6 +394,20 @@ export default function CancioneroHubPageClient({
         onTapRitmoTempo={tapVozRitmoTempo}
         beatMarkers={vozBeatMarkers}
         ritmoVoiceSamples={vozRitmoVoiceSamples}
+        melodiaPlaying={vozMelodiaPlaying}
+        onToggleMelodiaPlaying={toggleVozMelodiaPlaying}
+        melodiaBpm={vozMelodiaBpm}
+        onSetMelodiaBpm={setVozMelodiaBpm}
+        melodiaPatternLength={vozMelodiaPatternLength}
+        onSetMelodiaPatternLength={setVozMelodiaPatternLength}
+        melodiaBeatDuration={vozMelodiaBeatDuration}
+        onSetMelodiaBeatDuration={setVozMelodiaBeatDuration}
+        melodiaNotePattern={vozMelodiaNotePattern}
+        onSetMelodiaNoteAtSlot={setVozMelodiaNoteAtSlot}
+        melodiaTapTempoTapCount={vozMelodiaTapTempoTapCount}
+        onTapMelodiaTempo={tapVozMelodiaTempo}
+        comboNotePattern={vozComboNotePattern}
+        onSetComboNoteAtSlot={setVozComboNoteAtSlot}
         onRequestMic={() => void startVoz()}
         onClose={() => {
           stopVoz();

@@ -1,6 +1,7 @@
 import type {
   CompositorDrumSound,
   CompositorGuitarArticulation,
+  CompositorInstrumentId,
   CompositorPiece,
   CompositorSlotNote,
 } from "@/lib/compositor";
@@ -411,6 +412,12 @@ export type CompositorEngine = {
     piece: CompositorPiece,
     onProgress: (cycleProgress: number) => void,
   ): void;
+  playSingleCycle(
+    piece: CompositorPiece,
+    instrumentId: CompositorInstrumentId,
+    onProgress: (cycleProgress: number) => void,
+    onComplete?: () => void,
+  ): void;
   stop(): void;
 };
 
@@ -424,6 +431,7 @@ export function createCompositorEngine(
   let loopStartAudioTime = 0;
   let scheduledUntilAudioTime = 0;
   let schedulerTimer: ReturnType<typeof setInterval> | null = null;
+  let previewEndTimer: ReturnType<typeof setTimeout> | null = null;
   let onProgress: ((cycleProgress: number) => void) | null = null;
   const progressTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
@@ -518,11 +526,31 @@ export function createCompositorEngine(
     }
   }
 
+  function clearPreviewEndTimer(): void {
+    if (previewEndTimer !== null) {
+      clearTimeout(previewEndTimer);
+      previewEndTimer = null;
+    }
+  }
+
+  function stopInternal(): void {
+    running = false;
+    onProgress = null;
+    piece = null;
+    scheduledUntilAudioTime = 0;
+
+    if (schedulerTimer !== null) {
+      clearInterval(schedulerTimer);
+      schedulerTimer = null;
+    }
+
+    clearPreviewEndTimer();
+    clearProgressTimeouts();
+  }
+
   return {
     start(nextPiece: CompositorPiece, nextOnProgress) {
-      if (running) {
-        clearProgressTimeouts();
-      }
+      stopInternal();
 
       piece = nextPiece;
       cycleDurationSeconds = getCompositorCycleDurationSeconds(nextPiece);
@@ -531,25 +559,57 @@ export function createCompositorEngine(
       loopStartAudioTime = audioContext.currentTime;
       scheduledUntilAudioTime = 0;
 
-      if (schedulerTimer !== null) {
-        clearInterval(schedulerTimer);
-      }
-
       scheduler();
       schedulerTimer = setInterval(scheduler, SCHEDULE_INTERVAL_MS);
     },
-    stop() {
-      running = false;
-      onProgress = null;
-      piece = null;
-      scheduledUntilAudioTime = 0;
+    playSingleCycle(
+      nextPiece,
+      instrumentId,
+      nextOnProgress,
+      onComplete,
+    ) {
+      stopInternal();
 
-      if (schedulerTimer !== null) {
-        clearInterval(schedulerTimer);
-        schedulerTimer = null;
+      piece = nextPiece;
+      cycleDurationSeconds = getCompositorCycleDurationSeconds(nextPiece);
+      onProgress = nextOnProgress;
+      running = true;
+      loopStartAudioTime = audioContext.currentTime;
+      scheduledUntilAudioTime = loopStartAudioTime + cycleDurationSeconds;
+
+      const sounds = buildCompositorScheduledSounds(nextPiece, {
+        onlyInstrumentId: instrumentId,
+      });
+
+      for (const sound of sounds) {
+        scheduleCompositorSound(
+          audioContext,
+          loopStartAudioTime + sound.cycleOffsetSeconds,
+          sound,
+          samples,
+        );
       }
 
-      clearProgressTimeouts();
+      const progressStep = cycleDurationSeconds / 24;
+
+      for (
+        let offset = 0;
+        offset <= cycleDurationSeconds;
+        offset += progressStep
+      ) {
+        const progress = Math.min(1, offset / cycleDurationSeconds);
+        scheduleProgressCallback(progress, loopStartAudioTime + offset);
+      }
+
+      previewEndTimer = setTimeout(() => {
+        previewEndTimer = null;
+        const complete = onComplete;
+        stopInternal();
+        complete?.();
+      }, cycleDurationSeconds * 1000 + 60);
+    },
+    stop() {
+      stopInternal();
     },
   };
 }

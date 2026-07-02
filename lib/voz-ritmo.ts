@@ -9,6 +9,8 @@ import {
   getMsPerBeat,
   METRONOME_BEAT_DURATION_DEFAULT,
   METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
+  METRONOME_PATTERN_LENGTH,
+  type MetronomeBeatDuration,
   type MetronomeBeatDurationPattern,
   type MetronomeBeatLevel,
   type MetronomeBeatPattern,
@@ -27,6 +29,7 @@ export type VozRitmoBeatMarker = {
 };
 
 export const VOZ_RITMO_PATTERN_LENGTH_DEFAULT = 8;
+export const VOZ_MELODIA_PATTERN_LENGTH_DEFAULT = 4;
 export const VOZ_RITMO_BEAT_PATTERN_DEFAULT: MetronomeBeatPattern = [
   "fuerte",
   "silencio",
@@ -39,6 +42,29 @@ export const VOZ_RITMO_BEAT_PATTERN_DEFAULT: MetronomeBeatPattern = [
   "silencio",
   "silencio",
 ];
+
+export function buildMelodiaSingPattern(
+  patternLength: number,
+): MetronomeBeatPattern {
+  const length = clampPatternLength(patternLength);
+  const pattern: MetronomeBeatLevel[] = [];
+
+  for (let index = 0; index < METRONOME_PATTERN_LENGTH; index += 1) {
+    pattern.push(index < length ? "fuerte" : "silencio");
+  }
+
+  return pattern;
+}
+
+export function buildUniformBeatDurations(
+  duration: MetronomeBeatDuration,
+): MetronomeBeatDurationPattern {
+  return Array.from(
+    { length: METRONOME_PATTERN_LENGTH },
+    () => duration,
+  );
+}
+
 export const VOZ_RITMO_TIMELINE_CYCLES = 4;
 /** Fracción del ancho a la izquierda de «ahora» (resto = futuro visible). */
 export const VOZ_RITMO_TIMELINE_PAST_RATIO = 0.42;

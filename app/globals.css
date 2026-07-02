@@ -76,17 +76,22 @@
   --tuner-cerca: #e8c547;
   --tuner-flat-sharp: #e05555;
 
-  /* Entrenador vocal — configuración (no juego ni acento naranja) */
+  /* Herramientas — configuración (metrónomo, entrenador vocal, compositor UI) */
   --voz-config: #7b9ab8;
   --voz-config-dim: rgba(123, 154, 184, 0.12);
   --voz-config-border: rgba(123, 154, 184, 0.38);
   --voz-config-bg: rgba(123, 154, 184, 0.08);
 
-  /* Compositor — creación musical */
-  --compositor-config: #b88bc9;
-  --compositor-config-dim: rgba(184, 139, 201, 0.14);
-  --compositor-config-border: rgba(184, 139, 201, 0.4);
-  --compositor-config-bg: rgba(184, 139, 201, 0.1);
+  /* Compositor — alias de la paleta celeste de configuración */
+  --compositor-config: var(--voz-config);
+  --compositor-config-dim: var(--voz-config-dim);
+  --compositor-config-border: var(--voz-config-border);
+  --compositor-config-bg: var(--voz-config-bg);
+
+  /* Compositor — bloques de timeline (solo instrumentos; no UI del módulo) */
+  --compositor-block-piano: #4a9fd4;
+  --compositor-block-guitarra: #c4a05a;
+  --compositor-block-bateria: #d9665a;
 
   /* Herramientas — práctica (contrasta con configuración) */
   --tool-practice: #5cb87a;
@@ -120,6 +125,9 @@
   --color-cola-proxima-border: var(--cola-proxima-border);
   --color-voz-config: var(--voz-config);
   --color-compositor-config: var(--compositor-config);
+  --color-compositor-block-piano: var(--compositor-block-piano);
+  --color-compositor-block-guitarra: var(--compositor-block-guitarra);
+  --color-compositor-block-bateria: var(--compositor-block-bateria);
   --color-tool-practice: var(--tool-practice);
   --font-sans: var(--font-app);
 }
@@ -989,6 +997,199 @@ html.splash-active body {
 @media (max-width: 768px) {
   nextjs-portal {
     display: none !important;
+  }
+}
+
+/* Compositor — bloques de instrumento en la línea de tiempo */
+.compositor-timeline-block {
+  --compositor-block-color: var(--compositor-block-piano);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, white 24%, transparent);
+  color: #fff;
+  transition:
+    box-shadow 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease,
+    opacity 140ms ease;
+}
+
+.compositor-timeline-block--piano {
+  --compositor-block-color: var(--compositor-block-piano);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--compositor-block-piano) 78%, white) 0%,
+    var(--compositor-block-piano) 100%
+  );
+}
+
+.compositor-timeline-block--guitarra {
+  --compositor-block-color: var(--compositor-block-guitarra);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--compositor-block-guitarra) 82%, white) 0%,
+    var(--compositor-block-guitarra) 100%
+  );
+  color: #1a1408;
+}
+
+.compositor-timeline-block--bateria {
+  --compositor-block-color: var(--compositor-block-bateria);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--compositor-block-bateria) 80%, white) 0%,
+    var(--compositor-block-bateria) 100%
+  );
+}
+
+.compositor-timeline-block--guitar-pua {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.compositor-timeline-block--guitar-pua::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    transparent 48%
+  );
+  pointer-events: none;
+}
+
+.compositor-timeline-block--guitar-rasguido {
+  border-bottom: 3px solid rgba(255, 255, 255, 0.42);
+  background:
+    repeating-linear-gradient(
+      -52deg,
+      transparent 0,
+      transparent 4px,
+      rgba(0, 0, 0, 0.14) 4px,
+      rgba(0, 0, 0, 0.14) 7px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--compositor-block-guitarra) 82%, white) 0%,
+      var(--compositor-block-guitarra) 100%
+    );
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.12);
+}
+
+.compositor-timeline-block--guitar-rasguido::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 38%;
+  border-radius: 0 0 inherit inherit;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  pointer-events: none;
+}
+
+.compositor-timeline-block--guitar-silencio,
+.compositor-timeline-block--drum-silencio {
+  border-style: dashed;
+  border-color: color-mix(in srgb, white 32%, transparent);
+  opacity: 0.52;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.07) 0,
+      rgba(255, 255, 255, 0.07) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    color-mix(in srgb, var(--compositor-block-color) 42%, var(--bg-darker));
+  color: color-mix(in srgb, white 72%, transparent);
+}
+
+.compositor-timeline-block--selected {
+  z-index: 10;
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.92);
+  filter: brightness(1.08) saturate(1.06);
+  animation: compositor-block-selected-pulse 1.55s ease-in-out infinite;
+}
+
+.compositor-timeline-block--dragging {
+  cursor: grabbing;
+  filter: brightness(1.12) saturate(1.08);
+}
+
+.compositor-timeline-block--mini {
+  border-radius: 3px;
+}
+
+.compositor-timeline-block--mini.compositor-timeline-block--selected {
+  transform: none;
+  animation: none;
+  filter: none;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.85),
+    0 0 0 2px color-mix(in srgb, var(--compositor-block-color) 55%, transparent);
+}
+
+.compositor-guitar-timbre-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.compositor-guitar-timbre-badge--pua {
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1.5px solid rgba(26, 20, 8, 0.45);
+  background: rgba(255, 255, 255, 0.72);
+  color: #1a1408;
+  font-size: 7px;
+}
+
+.compositor-guitar-timbre-badge--rasguido {
+  min-width: 1.15rem;
+  padding-inline: 2px;
+  border: 1px solid rgba(26, 20, 8, 0.35);
+  background: rgba(255, 255, 255, 0.55);
+  color: #1a1408;
+  font-size: 8px;
+  letter-spacing: -0.04em;
+}
+
+.compositor-guitar-timbre-badge--silencio {
+  font-size: 10px;
+  color: color-mix(in srgb, white 80%, transparent);
+}
+
+@keyframes compositor-block-selected-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.92),
+      0 0 0 4px color-mix(in srgb, var(--compositor-block-color) 42%, transparent),
+      0 4px 14px color-mix(in srgb, var(--compositor-block-color) 38%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 8px color-mix(in srgb, var(--compositor-block-color) 62%, transparent),
+      0 8px 24px color-mix(in srgb, var(--compositor-block-color) 52%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compositor-timeline-block--selected {
+    animation: none;
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 5px color-mix(in srgb, var(--compositor-block-color) 55%, transparent);
   }
 }
 

@@ -43,8 +43,10 @@ export type UseCompositorResult = {
   cycleBeatDurations: MetronomeBeatDurationPattern;
   bpm: number;
   isPlaying: boolean;
+  isPreviewingTrack: boolean;
   cycleProgress: number | null;
   tapTempoTapCount: number;
+  octaveExact: boolean;
   setActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
   setSelectedEventId: (eventId: string | null) => void;
   setBpm: (value: number) => void;
@@ -62,7 +64,9 @@ export type UseCompositorResult = {
   removeTrackEvent: (eventId: string, instrumentId?: CompositorInstrumentId) => void;
   toggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   tapTempo: () => void;
+  setOctaveExact: (value: boolean) => void;
   start: () => Promise<void>;
+  previewActiveTrack: () => Promise<void>;
   stop: () => void;
   resetPiece: () => void;
 };
@@ -75,12 +79,15 @@ export function useCompositor(): UseCompositorResult {
     useState<CompositorInstrumentId>("piano");
   const [selectedEventId, setSelectedEventIdState] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPreviewingTrack, setIsPreviewingTrack] = useState(false);
   const [cycleProgress, setCycleProgress] = useState<number | null>(null);
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
+  const [octaveExact, setOctaveExact] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   const pieceRef = useRef(piece);
   const isPlayingRef = useRef(false);
+  const isPreviewingRef = useRef(false);
   const tapTimestampsRef = useRef<number[]>([]);
   const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -97,8 +104,7 @@ export function useCompositor(): UseCompositorResult {
 
     if (stored) {
       setPieceState(stored);
-      const firstEvent = stored.tracks[0]?.events[0];
-      setSelectedEventIdState(firstEvent?.id ?? null);
+      setSelectedEventIdState(null);
     }
 
     setHydrated(true);
@@ -117,7 +123,7 @@ export function useCompositor(): UseCompositorResult {
       selectedEventId &&
       !activeTrack.events.some((event) => event.id === selectedEventId)
     ) {
-      setSelectedEventIdState(activeTrack.events[0]?.id ?? null);
+      setSelectedEventIdState(null);
     }
   }, [activeTrack.events, selectedEventId]);
 
@@ -131,7 +137,9 @@ export function useCompositor(): UseCompositorResult {
   const stop = useCallback(() => {
     engineRef.current?.stop();
     setIsPlaying(false);
+    setIsPreviewingTrack(false);
     isPlayingRef.current = false;
+    isPreviewingRef.current = false;
     setCycleProgress(null);
   }, []);
 
@@ -182,6 +190,10 @@ export function useCompositor(): UseCompositorResult {
   }, []);
 
   const start = useCallback(async () => {
+    if (isPreviewingRef.current) {
+      stop();
+    }
+
     try {
       await ensureAudioContext();
       setCycleProgress(0);
@@ -196,6 +208,37 @@ export function useCompositor(): UseCompositorResult {
       stop();
     }
   }, [ensureAudioContext, handleProgress, stop]);
+
+  const previewActiveTrack = useCallback(async () => {
+    if (isPlayingRef.current) {
+      return;
+    }
+
+    if (isPreviewingRef.current) {
+      stop();
+      return;
+    }
+
+    try {
+      await ensureAudioContext();
+      setCycleProgress(0);
+      setIsPreviewingTrack(true);
+      isPreviewingRef.current = true;
+
+      engineRef.current?.playSingleCycle(
+        pieceRef.current,
+        activeTrackId,
+        handleProgress,
+        () => {
+          setIsPreviewingTrack(false);
+          isPreviewingRef.current = false;
+          setCycleProgress(null);
+        },
+      );
+    } catch {
+      stop();
+    }
+  }, [activeTrackId, ensureAudioContext, handleProgress, stop]);
 
   const restartIfPlaying = useCallback(() => {
     if (!isPlayingRef.current) {
@@ -352,12 +395,24 @@ export function useCompositor(): UseCompositorResult {
     restartIfPlaying();
   }, [restartIfPlaying, updatePiece]);
 
+  const setActiveTrackId = useCallback((instrumentId: CompositorInstrumentId) => {
+    if (isPreviewingRef.current) {
+      engineRef.current?.stop();
+      setIsPreviewingTrack(false);
+      isPreviewingRef.current = false;
+      setCycleProgress(null);
+    }
+
+    setActiveTrackIdState(instrumentId);
+    setSelectedEventIdState(null);
+  }, []);
+
   const resetPiece = useCallback(() => {
     stop();
     const next = createDefaultCompositorPiece();
     setPieceState(next);
     setActiveTrackIdState("piano");
-    setSelectedEventIdState(next.tracks[0]?.events[0]?.id ?? null);
+    setSelectedEventIdState(null);
   }, [stop]);
 
   useEffect(() => {
@@ -378,9 +433,11 @@ export function useCompositor(): UseCompositorResult {
     cycleBeatDurations: piece.cycleBeatDurations,
     bpm: piece.bpm,
     isPlaying,
+    isPreviewingTrack,
     cycleProgress,
     tapTempoTapCount,
-    setActiveTrackId: setActiveTrackIdState,
+    octaveExact,
+    setActiveTrackId,
     setSelectedEventId: setSelectedEventIdState,
     setBpm,
     setCycleGolpes,
@@ -390,7 +447,9 @@ export function useCompositor(): UseCompositorResult {
     removeTrackEvent,
     toggleTrack,
     tapTempo,
+    setOctaveExact,
     start,
+    previewActiveTrack,
     stop,
     resetPiece,
   };

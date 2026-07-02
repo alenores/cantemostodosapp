@@ -1,9 +1,8 @@
 "use client";
 
 import { CompositorEditor } from "@/components/ui/compositor/CompositorEditor";
-import { COMPOSITOR_TAGLINE } from "@/lib/herramientas-product";
+import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import type { UseCompositorResult } from "@/hooks/useCompositor";
-import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 
 type CompositorModalProps = {
@@ -21,8 +20,10 @@ export default function CompositorModal({
   cycleBeatDurations,
   bpm,
   isPlaying,
+  isPreviewingTrack,
   cycleProgress,
   tapTempoTapCount,
+  octaveExact,
   setActiveTrackId,
   setSelectedEventId,
   setBpm,
@@ -33,7 +34,9 @@ export default function CompositorModal({
   removeTrackEvent,
   toggleTrack,
   tapTempo,
+  setOctaveExact,
   start,
+  previewActiveTrack,
   stop,
   resetPiece,
 }: CompositorModalProps) {
@@ -60,29 +63,12 @@ export default function CompositorModal({
         aria-labelledby="compositor-titulo"
         className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
-        <header className="shrink-0 border-b border-border bg-bg-dark px-4 py-3">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h2
-                id="compositor-titulo"
-                className="text-lg font-extrabold text-compositor-config"
-              >
-                Compositor
-              </h2>
-              <p className="mt-1 text-xs leading-snug text-text-muted">
-                {COMPOSITOR_TAGLINE}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Cerrar compositor"
-              onClick={handleClose}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
-            </button>
-          </div>
-        </header>
+        <ToolModalHeader
+          titleId="compositor-titulo"
+          title="Compositor"
+          closeAriaLabel="Cerrar compositor"
+          onClose={handleClose}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
           <CompositorEditor
@@ -93,8 +79,11 @@ export default function CompositorModal({
             cycleBeatDurations={cycleBeatDurations}
             bpm={bpm}
             isPlaying={isPlaying}
+            isPreviewingTrack={isPreviewingTrack}
             cycleProgress={cycleProgress}
             tapTempoTapCount={tapTempoTapCount}
+            octaveExact={octaveExact}
+            onSetOctaveExact={setOctaveExact}
             onSetActiveTrackId={setActiveTrackId}
             onSetSelectedEventId={setSelectedEventId}
             onToggleTrack={toggleTrack}
@@ -106,6 +95,7 @@ export default function CompositorModal({
             onRemoveTrackEvent={removeTrackEvent}
             onTapTempo={tapTempo}
             onStart={() => void start()}
+            onPreviewActiveTrack={() => void previewActiveTrack()}
             onStop={stop}
             onReset={resetPiece}
           />

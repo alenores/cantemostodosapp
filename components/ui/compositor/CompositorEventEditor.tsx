@@ -57,9 +57,7 @@ type CompositorEventEditorProps = {
   piece: CompositorPiece;
   instrumentId: CompositorInstrumentId;
   event: CompositorTrackEvent;
-  octaveExact: boolean;
   disabled?: boolean;
-  onSetOctaveExact: (value: boolean) => void;
   onUpdateEvent: (patch: Partial<CompositorTrackEvent>) => void;
 };
 
@@ -67,9 +65,7 @@ export function CompositorEventEditor({
   piece,
   instrumentId,
   event,
-  octaveExact,
   disabled = false,
-  onSetOctaveExact,
   onUpdateEvent,
 }: CompositorEventEditorProps) {
   const gridSteps = getCompositorGridSteps(piece);
@@ -233,9 +229,7 @@ export function CompositorEventEditor({
             embedded
             slotIndex={event.startStep}
             note={event.note}
-            octaveExact={octaveExact}
             disabled={disabled}
-            onSetOctaveExact={onSetOctaveExact}
             onSetNote={(note: CompositorSlotNote) =>
               onUpdateEvent({
                 note: clampCompositorNoteOctaves(note, instrumentId),

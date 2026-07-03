@@ -23,7 +23,6 @@ export default function CompositorModal({
   isPreviewingTrack,
   cycleProgress,
   tapTempoTapCount,
-  octaveExact,
   setActiveTrackId,
   setSelectedEventId,
   setBpm,
@@ -34,7 +33,6 @@ export default function CompositorModal({
   removeTrackEvent,
   toggleTrack,
   tapTempo,
-  setOctaveExact,
   start,
   previewActiveTrack,
   stop,
@@ -82,8 +80,6 @@ export default function CompositorModal({
             isPreviewingTrack={isPreviewingTrack}
             cycleProgress={cycleProgress}
             tapTempoTapCount={tapTempoTapCount}
-            octaveExact={octaveExact}
-            onSetOctaveExact={setOctaveExact}
             onSetActiveTrackId={setActiveTrackId}
             onSetSelectedEventId={setSelectedEventId}
             onToggleTrack={toggleTrack}

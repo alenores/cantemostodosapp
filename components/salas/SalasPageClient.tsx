@@ -75,7 +75,7 @@ export default function SalasPageClient({
             role="status"
           >
             <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-            Sin conexión · las salas necesitan internet. Usá Home para tocar solo.
+            Sin conexión · las salas necesitan internet. Usá Individual para tocar solo.
           </p>
         )}
 

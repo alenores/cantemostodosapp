@@ -438,7 +438,7 @@ export default function HomePageShell() {
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
             onBuscar={() => setBuscadorOpen(true)}
-            onAfinador={() => navigateWithProgress("/cancionero")}
+            onAfinador={() => navigateWithProgress("/")}
           />
 
           <AutoScrollControl

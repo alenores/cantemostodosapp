@@ -62,6 +62,18 @@ export function rmsToBarHeightPercent(rms: number): number {
   return 18 + normalized * 82;
 }
 
+export function levelPercentToFilledSegments(
+  levelPercent: number,
+  segmentCount: number,
+): number {
+  const clamped = Math.max(0, Math.min(100, levelPercent));
+  if (clamped <= 0 || segmentCount <= 0) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil((clamped / 100) * segmentCount));
+}
+
 export function getDinamicaComplianceColor(
   compliance: VozDinamicaCompliance,
 ): string {

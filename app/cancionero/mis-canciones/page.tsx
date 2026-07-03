@@ -11,7 +11,7 @@ export default async function MisCancionesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/cancionero");
+    redirect("/");
   }
 
   return <MisCancionesPageClient />;

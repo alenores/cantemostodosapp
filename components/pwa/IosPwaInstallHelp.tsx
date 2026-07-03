@@ -55,7 +55,7 @@ function InstallBannerToggle({
       <AppLogoMark size={36} className="rounded-lg" />
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold leading-snug text-text-primary">
-          Instalá la app para uso sin conexión
+          Instalá la app
         </p>
         <p className="m-0 text-[10px] leading-snug text-text-muted">
           Seguí estos 3 pasos:

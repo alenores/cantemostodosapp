@@ -11,7 +11,7 @@ export default function OfflinePage() {
       <h1 className="text-xl font-extrabold text-text-primary">Sin conexión</h1>
       <p className="max-w-sm text-sm text-text-muted">
         Abrí la app con WiFi al menos una vez. Después, desde Home o
-        Herramientas podés usar la copia local del celular sin internet.
+        Individual podés usar la copia local del celular sin internet.
       </p>
     </div>
   );

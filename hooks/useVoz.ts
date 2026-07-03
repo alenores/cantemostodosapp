@@ -13,6 +13,7 @@ import {
   buildUniformBeatDurations,
   type VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
+import { getPlaybackNow } from "@/lib/voz-ritmo-audio";
 import {
   computeEnTonoHoldMs,
   getVozAccuracy,
@@ -26,8 +27,12 @@ import {
   VOZ_CALIBRE_DEFAULT,
   VOZ_INSTANT_ATTEMPTS_MAX,
   VOZ_OCTAVAS_NOTE_DURATION_DEFAULT,
+  VOZ_OCTAVAS_PITCH_MODE_DEFAULT,
+  VOZ_OCTAVAS_SCALE_REPETITIONS_DEFAULT,
   clampHoldTargetSeconds,
   clampOctavasNoteDurationSeconds,
+  clampOctavasScaleRepetitions,
+  type VozOctavasPitchMode,
   instantAttemptResultFromAccuracy,
   mergeInstantAttemptAccuracy,
   type VozAccuracy,
@@ -45,6 +50,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const VOZ_BURST_SILENCE_END_MS = 140;
+const VOZ_ATTEMPTS_ARM_DELAY_MS = 450;
 
 export type RitmoToneEvaluation = "none" | "fixed" | "perBeat";
 
@@ -52,7 +58,6 @@ export function useVoz() {
   const afinador = useAfinador({ profile: "vocal" });
   const ritmo = useVozRitmo();
   const [target, setTarget] = useState<VozTarget>(VOZ_DEFAULT_TARGET);
-  const [octaveExact, setOctaveExact] = useState(false);
   const [holdTargetSeconds, setHoldTargetSecondsState] = useState(
     VOZ_HOLD_TARGET_DEFAULT,
   );
@@ -61,6 +66,13 @@ export function useVoz() {
     useState(VOZ_OCTAVAS_NOTE_DURATION_DEFAULT);
   const setOctavasNoteDurationSeconds = useCallback((value: number) => {
     setOctavasNoteDurationSecondsState(clampOctavasNoteDurationSeconds(value));
+  }, []);
+  const [octavasPitchMode, setOctavasPitchModeState] =
+    useState<VozOctavasPitchMode>(VOZ_OCTAVAS_PITCH_MODE_DEFAULT);
+  const [octavasScaleRepetitions, setOctavasScaleRepetitionsState] =
+    useState(VOZ_OCTAVAS_SCALE_REPETITIONS_DEFAULT);
+  const setOctavasScaleRepetitions = useCallback((value: number) => {
+    setOctavasScaleRepetitionsState(clampOctavasScaleRepetitions(value));
   }, []);
   const [dynamicsEvaluation, setDynamicsEvaluation] = useState(false);
   const setHoldTargetSeconds = useCallback((value: number) => {
@@ -118,6 +130,160 @@ export function useVoz() {
   const inBurstRef = useRef(false);
   const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
+  const attemptsArmedRef = useRef(false);
+  const attemptsArmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const [tonePracticeActive, setTonePracticeActive] = useState(false);
+  const [ritmoMicActive, setRitmoMicActive] = useState(false);
+  const [melodiaMicActive, setMelodiaMicActive] = useState(false);
+  const pendingTonePracticeRef = useRef(false);
+  const pendingRitmoMicRef = useRef(false);
+  const pendingMelodiaMicRef = useRef(false);
+  const prevRitmoPlayingRef = useRef(ritmo.ritmoPlaying);
+  const prevMelodiaPlayingRef = useRef(ritmo.melodiaPlaying);
+
+  const practiceMicActive =
+    tonePracticeActive || ritmoMicActive || melodiaMicActive;
+
+  useEffect(() => {
+    if (!practiceMicActive) {
+      afinador.stopListening();
+      return;
+    }
+
+    void afinador.start();
+  }, [practiceMicActive, afinador.start, afinador.stopListening]);
+
+  useEffect(() => {
+    if (
+      !practiceMicActive ||
+      afinador.micReady ||
+      afinador.micStarting
+    ) {
+      return;
+    }
+
+    void afinador.start();
+  }, [
+    practiceMicActive,
+    afinador.micReady,
+    afinador.micStarting,
+    afinador.start,
+  ]);
+
+  const stopTonePractice = useCallback(() => {
+    setTonePracticeActive(false);
+  }, []);
+
+  const toggleTonePractice = useCallback(() => {
+    if (!tonePracticeActive && !afinador.micPermissionGranted) {
+      pendingTonePracticeRef.current = true;
+      void afinador.requestPermission();
+      return;
+    }
+
+    setTonePracticeActive((previous) => !previous);
+  }, [afinador.micPermissionGranted, afinador.requestPermission, tonePracticeActive]);
+
+  const toggleRitmoPlaying = useCallback(() => {
+    ritmo.toggleRitmoPlaying();
+  }, [ritmo.toggleRitmoPlaying]);
+
+  const toggleMelodiaPlaying = useCallback(() => {
+    ritmo.toggleMelodiaPlaying();
+  }, [ritmo.toggleMelodiaPlaying]);
+
+  const toggleRitmoMic = useCallback(() => {
+    if (!ritmoMicActive && !afinador.micPermissionGranted) {
+      pendingRitmoMicRef.current = true;
+      void afinador.requestPermission();
+      return;
+    }
+
+    setRitmoMicActive((previous) => {
+      const next = !previous;
+      if (next && !ritmo.ritmoPlaying) {
+        ritmo.startRitmo();
+      }
+      return next;
+    });
+  }, [
+    ritmoMicActive,
+    afinador.micPermissionGranted,
+    afinador.requestPermission,
+    ritmo.ritmoPlaying,
+    ritmo.startRitmo,
+  ]);
+
+  const toggleMelodiaMic = useCallback(() => {
+    if (!melodiaMicActive && !afinador.micPermissionGranted) {
+      pendingMelodiaMicRef.current = true;
+      void afinador.requestPermission();
+      return;
+    }
+
+    setMelodiaMicActive((previous) => {
+      const next = !previous;
+      if (next && !ritmo.melodiaPlaying) {
+        ritmo.startMelodia();
+      }
+      return next;
+    });
+  }, [
+    melodiaMicActive,
+    afinador.micPermissionGranted,
+    afinador.requestPermission,
+    ritmo.melodiaPlaying,
+    ritmo.startMelodia,
+  ]);
+
+  useEffect(() => {
+    if (!afinador.micPermissionGranted) {
+      if (
+        afinador.micStarting ||
+        !(
+          pendingTonePracticeRef.current ||
+          pendingRitmoMicRef.current ||
+          pendingMelodiaMicRef.current
+        )
+      ) {
+        return;
+      }
+
+      void afinador.requestPermission();
+      return;
+    }
+
+    if (pendingTonePracticeRef.current) {
+      pendingTonePracticeRef.current = false;
+      setTonePracticeActive(true);
+    }
+
+    if (pendingRitmoMicRef.current) {
+      pendingRitmoMicRef.current = false;
+      setRitmoMicActive(true);
+      if (!ritmo.ritmoPlaying) {
+        ritmo.startRitmo();
+      }
+    }
+
+    if (pendingMelodiaMicRef.current) {
+      pendingMelodiaMicRef.current = false;
+      setMelodiaMicActive(true);
+      if (!ritmo.melodiaPlaying) {
+        ritmo.startMelodia();
+      }
+    }
+  }, [
+    afinador.micPermissionGranted,
+    afinador.micStarting,
+    afinador.requestPermission,
+    ritmo.melodiaPlaying,
+    ritmo.ritmoPlaying,
+    ritmo.startMelodia,
+    ritmo.startRitmo,
+  ]);
 
   const clearRitmoVoiceSamples = useCallback(() => {
     lastRitmoVoiceSampleAtRef.current = 0;
@@ -136,9 +302,22 @@ export function useVoz() {
   }, []);
 
   const clearInstantAttempts = useCallback(() => {
+    if (attemptsArmTimeoutRef.current !== null) {
+      window.clearTimeout(attemptsArmTimeoutRef.current);
+      attemptsArmTimeoutRef.current = null;
+    }
+
     inBurstRef.current = false;
     burstBestAccuracyRef.current = "lejos";
+    attemptsArmedRef.current = false;
     setInstantAttempts([]);
+
+    attemptsArmTimeoutRef.current = window.setTimeout(() => {
+      attemptsArmTimeoutRef.current = null;
+      inBurstRef.current = false;
+      burstBestAccuracyRef.current = "lejos";
+      attemptsArmedRef.current = true;
+    }, VOZ_ATTEMPTS_ARM_DELAY_MS);
   }, []);
 
   const effectiveTarget = useMemo((): VozTarget => {
@@ -218,9 +397,9 @@ export function useVoz() {
     return resolveTargetComparison(
       afinador.detection.frequency,
       effectiveTarget,
-      octaveExact,
+      true,
     );
-  }, [afinador.detection, effectiveTarget, octaveExact]);
+  }, [afinador.detection, effectiveTarget]);
 
   const centsFromTarget = comparison?.cents ?? null;
   const targetFrequency = comparison?.referenceFrequency ?? null;
@@ -237,17 +416,48 @@ export function useVoz() {
   const feedbackLabel = useMemo(
     () =>
       getVozFeedbackLabel(accuracy, centsFromTarget ?? 0, {
-        octaveExact,
+        octaveExact: true,
         targetNote: effectiveTarget.note,
         detectedNote: afinador.detection?.note,
       }),
-    [accuracy, centsFromTarget, octaveExact, effectiveTarget.note, afinador.detection?.note],
+    [accuracy, centsFromTarget, effectiveTarget.note, afinador.detection?.note],
   );
 
   useEffect(() => {
     clearHistory();
     clearInstantAttempts();
-  }, [target.note, target.octave, octaveExact, clearHistory, clearInstantAttempts]);
+  }, [target.note, target.octave, clearHistory, clearInstantAttempts]);
+
+  useEffect(() => {
+    if (ritmoToneEvaluation === "perBeat") {
+      ritmo.setRitmoPlaybackNotes(
+        getActiveNotaSlice(
+          ritmo.comboNotePattern,
+          ritmo.ritmoPatternLength,
+        ),
+      );
+      ritmo.setRitmoPlaybackDynamicsOnly(true);
+      return;
+    }
+
+    if (ritmoToneEvaluation === "fixed") {
+      ritmo.setRitmoPlaybackNotes(
+        Array.from({ length: ritmo.ritmoPatternLength }, () => target),
+      );
+      ritmo.setRitmoPlaybackDynamicsOnly(false);
+      return;
+    }
+
+    ritmo.setRitmoPlaybackNotes(null);
+    ritmo.setRitmoPlaybackDynamicsOnly(false);
+  }, [
+    ritmoToneEvaluation,
+    ritmo.comboNotePattern,
+    ritmo.ritmoPatternLength,
+    ritmo.setRitmoPlaybackNotes,
+    ritmo.setRitmoPlaybackDynamicsOnly,
+    target,
+  ]);
 
   useEffect(() => {
     clearHistory();
@@ -297,6 +507,10 @@ export function useVoz() {
 
   useEffect(() => {
     if (!afinador.micReady) {
+      return;
+    }
+
+    if (!attemptsArmedRef.current) {
       return;
     }
 
@@ -370,6 +584,22 @@ export function useVoz() {
   }, [historySamples, holdTargetSeconds, holdCalibre]);
 
   useEffect(() => {
+    if (prevRitmoPlayingRef.current && !ritmo.ritmoPlaying) {
+      setRitmoMicActive(false);
+    }
+
+    prevRitmoPlayingRef.current = ritmo.ritmoPlaying;
+  }, [ritmo.ritmoPlaying]);
+
+  useEffect(() => {
+    if (prevMelodiaPlayingRef.current && !ritmo.melodiaPlaying) {
+      setMelodiaMicActive(false);
+    }
+
+    prevMelodiaPlayingRef.current = ritmo.melodiaPlaying;
+  }, [ritmo.melodiaPlaying]);
+
+  useEffect(() => {
     if (!ritmo.ritmoPlaying && !ritmo.melodiaPlaying) {
       clearRitmoVoiceSamples();
       clearDinamicaVoiceSamples();
@@ -382,14 +612,15 @@ export function useVoz() {
   ]);
 
   useEffect(() => {
-    const rhythmActive = ritmo.ritmoPlaying || ritmo.melodiaPlaying;
+    const rhythmMicActive = ritmoMicActive || melodiaMicActive;
+    const rhythmPlaying = ritmo.ritmoPlaying || ritmo.melodiaPlaying;
 
-    if (!rhythmActive || !afinador.micReady) {
+    if (!rhythmPlaying || !rhythmMicActive || !afinador.micReady) {
       return;
     }
 
     const sampleRitmoVoice = () => {
-      const now = performance.now();
+      const now = getPlaybackNow();
       const beatMarkers = beatMarkersRef.current;
 
       if (beatMarkers.length === 0) {
@@ -504,19 +735,37 @@ export function useVoz() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [ritmo.ritmoPlaying, ritmo.melodiaPlaying, afinador.micReady]);
+  }, [
+    ritmo.ritmoPlaying,
+    ritmo.melodiaPlaying,
+    ritmoMicActive,
+    melodiaMicActive,
+    afinador.micReady,
+  ]);
 
   const stop = useCallback(() => {
     ritmo.stopRitmo();
+    setTonePracticeActive(false);
+    setRitmoMicActive(false);
+    setMelodiaMicActive(false);
+    pendingTonePracticeRef.current = false;
+    pendingRitmoMicRef.current = false;
+    pendingMelodiaMicRef.current = false;
     clearHistory();
-    clearInstantAttempts();
+    if (attemptsArmTimeoutRef.current !== null) {
+      window.clearTimeout(attemptsArmTimeoutRef.current);
+      attemptsArmTimeoutRef.current = null;
+    }
+    inBurstRef.current = false;
+    burstBestAccuracyRef.current = "lejos";
+    attemptsArmedRef.current = false;
+    setInstantAttempts([]);
     clearRitmoVoiceSamples();
     clearDinamicaVoiceSamples();
     afinador.stop();
   }, [
     afinador.stop,
     clearHistory,
-    clearInstantAttempts,
     clearRitmoVoiceSamples,
     clearDinamicaVoiceSamples,
     ritmo.stopRitmo,
@@ -526,16 +775,27 @@ export function useVoz() {
     ...afinador,
     ...ritmo,
     stop,
+    toggleRitmoPlaying,
+    toggleMelodiaPlaying,
+    ritmoMicActive,
+    toggleRitmoMic,
+    melodiaMicActive,
+    toggleMelodiaMic,
+    tonePracticeActive,
+    toggleTonePractice,
+    stopTonePractice,
     target,
     setTarget,
-    octaveExact,
-    setOctaveExact,
     holdTargetSeconds,
     setHoldTargetSeconds,
     holdCalibre,
     setHoldCalibre,
     octavasNoteDurationSeconds,
     setOctavasNoteDurationSeconds,
+    octavasPitchMode,
+    setOctavasPitchMode: setOctavasPitchModeState,
+    octavasScaleRepetitions,
+    setOctavasScaleRepetitions,
     targetFrequency,
     referenceLabel,
     centsFromTarget,
@@ -543,6 +803,7 @@ export function useVoz() {
     feedbackLabel,
     historySamples,
     instantAttempts,
+    clearInstantAttempts,
     celebrationKey,
     ritmoVoiceSamples,
     dinamicaVoiceSamples,

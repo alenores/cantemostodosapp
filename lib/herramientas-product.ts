@@ -1,30 +1,5 @@
 /** Textos y definiciones de producto para Herramientas (hub y modales). */
 
-export type HerramientaPracticePillar = {
-  id: "metronomo" | "entrenador-vocal" | "compositor";
-  label: string;
-  question: string;
-};
-
-/** Las tres herramientas de práctica y la pregunta que responde cada una. */
-export const HERRAMIENTAS_PRACTICE_PILLARS: HerramientaPracticePillar[] = [
-  {
-    id: "metronomo",
-    label: "Metrónomo",
-    question: "¿Llego al tiempo?",
-  },
-  {
-    id: "entrenador-vocal",
-    label: "Entrenador Vocal",
-    question: "¿Canto bien en esta situación?",
-  },
-  {
-    id: "compositor",
-    label: "Compositor",
-    question: "¿Qué quiero que suene?",
-  },
-];
-
 export const COMPOSITOR_COMING_SOON_TITLE = "Compositor en camino";
 
 export const COMPOSITOR_COMING_SOON_LEAD =
@@ -40,5 +15,14 @@ export const COMPOSITOR_VISION_ITEMS = [
 export const COMPOSITOR_VS_ENTRENADOR_NOTE =
   "El Entrenador Vocal es para practicar y evaluar; el Compositor es para armar y experimentar.";
 
+export const HUB_WELCOME_TITLE = "Bienvenid@";
+
+export const HUB_SECTION_DESTINOS_LABEL = "¿Cómo querés cantar?";
+export const HUB_DESTINATION_SALAS_LABEL = "Salas";
+export const HUB_DESTINATION_SALAS_CTA = "En grupo";
+export const HUB_DESTINATION_INDIVIDUAL_LABEL = "Individual";
+export const HUB_DESTINATION_INDIVIDUAL_CTA = "Cantar solo";
+
 export const HUB_SECTION_CANCIONES_LABEL = "Canciones";
+export const HUB_SECTION_HERRAMIENTAS_LABEL = "Herramientas";
 export const HUB_SECTION_PRACTICA_LABEL = "Práctica";

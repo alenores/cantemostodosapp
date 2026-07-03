@@ -59,9 +59,7 @@ function CompositorOptionCarousel<T extends string>({
   }
 
   return (
-    <div
-      className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
-    >
+    <div className={COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}>
       <TapButton
         type="button"
         aria-label={decrementAriaLabel}
@@ -72,39 +70,47 @@ function CompositorOptionCarousel<T extends string>({
         <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
       </TapButton>
 
-      <div className="relative min-w-0 flex-1">
-        <div
-          className="pointer-events-none absolute inset-y-1 left-0 z-10 w-5 rounded-l-[8px] bg-gradient-to-r from-bg-card via-bg-card/80 to-transparent"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute inset-y-1 right-0 z-10 w-5 rounded-r-[8px] bg-gradient-to-l from-bg-card via-bg-card/80 to-transparent"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute inset-y-1 left-1/2 z-[1] w-[3.75rem] -translate-x-1/2 rounded-[8px] border border-compositor-config/35 bg-compositor-config/10"
-          aria-hidden="true"
-        />
+      <div className="min-w-0 flex-1 px-1 text-center">
+        <div className="relative">
+          <div
+            className="pointer-events-none absolute inset-y-1 left-0 z-10 w-5 rounded-l-[8px] bg-gradient-to-r from-bg-card via-bg-card/80 to-transparent"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute inset-y-1 right-0 z-10 w-5 rounded-r-[8px] bg-gradient-to-l from-bg-card via-bg-card/80 to-transparent"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute inset-y-1 left-1/2 z-[1] w-[3.75rem] -translate-x-1/2 rounded-[8px] border border-compositor-config/35 bg-compositor-config/10"
+            aria-hidden="true"
+          />
 
-        <div
-          className="relative flex h-14 items-center justify-center overflow-hidden rounded-[10px] border-2 border-border bg-bg-dark"
-          aria-live="polite"
-          aria-label={currentOption.label}
-        >
-          <div className="flex items-center justify-center gap-4">
-            <span className="w-16 truncate text-center text-sm font-semibold text-text-muted opacity-45">
-              {prevOption.label}
-            </span>
-            <span
-              className={`min-w-[4.5rem] truncate text-center text-xl font-extrabold leading-none ${accentClassName}`}
-            >
-              {currentOption.label}
-            </span>
-            <span className="w-16 truncate text-center text-sm font-semibold text-text-muted opacity-45">
-              {nextOption.label}
-            </span>
+          <div
+            className="relative flex h-14 items-center justify-center overflow-hidden rounded-[10px] border-2 border-border bg-bg-dark"
+            aria-live="polite"
+            aria-label={currentOption.label}
+          >
+            <div className="flex items-center justify-center gap-4">
+              <span className="w-16 truncate text-center text-sm font-semibold text-text-muted opacity-45">
+                {prevOption.label}
+              </span>
+              <span
+                className={`min-w-[4.5rem] truncate text-center text-xl font-extrabold leading-none ${accentClassName}`}
+              >
+                {currentOption.label}
+              </span>
+              <span className="w-16 truncate text-center text-sm font-semibold text-text-muted opacity-45">
+                {nextOption.label}
+              </span>
+            </div>
           </div>
         </div>
+        <p
+          className="mt-2 text-base font-bold leading-tight text-text-primary"
+          aria-hidden="true"
+        >
+          {currentOption.label}
+        </p>
       </div>
 
       <TapButton
@@ -123,30 +129,23 @@ function CompositorOptionCarousel<T extends string>({
 type CompositorSlotContenidoProps = {
   slotIndex: number;
   note: CompositorSlotNote;
-  octaveExact: boolean;
   disabled?: boolean;
   embedded?: boolean;
-  onSetOctaveExact: (value: boolean) => void;
   onSetNote: (note: CompositorSlotNote) => void;
 };
 
 export function CompositorSlotContenido({
   slotIndex,
   note,
-  octaveExact,
   disabled = false,
   embedded = false,
-  onSetOctaveExact,
   onSetNote,
 }: CompositorSlotContenidoProps) {
   const noteControls = (
     <TargetPickerBody
       target={note}
       onSetTarget={onSetNote}
-      octaveExact={octaveExact}
-      onSetOctaveExact={onSetOctaveExact}
       disabled={disabled}
-      density={embedded ? "compact" : "default"}
     />
   );
 

@@ -80,6 +80,8 @@ type UseAfinadorResult = {
   micReady: boolean;
   micStarting: boolean;
   start: () => Promise<void>;
+  stopListening: () => void;
+  requestPermission: () => Promise<void>;
   stop: () => void;
 };
 
@@ -103,6 +105,8 @@ export function useAfinador(
   const animationFrameRef = useRef<number | null>(null);
   const dataBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const runningRef = useRef(false);
+  const micStartingRef = useRef(false);
+  const startGenerationRef = useRef(0);
   const smoothedFrequencyRef = useRef<number | null>(null);
   const displayFrequencyRef = useRef<number | null>(null);
   const smoothedCentsRef = useRef<number | null>(null);
@@ -110,7 +114,12 @@ export function useAfinador(
   const lastDisplayMidiRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
 
-  const stopAudio = useCallback(() => {
+  useEffect(() => {
+    micStartingRef.current = micStarting;
+  }, [micStarting]);
+
+  const releaseMicCapture = useCallback(() => {
+    startGenerationRef.current += 1;
     runningRef.current = false;
     setMicStarting(false);
     setVoiceRms(0);
@@ -139,6 +148,14 @@ export function useAfinador(
     setDetection(null);
     setMicReady(false);
   }, []);
+
+  const stopListening = useCallback(() => {
+    releaseMicCapture();
+  }, [releaseMicCapture]);
+
+  const stopAudio = useCallback(() => {
+    releaseMicCapture();
+  }, [releaseMicCapture]);
 
   useEffect(() => {
     if (!navigator.permissions?.query) {
@@ -176,8 +193,8 @@ export function useAfinador(
     };
   }, [stopAudio]);
 
-  const start = useCallback(async () => {
-    if (runningRef.current || micStarting) {
+  const requestPermission = useCallback(async () => {
+    if (micPermissionGranted || micStartingRef.current) {
       return;
     }
 
@@ -186,6 +203,44 @@ export function useAfinador(
       return;
     }
 
+    setMicError(null);
+    setMicStarting(true);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: MIC_AUDIO_CONSTRAINTS,
+      });
+      stream.getTracks().forEach((track) => track.stop());
+      setMicPermissionGranted(true);
+      persistMicGranted(true);
+      setMicStarting(false);
+    } catch (error) {
+      setMicStarting(false);
+
+      if (
+        error instanceof DOMException &&
+        (error.name === "NotAllowedError" ||
+          error.name === "PermissionDeniedError")
+      ) {
+        setMicPermissionGranted(false);
+        persistMicGranted(false);
+      }
+
+      setMicError(getMicErrorMessage(error));
+    }
+  }, [micPermissionGranted]);
+
+  const start = useCallback(async () => {
+    if (runningRef.current || micStartingRef.current) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicError("Este navegador no permite acceder al micrófono.");
+      return;
+    }
+
+    const generation = startGenerationRef.current;
     setMicError(null);
     setMicReady(false);
     setDetection(null);
@@ -201,6 +256,12 @@ export function useAfinador(
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: MIC_AUDIO_CONSTRAINTS,
       });
+
+      if (generation !== startGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        setMicStarting(false);
+        return;
+      }
 
       const AudioContextClass =
         window.AudioContext ||
@@ -360,20 +421,22 @@ export function useAfinador(
 
       animationFrameRef.current = requestAnimationFrame(updatePitch);
     } catch (error) {
-      stopAudio();
+      if (generation === startGenerationRef.current) {
+        stopAudio();
 
-      if (
-        error instanceof DOMException &&
-        (error.name === "NotAllowedError" ||
-          error.name === "PermissionDeniedError")
-      ) {
-        setMicPermissionGranted(false);
-        persistMicGranted(false);
+        if (
+          error instanceof DOMException &&
+          (error.name === "NotAllowedError" ||
+            error.name === "PermissionDeniedError")
+        ) {
+          setMicPermissionGranted(false);
+          persistMicGranted(false);
+        }
+
+        setMicError(getMicErrorMessage(error));
       }
-
-      setMicError(getMicErrorMessage(error));
     }
-  }, [isVocalProfile, micStarting, stopAudio]);
+  }, [isVocalProfile, stopAudio]);
 
   useEffect(() => {
     return () => {
@@ -389,6 +452,8 @@ export function useAfinador(
     micReady,
     micStarting,
     start,
+    stopListening,
+    requestPermission,
     stop: stopAudio,
   };
 }

@@ -2,11 +2,12 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import {
-  HerramientasHubPracticeIntro,
   HerramientasHubSectionLabel,
   HUB_SECTION_CANCIONES_LABEL,
+  HUB_SECTION_HERRAMIENTAS_LABEL,
   HUB_SECTION_PRACTICA_LABEL,
 } from "@/components/cancionero/HerramientasHubSections";
+import HomeHubDestinations from "@/components/home/HomeHubDestinations";
 import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import AfinadorModal from "@/components/ui/AfinadorModal";
@@ -87,12 +88,9 @@ export default function CancioneroHubPageClient({
     detection: vozDetection,
     micError: vozMicError,
     micPermissionGranted: vozMicPermissionGranted,
-    micReady: vozMicReady,
     micStarting: vozMicStarting,
     target: vozTarget,
     setTarget: setVozTarget,
-    octaveExact: vozOctaveExact,
-    setOctaveExact: setVozOctaveExact,
     targetFrequency: vozTargetFrequency,
     referenceLabel: vozReferenceLabel,
     centsFromTarget: vozCentsFromTarget,
@@ -100,15 +98,22 @@ export default function CancioneroHubPageClient({
     feedbackLabel: vozFeedbackLabel,
     historySamples: vozHistorySamples,
     instantAttempts: vozInstantAttempts,
+    clearInstantAttempts: clearVozInstantAttempts,
     holdTargetSeconds: vozHoldTargetSeconds,
     setHoldTargetSeconds: setVozHoldTargetSeconds,
     holdCalibre: vozHoldCalibre,
     setHoldCalibre: setVozHoldCalibre,
     octavasNoteDurationSeconds: vozOctavasNoteDurationSeconds,
     setOctavasNoteDurationSeconds: setVozOctavasNoteDurationSeconds,
+    octavasPitchMode: vozOctavasPitchMode,
+    setOctavasPitchMode: setVozOctavasPitchMode,
+    octavasScaleRepetitions: vozOctavasScaleRepetitions,
+    setOctavasScaleRepetitions: setVozOctavasScaleRepetitions,
     celebrationKey: vozCelebrationKey,
     ritmoPlaying: vozRitmoPlaying,
     toggleRitmoPlaying: toggleVozRitmoPlaying,
+    ritmoMicActive: vozRitmoMicActive,
+    toggleRitmoMic: toggleVozRitmoMic,
     stopRitmo: stopVozRitmo,
     ritmoBpm: vozRitmoBpm,
     setRitmoBpm: setVozRitmoBpm,
@@ -129,6 +134,8 @@ export default function CancioneroHubPageClient({
     setDynamicsEvaluation: setVozDynamicsEvaluation,
     melodiaPlaying: vozMelodiaPlaying,
     toggleMelodiaPlaying: toggleVozMelodiaPlaying,
+    melodiaMicActive: vozMelodiaMicActive,
+    toggleMelodiaMic: toggleVozMelodiaMic,
     melodiaBpm: vozMelodiaBpm,
     setMelodiaBpm: setVozMelodiaBpm,
     melodiaPatternLength: vozMelodiaPatternLength,
@@ -141,7 +148,10 @@ export default function CancioneroHubPageClient({
     tapMelodiaTempo: tapVozMelodiaTempo,
     comboNotePattern: vozComboNotePattern,
     setComboNoteAtSlot: setVozComboNoteAtSlot,
-    start: startVoz,
+    requestPermission: requestVozMicPermission,
+    tonePracticeActive: vozTonePracticeActive,
+    toggleTonePractice: toggleVozTonePractice,
+    stopTonePractice: stopVozTonePractice,
     stop: stopVoz,
   } = useVoz();
 
@@ -223,9 +233,6 @@ export default function CancioneroHubPageClient({
 
     if (moduleDef.kind === "voz") {
       setVozOpen(true);
-      if (vozMicPermissionGranted) {
-        void startVoz();
-      }
       return;
     }
 
@@ -245,6 +252,9 @@ export default function CancioneroHubPageClient({
   );
   const cancionesModules = visibleModules.filter(
     (module) => module.section === "canciones",
+  );
+  const herramientasModules = visibleModules.filter(
+    (module) => module.section === "herramientas",
   );
   const practicaModules = visibleModules.filter(
     (module) => module.section === "practica",
@@ -323,16 +333,21 @@ export default function CancioneroHubPageClient({
           </p>
         )}
 
+        <HomeHubDestinations />
+
         <HerramientasHubSectionLabel label={HUB_SECTION_CANCIONES_LABEL} />
 
         <div className="grid grid-cols-2 gap-[10px]">
           {cancionesModules.map((module) => renderModuleCard(module))}
         </div>
 
-        <div className="mt-1 space-y-2">
-          <HerramientasHubSectionLabel label={HUB_SECTION_PRACTICA_LABEL} />
-          <HerramientasHubPracticeIntro />
+        <HerramientasHubSectionLabel label={HUB_SECTION_HERRAMIENTAS_LABEL} />
+
+        <div className="grid grid-cols-2 gap-[10px]">
+          {herramientasModules.map((module) => renderModuleCard(module))}
         </div>
+
+        <HerramientasHubSectionLabel label={HUB_SECTION_PRACTICA_LABEL} />
 
         <div className="grid grid-cols-2 gap-[10px]">
           {practicaModules.map((module) => renderModuleCard(module))}
@@ -340,7 +355,7 @@ export default function CancioneroHubPageClient({
 
         {!isLoggedIn && (
           <p className="text-center text-sm text-text-muted">
-            Iniciá sesión para acceder a Mis canciones.
+            Iniciá sesión para acceder a Favoritas.
           </p>
         )}
       </main>
@@ -364,12 +379,9 @@ export default function CancioneroHubPageClient({
         detection={vozDetection}
         micError={vozMicError}
         micPermissionGranted={vozMicPermissionGranted}
-        micReady={vozMicReady}
         micStarting={vozMicStarting}
         target={vozTarget}
         onSetTarget={setVozTarget}
-        octaveExact={vozOctaveExact}
-        onSetOctaveExact={setVozOctaveExact}
         targetFrequency={vozTargetFrequency}
         referenceLabel={vozReferenceLabel}
         centsFromTarget={vozCentsFromTarget}
@@ -377,18 +389,25 @@ export default function CancioneroHubPageClient({
         feedbackLabel={vozFeedbackLabel}
         historySamples={vozHistorySamples}
         instantAttempts={vozInstantAttempts}
+        onClearInstantAttempts={clearVozInstantAttempts}
         holdTargetSeconds={vozHoldTargetSeconds}
         onSetHoldTargetSeconds={setVozHoldTargetSeconds}
         holdCalibre={vozHoldCalibre}
         onSetHoldCalibre={setVozHoldCalibre}
         octavasNoteDurationSeconds={vozOctavasNoteDurationSeconds}
         onSetOctavasNoteDurationSeconds={setVozOctavasNoteDurationSeconds}
+        octavasPitchMode={vozOctavasPitchMode}
+        onSetOctavasPitchMode={setVozOctavasPitchMode}
+        octavasScaleRepetitions={vozOctavasScaleRepetitions}
+        onSetOctavasScaleRepetitions={setVozOctavasScaleRepetitions}
         celebrationKey={vozCelebrationKey}
         effectiveTarget={vozEffectiveTarget}
         onSetRitmoToneEvaluation={setVozRitmoToneEvaluation}
         onSetDynamicsEvaluation={setVozDynamicsEvaluation}
         ritmoPlaying={vozRitmoPlaying}
         onToggleRitmoPlaying={toggleVozRitmoPlaying}
+        ritmoMicActive={vozRitmoMicActive}
+        onToggleRitmoMic={toggleVozRitmoMic}
         onStopRhythm={stopVozRitmo}
         ritmoBpm={vozRitmoBpm}
         onSetRitmoBpm={setVozRitmoBpm}
@@ -406,6 +425,8 @@ export default function CancioneroHubPageClient({
         voiceRms={vozVoiceRms}
         melodiaPlaying={vozMelodiaPlaying}
         onToggleMelodiaPlaying={toggleVozMelodiaPlaying}
+        melodiaMicActive={vozMelodiaMicActive}
+        onToggleMelodiaMic={toggleVozMelodiaMic}
         melodiaBpm={vozMelodiaBpm}
         onSetMelodiaBpm={setVozMelodiaBpm}
         melodiaPatternLength={vozMelodiaPatternLength}
@@ -418,7 +439,10 @@ export default function CancioneroHubPageClient({
         onTapMelodiaTempo={tapVozMelodiaTempo}
         comboNotePattern={vozComboNotePattern}
         onSetComboNoteAtSlot={setVozComboNoteAtSlot}
-        onRequestMic={() => void startVoz()}
+        onRequestMic={() => void requestVozMicPermission()}
+        tonePracticeActive={vozTonePracticeActive}
+        onToggleTonePractice={toggleVozTonePractice}
+        onStopTonePractice={stopVozTonePractice}
         onClose={() => {
           stopVoz();
           setVozOpen(false);

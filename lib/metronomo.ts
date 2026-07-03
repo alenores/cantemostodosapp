@@ -224,6 +224,54 @@ export function getBeatPositionAtTime(
   };
 }
 
+export function getBeatPositionFromOrigin(
+  timeMs: number,
+  originMs: number,
+  startBeatIndex: number,
+  bpm: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+): BeatPositionAtTime {
+  const activeLength = getActivePatternLength(patternLength);
+  const durations = getActiveBeatDurationSlice(beatDurations, patternLength);
+
+  let beatIndex = ((startBeatIndex % activeLength) + activeLength) % activeLength;
+  let beatStartMs = originMs;
+  let msPerBeat = getMsPerBeat(
+    bpm,
+    durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+  );
+
+  if (timeMs < beatStartMs) {
+    return {
+      beatIndex,
+      msIntoBeat: 0,
+      msPerBeat,
+      beatStartMs,
+    };
+  }
+
+  let safety = 0;
+  const maxIterations = activeLength * 256;
+
+  while (beatStartMs + msPerBeat <= timeMs && safety < maxIterations) {
+    beatStartMs += msPerBeat;
+    beatIndex = (beatIndex + 1) % activeLength;
+    msPerBeat = getMsPerBeat(
+      bpm,
+      durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    safety += 1;
+  }
+
+  return {
+    beatIndex,
+    msIntoBeat: timeMs - beatStartMs,
+    msPerBeat,
+    beatStartMs,
+  };
+}
+
 export function getUpcomingBeatMarkers(
   beatMarkers: MetronomeBeatMarker[],
   now: number,
@@ -298,6 +346,73 @@ export function getBeatTimelineSegmentsInWindow(
   if (!position) {
     return [];
   }
+
+  let beatIndex = position.beatIndex;
+  let beatStartMs = position.beatStartMs;
+  let msPerBeat = position.msPerBeat;
+  const segments: BeatTimelineSegment[] = [];
+  let safety = 0;
+  const maxIterations = activeLength * 512;
+
+  while (beatStartMs > windowStartMs && safety < maxIterations) {
+    const previousIndex = (beatIndex - 1 + activeLength) % activeLength;
+    const previousMs = getMsPerBeat(
+      bpm,
+      durations[previousIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    beatStartMs -= previousMs;
+    beatIndex = previousIndex;
+    msPerBeat = getMsPerBeat(
+      bpm,
+      durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    safety += 1;
+  }
+
+  safety = 0;
+
+  while (beatStartMs < windowEndMs && safety < maxIterations) {
+    const endMs = beatStartMs + msPerBeat;
+
+    if (endMs > windowStartMs) {
+      segments.push({
+        beatIndex,
+        startMs: beatStartMs,
+        endMs,
+      });
+    }
+
+    beatStartMs = endMs;
+    beatIndex = (beatIndex + 1) % activeLength;
+    msPerBeat = getMsPerBeat(
+      bpm,
+      durations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
+    );
+    safety += 1;
+  }
+
+  return segments;
+}
+
+export function getBeatTimelineSegmentsFromOrigin(
+  originMs: number,
+  startBeatIndex: number,
+  bpm: number,
+  beatDurations: MetronomeBeatDurationPattern,
+  patternLength: number,
+  windowStartMs: number,
+  windowEndMs: number,
+): BeatTimelineSegment[] {
+  const activeLength = getActivePatternLength(patternLength);
+  const durations = getActiveBeatDurationSlice(beatDurations, patternLength);
+  const position = getBeatPositionFromOrigin(
+    windowStartMs,
+    originMs,
+    startBeatIndex,
+    bpm,
+    beatDurations,
+    patternLength,
+  );
 
   let beatIndex = position.beatIndex;
   let beatStartMs = position.beatStartMs;
@@ -493,6 +608,16 @@ export function getBeatLevelLabel(level: MetronomeBeatLevel): string {
   }
 }
 
+export function getBeatSoundLabel(level: MetronomeBeatLevel): string {
+  return level === "silencio" ? "Silencio" : "Suena";
+}
+
+export function toggleBeatSoundLevel(
+  level: MetronomeBeatLevel,
+): MetronomeBeatLevel {
+  return level === "silencio" ? "fuerte" : "silencio";
+}
+
 export function getBeatLevelBarHeightPercent(level: MetronomeBeatLevel): number {
   switch (level) {
     case "fuerte":
@@ -538,6 +663,38 @@ export function getBeatLevelBarAppearance(
     backgroundColor: getBeatLevelConfigColor(level),
     border: "none",
   };
+}
+
+/** Grosor de la línea objetivo en gráficos de melodía/combo según dinámica. */
+export function getMelodiaTargetLineStrokeWidth(
+  level: MetronomeBeatLevel,
+  emphasized = false,
+): number {
+  const heightPercent = getBeatLevelBarHeightPercent(level);
+
+  if (heightPercent === 0) {
+    return emphasized ? 2 : 1;
+  }
+
+  const base = 1.5 + (heightPercent / 100) * 4;
+
+  return emphasized ? base + 2.5 : base;
+}
+
+/** Color de la línea objetivo en gráficos de melodía/combo según dinámica. */
+export function getMelodiaTargetLineColor(level: MetronomeBeatLevel): string {
+  return getBeatLevelConfigColor(level);
+}
+
+export function getMelodiaTargetLineOpacity(
+  level: MetronomeBeatLevel,
+  emphasized: boolean,
+): number {
+  if (level === "silencio") {
+    return emphasized ? 0.35 : 0.2;
+  }
+
+  return emphasized ? 1 : 0.55;
 }
 
 export function getPatternLength(patternLength: number): number {

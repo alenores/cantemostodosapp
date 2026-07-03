@@ -51,8 +51,6 @@ type CompositorEditorProps = {
   isPreviewingTrack: boolean;
   cycleProgress: number | null;
   tapTempoTapCount: number;
-  octaveExact: boolean;
-  onSetOctaveExact: (value: boolean) => void;
   onSetActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
   onSetSelectedEventId: (eventId: string | null) => void;
   onToggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
@@ -86,8 +84,6 @@ export function CompositorEditor({
   isPreviewingTrack,
   cycleProgress,
   tapTempoTapCount,
-  octaveExact,
-  onSetOctaveExact,
   onSetActiveTrackId,
   onSetSelectedEventId,
   onToggleTrack,
@@ -157,7 +153,7 @@ export function CompositorEditor({
             events={activeTrack.events}
             selectedEventId={selectedEventId}
             cycleProgress={isPreviewingTrack ? cycleProgress : null}
-            octaveExact={octaveExact}
+            octaveExact={true}
             disabled={configLocked}
             isPreviewingTrack={isPreviewingTrack}
             previewDisabled={isPlaying}
@@ -176,9 +172,7 @@ export function CompositorEditor({
               piece={piece}
               instrumentId={activeTrackId}
               event={selectedEvent}
-              octaveExact={octaveExact}
               disabled={configLocked}
-              onSetOctaveExact={onSetOctaveExact}
               onUpdateEvent={(patch) =>
                 onUpdateTrackEvent(selectedEvent.id, patch)
               }
@@ -224,7 +218,7 @@ export function CompositorEditor({
             selectedEventId={selectedEventId}
             activeTrackId={activeTrackId}
             cycleProgress={isPlaying ? cycleProgress : null}
-            octaveExact={octaveExact}
+            octaveExact={true}
             togglesDisabled={isPlaying}
             onToggleTrack={onToggleTrack}
           />

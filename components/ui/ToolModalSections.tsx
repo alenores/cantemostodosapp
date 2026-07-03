@@ -25,7 +25,7 @@ const TOOL_SECTION_STYLES = {
   practice: {
     sectionBorder:
       "color-mix(in srgb, var(--tool-practice) 38%, var(--border))",
-    sectionBg: "color-mix(in srgb, var(--tool-practice) 7%, var(--bg-card))",
+    sectionBg: "var(--tool-practice-section-bg)",
     dividerBorder:
       "color-mix(in srgb, var(--tool-practice) 22%, var(--border))",
     accentColor: "var(--tool-practice)",

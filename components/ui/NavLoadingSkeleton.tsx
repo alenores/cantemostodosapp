@@ -31,7 +31,7 @@ export function CancioneroLoadingSkeleton() {
   return <CancioneroSubpageSkeleton />;
 }
 
-export function HomeLoadingSkeleton() {
+export function IndividualLoadingSkeleton() {
   return <HomePageSkeleton />;
 }
 

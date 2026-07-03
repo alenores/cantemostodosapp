@@ -1,7 +1,7 @@
 "use client";
 
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { Home, Users, WifiOff, Wrench } from "lucide-react";
+import { Home, Music2, Users, WifiOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TapLink } from "@/components/ui/TapFeedback";
@@ -21,18 +21,18 @@ const TABS: TabConfig[] = [
     isActive: (pathname) => pathname === "/",
   },
   {
+    href: "/individual",
+    label: "Individual",
+    icon: Music2,
+    isActive: (pathname) =>
+      pathname === "/individual" || pathname.startsWith("/individual/"),
+  },
+  {
     href: "/salas",
     label: "Salas",
     icon: Users,
     isActive: (pathname) =>
       pathname === "/salas" || pathname.startsWith("/salas/"),
-  },
-  {
-    href: "/cancionero",
-    label: "Herramientas",
-    icon: Wrench,
-    isActive: (pathname) =>
-      pathname === "/cancionero" || pathname.startsWith("/cancionero/"),
   },
 ];
 

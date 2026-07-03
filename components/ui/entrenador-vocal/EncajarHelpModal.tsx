@@ -1,6 +1,7 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { HelpCircle, Music2, Target, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -45,6 +46,8 @@ const ATTEMPTS = [
 
 const NEUTRAL_MARKER_COLOR = "var(--text-muted)";
 const NEUTRAL_MARKER_BORDER = "var(--border)";
+
+const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
 
 function MicIcon() {
   return (
@@ -290,17 +293,6 @@ function EncajarHelpDemo() {
   );
 }
 
-function InfoCard({ label, text }: { label: string; text: string }) {
-  return (
-    <article className="space-y-1.5 rounded-[12px] border border-border bg-bg-dark p-3">
-      <p className="text-[12px] font-bold" style={{ color: "var(--voz-config)" }}>
-        {label}
-      </p>
-      <p className="text-[12px] leading-relaxed text-text-secondary">{text}</p>
-    </article>
-  );
-}
-
 type EncajarHelpModalProps = {
   open: boolean;
   onClose: () => void;
@@ -393,13 +385,29 @@ export function EncajarHelpModal({ open, onClose }: EncajarHelpModalProps) {
                 Qué tener en cuenta
               </h3>
               <div className="mt-2 space-y-2">
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Target
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="¿Para qué sirve?"
                   text="Entrenás tu voz para caer directo en una nota. Cantás un golpe corto y la app te dice al instante si le pegaste."
+                  shimmerDelayMs={0}
                 />
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Music2
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Nota objetivo"
                   text="La nota que querés practicar. Activá 'octava exacta' para ser preciso con el registro, o desactivala para que valga cualquier octava."
+                  shimmerDelayMs={220}
                 />
               </div>
             </section>

@@ -36,6 +36,7 @@ import {
 } from "@/lib/compositor-timeline";
 import {
   COMPOSITOR_LABEL_AGREGAR_BLOQUE,
+  COMPOSITOR_LABEL_AGREGAR_BLOQUE_NOTA,
   COMPOSITOR_LABEL_ESCUCHAR_CAPA,
 } from "@/lib/ritmo-terminologia";
 import { Plus, Trash2 } from "lucide-react";
@@ -364,7 +365,9 @@ export function CompositorTrackTimeline({
           className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-border bg-bg-dark py-2 text-xs font-bold text-text-primary disabled:opacity-50"
         >
           <Plus className="size-3.5" aria-hidden="true" />
-          {COMPOSITOR_LABEL_AGREGAR_BLOQUE}
+          {instrumentId === "bateria"
+            ? COMPOSITOR_LABEL_AGREGAR_BLOQUE
+            : COMPOSITOR_LABEL_AGREGAR_BLOQUE_NOTA}
         </TapButton>
         <TapButton
           type="button"

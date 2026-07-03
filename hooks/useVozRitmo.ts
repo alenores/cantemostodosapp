@@ -3,7 +3,6 @@
 import {
   BPM_DEFAULT,
   clampPatternLength,
-  createMetronomeEngine,
   cycleMetronomePatternSlot,
   METRONOME_BEAT_DURATION_DEFAULT,
   METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
@@ -16,9 +15,9 @@ import {
   type MetronomeBeatDurationPattern,
   type MetronomeBeatLevel,
   type MetronomeBeatPattern,
-  type MetronomeEngine,
 } from "@/lib/metronomo";
 import {
+  getActiveNotaSlice,
   normalizeNotaPattern,
   resizeNotaPatternLength,
   setNotaAtSlot,
@@ -26,12 +25,24 @@ import {
   type VozNotaPattern,
 } from "@/lib/voz-nota-patron";
 import {
+  clearPlaybackClock,
+  createVozMelodiaPracticeEngine,
+  createVozRitmoPracticeEngine,
+  type VozMelodiaPracticeEngine,
+  type VozRitmoPracticeEngine,
+} from "@/lib/voz-ritmo-audio";
+import {
+  ensurePracticeAudioContext,
+  primePracticeAudioOnGesture,
+} from "@/lib/voz-practice-audio";
+import {
   buildMelodiaSingPattern,
   buildUniformBeatDurations,
   clampRitmoBpm,
   createVozRitmoBeatMarker,
   VOZ_MELODIA_PATTERN_LENGTH_DEFAULT,
   VOZ_RITMO_BEAT_PATTERN_DEFAULT,
+  VOZ_RITMO_BPM_DEFAULT,
   VOZ_RITMO_PATTERN_LENGTH_DEFAULT,
   type VozRitmoBeatMarker,
   type VozRitmoPhase,
@@ -76,6 +87,8 @@ type UseVozRitmoResult = {
   setMelodiaBeatDuration: (value: MetronomeBeatDuration) => void;
   setMelodiaNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
   setComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
+  setRitmoPlaybackNotes: (notes: VozTarget[] | null) => void;
+  setRitmoPlaybackDynamicsOnly: (value: boolean) => void;
   tapRitmoTempo: () => void;
   tapMelodiaTempo: () => void;
   startRitmo: () => void;
@@ -89,7 +102,7 @@ type UseVozRitmoResult = {
 export function useVozRitmo(): UseVozRitmoResult {
   const [ritmoPlaying, setRitmoPlaying] = useState(false);
   const [melodiaPlaying, setMelodiaPlaying] = useState(false);
-  const [ritmoBpm, setRitmoBpmState] = useState(BPM_DEFAULT);
+  const [ritmoBpm, setRitmoBpmState] = useState(VOZ_RITMO_BPM_DEFAULT);
   const [ritmoBeatPattern, setRitmoBeatPatternState] =
     useState<MetronomeBeatPattern>([...VOZ_RITMO_BEAT_PATTERN_DEFAULT]);
   const [ritmoPatternLength, setRitmoPatternLengthState] = useState(
@@ -122,6 +135,9 @@ export function useVozRitmo(): UseVozRitmoResult {
   const melodiaPatternLengthRef = useRef(melodiaPatternLength);
   const melodiaBpmRef = useRef(melodiaBpm);
   const melodiaBeatDurationRef = useRef(melodiaBeatDuration);
+  const melodiaNotePatternRef = useRef(melodiaNotePattern);
+  const ritmoPlaybackNotesRef = useRef<VozTarget[] | null>(null);
+  const ritmoPlaybackDynamicsOnlyRef = useRef(false);
   const ritmoPlayingRef = useRef(false);
   const melodiaPlayingRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("ritmo");
@@ -134,7 +150,8 @@ export function useVozRitmo(): UseVozRitmoResult {
     null,
   );
   const audioContextRef = useRef<AudioContext | null>(null);
-  const engineRef = useRef<MetronomeEngine | null>(null);
+  const ritmoEngineRef = useRef<VozRitmoPracticeEngine | null>(null);
+  const melodiaEngineRef = useRef<VozMelodiaPracticeEngine | null>(null);
 
   ritmoBpmRef.current = ritmoBpm;
   ritmoBeatPatternRef.current = ritmoBeatPattern;
@@ -143,20 +160,20 @@ export function useVozRitmo(): UseVozRitmoResult {
   melodiaPatternLengthRef.current = melodiaPatternLength;
   melodiaBpmRef.current = melodiaBpm;
   melodiaBeatDurationRef.current = melodiaBeatDuration;
+  melodiaNotePatternRef.current = melodiaNotePattern;
   ritmoPlayingRef.current = ritmoPlaying;
   melodiaPlayingRef.current = melodiaPlaying;
 
   const closeAudioContext = useCallback(() => {
-    if (audioContextRef.current) {
-      void audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    engineRef.current = null;
+    ritmoEngineRef.current = null;
+    melodiaEngineRef.current = null;
+    audioContextRef.current = null;
   }, []);
 
   const stopEngine = useCallback(() => {
-    engineRef.current?.stop();
+    ritmoEngineRef.current?.stop();
+    melodiaEngineRef.current?.stop();
+    clearPlaybackClock();
     setRitmoPlaying(false);
     setMelodiaPlaying(false);
     ritmoPlayingRef.current = false;
@@ -176,52 +193,43 @@ export function useVozRitmo(): UseVozRitmoResult {
   }, [closeAudioContext, stopEngine]);
 
   const ensureAudioContext = useCallback(async (): Promise<AudioContext> => {
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume();
-      }
+    const audioContext = await ensurePracticeAudioContext();
 
-      return audioContextRef.current;
-    }
-
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as Window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-
-    if (!AudioContextClass) {
+    if (!audioContext) {
       throw new Error("AudioContext no disponible en este navegador");
     }
 
-    const audioContext = new AudioContextClass();
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-
     audioContextRef.current = audioContext;
-    engineRef.current = createMetronomeEngine(audioContext);
 
     return audioContext;
   }, []);
 
   const startPlayback = useCallback(
     (mode: PlaybackMode) => {
+      primePracticeAudioOnGesture();
+
       void (async () => {
         try {
-          await ensureAudioContext();
-
-          const engine = engineRef.current;
-
-          if (!engine) {
-            return;
-          }
-
           stopEngine();
           playbackModeRef.current = mode;
           setBeatMarkers([]);
 
+          let audioContext = await ensureAudioContext();
+
+          if (audioContext.state === "suspended") {
+            await audioContext.resume();
+          }
+
+          if (audioContext.state === "closed") {
+            audioContextRef.current = null;
+            audioContext = await ensureAudioContext();
+          }
+
           if (mode === "ritmo") {
+            ritmoEngineRef.current = createVozRitmoPracticeEngine(audioContext);
+
+            const engine = ritmoEngineRef.current;
+
             setRitmoPlaying(true);
             ritmoPlayingRef.current = true;
 
@@ -246,9 +254,18 @@ export function useVozRitmo(): UseVozRitmoResult {
                     : next;
                 });
               },
+              ritmoPlaybackNotesRef.current ?? undefined,
+              ritmoPlaybackDynamicsOnlyRef.current
+                ? { dynamicsOnlyLoudness: true }
+                : undefined,
             );
             return;
           }
+
+          melodiaEngineRef.current =
+            createVozMelodiaPracticeEngine(audioContext);
+
+          const engine = melodiaEngineRef.current;
 
           setMelodiaPlaying(true);
           melodiaPlayingRef.current = true;
@@ -259,10 +276,14 @@ export function useVozRitmo(): UseVozRitmoResult {
           const melodiaDurations = buildUniformBeatDurations(
             melodiaBeatDurationRef.current,
           );
+          const melodiaNotes = getActiveNotaSlice(
+            melodiaNotePatternRef.current,
+            melodiaPatternLengthRef.current,
+          );
 
           engine.start(
             melodiaBpmRef.current,
-            melodiaPattern,
+            melodiaNotes,
             melodiaPatternLengthRef.current,
             melodiaDurations,
             (beatIndex, expectedTimeMs) => {
@@ -444,6 +465,14 @@ export function useVozRitmo(): UseVozRitmoResult {
     [stopIfPlaying],
   );
 
+  const setRitmoPlaybackNotes = useCallback((notes: VozTarget[] | null) => {
+    ritmoPlaybackNotesRef.current = notes;
+  }, []);
+
+  const setRitmoPlaybackDynamicsOnly = useCallback((value: boolean) => {
+    ritmoPlaybackDynamicsOnlyRef.current = value;
+  }, []);
+
   const tapRitmoTempo = useCallback(() => {
     if (ritmoPlayingRef.current) {
       return;
@@ -558,8 +587,13 @@ export function useVozRitmo(): UseVozRitmoResult {
   }, [melodiaBeatDuration]);
 
   useEffect(() => {
+    melodiaNotePatternRef.current = normalizeNotaPattern(melodiaNotePattern);
+  }, [melodiaNotePattern]);
+
+  useEffect(() => {
     return () => {
-      engineRef.current?.stop();
+      ritmoEngineRef.current?.stop();
+      melodiaEngineRef.current?.stop();
       closeAudioContext();
 
       if (ritmoTapResetTimerRef.current !== null) {
@@ -598,6 +632,8 @@ export function useVozRitmo(): UseVozRitmoResult {
     setMelodiaBeatDuration,
     setMelodiaNoteAtSlot,
     setComboNoteAtSlot,
+    setRitmoPlaybackNotes,
+    setRitmoPlaybackDynamicsOnly,
     tapRitmoTempo,
     tapMelodiaTempo,
     startRitmo,

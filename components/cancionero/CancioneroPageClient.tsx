@@ -175,12 +175,12 @@ export default function CancioneroPageClient({
   const sumarAMisCanciones = useCallback(
     async (cancion: CancionCancionero) => {
       if (!usuarioLogueado || !online) {
-        showSnackbar("Iniciá sesión para guardar en Mis canciones");
+        showSnackbar("Iniciá sesión para guardar en Favoritas");
         return;
       }
 
       if (misCancionesIds.has(cancion.id)) {
-        showSnackbar("Ya está en Mis canciones");
+        showSnackbar("Ya está en Favoritas");
         return;
       }
 
@@ -193,7 +193,7 @@ export default function CancioneroPageClient({
           cancion_guardada_id: cancion.id,
         });
         setMisCancionesIds((prev) => new Set(prev).add(cancion.id));
-        showSnackbar("Sumada a Mis canciones");
+        showSnackbar("Sumada a Favoritas");
 
         if (modoSeleccionMisCanciones) {
           navigateWithProgress("/cancionero/mis-canciones");
@@ -202,7 +202,7 @@ export default function CancioneroPageClient({
         setActionError(
           error instanceof Error
             ? error.message
-            : "No se pudo sumar a Mis canciones",
+            : "No se pudo sumar a Favoritas",
         );
       }
     },
@@ -353,7 +353,7 @@ export default function CancioneroPageClient({
             role="status"
           >
             <p className="min-w-0 flex-1">
-              Seleccionar canción y sumar a &quot;Mis canciones&quot;
+              Seleccionar canción y sumar a &quot;Favoritas&quot;
             </p>
             <TapButton
               aria-label="Cancelar selección"

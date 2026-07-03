@@ -758,7 +758,7 @@ export default function SalaPageShell({
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
-            onAfinador={() => navigateWithProgress("/cancionero")}
+            onAfinador={() => navigateWithProgress("/")}
           />
 
           <AutoScrollControl

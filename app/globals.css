@@ -93,8 +93,9 @@
   --compositor-block-guitarra: #c4a05a;
   --compositor-block-bateria: #d9665a;
 
-  /* Herramientas — práctica (contrasta con configuración) */
-  --tool-practice: #5cb87a;
+  /* Herramientas — práctica (acento dorado suave; fondo gris neutro, sin tinte cromático) */
+  --tool-practice: #c9b07a;
+  --tool-practice-section-bg: color-mix(in srgb, white 7%, #5b5656);
 }
 
 @theme inline {
@@ -819,6 +820,24 @@ html.splash-active body {
   animation: skeleton-shimmer 2.6s ease-in-out infinite;
 }
 
+.metronomo-help-label-shimmer,
+.help-label-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--voz-config) 55%, var(--skeleton-base)) 0%,
+    color-mix(in srgb, var(--voz-config) 55%, var(--skeleton-base)) 32%,
+    color-mix(in srgb, var(--voz-config) 85%, var(--skeleton-shine)) 50%,
+    color-mix(in srgb, var(--voz-config) 55%, var(--skeleton-base)) 68%,
+    color-mix(in srgb, var(--voz-config) 55%, var(--skeleton-base)) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: skeleton-shimmer 2.6s ease-in-out infinite;
+}
+
 .sala-letra-skeleton-line {
   background-color: var(--skeleton-base-light);
   background-image: linear-gradient(
@@ -1033,6 +1052,8 @@ html.splash-active body {
   .ios-icon-shine,
   .cancionero-skeleton-shimmer,
   .sala-skeleton-shimmer,
+  .metronomo-help-label-shimmer,
+  .help-label-shimmer,
   .sala-letra-skeleton-line,
   .cancionero-skeleton-eq-bar,
   .cancionero-item-cascade,
@@ -1263,5 +1284,15 @@ html.splash-active body {
       0 0 0 2px #fff,
       0 0 0 5px color-mix(in srgb, var(--compositor-block-color) 55%, transparent);
   }
+}
+
+@keyframes mic-ring-pulse {
+  0%   { transform: scale(1);    opacity: 0.92; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+@keyframes mic-dot-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
 }
 

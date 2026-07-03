@@ -30,6 +30,7 @@ export type VozRitmoBeatMarker = {
 
 export const VOZ_RITMO_PATTERN_LENGTH_DEFAULT = 8;
 export const VOZ_MELODIA_PATTERN_LENGTH_DEFAULT = 4;
+export const VOZ_RITMO_BPM_DEFAULT = 40;
 export const VOZ_RITMO_BEAT_PATTERN_DEFAULT: MetronomeBeatPattern = [
   "fuerte",
   "silencio",
@@ -65,9 +66,14 @@ export function buildUniformBeatDurations(
   );
 }
 
-export const VOZ_RITMO_TIMELINE_CYCLES = 4;
-/** Fracción del ancho a la izquierda de «ahora» (resto = futuro visible). */
-export const VOZ_RITMO_TIMELINE_PAST_RATIO = 0.42;
+/** Ciclos visibles en el gráfico de ritmo (1 atrás + 1 adelante). */
+export const VOZ_RITMO_TIMELINE_CYCLES = 2;
+/** Fracción del ancho a la izquierda de la línea de tiempo actual. */
+export const VOZ_RITMO_TIMELINE_PAST_RATIO = 0.5;
+/** Gráfico de melodía: más futuro visible para anticipar la próxima nota. */
+export const VOZ_MELODIA_CHART_PAST_RATIO = 0.35;
+/** Duración visual del destello al sonar el click de cada golpe (ms). */
+export const VOZ_MELODIA_BEAT_FLASH_MS = 90;
 
 export type VozRitmoVoiceCompliance = "correcto" | "cerca" | "incorrecto";
 

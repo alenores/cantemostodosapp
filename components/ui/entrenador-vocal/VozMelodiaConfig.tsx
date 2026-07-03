@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   RitmoConfigSection,
   type VozNotaPatronConfig,
@@ -32,9 +33,11 @@ export function MelodiaConfigSection({
   onSetBeatDuration,
   onSetBpm,
   onTapTempo,
+  headerAction,
 }: {
   collapsedSummary?: string;
   autoCollapseWhen?: boolean;
+  headerAction?: ReactNode;
   patternLength: number;
   beatDuration: MetronomeBeatDuration;
   beatPattern: MetronomeBeatPattern;
@@ -59,7 +62,6 @@ export function MelodiaConfigSection({
     `${getNotaPatternSummary(
       vozNotaPatron.pattern,
       patternLength,
-      vozNotaPatron.octaveExact,
     )} · ${patternLength} golpes · ${figuraLabel} · ${bpm} BPM`;
 
   return (
@@ -67,8 +69,10 @@ export function MelodiaConfigSection({
       compasLayout="flat"
       collapsedSummary={summary}
       autoCollapseWhen={autoCollapseWhen}
+      configHeaderAction={headerAction}
       hideDinamicaTab
       hideCompasHelp
+      uniformFigura
       vozNotaPatron={vozNotaPatron}
       beatPattern={beatPattern}
       patternLength={patternLength}

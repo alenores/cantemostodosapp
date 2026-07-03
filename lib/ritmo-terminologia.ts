@@ -27,6 +27,9 @@ export const RITMO_HELP_SELECCIONAR_GOLPE = "Seleccioná un golpe en el gráfico
 export const RITMO_HELP_FIGURA =
   "La figura de cada golpe (negra, corchea…): define la rejilla, es decir cuándo cae el siguiente golpe.";
 
+export const RITMO_HELP_FIGURA_UNIFORME =
+  "La figura aplica a todos los golpes del ciclo (negra, corchea…).";
+
 export const RITMO_HELP_FIGURA_COMPOSITOR =
   "Figura de cada golpe (negra, corchea…). La rejilla es compartida por todas las capas.";
 
@@ -77,6 +80,8 @@ export const COMPOSITOR_LABEL_CAPAS_INSTRUMENTOS = "CAPAS (Instrumentos)";
 
 export const COMPOSITOR_LABEL_AGREGAR_BLOQUE = "Agregar bloque";
 
+export const COMPOSITOR_LABEL_AGREGAR_BLOQUE_NOTA = "Agregar bloque/nota";
+
 export const COMPOSITOR_LABEL_ESCUCHAR_CAPA = "Escuchar capa";
 
 export const COMPOSITOR_LABEL_RESET_ZONA = "Dejar todo en cero";
@@ -103,7 +108,13 @@ export function formatGolpeLabel(slotIndex: number): string {
   return `${RITMO_LABEL_GOLPE} ${slotIndex + 1}`;
 }
 
-export function getRitmoHelpFigura(variant: RitmoUiVariant = "default"): string {
+export function getRitmoHelpFigura(
+  variant: RitmoUiVariant = "default",
+  uniform = false,
+): string {
+  if (uniform) {
+    return RITMO_HELP_FIGURA_UNIFORME;
+  }
   return variant === "compositor"
     ? RITMO_HELP_FIGURA_COMPOSITOR
     : RITMO_HELP_FIGURA;

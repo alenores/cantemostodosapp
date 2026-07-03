@@ -528,7 +528,7 @@ export default function MetronomoModal({
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={configSummary}
-              autoCollapseWhen={isPlaying}
+              hideCompasHelp
               configHeaderAction={
                 <MetronomoConfigHelpButton
                   onClick={() => setConfigHelpOpen(true)}

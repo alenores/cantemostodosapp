@@ -142,7 +142,7 @@ export default function IosOpenFromHomeHelp({
       </p>
       <p className="m-0 mb-4 text-xs leading-relaxed text-text-secondary">
         Estás en el navegador. Para usarla sin conexión, abrila desde la pantalla de inicio —
-        buscá <strong className="text-text-primary">{PWA_HOME_ICON_LABEL}</strong>.
+        buscá {PWA_HOME_ICON_LABEL}.
       </p>
 
       <HomeScreenIllustration />

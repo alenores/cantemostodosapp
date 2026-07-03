@@ -132,7 +132,7 @@ function mapMisCancionAResultado(
       titulo: cancion.nombre,
       artista: cancion.artista ?? "",
       url: `cancionero://${cancion.cancion_guardada_id}`,
-      sitio: "Mis canciones",
+      sitio: "Favoritas",
       fuente: "cancionero",
       id: cancion.cancion_guardada_id,
     };
@@ -142,7 +142,7 @@ function mapMisCancionAResultado(
     titulo: cancion.nombre,
     artista: cancion.artista ?? "",
     url: cancion.url_letra ?? "",
-    sitio: "Mis canciones",
+    sitio: "Favoritas",
     fuente: "link-guardado",
   };
 }
@@ -1077,7 +1077,7 @@ export default function BuscadorModal({
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={
                   mostrandoMisCanciones
-                    ? "Filtrar mis canciones..."
+                    ? "Filtrar favoritas..."
                     : "Buscar canción..."
                 }
                 autoFocus
@@ -1137,7 +1137,7 @@ export default function BuscadorModal({
                       : "bg-bg-card text-text-muted"
                   }`}
                 >
-                  Mis canciones
+                  Favoritas
                 </button>
               </div>
             ) : null}
@@ -1179,7 +1179,7 @@ export default function BuscadorModal({
                   />
                   <p className="text-sm text-text-muted">
                     {mostrandoMisCanciones && misCanciones.length === 0
-                      ? "No tenés canciones guardadas en Mis canciones"
+                      ? "No tenés canciones guardadas en Favoritas"
                       : "No encontramos resultados para tu búsqueda"}
                   </p>
                 </div>
@@ -1191,7 +1191,7 @@ export default function BuscadorModal({
                   <SeccionResultados
                     label={
                       isHome && fuenteHome === "mis_canciones"
-                        ? "Mis canciones"
+                        ? "Favoritas"
                         : "Del cancionero"
                     }
                     icon={
@@ -1502,7 +1502,7 @@ export default function BuscadorModal({
 
       <ConfirmDialog
         open={promptMisCanciones !== null}
-        message="¿Querés sumarla a Mis canciones?"
+        message="¿Querés sumarla a Favoritas?"
         confirmLabel="Sí, sumar"
         cancelLabel="No, gracias"
         zIndex={60}

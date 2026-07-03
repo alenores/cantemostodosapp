@@ -498,7 +498,7 @@ export default function MisCancionesPageClient() {
   return (
     <>
       <CancioneroSubpageShell
-        title="Mis canciones"
+        title="Favoritas"
         modalOpen={cancionViendo !== null || urlViendo !== null}
         headerAction={
           <AddButton
@@ -594,7 +594,7 @@ export default function MisCancionesPageClient() {
 
       <ConfirmDialog
         open={cancionAEliminar !== null}
-        message="¿Eliminar esta canción de Mis canciones?"
+        message="¿Eliminar esta canción de Favoritas?"
         confirmLabel={actionLoading ? "Eliminando..." : "Eliminar"}
         deleteConfirm
         onConfirm={() => void handleConfirmEliminar()}

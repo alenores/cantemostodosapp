@@ -18,7 +18,7 @@ const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_CANCEL_PX = 10;
 const ACTION_FAB_CASCADE_STEP_MS = 55;
 const ACTION_FAB_ANIM_MS = 220;
-const SUMAR_FAB_LABEL = "Guardar en Mis canciones";
+const SUMAR_FAB_LABEL = "Guardar en Favoritas";
 const SUMAR_FAB_LABEL_VISIBLE_MS = 2000;
 
 type CancioneroItemCardProps = {
@@ -191,7 +191,7 @@ export default function CancioneroItemCard({
     mostrarSumarMisCanciones && onSumarAMisCanciones
       ? {
           key: "sumar",
-          label: `Sumar ${cancion.nombre} a Mis canciones`,
+          label: `Sumar ${cancion.nombre} a Favoritas`,
           className: "",
           icon: Bookmark,
           action: () => onSumarAMisCanciones(cancion),

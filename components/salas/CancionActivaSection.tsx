@@ -19,20 +19,42 @@ import {
 } from "@/lib/sala-layout";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 
-function HeaderActionSlot({
-  action,
-  extendBottomPx = 0,
-}: {
-  action: ReactNode;
-  extendBottomPx?: number;
-}) {
+function HeaderActionSlot({ action }: { action: ReactNode }) {
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-end px-0.5"
-      style={extendBottomPx > 0 ? { bottom: `-${extendBottomPx}px` } : { bottom: 0 }}
-    >
+    <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end px-0.5 pt-1.5">
       <div className="pointer-events-auto">{action}</div>
     </div>
+  );
+}
+
+function CancionActivaHeader({
+  cancionNombre,
+  artista,
+  nombreRevealKey,
+  nombreRevealClass,
+  headerAction,
+}: {
+  cancionNombre: string | null;
+  artista: string | null;
+  nombreRevealKey: string;
+  nombreRevealClass: string;
+  headerAction?: ReactNode;
+}) {
+  return (
+    <header
+      className={`flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala px-2 py-1.5 ${
+        headerAction ? "relative" : ""
+      }`}
+    >
+      <CancionActivaTitulo
+        cancionNombre={cancionNombre}
+        artista={artista}
+        nombreRevealKey={nombreRevealKey}
+        nombreRevealClass={nombreRevealClass}
+        reserveHeaderActionSpace={Boolean(headerAction)}
+      />
+      {headerAction ? <HeaderActionSlot action={headerAction} /> : null}
+    </header>
   );
 }
 
@@ -42,34 +64,22 @@ function CancionActivaTitulo({
   nombreRevealKey,
   nombreRevealClass,
   reserveHeaderActionSpace = false,
-  variant = "embed",
 }: {
   cancionNombre: string | null;
   artista: string | null;
   nombreRevealKey: string;
   nombreRevealClass: string;
   reserveHeaderActionSpace?: boolean;
-  variant?: "embed" | "texto";
 }) {
-  const isTexto = variant === "texto";
-
   return (
     <div className={`min-w-0 flex-1 ${reserveHeaderActionSpace ? "pr-11" : ""}`}>
-      <h2
-        className={`text-xl font-bold text-accent ${
-          isTexto ? "leading-tight" : "overflow-hidden"
-        }`}
-      >
+      <h2 className="text-xl font-bold leading-tight text-accent">
         <span key={nombreRevealKey} className={nombreRevealClass}>
           {cancionNombre}
         </span>
       </h2>
       {artista ? (
-        <p
-          className={`mt-0.5 text-[13px] text-text-muted ${
-            isTexto ? "leading-tight" : ""
-          }`}
-        >
+        <p className="mt-0.5 text-[13px] leading-tight text-text-muted">
           {artista}
         </p>
       ) : null}
@@ -238,28 +248,20 @@ export default function CancionActivaSection({
         }}
       >
         {!modoLectura ? (
-          <header
-            className={`flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala px-2 py-1.5 ${
-              headerAction ? "relative" : ""
-            }`}
-          >
-            <CancionActivaTitulo
-              cancionNombre={cancionNombre}
-              artista={artista}
-              nombreRevealKey={nombreRevealKey}
-              nombreRevealClass={nombreRevealClass}
-              reserveHeaderActionSpace={Boolean(headerAction)}
-              variant="texto"
-            />
-            {headerAction ? <HeaderActionSlot action={headerAction} /> : null}
-          </header>
+          <CancionActivaHeader
+            cancionNombre={cancionNombre}
+            artista={artista}
+            nombreRevealKey={nombreRevealKey}
+            nombreRevealClass={nombreRevealClass}
+            headerAction={headerAction}
+          />
         ) : null}
 
         <div
           ref={letraScrollRef}
           data-cancionero-letra-scroll=""
           className={`relative min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain bg-letra-bg ${
-            modoLectura ? "" : "rounded-[12px]"
+            modoLectura ? "rounded-[12px]" : "rounded-none"
           }`}
         >
           <LetraTexto
@@ -302,26 +304,19 @@ export default function CancionActivaSection({
       {hasCancion ? (
         <>
           {!modoLectura ? (
-            <div className={headerAction ? "relative shrink-0" : "shrink-0"}>
-              <div className="flex shrink-0 items-start gap-2">
-                <CancionActivaTitulo
-                  cancionNombre={cancionNombre}
-                  artista={artista}
-                  nombreRevealKey={nombreRevealKey}
-                  nombreRevealClass={nombreRevealClass}
-                  reserveHeaderActionSpace={Boolean(headerAction)}
-                />
-              </div>
-              {headerAction ? (
-                <HeaderActionSlot action={headerAction} extendBottomPx={8} />
-              ) : null}
-            </div>
+            <CancionActivaHeader
+              cancionNombre={cancionNombre}
+              artista={artista}
+              nombreRevealKey={nombreRevealKey}
+              nombreRevealClass={nombreRevealClass}
+              headerAction={headerAction}
+            />
           ) : null}
 
           {waitingForExtract && (
             <div
-              className={`relative min-h-0 flex-1 overflow-hidden rounded-[12px] bg-letra-bg ${
-                modoLectura ? "mx-0" : "mt-2"
+              className={`relative min-h-0 flex-1 overflow-hidden bg-letra-bg ${
+                modoLectura ? "mx-0 rounded-[12px]" : "rounded-none"
               }`}
               role="status"
               aria-live="polite"
@@ -342,13 +337,7 @@ export default function CancionActivaSection({
           )}
 
           {showEmbed && contenido.mode === "embed" && (
-            <div
-              className={
-                modoLectura
-                  ? "relative min-h-0 w-full flex-1"
-                  : "relative mt-2 min-h-0 w-full flex-1"
-              }
-            >
+            <div className="relative min-h-0 w-full flex-1">
               <LetraViewer
                 url={contenido.url}
                 title="Letra de la canción activa"

@@ -23,7 +23,7 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
       { url: "/~offline", revision },
       { url: "/salas", revision },
       { url: "/auth/login", revision },
-      { url: "/cancionero", revision },
+      { url: "/individual", revision },
       { url: "/manifest.json", revision },
     ],
   });

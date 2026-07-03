@@ -10,6 +10,7 @@ import {
   type VozCalibre,
   type VozHistorySample,
   type VozInstantAttempt,
+  type VozOctavasPitchMode,
   type VozTarget,
 } from "@/lib/voz";
 import type {
@@ -26,23 +27,22 @@ import type {
 import type { VozDinamicaVoiceSample } from "@/lib/voz-dinamica";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import { Mic } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { VOZ_MODE_SLIDES } from "@/components/ui/entrenador-vocal/VozModeSlides";
 
 type EntrenadorVocalModalProps = {
   open: boolean;
   onClose: () => void;
   onRequestMic: () => void;
+  tonePracticeActive: boolean;
+  onToggleTonePractice: () => void;
+  onStopTonePractice: () => void;
   detection: NoteDetection | null;
   micError: string | null;
   micPermissionGranted: boolean;
-  micReady: boolean;
   micStarting: boolean;
   target: VozTarget;
   onSetTarget: (target: VozTarget) => void;
-  octaveExact: boolean;
-  onSetOctaveExact: (value: boolean) => void;
   targetFrequency: number | null;
   referenceLabel: string | null;
   centsFromTarget: number | null;
@@ -50,18 +50,25 @@ type EntrenadorVocalModalProps = {
   feedbackLabel: string;
   historySamples: VozHistorySample[];
   instantAttempts: VozInstantAttempt[];
+  onClearInstantAttempts: () => void;
   holdTargetSeconds: number;
   onSetHoldTargetSeconds: (value: number) => void;
   holdCalibre: VozCalibre;
   onSetHoldCalibre: (value: VozCalibre) => void;
   octavasNoteDurationSeconds: number;
   onSetOctavasNoteDurationSeconds: (value: number) => void;
+  octavasPitchMode: VozOctavasPitchMode;
+  onSetOctavasPitchMode: (mode: VozOctavasPitchMode) => void;
+  octavasScaleRepetitions: number;
+  onSetOctavasScaleRepetitions: (value: number) => void;
   celebrationKey: number;
   effectiveTarget: VozTarget;
   onSetRitmoToneEvaluation: (mode: RitmoToneEvaluation) => void;
   onSetDynamicsEvaluation: (value: boolean) => void;
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
+  ritmoMicActive: boolean;
+  onToggleRitmoMic: () => void;
   onStopRhythm: () => void;
   ritmoBpm: number;
   onSetRitmoBpm: (value: number) => void;
@@ -85,6 +92,8 @@ type EntrenadorVocalModalProps = {
   voiceRms: number;
   melodiaPlaying: boolean;
   onToggleMelodiaPlaying: () => void;
+  melodiaMicActive: boolean;
+  onToggleMelodiaMic: () => void;
   melodiaBpm: number;
   onSetMelodiaBpm: (value: number) => void;
   melodiaPatternLength: number;
@@ -101,12 +110,9 @@ type EntrenadorVocalModalProps = {
 
 function MicConnectingPanel() {
   return (
-    <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full border border-border bg-bg-card">
-        <Mic className="size-8 text-accent" aria-hidden="true" />
-      </div>
-      <p className="text-sm text-text-muted">Conectando micrófono...</p>
-    </div>
+    <p className="py-2 text-center text-sm text-text-muted">
+      Conectando micrófono...
+    </p>
   );
 }
 
@@ -120,7 +126,7 @@ function MicPermissionPanel({
   onRequestMic: () => void;
 }) {
   return (
-    <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
+    <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 text-center">
       <div className="flex size-16 items-center justify-center rounded-full border border-border bg-bg-card">
         <Mic className="size-8 text-accent" aria-hidden="true" />
       </div>
@@ -129,9 +135,9 @@ function MicPermissionPanel({
           Acceso al micrófono
         </p>
         <p className="text-sm text-text-muted">
-          Para escuchar tu voz y compararla con la nota objetivo, necesitamos
-          el micrófono. Tocá el botón y aceptá el permiso cuando el navegador
-          te lo pida.
+          Para practicar con tu voz necesitamos el micrófono. Tocá el botón y
+          aceptá el permiso cuando el navegador te lo pida. Después activá el
+          micrófono en cada modo para empezar a practicar.
         </p>
       </div>
       {micError ? (
@@ -155,27 +161,19 @@ function MicPermissionPanel({
   );
 }
 
-const RHYTHM_SLIDE_IDS = new Set([
-  "melodia",
-  "ritmo",
-  "dinamica",
-  "ritmo-nota",
-  "combo",
-]);
-
 export default function EntrenadorVocalModal({
   open,
   onClose,
   onRequestMic,
+  tonePracticeActive,
+  onToggleTonePractice,
+  onStopTonePractice,
   detection,
   micError,
   micPermissionGranted,
-  micReady,
   micStarting,
   target,
   onSetTarget,
-  octaveExact,
-  onSetOctaveExact,
   targetFrequency,
   referenceLabel,
   centsFromTarget,
@@ -183,18 +181,25 @@ export default function EntrenadorVocalModal({
   feedbackLabel,
   historySamples,
   instantAttempts,
+  onClearInstantAttempts,
   holdTargetSeconds,
   onSetHoldTargetSeconds,
   holdCalibre,
   onSetHoldCalibre,
   octavasNoteDurationSeconds,
   onSetOctavasNoteDurationSeconds,
+  octavasPitchMode,
+  onSetOctavasPitchMode,
+  octavasScaleRepetitions,
+  onSetOctavasScaleRepetitions,
   celebrationKey,
   effectiveTarget,
   onSetRitmoToneEvaluation,
   onSetDynamicsEvaluation,
   ritmoPlaying,
   onToggleRitmoPlaying,
+  ritmoMicActive,
+  onToggleRitmoMic,
   onStopRhythm,
   ritmoBpm,
   onSetRitmoBpm,
@@ -212,6 +217,8 @@ export default function EntrenadorVocalModal({
   voiceRms,
   melodiaPlaying,
   onToggleMelodiaPlaying,
+  melodiaMicActive,
+  onToggleMelodiaMic,
   melodiaBpm,
   onSetMelodiaBpm,
   melodiaPatternLength,
@@ -226,27 +233,45 @@ export default function EntrenadorVocalModal({
   onSetComboNoteAtSlot,
 }: EntrenadorVocalModalProps) {
   const [activeModeIndex, setActiveModeIndex] = useState(0);
+  const prevSlideIndexRef = useRef(activeModeIndex);
 
   useEffect(() => {
     if (!open) {
       setActiveModeIndex(0);
+      prevSlideIndexRef.current = 0;
+      onStopRhythm();
+      onStopTonePractice();
+      return;
     }
-  }, [open]);
+
+    onClearInstantAttempts();
+  }, [open, onStopRhythm, onStopTonePractice, onClearInstantAttempts]);
 
   useEffect(() => {
-    const slideId = VOZ_MODE_SLIDES[activeModeIndex]?.id;
-
-    if (!slideId || !RHYTHM_SLIDE_IDS.has(slideId)) {
-      onStopRhythm();
+    if (!open) {
+      return;
     }
-  }, [activeModeIndex, onStopRhythm]);
+
+    if (prevSlideIndexRef.current !== activeModeIndex) {
+      onStopRhythm();
+      onStopTonePractice();
+      onClearInstantAttempts();
+      prevSlideIndexRef.current = activeModeIndex;
+    }
+  }, [
+    activeModeIndex,
+    open,
+    onStopRhythm,
+    onStopTonePractice,
+    onClearInstantAttempts,
+  ]);
 
   if (!open) {
     return null;
   }
 
   const objectiveLabel =
-    referenceLabel ?? formatTargetLabel(target, octaveExact);
+    referenceLabel ?? formatTargetLabel(target);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
@@ -260,7 +285,7 @@ export default function EntrenadorVocalModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="entrenador-vocal-titulo"
-        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-lg flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <ToolModalHeader
           titleId="entrenador-vocal-titulo"
@@ -269,78 +294,85 @@ export default function EntrenadorVocalModal({
           onClose={onClose}
         />
 
-        <div className="flex min-h-0 flex-1 flex-col items-center touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-5">
-          {!micReady ? (
-            !micPermissionGranted || micError ? (
-              <MicPermissionPanel
-                micError={micError}
-                micStarting={micStarting}
-                onRequestMic={onRequestMic}
-              />
-            ) : (
-              <MicConnectingPanel />
-            )
-          ) : (
-            <VozModeSlides
-              activeIndex={activeModeIndex}
-              onChangeIndex={setActiveModeIndex}
-              onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
-              onSetDynamicsEvaluation={onSetDynamicsEvaluation}
-              effectiveTarget={effectiveTarget}
-              targetPicker={{
-                target,
-                onSetTarget,
-                octaveExact,
-                onSetOctaveExact,
-              }}
-              detection={detection}
-              objectiveLabel={objectiveLabel}
-              targetFrequency={targetFrequency}
-              octaveExact={octaveExact}
-              targetNote={target.note}
-              centsFromTarget={centsFromTarget ?? 0}
-              accuracy={accuracy}
-              feedbackLabel={feedbackLabel}
-              instantAttempts={instantAttempts}
-              historySamples={historySamples}
-              holdTargetSeconds={holdTargetSeconds}
-              onSetHoldTargetSeconds={onSetHoldTargetSeconds}
-              holdCalibre={holdCalibre}
-              onSetHoldCalibre={onSetHoldCalibre}
-              octavasNoteDurationSeconds={octavasNoteDurationSeconds}
-              onSetOctavasNoteDurationSeconds={onSetOctavasNoteDurationSeconds}
-              celebrationKey={celebrationKey}
-              ritmoPlaying={ritmoPlaying}
-              onToggleRitmoPlaying={onToggleRitmoPlaying}
-              ritmoBpm={ritmoBpm}
-              onSetRitmoBpm={onSetRitmoBpm}
-              ritmoBeatPattern={ritmoBeatPattern}
-              ritmoPatternLength={ritmoPatternLength}
-              onSetRitmoPatternLength={onSetRitmoPatternLength}
-              ritmoBeatDurations={ritmoBeatDurations}
-              onSetRitmoBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
-              onSetRitmoBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
-              ritmoTapTempoTapCount={ritmoTapTempoTapCount}
-              onTapRitmoTempo={onTapRitmoTempo}
-              beatMarkers={beatMarkers}
-              ritmoVoiceSamples={ritmoVoiceSamples}
-              dinamicaVoiceSamples={dinamicaVoiceSamples}
-              voiceRms={voiceRms}
-              melodiaPlaying={melodiaPlaying}
-              onToggleMelodiaPlaying={onToggleMelodiaPlaying}
-              melodiaBpm={melodiaBpm}
-              onSetMelodiaBpm={onSetMelodiaBpm}
-              melodiaPatternLength={melodiaPatternLength}
-              onSetMelodiaPatternLength={onSetMelodiaPatternLength}
-              melodiaBeatDuration={melodiaBeatDuration}
-              onSetMelodiaBeatDuration={onSetMelodiaBeatDuration}
-              melodiaNotePattern={melodiaNotePattern}
-              onSetMelodiaNoteAtSlot={onSetMelodiaNoteAtSlot}
-              melodiaTapTempoTapCount={melodiaTapTempoTapCount}
-              onTapMelodiaTempo={onTapMelodiaTempo}
-              comboNotePattern={comboNotePattern}
-              onSetComboNoteAtSlot={onSetComboNoteAtSlot}
+        <div className="flex min-h-0 flex-1 flex-col items-stretch touch-pan-y overflow-y-auto overscroll-y-contain px-3 py-4">
+          {!micPermissionGranted || micError ? (
+            <MicPermissionPanel
+              micError={micError}
+              micStarting={micStarting}
+              onRequestMic={onRequestMic}
             />
+          ) : (
+            <>
+              {micStarting ? <MicConnectingPanel /> : null}
+              <VozModeSlides
+                activeIndex={activeModeIndex}
+                onChangeIndex={setActiveModeIndex}
+                onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
+                onSetDynamicsEvaluation={onSetDynamicsEvaluation}
+                effectiveTarget={effectiveTarget}
+                targetPicker={{
+                  target,
+                  onSetTarget,
+                }}
+                detection={detection}
+                objectiveLabel={objectiveLabel}
+                targetFrequency={targetFrequency}
+                targetNote={target.note}
+                centsFromTarget={centsFromTarget ?? 0}
+                accuracy={accuracy}
+                feedbackLabel={feedbackLabel}
+                instantAttempts={instantAttempts}
+                historySamples={historySamples}
+                holdTargetSeconds={holdTargetSeconds}
+                onSetHoldTargetSeconds={onSetHoldTargetSeconds}
+                holdCalibre={holdCalibre}
+                onSetHoldCalibre={onSetHoldCalibre}
+                octavasNoteDurationSeconds={octavasNoteDurationSeconds}
+                onSetOctavasNoteDurationSeconds={onSetOctavasNoteDurationSeconds}
+                octavasPitchMode={octavasPitchMode}
+                onSetOctavasPitchMode={onSetOctavasPitchMode}
+                octavasScaleRepetitions={octavasScaleRepetitions}
+                onSetOctavasScaleRepetitions={onSetOctavasScaleRepetitions}
+                celebrationKey={celebrationKey}
+                tonePracticeActive={tonePracticeActive}
+                onToggleTonePractice={onToggleTonePractice}
+                micStarting={micStarting}
+                ritmoPlaying={ritmoPlaying}
+                onToggleRitmoPlaying={onToggleRitmoPlaying}
+                ritmoMicActive={ritmoMicActive}
+                onToggleRitmoMic={onToggleRitmoMic}
+                ritmoBpm={ritmoBpm}
+                onSetRitmoBpm={onSetRitmoBpm}
+                ritmoBeatPattern={ritmoBeatPattern}
+                ritmoPatternLength={ritmoPatternLength}
+                onSetRitmoPatternLength={onSetRitmoPatternLength}
+                ritmoBeatDurations={ritmoBeatDurations}
+                onSetRitmoBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
+                onSetRitmoBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
+                ritmoTapTempoTapCount={ritmoTapTempoTapCount}
+                onTapRitmoTempo={onTapRitmoTempo}
+                beatMarkers={beatMarkers}
+                ritmoVoiceSamples={ritmoVoiceSamples}
+                dinamicaVoiceSamples={dinamicaVoiceSamples}
+                voiceRms={voiceRms}
+                melodiaPlaying={melodiaPlaying}
+                onToggleMelodiaPlaying={onToggleMelodiaPlaying}
+                melodiaMicActive={melodiaMicActive}
+                onToggleMelodiaMic={onToggleMelodiaMic}
+                melodiaBpm={melodiaBpm}
+                onSetMelodiaBpm={onSetMelodiaBpm}
+                melodiaPatternLength={melodiaPatternLength}
+                onSetMelodiaPatternLength={onSetMelodiaPatternLength}
+                melodiaBeatDuration={melodiaBeatDuration}
+                onSetMelodiaBeatDuration={onSetMelodiaBeatDuration}
+                melodiaNotePattern={melodiaNotePattern}
+                onSetMelodiaNoteAtSlot={onSetMelodiaNoteAtSlot}
+                melodiaTapTempoTapCount={melodiaTapTempoTapCount}
+                onTapMelodiaTempo={onTapMelodiaTempo}
+                comboNotePattern={comboNotePattern}
+                onSetComboNoteAtSlot={onSetComboNoteAtSlot}
+              />
+            </>
           )}
         </div>
       </div>

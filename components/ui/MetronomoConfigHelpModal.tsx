@@ -1,40 +1,89 @@
 "use client";
 
+import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
 import { MetronomeUnifiedDemo } from "@/components/ui/MetronomoConfigHelpDemos";
-import { METRONOME_CONCEPTS } from "@/lib/metronomo-help-content";
-import { HelpCircle, X } from "lucide-react";
-import { useEffect } from "react";
+import {
+  METRONOME_CONCEPTS,
+  type MetronomeConceptId,
+} from "@/lib/metronomo-help-content";
+import { HelpCircle, Timer, Volume2, X } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+
+const HELP_ICON_CLASS = "shrink-0 text-[var(--voz-config)]";
+
+const CONCEPT_SHIMMER_DELAY_MS: Record<MetronomeConceptId, number> = {
+  golpes: 0,
+  figura: 220,
+  dinamica: 440,
+  tempo: 660,
+};
+function GolpesConceptIcon() {
+  return (
+    <svg
+      viewBox="0 0 28 10"
+      className="h-2.5 w-7 shrink-0 text-[var(--voz-config)]"
+      aria-hidden="true"
+    >
+      {[5, 11, 17, 23].map((cx) => (
+        <circle key={cx} cx={cx} cy="5" r="2.5" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+function FiguraConceptIcon() {
+  return (
+    <svg
+      viewBox="0 0 32 40"
+      className="h-4 w-3 shrink-0 text-[var(--voz-config)]"
+      aria-hidden="true"
+    >
+      <ellipse cx="12" cy="30" rx="9" ry="6.5" fill="currentColor" />
+      <line
+        x1="21"
+        y1="30"
+        x2="21"
+        y2="4"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DinamicaConceptIcon() {
+  return (
+    <Volume2
+      className={`size-4 ${HELP_ICON_CLASS}`}
+      strokeWidth={2.25}
+      aria-hidden="true"
+    />
+  );
+}
+
+function TempoConceptIcon() {
+  return (
+    <Timer
+      className={`size-4 ${HELP_ICON_CLASS}`}
+      strokeWidth={2.25}
+      aria-hidden="true"
+    />
+  );
+}
+
+const CONCEPT_ICONS: Record<MetronomeConceptId, () => ReactNode> = {
+  golpes: GolpesConceptIcon,
+  figura: FiguraConceptIcon,
+  dinamica: DinamicaConceptIcon,
+  tempo: TempoConceptIcon,
+};
 
 type MetronomoConfigHelpModalProps = {
   open: boolean;
   onClose: () => void;
 };
-
-function ConceptCard({
-  label,
-  text,
-  tip,
-}: {
-  label: string;
-  text: string;
-  tip: string;
-}) {
-  return (
-    <article className="overflow-hidden rounded-[12px] border border-border bg-bg-card">
-      <div className="space-y-2 p-3">
-        <p className="font-bold text-[var(--voz-config)]">{label}</p>
-        <p className="text-[12px] leading-relaxed text-text-secondary">{text}</p>
-        <p
-          className="border-t pt-2 text-[11px] text-text-muted"
-          style={{ borderColor: "var(--border)" }}
-        >
-          {tip}
-        </p>
-      </div>
-    </article>
-  );
-}
 
 export function MetronomoConfigHelpModal({
   open,
@@ -116,14 +165,21 @@ export function MetronomoConfigHelpModal({
                 Qué controla cada cosa
               </h3>
               <div className="mt-2 space-y-2">
-                {METRONOME_CONCEPTS.map((concept) => (
-                  <ConceptCard
-                    key={concept.id}
-                    label={concept.label}
-                    text={concept.text}
-                    tip={concept.tip}
-                  />
-                ))}
+                {METRONOME_CONCEPTS.map((concept) => {
+                  const Icon = CONCEPT_ICONS[concept.id];
+
+                  return (
+                    <HelpInfoCard
+                      key={concept.id}
+                      variant="card"
+                      icon={<Icon />}
+                      label={concept.label}
+                      text={concept.text}
+                      tip={concept.tip}
+                      shimmerDelayMs={CONCEPT_SHIMMER_DELAY_MS[concept.id]}
+                    />
+                  );
+                })}
               </div>
             </section>
           </div>

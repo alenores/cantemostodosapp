@@ -199,20 +199,43 @@ function SalasFooterSpacer() {
   );
 }
 
-/** Skeleton del hub /cancionero — replica Herramientas. */
+/** Skeleton del hub Home — pantalla de bienvenida. */
 export function HerramientasHubSkeleton() {
   return (
     <div
       className="flex min-h-full flex-1 flex-col bg-bg-app"
       role="status"
       aria-live="polite"
-      aria-label="Cargando herramientas"
+      aria-label="Cargando inicio"
     >
       <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+        <ShimmerBlock className="h-7 w-[42%] rounded-md" />
+        <ShimmerBlock className="h-3 w-[48%] rounded-md" delayMs={40} />
+
         <div className="grid grid-cols-2 gap-[10px]">
           <HerramientasHubCardSkeleton />
           <HerramientasHubCardSkeleton delayMs={60} />
-          <HerramientasHubCardSkeleton delayMs={120} />
+        </div>
+
+        <ShimmerBlock className="mt-1 h-3 w-[28%] rounded-md" delayMs={80} />
+
+        <div className="grid grid-cols-2 gap-[10px]">
+          <HerramientasHubCardSkeleton delayMs={100} />
+          <HerramientasHubCardSkeleton delayMs={140} />
+        </div>
+
+        <ShimmerBlock className="h-3 w-[32%] rounded-md" delayMs={160} />
+
+        <div className="grid grid-cols-2 gap-[10px]">
+          <HerramientasHubCardSkeleton delayMs={180} />
+        </div>
+
+        <ShimmerBlock className="h-3 w-[24%] rounded-md" delayMs={200} />
+
+        <div className="grid grid-cols-2 gap-[10px]">
+          <HerramientasHubCardSkeleton delayMs={220} />
+          <HerramientasHubCardSkeleton delayMs={240} />
+          <HerramientasHubCardSkeleton delayMs={260} />
         </div>
       </main>
     </div>

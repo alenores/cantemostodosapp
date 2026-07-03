@@ -1,6 +1,7 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { Gauge, HelpCircle, Clock, Music2, Timer, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -51,6 +52,8 @@ const PHASES = [
     dialColor: "var(--tuner-in-tune)",
   },
 ] as const;
+
+const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
 
 function ClockIcon() {
   return (
@@ -361,17 +364,6 @@ function SostenerHelpDemo() {
   );
 }
 
-function InfoCard({ label, text }: { label: string; text: string }) {
-  return (
-    <article className="space-y-1.5 rounded-[12px] border border-border bg-bg-dark p-3">
-      <p className="text-[12px] font-bold" style={{ color: "var(--voz-config)" }}>
-        {label}
-      </p>
-      <p className="text-[12px] leading-relaxed text-text-secondary">{text}</p>
-    </article>
-  );
-}
-
 type SostenerHelpModalProps = {
   open: boolean;
   onClose: () => void;
@@ -464,21 +456,53 @@ export function SostenerHelpModal({ open, onClose }: SostenerHelpModalProps) {
                 Qué configurar
               </h3>
               <div className="mt-2 space-y-2">
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Clock
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="¿Para qué sirve?"
                   text="Entrenás tu voz para mantener una nota afinada durante un tiempo. La app mide cuántos segundos la sostenés en tono."
+                  shimmerDelayMs={0}
                 />
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Music2
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Nota objetivo"
                   text="La nota que tenés que sostener."
+                  shimmerDelayMs={220}
                 />
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Timer
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Meta de tiempo"
                   text="Cuántos segundos querés mantener la nota en tono seguidos. El cronómetro suma solo mientras estás afinado y vuelve a cero si te desafinás."
+                  shimmerDelayMs={440}
                 />
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Gauge
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Calibre"
                   text="Qué tan estricta es la evaluación: Principiante acepta más desviación, Avanzado exige mayor precisión."
+                  shimmerDelayMs={660}
                 />
               </div>
             </section>

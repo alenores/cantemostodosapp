@@ -46,7 +46,6 @@ export type UseCompositorResult = {
   isPreviewingTrack: boolean;
   cycleProgress: number | null;
   tapTempoTapCount: number;
-  octaveExact: boolean;
   setActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
   setSelectedEventId: (eventId: string | null) => void;
   setBpm: (value: number) => void;
@@ -64,7 +63,6 @@ export type UseCompositorResult = {
   removeTrackEvent: (eventId: string, instrumentId?: CompositorInstrumentId) => void;
   toggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   tapTempo: () => void;
-  setOctaveExact: (value: boolean) => void;
   start: () => Promise<void>;
   previewActiveTrack: () => Promise<void>;
   stop: () => void;
@@ -82,7 +80,6 @@ export function useCompositor(): UseCompositorResult {
   const [isPreviewingTrack, setIsPreviewingTrack] = useState(false);
   const [cycleProgress, setCycleProgress] = useState<number | null>(null);
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
-  const [octaveExact, setOctaveExact] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   const pieceRef = useRef(piece);
@@ -436,7 +433,6 @@ export function useCompositor(): UseCompositorResult {
     isPreviewingTrack,
     cycleProgress,
     tapTempoTapCount,
-    octaveExact,
     setActiveTrackId,
     setSelectedEventId: setSelectedEventIdState,
     setBpm,
@@ -447,7 +443,6 @@ export function useCompositor(): UseCompositorResult {
     removeTrackEvent,
     toggleTrack,
     tapTempo,
-    setOctaveExact,
     start,
     previewActiveTrack,
     stop,

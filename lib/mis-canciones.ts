@@ -42,7 +42,7 @@ export async function agregarAMisCanciones(
   const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("Se requiere sesión activa para guardar en Mis canciones");
+    throw new Error("Se requiere sesión activa para guardar en Favoritas");
   }
 
   const { error } = await supabase.from("usuarios_canciones").insert({

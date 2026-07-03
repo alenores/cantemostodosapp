@@ -14,7 +14,7 @@ import {
   type MetronomeBeatLevel,
 } from "@/lib/metronomo";
 import type { VozTarget } from "@/lib/voz";
-import { clampTargetOctave } from "@/lib/voz";
+import { clampTargetOctave, createVozTarget } from "@/lib/voz";
 import { clampEventDurationSteps } from "@/lib/compositor-timeline-layout";
 
 export const COMPOSITOR_STORAGE_KEY = "compositor-piece-v2";
@@ -106,7 +106,7 @@ export function createCompositorEvent(
     startStep: partial.startStep ?? 0,
     durationSteps: Math.max(1, partial.durationSteps ?? 1),
     level: partial.level ?? "medio",
-    note: partial.note ?? { note: "C", octave: 4 },
+    note: partial.note ?? createVozTarget("C"),
     drumSound: partial.drumSound ?? "kick",
     guitarArticulation: partial.guitarArticulation ?? "pua",
   };
@@ -125,7 +125,7 @@ function normalizeEvent(
     level: event.level ?? "medio",
     note: {
       note: event.note?.note ?? "C",
-      octave: clampTargetOctave(event.note?.octave ?? 4),
+      octave: clampTargetOctave(event.note?.octave ?? createVozTarget("C").octave),
     },
     drumSound: event.drumSound ?? "kick",
     guitarArticulation: event.guitarArticulation ?? "pua",
@@ -511,7 +511,7 @@ function migrateLegacyPiece(legacy: LegacyCompositorPiece): CompositorPiece {
           startStep,
           durationSteps,
           level,
-          note: track.notes[index] ?? { note: "C", octave: 4 },
+          note: track.notes[index] ?? createVozTarget("C"),
           drumSound,
           guitarArticulation,
         }),

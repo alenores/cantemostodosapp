@@ -22,8 +22,8 @@ export default function CancioneroSubpageShell({
       <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
         <div className="flex items-center gap-3">
           <TapLink
-            href="/cancionero"
-            ariaLabel="Volver a herramientas"
+            href="/"
+            ariaLabel="Volver al inicio"
             className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
           >
             <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />

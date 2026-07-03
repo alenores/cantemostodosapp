@@ -1,6 +1,7 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { HelpCircle, Music2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -50,7 +51,40 @@ const CYCLES = [
   },
 ] as const;
 
+const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
+
 type ChartPoint = { x: number; y: number };
+
+function OctaveConceptIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 26 26"
+      fill="none"
+      className="shrink-0"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 18 Q13 6 21 18"
+        stroke="var(--voz-config)"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <circle cx="5" cy="18" r="2.2" fill="var(--voz-config)" />
+      <circle cx="21" cy="18" r="2.2" fill="var(--voz-config)" />
+      <path
+        d="M9 14 Q13 8 17 14"
+        stroke="var(--voz-config)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.6"
+      />
+    </svg>
+  );
+}
 
 function noisyY(targetY: number, elapsed: number, amplitude: number): number {
   return (
@@ -436,17 +470,6 @@ function OctavasHelpDemo() {
   );
 }
 
-function InfoCard({ label, text }: { label: string; text: string }) {
-  return (
-    <article className="space-y-1.5 rounded-[12px] border border-border bg-bg-dark p-3">
-      <p className="text-[12px] font-bold" style={{ color: "var(--voz-config)" }}>
-        {label}
-      </p>
-      <p className="text-[12px] leading-relaxed text-text-secondary">{text}</p>
-    </article>
-  );
-}
-
 type OctavasHelpModalProps = {
   open: boolean;
   onClose: () => void;
@@ -539,13 +562,23 @@ export function OctavasHelpModal({ open, onClose }: OctavasHelpModalProps) {
                 Qué configurar
               </h3>
               <div className="mt-2 space-y-2">
-                <InfoCard
+                <HelpInfoCard
+                  icon={<OctaveConceptIcon />}
                   label="¿Para qué sirve?"
                   text="Entrenás el salto de octava: cantás una nota, hacés un corte, y cantás la misma nota una octava más arriba. Es un ejercicio clásico para ampliar el rango vocal."
+                  shimmerDelayMs={0}
                 />
-                <InfoCard
+                <HelpInfoCard
+                  icon={
+                    <Music2
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Nota objetivo"
                   text="La nota base que vas a cantar. La app deriva automáticamente la octava de arriba."
+                  shimmerDelayMs={220}
                 />
               </div>
             </section>

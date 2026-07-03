@@ -105,7 +105,7 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     (async () => {
-      const preferredPath = url.pathname === "/" ? "/salas" : url.pathname;
+      const preferredPath = url.pathname;
       const cached = await matchShellInCaches(event.request.url, preferredPath);
 
       if (cached) {
@@ -168,6 +168,7 @@ const serwist = new Serwist({
         sameOrigin &&
         request.mode === "navigate" &&
         (pathname === "/salas" ||
+          pathname === "/individual" ||
           pathname === "/pwa-boot.html" ||
           pathname === "/~offline" ||
           pathname === "/auth/login" ||

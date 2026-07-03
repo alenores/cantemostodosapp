@@ -1,4 +1,13 @@
 import { frequencyToNote, NOTE_NAMES } from "@/lib/afinador";
+import {
+  getMsPerBeat,
+  type MetronomeBeatDuration,
+} from "@/lib/metronomo";
+import {
+  ensurePracticeAudioContext,
+  primePracticeAudioOnGesture,
+  scheduleVozPracticeNote,
+} from "@/lib/voz-practice-audio";
 
 export type VozCalibre = "principiante" | "estandar" | "avanzado";
 
@@ -80,7 +89,7 @@ export function clampHoldTargetSeconds(value: number): number {
     Math.min(VOZ_HOLD_TARGET_MAX, Math.round(value)),
   );
 }
-export const VOZ_INSTANT_ATTEMPTS_MAX = 10;
+export const VOZ_INSTANT_ATTEMPTS_MAX = 15;
 
 export type VozInstantAttempt = {
   id: number;
@@ -124,9 +133,20 @@ export type VozTarget = {
   octave: number;
 };
 
-export const VOZ_DEFAULT_TARGET: VozTarget = { note: "A", octave: 3 };
+export const VOZ_DEFAULT_OCTAVE = 2 as const;
 
-export const VOZ_OCTAVES = [1, 2, 3, 4, 5] as const;
+export const VOZ_DEFAULT_TARGET: VozTarget = {
+  note: "A",
+  octave: VOZ_DEFAULT_OCTAVE,
+};
+
+export const VOZ_OCTAVES = [2, 3, 4, 5, 6] as const;
+
+export function isTargetOctaveInRange(
+  octave: number,
+): octave is (typeof VOZ_OCTAVES)[number] {
+  return VOZ_OCTAVES.includes(octave as (typeof VOZ_OCTAVES)[number]);
+}
 
 export function clampTargetOctave(
   octave: number,
@@ -140,6 +160,38 @@ export function clampTargetOctave(
   return VOZ_OCTAVES[0];
 }
 
+export function createVozTarget(
+  note: string,
+  octave: number = VOZ_DEFAULT_OCTAVE,
+): VozTarget {
+  return { note, octave: clampTargetOctave(octave) };
+}
+
+export function shiftTargetBySemitones(
+  target: VozTarget,
+  semitoneOffset: number,
+): VozTarget | null {
+  const noteIndex = getNoteIndex(target.note);
+
+  if (noteIndex === -1) {
+    return target;
+  }
+
+  const fromMidi = (target.octave + 1) * 12 + noteIndex;
+  const toMidi = fromMidi + semitoneOffset;
+  const newOctave = Math.floor(toMidi / 12) - 1;
+  const newNoteIndex = ((toMidi % 12) + 12) % 12;
+
+  if (!isTargetOctaveInRange(newOctave)) {
+    return null;
+  }
+
+  return {
+    note: NOTE_NAMES[newNoteIndex]!,
+    octave: newOctave,
+  };
+}
+
 const A4_FREQUENCY = 440;
 
 export function targetToFrequency(target: VozTarget): number {
@@ -151,8 +203,13 @@ export function targetToFrequency(target: VozTarget): number {
     return A4_FREQUENCY;
   }
 
-  const midi = (target.octave + 1) * 12 + noteIndex;
-  return A4_FREQUENCY * 2 ** ((midi - 69) / 12);
+  const octave = Number.isFinite(target.octave)
+    ? target.octave
+    : VOZ_DEFAULT_OCTAVE;
+  const midi = (octave + 1) * 12 + noteIndex;
+  const frequency = A4_FREQUENCY * 2 ** ((midi - 69) / 12);
+
+  return Number.isFinite(frequency) && frequency > 0 ? frequency : A4_FREQUENCY;
 }
 
 export function getCentsFromTarget(
@@ -518,6 +575,120 @@ export function splitHistorySegments(
   return segments;
 }
 
+export function getTargetCentsOffset(
+  from: VozTarget,
+  to: VozTarget,
+  octaveExact: boolean,
+): number {
+  const fromIndex = getNoteIndex(from.note);
+  const toIndex = getNoteIndex(to.note);
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return 0;
+  }
+
+  if (octaveExact) {
+    const fromMidi = (from.octave + 1) * 12 + fromIndex;
+    const toMidi = (to.octave + 1) * 12 + toIndex;
+    return (toMidi - fromMidi) * 100;
+  }
+
+  let semitones = toIndex - fromIndex;
+
+  while (semitones > 6) {
+    semitones -= 12;
+  }
+
+  while (semitones < -6) {
+    semitones += 12;
+  }
+
+  return semitones * 100;
+}
+
+export type MelodiaChartCentsRange = {
+  minCents: number;
+  maxCents: number;
+};
+
+const MELODIA_CHART_RANGE_PADDING_MIN_CENTS = 100;
+const MELODIA_CHART_RANGE_PADDING_RATIO = 0.14;
+
+export function getMelodiaChartCentsRange(
+  notes: VozTarget[],
+  reference: VozTarget,
+  octaveExact: boolean,
+): MelodiaChartCentsRange {
+  if (notes.length === 0) {
+    return { minCents: -200, maxCents: 200 };
+  }
+
+  const offsets = notes.map((note) =>
+    getTargetCentsOffset(reference, note, octaveExact),
+  );
+  let minNoteCents = Math.min(...offsets);
+  let maxNoteCents = Math.max(...offsets);
+
+  if (minNoteCents === maxNoteCents) {
+    minNoteCents -= 100;
+    maxNoteCents += 100;
+  }
+
+  const span = maxNoteCents - minNoteCents;
+  const padding = Math.max(
+    MELODIA_CHART_RANGE_PADDING_MIN_CENTS,
+    span * MELODIA_CHART_RANGE_PADDING_RATIO,
+  );
+
+  return {
+    minCents: minNoteCents - padding,
+    maxCents: maxNoteCents + padding,
+  };
+}
+
+export function melodiaCentsToChartY(
+  cents: number,
+  chartHeight: number,
+  range: MelodiaChartCentsRange,
+): number {
+  const paddingY = 10;
+  const innerHeight = chartHeight - paddingY * 2;
+  const span = range.maxCents - range.minCents;
+
+  if (span <= 0) {
+    return chartHeight / 2;
+  }
+
+  const clamped = Math.max(range.minCents, Math.min(range.maxCents, cents));
+  const ratio = (clamped - range.minCents) / span;
+
+  return paddingY + innerHeight * (1 - ratio);
+}
+
+export function historyTimestampToChartX(
+  timestamp: number,
+  now: number,
+  width: number,
+  windowMs = VOZ_HISTORY_WINDOW_MS,
+  paddingLeft = 8,
+  paddingRight = 8,
+  pastRatio?: number,
+): number {
+  const innerWidth = width - paddingLeft - paddingRight;
+
+  if (pastRatio === undefined) {
+    const age = now - timestamp;
+    const ratio = Math.max(0, Math.min(1, 1 - age / windowMs));
+    return paddingLeft + innerWidth * ratio;
+  }
+
+  const pastSpan = windowMs * pastRatio;
+  const offset = timestamp - now;
+  const ratio = Math.max(0, Math.min(1, (offset + pastSpan) / windowMs));
+
+  return paddingLeft + innerWidth * ratio;
+}
+
 export function historySampleToChartPoint(
   sample: VozHistorySample,
   now: number,
@@ -527,15 +698,25 @@ export function historySampleToChartPoint(
   maxCents = VOZ_HISTORY_CHART_MAX_CENTS,
   paddingLeft = 8,
   paddingRight = 8,
+  pastRatio?: number,
+  melodiaRange?: MelodiaChartCentsRange,
 ): { x: number; y: number } {
-  const innerWidth = width - paddingLeft - paddingRight;
-  const age = now - sample.timestamp;
-  const x = paddingLeft + innerWidth * (1 - age / windowMs);
-  const clampedCents = Math.max(
-    -maxCents,
-    Math.min(maxCents, sample.cents),
+  const x = historyTimestampToChartX(
+    sample.timestamp,
+    now,
+    width,
+    windowMs,
+    paddingLeft,
+    paddingRight,
+    pastRatio,
   );
-  const y = historyCentsToChartY(clampedCents, height, maxCents);
+  const y = melodiaRange
+    ? melodiaCentsToChartY(sample.cents, height, melodiaRange)
+    : historyCentsToChartY(
+        Math.max(-maxCents, Math.min(maxCents, sample.cents)),
+        height,
+        maxCents,
+      );
 
   return { x, y };
 }
@@ -549,6 +730,8 @@ export function buildHistorySegmentPath(
   maxCents = VOZ_HISTORY_CHART_MAX_CENTS,
   paddingLeft = 8,
   paddingRight = 8,
+  pastRatio?: number,
+  melodiaRange?: MelodiaChartCentsRange,
 ): string {
   if (segment.length === 0) {
     return "";
@@ -564,6 +747,8 @@ export function buildHistorySegmentPath(
       maxCents,
       paddingLeft,
       paddingRight,
+      pastRatio,
+      melodiaRange,
     ),
   );
 
@@ -716,12 +901,62 @@ export function clampOctavasNoteDurationSeconds(value: number): number {
   );
 }
 
+export type VozOctavasPitchMode = "same" | "scale";
+
+export const VOZ_OCTAVAS_PITCH_MODE_DEFAULT: VozOctavasPitchMode = "same";
+
+export const VOZ_OCTAVAS_SCALE_REPETITIONS_MIN = 1;
+export const VOZ_OCTAVAS_SCALE_REPETITIONS_MAX = 12;
+export const VOZ_OCTAVAS_SCALE_REPETITIONS_DEFAULT = 1;
+
+const MAJOR_SCALE_DEGREE_OFFSETS = [0, 2, 4, 5, 7, 9, 11] as const;
+
+export function clampOctavasScaleRepetitions(value: number): number {
+  return Math.max(
+    VOZ_OCTAVAS_SCALE_REPETITIONS_MIN,
+    Math.min(VOZ_OCTAVAS_SCALE_REPETITIONS_MAX, Math.round(value)),
+  );
+}
+
+export function getMajorScaleSemitoneOffset(scaleStepIndex: number): number {
+  if (scaleStepIndex <= 0) {
+    return 0;
+  }
+
+  const octaveSteps = Math.floor(scaleStepIndex / MAJOR_SCALE_DEGREE_OFFSETS.length);
+  const stepInOctave = scaleStepIndex % MAJOR_SCALE_DEGREE_OFFSETS.length;
+
+  return (
+    octaveSteps * 12 + MAJOR_SCALE_DEGREE_OFFSETS[stepInOctave]!
+  );
+}
+
+export function getOctavasScaleTarget(
+  baseTarget: VozTarget,
+  scaleStepIndex: number,
+): VozTarget | null {
+  if (scaleStepIndex <= 0) {
+    return baseTarget;
+  }
+
+  return shiftTargetBySemitones(
+    baseTarget,
+    getMajorScaleSemitoneOffset(scaleStepIndex),
+  );
+}
+
 export function getOctaveUpFrequency(target: VozTarget): number {
   return targetToFrequency(target) * 2;
 }
 
-export function getOctaveUpTarget(target: VozTarget): VozTarget {
-  return { note: target.note, octave: target.octave + 1 };
+export function getOctaveUpTarget(target: VozTarget): VozTarget | null {
+  const nextOctave = target.octave + 1;
+
+  if (!isTargetOctaveInRange(nextOctave)) {
+    return null;
+  }
+
+  return { note: target.note, octave: nextOctave };
 }
 
 export type VozOctavasChartSample = {
@@ -754,32 +989,10 @@ export function octavasCentsToChartY(
   return targetY - cents * centsPerPixel;
 }
 
-function scheduleSustainedReferenceTone(
-  audioContext: AudioContext,
-  frequency: number,
-  time: number,
-  durationSeconds: number,
-): void {
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-  const attack = 0.03;
-  const release = 0.05;
-  const sustainEnd = time + durationSeconds - release;
+const REFERENCE_NOTE_START_OFFSET_SECONDS = 0.05;
 
-  oscillator.type = "sine";
-  oscillator.frequency.value = frequency;
-  gainNode.gain.setValueAtTime(0.001, time);
-  gainNode.gain.exponentialRampToValueAtTime(0.3, time + attack);
-  gainNode.gain.setValueAtTime(0.3, Math.max(time + attack, sustainEnd));
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.001,
-    time + durationSeconds,
-  );
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  oscillator.start(time);
-  oscillator.stop(time + durationSeconds + 0.02);
+async function createResumedReferenceAudioContext(): Promise<AudioContext | null> {
+  return ensurePracticeAudioContext();
 }
 
 export function playOctaveReference(
@@ -787,79 +1000,102 @@ export function playOctaveReference(
   noteDurationSeconds: number,
   pauseMs = VOZ_OCTAVAS_PAUSE_MS,
 ): void {
-  const AudioContextClass =
-    typeof window !== "undefined"
-      ? window.AudioContext ||
-        (window as Window & { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext
-      : null;
+  primePracticeAudioOnGesture();
+  void playOctaveReferenceAsync(target, noteDurationSeconds, pauseMs);
+}
 
-  if (!AudioContextClass) {
+async function playOctaveReferenceAsync(
+  target: VozTarget,
+  noteDurationSeconds: number,
+  pauseMs = VOZ_OCTAVAS_PAUSE_MS,
+): Promise<void> {
+  const audioContext = await createResumedReferenceAudioContext();
+
+  if (!audioContext) {
     return;
   }
 
-  const audioContext = new AudioContextClass();
-  const startTime = audioContext.currentTime;
+  const startTime = audioContext.currentTime + REFERENCE_NOTE_START_OFFSET_SECONDS;
   const durationSeconds = Math.max(0.25, noteDurationSeconds);
   const pauseSeconds = pauseMs / 1000;
   const lowerFrequency = targetToFrequency(target);
   const higherFrequency = getOctaveUpFrequency(target);
 
-  scheduleSustainedReferenceTone(
+  scheduleVozPracticeNote(
     audioContext,
     lowerFrequency,
     startTime,
     durationSeconds,
   );
-  scheduleSustainedReferenceTone(
+  scheduleVozPracticeNote(
     audioContext,
     higherFrequency,
     startTime + durationSeconds + pauseSeconds,
     durationSeconds,
   );
-
-  window.setTimeout(
-    () => {
-      void audioContext.close();
-    },
-    (durationSeconds * 2 + pauseSeconds) * 1000 + 200,
-  );
 }
 
-export function playHoldCelebration(): void {
-  const AudioContextClass =
-    typeof window !== "undefined"
-      ? window.AudioContext ||
-        (window as Window & { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext
-      : null;
+export function playMelodiaReference(
+  notes: VozTarget[],
+  bpm: number,
+  beatDuration: MetronomeBeatDuration,
+): void {
+  primePracticeAudioOnGesture();
+  void playMelodiaReferenceAsync(notes, bpm, beatDuration);
+}
 
-  if (!AudioContextClass) {
+async function playMelodiaReferenceAsync(
+  notes: VozTarget[],
+  bpm: number,
+  beatDuration: MetronomeBeatDuration,
+): Promise<void> {
+  if (notes.length === 0) {
     return;
   }
 
-  const audioContext = new AudioContextClass();
-  const startTime = audioContext.currentTime;
+  const audioContext = await createResumedReferenceAudioContext();
+
+  if (!audioContext) {
+    return;
+  }
+
+  const startTime = audioContext.currentTime + REFERENCE_NOTE_START_OFFSET_SECONDS;
+  const beatDurationSeconds = getMsPerBeat(bpm, beatDuration) / 1000;
+  let offsetSeconds = 0;
+
+  for (const target of notes) {
+    scheduleVozPracticeNote(
+      audioContext,
+      targetToFrequency(target),
+      startTime + offsetSeconds,
+      beatDurationSeconds,
+    );
+    offsetSeconds += beatDurationSeconds;
+  }
+}
+
+export function playHoldCelebration(): void {
+  primePracticeAudioOnGesture();
+  void playHoldCelebrationAsync();
+}
+
+async function playHoldCelebrationAsync(): Promise<void> {
+  const audioContext = await createResumedReferenceAudioContext();
+
+  if (!audioContext) {
+    return;
+  }
+
+  const startTime = audioContext.currentTime + REFERENCE_NOTE_START_OFFSET_SECONDS;
   const notes = [523.25, 659.25, 783.99];
 
   for (const [index, frequency] of notes.entries()) {
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    const time = startTime + index * 0.08;
-
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    gainNode.gain.setValueAtTime(0.001, time);
-    gainNode.gain.exponentialRampToValueAtTime(0.35, time + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    oscillator.start(time);
-    oscillator.stop(time + 0.24);
+    scheduleVozPracticeNote(
+      audioContext,
+      frequency,
+      startTime + index * 0.08,
+      0.22,
+      0.35,
+    );
   }
-
-  window.setTimeout(() => {
-    void audioContext.close();
-  }, 500);
 }

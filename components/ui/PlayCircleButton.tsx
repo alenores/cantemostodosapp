@@ -1,18 +1,20 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
-import { Play, Square, Volume2 } from "lucide-react";
+import { Play, Square } from "lucide-react";
 
-type PlayCircleButtonSize = "default" | "sm";
+type PlayCircleButtonSize = "default" | "sm" | "xs";
 
 const SIZE_CLASSES: Record<PlayCircleButtonSize, string> = {
   default: "size-16",
   sm: "size-12",
+  xs: "size-9",
 };
 
 const ICON_SIZE_CLASSES: Record<PlayCircleButtonSize, string> = {
   default: "size-7",
   sm: "size-5",
+  xs: "size-3.5",
 };
 
 export type PlayCircleButtonProps = {
@@ -25,8 +27,6 @@ export type PlayCircleButtonProps = {
   size?: PlayCircleButtonSize;
   /** Solo muestra play (sin estado detener). */
   playOnly?: boolean;
-  /** Icono cuando no está en stop. Por defecto play; volume solo en Octavas. */
-  playIcon?: "play" | "volume";
 };
 
 export function PlayCircleButton({
@@ -38,10 +38,8 @@ export function PlayCircleButton({
   className = "",
   size = "default",
   playOnly = false,
-  playIcon = "play",
 }: PlayCircleButtonProps) {
   const showStop = !playOnly && isPlaying;
-  const PlayIcon = playIcon === "volume" ? Volume2 : Play;
 
   return (
     <TapButton
@@ -59,8 +57,8 @@ export function PlayCircleButton({
           aria-hidden="true"
         />
       ) : (
-        <PlayIcon
-          className={`${ICON_SIZE_CLASSES[size]}${playIcon === "play" ? " fill-current" : ""}`}
+        <Play
+          className={`${ICON_SIZE_CLASSES[size]} fill-current`}
           aria-hidden="true"
         />
       )}

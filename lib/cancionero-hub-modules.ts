@@ -15,7 +15,7 @@ export type HubModuleKind =
   | "voz"
   | "compositor";
 
-export type HubModuleSection = "canciones" | "practica";
+export type HubModuleSection = "canciones" | "herramientas" | "practica";
 
 export type HubModuleDef = {
   id: string;
@@ -45,7 +45,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
   },
   {
     id: "mis-canciones",
-    label: "Mis canciones",
+    label: "Favoritas",
     icon: Bookmark,
     iconColor: "var(--accent)",
     kind: "route",
@@ -61,7 +61,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     icon: Gauge,
     iconColor: "var(--tuner-in-tune)",
     kind: "afinador",
-    section: "practica",
+    section: "herramientas",
     ctaLabel: "Abrir",
     ctaVariant: "accent",
   },

@@ -25,6 +25,7 @@ import {
   getBeatLevelBarAppearance,
   getBeatLevelBarHeightPercent,
   getBeatLevelLabel,
+  toggleBeatSoundLevel,
   METRONOME_BEAT_DURATION_OPTIONS,
   type MetronomeBeatDuration,
   type MetronomeBeatDurationPattern,
@@ -61,42 +62,40 @@ import {
   type RitmoUiVariant,
 } from "@/lib/ritmo-terminologia";
 import { TargetPickerBody } from "@/components/ui/entrenador-vocal/EntrenadorVocalShared";
-import { formatTargetLabel, type VozTarget } from "@/lib/voz";
+import { createVozTarget, formatTargetLabel, type VozTarget } from "@/lib/voz";
 import { getActiveNotaSlice, type VozNotaPattern } from "@/lib/voz-nota-patron";
 import { ToolConfigSection } from "@/components/ui/ToolModalSections";
 import {
   COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS,
   COMPAS_SLOT_CONTROLS_CLASS,
+  COMPAS_SLOT_NOTE_CONTROLS_CLASS,
+  getRitmoCycleVolumeBarHeightPx,
+  RITMO_CYCLE_MAX_VOLUME_BAR_PX,
+  RITMO_CYCLE_VOLUME_BAR_SCALE,
 } from "@/lib/ritmo-compas-ui";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Volume2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 type BpmInputMode = "botones" | "tap";
 
-const VOLUME_BAR_SCALE_CYCLE = 0.36;
 const VOLUME_BAR_SCALE_CAROUSEL = 0.32;
-const VOLUME_BAR_SELECTED_BONUS = 3;
 
 function getVolumeBarHeightPx(
   level: MetronomeBeatLevel,
   scale: number,
-  options?: { uniform?: boolean },
+  options?: { uniform?: boolean; showSilence?: boolean },
 ): number {
-  const heightPercent = options?.uniform
-    ? 68
-    : Math.max(getBeatLevelBarHeightPercent(level), level === "silencio" ? 0 : 8);
-  const minPx = options?.uniform ? 14 : level === "silencio" ? 6 : 14;
-
-  return Math.max(heightPercent * scale, minPx);
+  return getRitmoCycleVolumeBarHeightPx(level, scale, options);
 }
 
-const MAX_VOLUME_BAR_CYCLE_PX =
-  getVolumeBarHeightPx("fuerte", VOLUME_BAR_SCALE_CYCLE) +
-  VOLUME_BAR_SELECTED_BONUS;
+const MAX_VOLUME_BAR_CYCLE_PX = RITMO_CYCLE_MAX_VOLUME_BAR_PX;
+
+/** Espacio reservado bajo la barra para que el número resaltado crezca hacia abajo. */
+const COMPAS_CYCLE_NUMBER_SLOT_PX = 22;
 
 /** Altura fija de cada columna del preview: icono + hueco de barra + número. */
 const COMPAS_CYCLE_COLUMN_HEIGHT_PX =
-  10 + 18 + 8 + MAX_VOLUME_BAR_CYCLE_PX + 8 + 18 + 4;
+  10 + 18 + 8 + MAX_VOLUME_BAR_CYCLE_PX + 8 + COMPAS_CYCLE_NUMBER_SLOT_PX + 4;
 
 function BeatDurationNoteIcon({
   duration,
@@ -257,9 +256,7 @@ function BeatDurationCarousel({
           {formatGolpeLabel(beatIndex)}
         </p>
       ) : null}
-      <div
-        className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
-      >
+      <div className={COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}>
       <TapButton
         type="button"
         aria-label="Figura más corta"
@@ -311,7 +308,9 @@ export function BeatVolumeCarousel({
   onSetLevel: (level: MetronomeBeatLevel) => void;
 }) {
   const barAppearance = getBeatLevelBarAppearance(level);
-  const barHeightPx = getVolumeBarHeightPx(level, VOLUME_BAR_SCALE_CAROUSEL);
+  const barHeightPx = getVolumeBarHeightPx(level, VOLUME_BAR_SCALE_CAROUSEL, {
+    showSilence: true,
+  });
 
   function changeLevel(delta: number) {
     onSetLevel(getBeatLevelAtOffset(level, delta));
@@ -324,9 +323,7 @@ export function BeatVolumeCarousel({
           {formatGolpeLabel(beatIndex)}
         </p>
       ) : null}
-      <div
-        className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
-      >
+      <div className={COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}>
         <TapButton
           type="button"
           aria-label="Bajar volumen"
@@ -371,6 +368,47 @@ export function BeatVolumeCarousel({
   );
 }
 
+export function BeatSoundCarousel({
+  level,
+  disabled = false,
+  onSetLevel,
+}: {
+  level: MetronomeBeatLevel;
+  beatIndex?: number;
+  disabled?: boolean;
+  hideBeatHeader?: boolean;
+  onSetLevel: (level: MetronomeBeatLevel) => void;
+}) {
+  const sounds = level !== "silencio";
+
+  return (
+    <div
+      className={`${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS} justify-center`}
+    >
+      <TapButton
+        type="button"
+        aria-label={
+          sounds ? "Golpe con sonido, tocar para silenciar" : "Golpe en silencio, tocar para que suene"
+        }
+        aria-pressed={sounds}
+        disabled={disabled}
+        onClick={() => onSetLevel(toggleBeatSoundLevel(level))}
+        className={`flex size-14 items-center justify-center rounded-full border transition-colors disabled:opacity-40 ${
+          sounds
+            ? "border-voz-config bg-voz-config/15 text-voz-config"
+            : "border-border bg-bg-card text-text-muted"
+        }`}
+      >
+        {sounds ? (
+          <Volume2 className="size-6" aria-hidden="true" />
+        ) : (
+          <VolumeX className="size-6" aria-hidden="true" />
+        )}
+      </TapButton>
+    </div>
+  );
+}
+
 export function CompasNumericCarousel({
   value,
   disabled = false,
@@ -397,9 +435,7 @@ export function CompasNumericCarousel({
   onIncrement: () => void;
 }) {
   return (
-    <div
-      className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
-    >
+    <div className={COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}>
       <TapButton
         type="button"
         aria-label={decrementAriaLabel}
@@ -455,9 +491,7 @@ function PatternLengthCarousel({
   onSetPatternLength: (value: number) => void;
 }) {
   return (
-    <div
-      className={`flex items-center gap-1 ${COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}`}
-    >
+    <div className={COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS}>
       <TapButton
         type="button"
         aria-label="Reducir cantidad del ciclo"
@@ -469,35 +503,40 @@ function PatternLengthCarousel({
       </TapButton>
 
       <div
-        className="flex min-w-0 flex-1 items-center justify-center px-1 text-center"
+        className="min-w-0 flex-1 px-1 text-center"
         aria-live="polite"
         aria-label={`${patternLength} en el ciclo`}
       >
-        <label className="sr-only" htmlFor={inputId}>
-          Cantidad en el ciclo
-        </label>
-        <input
-          id={inputId}
-          type="number"
-          inputMode="numeric"
-          min={BEATS_PER_MEASURE_MIN}
-          max={BEATS_PER_MEASURE_MAX}
-          disabled={disabled}
-          value={patternLength}
-          onChange={(event) => {
-            const parsed = Number.parseInt(event.target.value, 10);
-            if (!Number.isNaN(parsed)) {
-              onSetPatternLength(parsed);
-            }
-          }}
-          onBlur={(event) => {
-            const parsed = Number.parseInt(event.target.value, 10);
-            onSetPatternLength(
-              Number.isNaN(parsed) ? BEATS_PER_MEASURE_MIN : parsed,
-            );
-          }}
-          className="w-full max-w-[4.5rem] rounded-[10px] border border-border bg-bg-dark/40 py-1.5 text-center text-3xl font-extrabold leading-none text-text-primary disabled:opacity-40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
+        <div className="flex h-14 items-center justify-center">
+          <label className="sr-only" htmlFor={inputId}>
+            Cantidad en el ciclo
+          </label>
+          <input
+            id={inputId}
+            type="number"
+            inputMode="numeric"
+            min={BEATS_PER_MEASURE_MIN}
+            max={BEATS_PER_MEASURE_MAX}
+            disabled={disabled}
+            value={patternLength}
+            onChange={(event) => {
+              const parsed = Number.parseInt(event.target.value, 10);
+              if (!Number.isNaN(parsed)) {
+                onSetPatternLength(parsed);
+              }
+            }}
+            onBlur={(event) => {
+              const parsed = Number.parseInt(event.target.value, 10);
+              onSetPatternLength(
+                Number.isNaN(parsed) ? BEATS_PER_MEASURE_MIN : parsed,
+              );
+            }}
+            className="w-full max-w-[4.5rem] rounded-[10px] border border-border bg-bg-dark/40 py-1.5 text-center text-3xl font-extrabold leading-none text-text-primary disabled:opacity-40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+        </div>
+        <p className="mt-2 text-base font-bold leading-tight text-text-primary">
+          {RITMO_LABEL_GOLPES_TAB.toLowerCase()} en el ciclo
+        </p>
       </div>
 
       <TapButton
@@ -555,12 +594,9 @@ function CompasCyclePreview({
         const isPlayingBeat = currentBeat === index;
         const barHeightPx = getVolumeBarHeightPx(
           level,
-          VOLUME_BAR_SCALE_CYCLE,
+          RITMO_CYCLE_VOLUME_BAR_SCALE,
           { uniform: visualMode === "uniform" },
         );
-        const renderedBarHeightPx = isSelected
-          ? barHeightPx + VOLUME_BAR_SELECTED_BONUS
-          : barHeightPx;
 
         return (
           <TapButton
@@ -576,12 +612,14 @@ function CompasCyclePreview({
               flex: `${flexWeight} 1 0`,
               height: `${COMPAS_CYCLE_COLUMN_HEIGHT_PX}px`,
               ["--ritmo-beat-accent" as string]: accent.accentVar,
+              ["--ritmo-cycle-bar-row" as string]: `${MAX_VOLUME_BAR_CYCLE_PX}px`,
+              ["--ritmo-cycle-number-row" as string]: `${COMPAS_CYCLE_NUMBER_SLOT_PX}px`,
             }}
             aria-label={`Golpe ${index + 1}: ${getBeatLevelLabel(level)}`}
             aria-pressed={isSelected}
-            className={`group relative isolate flex min-w-0 flex-col items-center justify-end gap-2 overflow-visible px-0.5 pb-1 pt-2.5 transition-[transform,opacity] duration-300 ease-out disabled:opacity-50 ${
+            className={`group relative isolate grid min-w-0 grid-rows-[18px_var(--ritmo-cycle-bar-row)_var(--ritmo-cycle-number-row)] items-center justify-items-center gap-2 overflow-visible px-0.5 pb-1 pt-2.5 transition-opacity duration-300 ease-out disabled:opacity-50 ${
               isSelected
-                ? "-translate-y-1"
+                ? "opacity-100"
                 : selectable
                   ? "opacity-80 hover:opacity-100"
                   : "cursor-default opacity-90"
@@ -610,7 +648,7 @@ function CompasCyclePreview({
             ) : (
               <BeatDurationNoteIcon
                 duration={durations[index]!}
-                className={`h-[18px] w-[18px] shrink-0 transition-all duration-300 ${
+                className={`h-[18px] w-[18px] shrink-0 origin-top transition-all duration-300 ${
                   isSelected
                     ? `${accent.selectedNote} scale-110 drop-shadow-[0_0_8px_color-mix(in_srgb,var(--ritmo-beat-accent)_55%,transparent)]`
                     : "text-text-muted group-hover:text-text-secondary"
@@ -619,33 +657,37 @@ function CompasCyclePreview({
             )}
 
             <div
-              className="flex w-[72%] shrink-0 items-end justify-center"
+              className="flex w-[72%] shrink-0 items-end justify-center self-end"
               style={{ height: `${MAX_VOLUME_BAR_CYCLE_PX}px` }}
             >
-              <span
-                className="w-full rounded-full transition-[height,box-shadow] duration-300 ease-out"
-                style={{
-                  height: `${renderedBarHeightPx}px`,
-                  backgroundColor: barAppearance.backgroundColor,
-                  border: barAppearance.border,
-                  boxShadow: isSelected
-                    ? `0 0 16px color-mix(in srgb, ${accent.accentVar} 38%, transparent)`
-                    : isPlayingBeat
-                      ? "0 0 10px color-mix(in srgb, var(--text-primary) 25%, transparent)"
-                      : undefined,
-                }}
-              />
+              {level !== "silencio" ? (
+                <span
+                  className="w-full origin-bottom rounded-full transition-[height,box-shadow] duration-300 ease-out"
+                  style={{
+                    height: `${barHeightPx}px`,
+                    backgroundColor: barAppearance.backgroundColor,
+                    border: barAppearance.border,
+                    boxShadow: isSelected
+                      ? `0 0 16px color-mix(in srgb, ${accent.accentVar} 38%, transparent)`
+                      : isPlayingBeat
+                        ? "0 0 10px color-mix(in srgb, var(--text-primary) 25%, transparent)"
+                        : undefined,
+                  }}
+                />
+              ) : null}
             </div>
 
-            <span
-              className={`flex size-[18px] items-center justify-center rounded-full text-[9px] font-bold tabular-nums transition-all duration-300 ${
-                isSelected
-                  ? accent.selectedBadge
-                  : "text-text-muted group-hover:text-text-secondary"
-              }`}
-            >
-              {index + 1}
-            </span>
+            <div className="flex w-full items-start justify-center self-start overflow-visible">
+              <span
+                className={`flex size-[18px] origin-top items-center justify-center rounded-full text-[9px] font-bold tabular-nums transition-all duration-300 ${
+                  isSelected
+                    ? `${accent.selectedBadge} scale-125`
+                    : "text-text-muted group-hover:text-text-secondary"
+                }`}
+              >
+                {index + 1}
+              </span>
+            </div>
           </TapButton>
         );
       })}
@@ -684,19 +726,26 @@ const COMPAS_FOCUS_CONTAINER_CLASS =
 function CompasSlotControls({
   children,
   className = "",
+  variant = "default",
 }: {
   children: ReactNode;
   className?: string;
+  variant?: "default" | "note";
 }) {
+  const baseClass =
+    variant === "note"
+      ? COMPAS_SLOT_NOTE_CONTROLS_CLASS
+      : COMPAS_SLOT_CONTROLS_CLASS;
+
   return (
-    <div className={`${COMPAS_SLOT_CONTROLS_CLASS} ${className}`.trim()}>
+    <div className={`${baseClass} ${className}`.trim()}>
       {children}
     </div>
   );
 }
 
 const BPM_MODE_CONTAINER_CLASS =
-  "space-y-2.5 rounded-[10px] border border-border/70 bg-bg-cola-sheet px-2.5 py-2.5";
+  "rounded-[8px] border border-border/70 bg-bg-cola-sheet px-2 py-1.5";
 
 export { COMPAS_SLOT_CAROUSEL_MIN_HEIGHT_CLASS } from "@/lib/ritmo-compas-ui";
 
@@ -730,16 +779,6 @@ export function BpmSetupPanel({
     <div
       className={`space-y-2 ${demoMode ? "pointer-events-none select-none" : ""}`}
     >
-      <div
-        className="flex items-baseline justify-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5"
-        aria-live="polite"
-      >
-        <p className="text-5xl font-extrabold leading-none text-text-primary">
-          {bpm}
-        </p>
-        <p className="text-sm text-text-muted">{RITMO_LABEL_TEMPO}</p>
-      </div>
-
       <div className="flex gap-1 rounded-full border border-border bg-bg-darker p-0.5">
         {(
           [
@@ -763,54 +802,75 @@ export function BpmSetupPanel({
         ))}
       </div>
 
-      {activeMode === "botones" ? (
-        <div className={BPM_MODE_CONTAINER_CLASS}>
-          <div className="flex items-center justify-center gap-3">
+      <div className="flex items-stretch gap-2">
+        <div
+          className="flex shrink-0 items-baseline gap-1 rounded-[8px] border border-border bg-bg-card px-2 py-1.5"
+          aria-live="polite"
+        >
+          <p className="text-3xl font-extrabold leading-none tabular-nums text-text-primary">
+            {bpm}
+          </p>
+          <p className="text-[10px] text-text-muted">{RITMO_LABEL_TEMPO}</p>
+        </div>
+
+        {activeMode === "botones" ? (
+          <div
+            className={`${BPM_MODE_CONTAINER_CLASS} ml-auto flex min-w-0 flex-1 items-center justify-end`}
+          >
+            <div className="flex items-center gap-1.5">
+              <TapButton
+                type="button"
+                aria-label="Reducir BPM"
+                disabled={isPlaying || bpm <= BPM_MIN}
+                onClick={() => onSetBpm(bpm - 1)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
+              >
+                −
+              </TapButton>
+              <p className="w-8 text-center text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                BPM
+              </p>
+              <TapButton
+                type="button"
+                aria-label="Aumentar BPM"
+                disabled={isPlaying || bpm >= BPM_MAX}
+                onClick={() => onSetBpm(bpm + 1)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
+              >
+                +
+              </TapButton>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={`${BPM_MODE_CONTAINER_CLASS} flex min-w-0 flex-1 items-stretch`}
+          >
             <TapButton
               type="button"
-              aria-label="Reducir BPM"
-              disabled={isPlaying || bpm <= BPM_MIN}
-              onClick={() => onSetBpm(bpm - 1)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-xl font-bold text-text-primary disabled:opacity-40"
+              disabled={isPlaying}
+              onClick={onTapTempo}
+              className={`w-full rounded-[8px] border px-3 py-2.5 text-sm font-bold disabled:opacity-40 ${
+                tapTempoTapCount > 0 && !isPlaying
+                  ? "border-voz-config bg-voz-config/15 text-voz-config"
+                  : "border-border bg-bg-card text-text-primary"
+              }`}
             >
-              −
-            </TapButton>
-            <p className="w-16 text-center text-xs font-semibold uppercase tracking-wide text-text-muted">
-              BPM
-            </p>
-            <TapButton
-              type="button"
-              aria-label="Aumentar BPM"
-              disabled={isPlaying || bpm >= BPM_MAX}
-              onClick={() => onSetBpm(bpm + 1)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-xl font-bold text-text-primary disabled:opacity-40"
-            >
-              +
+              {RITMO_LABEL_TEMPO_PULSA_TAB}
             </TapButton>
           </div>
-        </div>
-      ) : (
-        <div className={BPM_MODE_CONTAINER_CLASS}>
-          <p className="text-[11px] leading-snug text-text-muted">
+        )}
+      </div>
+
+      {activeMode === "tap" ? (
+        <>
+          <p className="text-[10px] leading-snug text-text-muted">
             {isPlaying
               ? "Detené el ritmo para pulsar el tempo manualmente."
               : RITMO_HELP_TEMPO_PULSA}
           </p>
-          <TapButton
-            type="button"
-            disabled={isPlaying}
-            onClick={onTapTempo}
-            className={`w-full rounded-[12px] border px-4 py-3 text-sm font-bold disabled:opacity-40 ${
-              tapTempoTapCount > 0 && !isPlaying
-                ? "border-voz-config bg-voz-config/15 text-voz-config"
-                : "border-border bg-bg-card text-text-primary"
-            }`}
-          >
-            {RITMO_LABEL_TEMPO_PULSA_TAB}
-          </TapButton>
           {tapTempoTapCount > 0 && !isPlaying ? (
             <p
-              className="text-center text-xs text-voz-config"
+              className="text-center text-[10px] text-voz-config"
               aria-live="polite"
             >
               {tapTempoTapCount === 1
@@ -818,8 +878,8 @@ export function BpmSetupPanel({
                 : `${tapTempoTapCount} golpes registrados`}
             </p>
           ) : null}
-        </div>
-      )}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -830,18 +890,14 @@ export type RitmoCompasSetupTab = CompasSetupTab;
 
 export type VozNotaPatronConfig = {
   pattern: VozNotaPattern;
-  octaveExact: boolean;
-  onSetOctaveExact: (value: boolean) => void;
   onSetAtSlot: (slotIndex: number, target: VozTarget) => void;
 };
 
 export type CompositorContenidoConfig = {
   instrumentId: CompositorInstrumentId;
-  octaveExact: boolean;
   notes: CompositorSlotNote[];
   drumSounds: CompositorDrumSound[];
   guitarArticulations: CompositorGuitarArticulation[];
-  onSetOctaveExact: (value: boolean) => void;
   onSetNoteAtSlot: (slotIndex: number, note: CompositorSlotNote) => void;
   onSetDrumSoundAtSlot: (slotIndex: number, sound: CompositorDrumSound) => void;
   onSetGuitarArticulationAtSlot: (
@@ -886,7 +942,9 @@ export function CompasBeatSetupPanel({
   capas,
   vozNotaPatron,
   hideDinamicaTab = false,
+  vozBeatSoundTab = false,
   hideCompasHelp = false,
+  uniformFigura = false,
   forcedTab,
   forcedSelectedBeatIndex,
   demoMode = false,
@@ -907,7 +965,9 @@ export function CompasBeatSetupPanel({
   capas?: CompositorEditCapasConfig;
   vozNotaPatron?: VozNotaPatronConfig;
   hideDinamicaTab?: boolean;
+  vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
+  uniformFigura?: boolean;
   forcedTab?: CompasSetupTab;
   forcedSelectedBeatIndex?: number;
   demoMode?: boolean;
@@ -927,7 +987,7 @@ export function CompasBeatSetupPanel({
 
   function handleTabChange(nextTab: CompasSetupTab) {
     setTab(nextTab);
-    if (nextTab === "golpes") {
+    if (nextTab === "golpes" || (uniformFigura && nextTab === "figura")) {
       setSelectedBeatIndex(null);
     } else {
       setSelectedBeatIndex((previous) => previous ?? 0);
@@ -942,24 +1002,27 @@ export function CompasBeatSetupPanel({
   }, [disabled]);
 
   useEffect(() => {
-    if (tab === "golpes") {
+    if (tab === "golpes" || (uniformFigura && tab === "figura")) {
       return;
     }
 
     setSelectedBeatIndex((previous) =>
       Math.min(previous ?? 0, Math.max(0, patternLength - 1)),
     );
-  }, [patternLength, tab]);
+  }, [patternLength, tab, uniformFigura]);
 
   const activeTab = forcedTab ?? tab;
+  const beatSelectionDisabled =
+    activeTab === "golpes" || (uniformFigura && activeTab === "figura");
   const editingBeatIndex =
     forcedSelectedBeatIndex ?? selectedBeatIndex ?? 0;
+  const figuraBeatIndex = uniformFigura ? 0 : editingBeatIndex;
   const activeDurations = getActiveBeatDurationSlice(
     beatDurations,
     patternLength,
   );
   const currentSlotDuration =
-    activeDurations[editingBeatIndex] ?? ("negra" as MetronomeBeatDuration);
+    activeDurations[figuraBeatIndex] ?? ("negra" as MetronomeBeatDuration);
   const activeLevels = getActivePatternSlice(beatPattern, patternLength);
   const currentSlotLevel =
     activeLevels[editingBeatIndex] ?? ("medio" as MetronomeBeatLevel);
@@ -979,11 +1042,14 @@ export function CompasBeatSetupPanel({
     { id: "golpes", label: RITMO_LABEL_GOLPES_TAB },
     { id: "figura", label: RITMO_LABEL_FIGURA },
   ];
-  if (scope === "full" && !hideDinamicaTab) {
+  if (scope === "full" && !hideDinamicaTab && !vozBeatSoundTab) {
     compasTabs.push({ id: "dinamica", label: RITMO_LABEL_DINAMICA });
   }
   if (vozNotaPatron) {
     compasTabs.push({ id: "notas", label: RITMO_LABEL_NOTAS });
+  }
+  if (vozBeatSoundTab && scope === "full") {
+    compasTabs.push({ id: "contenido", label: RITMO_LABEL_CONTENIDO });
   }
   if (showContenidoTab) {
     compasTabs.push({ id: "contenido", label: RITMO_LABEL_CONTENIDO });
@@ -1009,7 +1075,7 @@ export function CompasBeatSetupPanel({
 
   const notaSlotLabels = vozNotaPatron
     ? getActiveNotaSlice(vozNotaPatron.pattern, patternLength).map((slotTarget) =>
-        formatTargetLabel(slotTarget, vozNotaPatron.octaveExact),
+        formatTargetLabel(slotTarget),
       )
     : undefined;
   const currentNotaTarget =
@@ -1065,12 +1131,12 @@ export function CompasBeatSetupPanel({
           pattern={beatPattern}
           beatDurations={beatDurations}
           patternLength={patternLength}
-          selectedBeatIndex={activeTab === "golpes" ? null : editingBeatIndex}
+          selectedBeatIndex={beatSelectionDisabled ? null : editingBeatIndex}
           disabled={disabled}
           currentBeat={currentBeat}
-          visualMode={activeTab === "golpes" ? "uniform" : "dynamic"}
+          visualMode="dynamic"
           variant={variant}
-          selectable={activeTab !== "golpes"}
+          selectable={!beatSelectionDisabled}
           slotTopLabels={activeTab === "notas" ? notaSlotLabels : undefined}
           onSelectSlot={setSelectedBeatIndex}
         />
@@ -1092,24 +1158,21 @@ export function CompasBeatSetupPanel({
           <CompasSlotControls>
             <BeatDurationCarousel
               beatDuration={currentSlotDuration}
-              beatIndex={editingBeatIndex}
+              beatIndex={figuraBeatIndex}
               disabled={disabled}
               hideBeatHeader
               onSetBeatDuration={(duration) =>
-                onSetBeatDurationAtSlot(editingBeatIndex, duration)
+                onSetBeatDurationAtSlot(figuraBeatIndex, duration)
               }
             />
           </CompasSlotControls>
         ) : null}
 
         {activeTab === "notas" && vozNotaPatron && currentNotaTarget ? (
-          <CompasSlotControls>
+          <CompasSlotControls variant="note">
             <TargetPickerBody
               target={currentNotaTarget}
               disabled={disabled}
-              density="compact"
-              octaveExact={vozNotaPatron.octaveExact}
-              onSetOctaveExact={vozNotaPatron.onSetOctaveExact}
               onSetTarget={(nextTarget) =>
                 vozNotaPatron.onSetAtSlot(editingBeatIndex, nextTarget)
               }
@@ -1131,17 +1194,27 @@ export function CompasBeatSetupPanel({
           </CompasSlotControls>
         ) : null}
 
-        {activeTab === "contenido" && contenido && showContenidoTab ? (
+        {activeTab === "contenido" && vozBeatSoundTab ? (
           <CompasSlotControls>
+            <BeatSoundCarousel
+              level={currentSlotLevel}
+              disabled={disabled}
+              onSetLevel={(level) =>
+                onSetBeatLevelAtSlot(editingBeatIndex, level)
+              }
+            />
+          </CompasSlotControls>
+        ) : null}
+
+        {activeTab === "contenido" && contenido && showContenidoTab ? (
+          <CompasSlotControls variant="note">
             <CompositorSlotContenido
               embedded
               slotIndex={editingBeatIndex}
               note={
-                contenido.notes[editingBeatIndex] ?? { note: "C", octave: 4 }
+                contenido.notes[editingBeatIndex] ?? createVozTarget("C")
               }
-              octaveExact={contenido.octaveExact}
               disabled={disabled}
-              onSetOctaveExact={contenido.onSetOctaveExact}
               onSetNote={(note) =>
                 contenido.onSetNoteAtSlot(editingBeatIndex, note)
               }
@@ -1181,7 +1254,7 @@ export function CompasBeatSetupPanel({
           {activeTab === "golpes"
             ? RITMO_HELP_CICLO
             : activeTab === "figura"
-              ? getRitmoHelpFigura(variant)
+              ? getRitmoHelpFigura(variant, uniformFigura)
               : activeTab === "dinamica"
                 ? getRitmoHelpDinamica(variant)
                 : activeTab === "notas"
@@ -1387,7 +1460,9 @@ export function ToolRitmoCompasPanel({
   capas,
   vozNotaPatron,
   hideDinamicaTab,
+  vozBeatSoundTab,
   hideCompasHelp,
+  uniformFigura,
   forcedTab,
   forcedSelectedBeatIndex,
   demoMode = false,
@@ -1409,7 +1484,9 @@ export function ToolRitmoCompasPanel({
   capas?: CompositorEditCapasConfig;
   vozNotaPatron?: VozNotaPatronConfig;
   hideDinamicaTab?: boolean;
+  vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
+  uniformFigura?: boolean;
   forcedTab?: CompasSetupTab;
   forcedSelectedBeatIndex?: number;
   demoMode?: boolean;
@@ -1449,7 +1526,9 @@ export function ToolRitmoCompasPanel({
           capas={capas}
           vozNotaPatron={vozNotaPatron}
           hideDinamicaTab={hideDinamicaTab}
+          vozBeatSoundTab={vozBeatSoundTab}
           hideCompasHelp={hideCompasHelp}
+          uniformFigura={uniformFigura}
           forcedTab={forcedTab}
           forcedSelectedBeatIndex={forcedSelectedBeatIndex}
           demoMode={demoMode}
@@ -1480,11 +1559,11 @@ export function ToolRitmoTempoPanel({
   onTapTempo: () => void;
 }) {
   return (
-    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-2.5 py-2">
       <p className="text-xs font-bold uppercase tracking-wide text-voz-config">
         {RITMO_LABEL_TEMPO}
       </p>
-      <div className="mt-2">
+      <div className="mt-1.5">
         <BpmSetupPanel
           bpm={bpm}
           isPlaying={isPlaying}
@@ -1506,7 +1585,9 @@ export function RitmoConfigSection({
   compasLayout = "nested",
   vozNotaPatron,
   hideDinamicaTab,
+  vozBeatSoundTab,
   hideCompasHelp,
+  uniformFigura,
   configHeaderAction,
   beatPattern,
   patternLength,
@@ -1527,7 +1608,9 @@ export function RitmoConfigSection({
   compasLayout?: CompasUiLayout;
   vozNotaPatron?: VozNotaPatronConfig;
   hideDinamicaTab?: boolean;
+  vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
+  uniformFigura?: boolean;
   configHeaderAction?: ReactNode;
   beatPattern: MetronomeBeatPattern;
   patternLength: number;
@@ -1560,7 +1643,9 @@ export function RitmoConfigSection({
         compasLayout={compasLayout}
         vozNotaPatron={vozNotaPatron}
         hideDinamicaTab={hideDinamicaTab}
+        vozBeatSoundTab={vozBeatSoundTab}
         hideCompasHelp={hideCompasHelp}
+        uniformFigura={uniformFigura}
         beatPattern={beatPattern}
         patternLength={patternLength}
         beatDurations={beatDurations}
@@ -1582,7 +1667,9 @@ export function ToolRitmoConfigPanels({
   compasLayout = "nested",
   vozNotaPatron,
   hideDinamicaTab,
+  vozBeatSoundTab,
   hideCompasHelp,
+  uniformFigura,
   beatPattern,
   patternLength,
   beatDurations,
@@ -1599,7 +1686,9 @@ export function ToolRitmoConfigPanels({
   compasLayout?: CompasUiLayout;
   vozNotaPatron?: VozNotaPatronConfig;
   hideDinamicaTab?: boolean;
+  vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
+  uniformFigura?: boolean;
   beatPattern: MetronomeBeatPattern;
   patternLength: number;
   beatDurations: MetronomeBeatDurationPattern;
@@ -1625,7 +1714,9 @@ export function ToolRitmoConfigPanels({
         layout={compasLayout}
         vozNotaPatron={vozNotaPatron}
         hideDinamicaTab={hideDinamicaTab}
+        vozBeatSoundTab={vozBeatSoundTab}
         hideCompasHelp={hideCompasHelp}
+        uniformFigura={uniformFigura}
         beatPattern={beatPattern}
         patternLength={patternLength}
         beatDurations={beatDurations}

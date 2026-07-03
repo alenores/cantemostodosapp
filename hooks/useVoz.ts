@@ -131,9 +131,7 @@ export function useVoz() {
   const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
   const attemptsArmedRef = useRef(false);
-  const attemptsArmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const attemptsArmTimeoutRef = useRef<number | null>(null);
   const [tonePracticeActive, setTonePracticeActive] = useState(false);
   const [ritmoMicActive, setRitmoMicActive] = useState(false);
   const [melodiaMicActive, setMelodiaMicActive] = useState(false);

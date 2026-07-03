@@ -4,10 +4,8 @@ import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
 import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
 import {
-  getEmbedBottomClipPx,
   getEmbedTopClipPx,
   resolveLetraContenido,
-  shouldApplyEmbedBottomClip,
   shouldApplyEmbedInitialOffset,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
@@ -224,13 +222,6 @@ export default function CancionActivaSection({
       ? getEmbedTopClipPx(contenido.url)
       : undefined;
 
-  const embedBottomClipPx =
-    showEmbed &&
-    contenido?.mode === "embed" &&
-    shouldApplyEmbedBottomClip(contenido.url)
-      ? getEmbedBottomClipPx(contenido.url, modoLectura)
-      : undefined;
-
   const nombreRevealKey =
     nombreRevealGeneration > 0
       ? `reveal-${nombreRevealGeneration}`
@@ -340,13 +331,12 @@ export default function CancionActivaSection({
           )}
 
           {showEmbed && contenido.mode === "embed" && (
-            <div className="relative min-h-0 w-full flex-1 overflow-hidden">
+            <div className="relative min-h-0 w-full flex-1">
               <LetraViewer
                 url={contenido.url}
                 title="Letra de la canción activa"
                 fill
                 initialScrollOffsetPx={embedTopClipPx}
-                initialScrollBottomOffsetPx={embedBottomClipPx}
                 onRevealTop={
                   embedConRecorteInicial
                     ? () => setEmbedTopRevealed(true)

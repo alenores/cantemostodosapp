@@ -13,7 +13,7 @@ type LetraViewerProps = {
   fill?: boolean;
   /** Recorte visual superior: simula un scroll inicial sin tocar el DOM del iframe. */
   initialScrollOffsetPx?: number;
-  /** Recorte visual inferior: oculta propagandas y barras flotantes al pie del sitio. */
+  /** @deprecated El recorte inferior no se aplica al iframe (rompe scroll). Reservado por compatibilidad. */
   initialScrollBottomOffsetPx?: number;
   /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
   onRevealTop?: () => void;
@@ -36,18 +36,19 @@ function containerRadiusClass(
 
 function getIframeScrollSimulationStyle(
   topOffsetPx?: number,
-  bottomOffsetPx?: number,
+  _bottomOffsetPx?: number,
 ): CSSProperties | undefined {
   const top = topOffsetPx && topOffsetPx > 0 ? topOffsetPx : 0;
-  const bottom = bottomOffsetPx && bottomOffsetPx > 0 ? bottomOffsetPx : 0;
 
-  if (top === 0 && bottom === 0) {
+  // Solo el recorte superior extiende el iframe. Sumar px abajo infla el viewport
+  // interno de Cifra Club y rompe el scroll táctil dentro del iframe.
+  if (top === 0) {
     return undefined;
   }
 
   return {
-    height: `calc(100% + ${top + bottom}px)`,
-    marginTop: top > 0 ? `-${top}px` : undefined,
+    height: `calc(100% + ${top}px)`,
+    marginTop: `-${top}px`,
     width: "100%",
     filter: "saturate(0.1) contrast(1.3)",
   };

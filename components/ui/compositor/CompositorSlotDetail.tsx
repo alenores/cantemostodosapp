@@ -146,6 +146,7 @@ export function CompositorSlotContenido({
       octaveExact={octaveExact}
       onSetOctaveExact={onSetOctaveExact}
       disabled={disabled}
+      density={embedded ? "compact" : "default"}
     />
   );
 

@@ -15,6 +15,7 @@ import {
   CompositorConfigSection,
   ToolPracticeSection,
 } from "@/components/ui/ToolModalSections";
+import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { COMPOSITOR_DUMMY_BEAT_PATTERN } from "@/hooks/useCompositor";
 import {
@@ -36,7 +37,7 @@ import type {
   MetronomeBeatDuration,
   MetronomeBeatDurationPattern,
 } from "@/lib/metronomo";
-import { Play, RotateCcw, Square } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 type CompositorEditorProps = {
@@ -229,30 +230,14 @@ export function CompositorEditor({
           />
         </div>
 
-        <TapButton
-          type="button"
-          aria-label={
-            isPlaying ? "Detener reproducción" : "Reproducir composición"
-          }
-          onClick={isPlaying ? onStop : onStart}
-          className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-bold ${
-            isPlaying
-              ? "bg-bg-cola-sheet text-text-primary"
-              : "bg-tool-practice text-white"
-          }`}
-        >
-          {isPlaying ? (
-            <>
-              <Square className="size-4" aria-hidden="true" />
-              Detener
-            </>
-          ) : (
-            <>
-              <Play className="size-4" aria-hidden="true" />
-              Reproducir
-            </>
-          )}
-        </TapButton>
+        <div className="flex justify-center">
+          <PlayCircleButton
+            isPlaying={isPlaying}
+            onClick={isPlaying ? onStop : onStart}
+            playAriaLabel="Reproducir composición"
+            stopAriaLabel="Detener reproducción"
+          />
+        </div>
       </ToolPracticeSection>
 
       <ConfirmDialog

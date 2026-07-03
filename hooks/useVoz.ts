@@ -2,8 +2,12 @@
 
 import { useAfinador } from "@/hooks/useAfinador";
 import { useVozRitmo } from "@/hooks/useVozRitmo";
-import { getBeatPositionAtTime } from "@/lib/metronomo";
+import { getBeatPositionAtTime, getActivePatternSlice } from "@/lib/metronomo";
 import { getActiveNotaSlice } from "@/lib/voz-nota-patron";
+import {
+  getDinamicaVoiceCompliance,
+  type VozDinamicaVoiceSample,
+} from "@/lib/voz-dinamica";
 import {
   buildMelodiaSingPattern,
   buildUniformBeatDurations,
@@ -21,7 +25,9 @@ import {
   VOZ_HOLD_TARGET_DEFAULT,
   VOZ_CALIBRE_DEFAULT,
   VOZ_INSTANT_ATTEMPTS_MAX,
+  VOZ_OCTAVAS_NOTE_DURATION_DEFAULT,
   clampHoldTargetSeconds,
+  clampOctavasNoteDurationSeconds,
   instantAttemptResultFromAccuracy,
   mergeInstantAttemptAccuracy,
   type VozAccuracy,
@@ -51,6 +57,12 @@ export function useVoz() {
     VOZ_HOLD_TARGET_DEFAULT,
   );
   const [holdCalibre, setHoldCalibre] = useState<VozCalibre>(VOZ_CALIBRE_DEFAULT);
+  const [octavasNoteDurationSeconds, setOctavasNoteDurationSecondsState] =
+    useState(VOZ_OCTAVAS_NOTE_DURATION_DEFAULT);
+  const setOctavasNoteDurationSeconds = useCallback((value: number) => {
+    setOctavasNoteDurationSecondsState(clampOctavasNoteDurationSeconds(value));
+  }, []);
+  const [dynamicsEvaluation, setDynamicsEvaluation] = useState(false);
   const setHoldTargetSeconds = useCallback((value: number) => {
     setHoldTargetSecondsState(clampHoldTargetSeconds(value));
   }, []);
@@ -61,6 +73,9 @@ export function useVoz() {
   const [celebrationKey, setCelebrationKey] = useState(0);
   const [ritmoVoiceSamples, setRitmoVoiceSamples] = useState<
     VozRitmoVoiceSample[]
+  >([]);
+  const [dinamicaVoiceSamples, setDinamicaVoiceSamples] = useState<
+    VozDinamicaVoiceSample[]
   >([]);
   const [ritmoToneEvaluation, setRitmoToneEvaluation] =
     useState<RitmoToneEvaluation>("none");
@@ -82,8 +97,11 @@ export function useVoz() {
   const comboNotePatternRef = useRef(ritmo.comboNotePattern);
   const melodiaPlayingRef = useRef(ritmo.melodiaPlaying);
   const ritmoToneEvaluationRef = useRef(ritmoToneEvaluation);
+  const dynamicsEvaluationRef = useRef(dynamicsEvaluation);
+  const voiceRmsRef = useRef(afinador.voiceRms);
 
   detectionRef.current = afinador.detection;
+  voiceRmsRef.current = afinador.voiceRms;
   beatMarkersRef.current = ritmo.beatMarkers;
   ritmoBpmRef.current = ritmo.ritmoBpm;
   ritmoBeatPatternRef.current = ritmo.ritmoBeatPattern;
@@ -96,6 +114,7 @@ export function useVoz() {
   comboNotePatternRef.current = ritmo.comboNotePattern;
   melodiaPlayingRef.current = ritmo.melodiaPlaying;
   ritmoToneEvaluationRef.current = ritmoToneEvaluation;
+  dynamicsEvaluationRef.current = dynamicsEvaluation;
   const inBurstRef = useRef(false);
   const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
@@ -103,6 +122,10 @@ export function useVoz() {
   const clearRitmoVoiceSamples = useCallback(() => {
     lastRitmoVoiceSampleAtRef.current = 0;
     setRitmoVoiceSamples([]);
+  }, []);
+
+  const clearDinamicaVoiceSamples = useCallback(() => {
+    setDinamicaVoiceSamples([]);
   }, []);
 
   const clearHistory = useCallback(() => {
@@ -349,8 +372,14 @@ export function useVoz() {
   useEffect(() => {
     if (!ritmo.ritmoPlaying && !ritmo.melodiaPlaying) {
       clearRitmoVoiceSamples();
+      clearDinamicaVoiceSamples();
     }
-  }, [ritmo.ritmoPlaying, ritmo.melodiaPlaying, clearRitmoVoiceSamples]);
+  }, [
+    ritmo.ritmoPlaying,
+    ritmo.melodiaPlaying,
+    clearRitmoVoiceSamples,
+    clearDinamicaVoiceSamples,
+  ]);
 
   useEffect(() => {
     const rhythmActive = ritmo.ritmoPlaying || ritmo.melodiaPlaying;
@@ -377,6 +406,7 @@ export function useVoz() {
       lastRitmoVoiceSampleAtRef.current = now;
 
       const isMelodia = melodiaPlayingRef.current;
+      const isDynamics = dynamicsEvaluationRef.current && !isMelodia;
       const bpm = isMelodia ? melodiaBpmRef.current : ritmoBpmRef.current;
       const patternLength = isMelodia
         ? melodiaPatternLengthRef.current
@@ -392,6 +422,36 @@ export function useVoz() {
         ? buildMelodiaSingPattern(patternLength)
         : ritmoBeatPattern;
       const beatDurations = isMelodia ? melodiaPattern : ritmoBeatDurations;
+      const position = getBeatPositionAtTime(
+        now,
+        beatMarkers,
+        bpm,
+        beatDurations,
+        patternLength,
+      );
+      const beatIndex = position?.beatIndex ?? 0;
+
+      if (isDynamics) {
+        const activePattern = getActivePatternSlice(
+          ritmoBeatPattern,
+          patternLength,
+        );
+        const expectedLevel = activePattern[beatIndex] ?? "silencio";
+        const rms = voiceRmsRef.current;
+        const sample: VozDinamicaVoiceSample = {
+          timestamp: now,
+          rms,
+          expectedLevel,
+          compliance: getDinamicaVoiceCompliance(expectedLevel, rms),
+        };
+
+        setDinamicaVoiceSamples((previous) => {
+          const next = [...previous, sample];
+          return next.length > 120 ? next.slice(next.length - 120) : next;
+        });
+        return;
+      }
+
       const msPerBeat = getMsPerBeatAtTime(
         now,
         beatMarkers,
@@ -451,12 +511,14 @@ export function useVoz() {
     clearHistory();
     clearInstantAttempts();
     clearRitmoVoiceSamples();
+    clearDinamicaVoiceSamples();
     afinador.stop();
   }, [
     afinador.stop,
     clearHistory,
     clearInstantAttempts,
     clearRitmoVoiceSamples,
+    clearDinamicaVoiceSamples,
     ritmo.stopRitmo,
   ]);
 
@@ -472,6 +534,8 @@ export function useVoz() {
     setHoldTargetSeconds,
     holdCalibre,
     setHoldCalibre,
+    octavasNoteDurationSeconds,
+    setOctavasNoteDurationSeconds,
     targetFrequency,
     referenceLabel,
     centsFromTarget,
@@ -481,8 +545,12 @@ export function useVoz() {
     instantAttempts,
     celebrationKey,
     ritmoVoiceSamples,
+    dinamicaVoiceSamples,
     ritmoToneEvaluation,
     setRitmoToneEvaluation,
+    dynamicsEvaluation,
+    setDynamicsEvaluation,
+    voiceRms: afinador.voiceRms,
     effectiveTarget,
   };
 }

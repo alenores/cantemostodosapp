@@ -4,6 +4,7 @@ import {
   ToolPracticeSection,
 } from "@/components/ui/ToolModalSections";
 import PlayingEqIndicator from "@/components/ui/PlayingEqIndicator";
+import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import {
   BeatPatternEditor,
   RitmoConfigSection,
@@ -31,10 +32,14 @@ import {
 } from "@/lib/metronomo";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import {
+  MetronomoConfigHelpButton,
+  MetronomoConfigHelpModal,
+} from "@/components/ui/MetronomoConfigHelpModal";
+import {
   formatRitmoConfigSummary,
   RITMO_LABEL_TEMPO,
 } from "@/lib/ritmo-terminologia";
-import { Mic, Play, Square } from "lucide-react";
+import { Mic } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -86,16 +91,18 @@ function PracticePlaybackSummary({
   isPlaying: boolean;
 }) {
   return (
-    <div className="flex items-end gap-3 rounded-[10px] border border-border bg-bg-card px-3 py-3">
-      <div className="shrink-0 text-center" aria-live="polite">
-        <p className="text-3xl font-extrabold leading-none text-text-primary">
-          {bpm}
-        </p>
-        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-          {RITMO_LABEL_TEMPO}
-        </p>
+    <div className="rounded-[10px] border border-border bg-bg-card px-3 py-3">
+      <div className="flex justify-end" aria-live="polite">
+        <div className="text-right">
+          <p className="text-lg font-extrabold leading-none text-text-primary">
+            {bpm}
+          </p>
+          <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide text-text-muted">
+            {RITMO_LABEL_TEMPO}
+          </p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="mt-2 w-full">
         <BeatPatternEditor
           pattern={beatPattern}
           patternLength={patternLength}
@@ -482,6 +489,8 @@ export default function MetronomoModal({
   onToggleMic,
   onRequestMic,
 }: MetronomoModalProps) {
+  const [configHelpOpen, setConfigHelpOpen] = useState(false);
+
   if (!open) {
     return null;
   }
@@ -493,6 +502,7 @@ export default function MetronomoModal({
   );
 
   return createPortal(
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
       <button
         type="button"
@@ -519,6 +529,11 @@ export default function MetronomoModal({
               compasLayout="flat"
               collapsedSummary={configSummary}
               autoCollapseWhen={isPlaying}
+              configHeaderAction={
+                <MetronomoConfigHelpButton
+                  onClick={() => setConfigHelpOpen(true)}
+                />
+              }
               beatPattern={beatPattern}
               patternLength={patternLength}
               beatDurations={beatDurations}
@@ -533,7 +548,7 @@ export default function MetronomoModal({
               onTapTempo={onTapTempo}
             />
 
-            <ToolPracticeSection subtitle="Seguí el ritmo del metrónomo y, si querés, detectá tus golpes con el micrófono.">
+            <ToolPracticeSection>
             {isPlaying ? (
               <div className="flex items-center justify-end">
                 <PlayingEqIndicator
@@ -552,22 +567,12 @@ export default function MetronomoModal({
             />
 
             <div className="flex justify-center">
-              <TapButton
-                type="button"
-                aria-label={isPlaying ? "Detener metrónomo" : "Iniciar metrónomo"}
+              <PlayCircleButton
+                isPlaying={isPlaying}
                 onClick={isPlaying ? onStop : onStart}
-                className={`flex size-16 items-center justify-center rounded-full ${
-                  isPlaying
-                    ? "border border-text-secondary bg-bg-card text-text-primary"
-                    : "border border-border bg-bg-card text-text-primary"
-                }`}
-              >
-                {isPlaying ? (
-                  <Square className="size-7 fill-current" aria-hidden="true" />
-                ) : (
-                  <Play className="size-7 fill-current" aria-hidden="true" />
-                )}
-              </TapButton>
+                playAriaLabel="Iniciar metrónomo"
+                stopAriaLabel="Detener metrónomo"
+              />
             </div>
 
             <div className="rounded-[10px] border border-border bg-bg-card px-3 py-2.5">
@@ -624,7 +629,12 @@ export default function MetronomoModal({
           </div>
         </div>
       </div>
-    </div>,
+    </div>
+    <MetronomoConfigHelpModal
+      open={configHelpOpen}
+      onClose={() => setConfigHelpOpen(false)}
+    />
+    </>,
     document.body,
   );
 }

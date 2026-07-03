@@ -7,6 +7,7 @@ import {
   getTimelineBlockLayout,
 } from "@/components/ui/compositor/CompositorScrollableTimelineGrid";
 import { compositorHasContenidoTab } from "@/components/ui/compositor/CompositorSlotDetail";
+import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { CompositorCapaInlineToggle } from "@/components/ui/compositor/CompositorCapaInlineToggle";
 import {
@@ -37,7 +38,7 @@ import {
   COMPOSITOR_LABEL_AGREGAR_BLOQUE,
   COMPOSITOR_LABEL_ESCUCHAR_CAPA,
 } from "@/lib/ritmo-terminologia";
-import { Play, Plus, Square, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 
 type CompositorTrackTimelineProps = {
@@ -385,28 +386,16 @@ export function CompositorTrackTimeline({
       </div>
 
       {onPreviewTrack ? (
-        <TapButton
-          type="button"
-          disabled={previewDisabled}
-          onClick={onPreviewTrack}
-          aria-label={
-            isPreviewingTrack
-              ? `Detener previsualización de ${getInstrumentLabel(instrumentId)}`
-              : `${COMPOSITOR_LABEL_ESCUCHAR_CAPA} · ${getInstrumentLabel(instrumentId)}`
-          }
-          className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/15 py-2 text-xs font-bold disabled:opacity-50 ${
-            isPreviewingTrack
-              ? "bg-bg-cola-sheet text-text-primary"
-              : COMPOSITOR_CAPA_TAB_ACTIVE_CLASS[instrumentId]
-          }`}
-        >
-          {isPreviewingTrack ? (
-            <Square className="size-3.5" aria-hidden="true" />
-          ) : (
-            <Play className="size-3.5" aria-hidden="true" />
-          )}
-          {isPreviewingTrack ? "Detener" : COMPOSITOR_LABEL_ESCUCHAR_CAPA}
-        </TapButton>
+        <div className="mt-2 flex justify-center">
+          <PlayCircleButton
+            size="sm"
+            isPlaying={isPreviewingTrack}
+            onClick={onPreviewTrack}
+            disabled={previewDisabled}
+            playAriaLabel={`${COMPOSITOR_LABEL_ESCUCHAR_CAPA} · ${getInstrumentLabel(instrumentId)}`}
+            stopAriaLabel={`Detener previsualización de ${getInstrumentLabel(instrumentId)}`}
+          />
+        </div>
       ) : null}
     </div>
   );

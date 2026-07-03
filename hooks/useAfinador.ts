@@ -2,6 +2,7 @@
 
 import {
   autoCorrelate,
+  computeBufferRms,
   createDebouncedNoteState,
   ema,
   frequencyToMidi,
@@ -73,6 +74,7 @@ type UseAfinadorOptions = {
 
 type UseAfinadorResult = {
   detection: NoteDetection | null;
+  voiceRms: number;
   micError: string | null;
   micPermissionGranted: boolean;
   micReady: boolean;
@@ -87,6 +89,7 @@ export function useAfinador(
   const profile = options.profile ?? "tuner";
   const isVocalProfile = profile === "vocal";
   const [detection, setDetection] = useState<NoteDetection | null>(null);
+  const [voiceRms, setVoiceRms] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
   const [micPermissionGranted, setMicPermissionGranted] = useState(
     readStoredMicGranted,
@@ -110,6 +113,7 @@ export function useAfinador(
   const stopAudio = useCallback(() => {
     runningRef.current = false;
     setMicStarting(false);
+    setVoiceRms(0);
 
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -248,6 +252,8 @@ export function useAfinador(
         }
 
         currentAnalyser.getFloatTimeDomainData(buffer);
+        const rms = computeBufferRms(buffer);
+        setVoiceRms(rms);
         const frequency = autoCorrelate(buffer, context.sampleRate);
 
         if (frequency === null) {
@@ -377,6 +383,7 @@ export function useAfinador(
 
   return {
     detection,
+    voiceRms,
     micError,
     micPermissionGranted,
     micReady,

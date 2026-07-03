@@ -23,6 +23,7 @@ import type {
   VozRitmoBeatMarker,
   VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
+import type { VozDinamicaVoiceSample } from "@/lib/voz-dinamica";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import { Mic } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -53,9 +54,12 @@ type EntrenadorVocalModalProps = {
   onSetHoldTargetSeconds: (value: number) => void;
   holdCalibre: VozCalibre;
   onSetHoldCalibre: (value: VozCalibre) => void;
+  octavasNoteDurationSeconds: number;
+  onSetOctavasNoteDurationSeconds: (value: number) => void;
   celebrationKey: number;
   effectiveTarget: VozTarget;
   onSetRitmoToneEvaluation: (mode: RitmoToneEvaluation) => void;
+  onSetDynamicsEvaluation: (value: boolean) => void;
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
   onStopRhythm: () => void;
@@ -77,6 +81,8 @@ type EntrenadorVocalModalProps = {
   onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
+  dinamicaVoiceSamples: VozDinamicaVoiceSample[];
+  voiceRms: number;
   melodiaPlaying: boolean;
   onToggleMelodiaPlaying: () => void;
   melodiaBpm: number;
@@ -152,6 +158,7 @@ function MicPermissionPanel({
 const RHYTHM_SLIDE_IDS = new Set([
   "melodia",
   "ritmo",
+  "dinamica",
   "ritmo-nota",
   "combo",
 ]);
@@ -180,9 +187,12 @@ export default function EntrenadorVocalModal({
   onSetHoldTargetSeconds,
   holdCalibre,
   onSetHoldCalibre,
+  octavasNoteDurationSeconds,
+  onSetOctavasNoteDurationSeconds,
   celebrationKey,
   effectiveTarget,
   onSetRitmoToneEvaluation,
+  onSetDynamicsEvaluation,
   ritmoPlaying,
   onToggleRitmoPlaying,
   onStopRhythm,
@@ -198,6 +208,8 @@ export default function EntrenadorVocalModal({
   onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
+  dinamicaVoiceSamples,
+  voiceRms,
   melodiaPlaying,
   onToggleMelodiaPlaying,
   melodiaBpm,
@@ -273,6 +285,7 @@ export default function EntrenadorVocalModal({
               activeIndex={activeModeIndex}
               onChangeIndex={setActiveModeIndex}
               onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
+              onSetDynamicsEvaluation={onSetDynamicsEvaluation}
               effectiveTarget={effectiveTarget}
               targetPicker={{
                 target,
@@ -294,6 +307,8 @@ export default function EntrenadorVocalModal({
               onSetHoldTargetSeconds={onSetHoldTargetSeconds}
               holdCalibre={holdCalibre}
               onSetHoldCalibre={onSetHoldCalibre}
+              octavasNoteDurationSeconds={octavasNoteDurationSeconds}
+              onSetOctavasNoteDurationSeconds={onSetOctavasNoteDurationSeconds}
               celebrationKey={celebrationKey}
               ritmoPlaying={ritmoPlaying}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -309,6 +324,8 @@ export default function EntrenadorVocalModal({
               onTapRitmoTempo={onTapRitmoTempo}
               beatMarkers={beatMarkers}
               ritmoVoiceSamples={ritmoVoiceSamples}
+              dinamicaVoiceSamples={dinamicaVoiceSamples}
+              voiceRms={voiceRms}
               melodiaPlaying={melodiaPlaying}
               onToggleMelodiaPlaying={onToggleMelodiaPlaying}
               melodiaBpm={melodiaBpm}

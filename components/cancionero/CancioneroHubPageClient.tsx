@@ -104,6 +104,8 @@ export default function CancioneroHubPageClient({
     setHoldTargetSeconds: setVozHoldTargetSeconds,
     holdCalibre: vozHoldCalibre,
     setHoldCalibre: setVozHoldCalibre,
+    octavasNoteDurationSeconds: vozOctavasNoteDurationSeconds,
+    setOctavasNoteDurationSeconds: setVozOctavasNoteDurationSeconds,
     celebrationKey: vozCelebrationKey,
     ritmoPlaying: vozRitmoPlaying,
     toggleRitmoPlaying: toggleVozRitmoPlaying,
@@ -120,8 +122,11 @@ export default function CancioneroHubPageClient({
     tapRitmoTempo: tapVozRitmoTempo,
     beatMarkers: vozBeatMarkers,
     ritmoVoiceSamples: vozRitmoVoiceSamples,
+    dinamicaVoiceSamples: vozDinamicaVoiceSamples,
+    voiceRms: vozVoiceRms,
     effectiveTarget: vozEffectiveTarget,
     setRitmoToneEvaluation: setVozRitmoToneEvaluation,
+    setDynamicsEvaluation: setVozDynamicsEvaluation,
     melodiaPlaying: vozMelodiaPlaying,
     toggleMelodiaPlaying: toggleVozMelodiaPlaying,
     melodiaBpm: vozMelodiaBpm,
@@ -376,9 +381,12 @@ export default function CancioneroHubPageClient({
         onSetHoldTargetSeconds={setVozHoldTargetSeconds}
         holdCalibre={vozHoldCalibre}
         onSetHoldCalibre={setVozHoldCalibre}
+        octavasNoteDurationSeconds={vozOctavasNoteDurationSeconds}
+        onSetOctavasNoteDurationSeconds={setVozOctavasNoteDurationSeconds}
         celebrationKey={vozCelebrationKey}
         effectiveTarget={vozEffectiveTarget}
         onSetRitmoToneEvaluation={setVozRitmoToneEvaluation}
+        onSetDynamicsEvaluation={setVozDynamicsEvaluation}
         ritmoPlaying={vozRitmoPlaying}
         onToggleRitmoPlaying={toggleVozRitmoPlaying}
         onStopRhythm={stopVozRitmo}
@@ -394,6 +402,8 @@ export default function CancioneroHubPageClient({
         onTapRitmoTempo={tapVozRitmoTempo}
         beatMarkers={vozBeatMarkers}
         ritmoVoiceSamples={vozRitmoVoiceSamples}
+        dinamicaVoiceSamples={vozDinamicaVoiceSamples}
+        voiceRms={vozVoiceRms}
         melodiaPlaying={vozMelodiaPlaying}
         onToggleMelodiaPlaying={toggleVozMelodiaPlaying}
         melodiaBpm={vozMelodiaBpm}

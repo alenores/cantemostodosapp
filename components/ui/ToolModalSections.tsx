@@ -11,6 +11,7 @@ type ToolModalSectionProps = {
   collapsedSummary?: string;
   autoCollapseWhen?: boolean;
   defaultExpanded?: boolean;
+  headerAction?: ReactNode;
 };
 const TOOL_SECTION_STYLES = {
   config: {
@@ -49,6 +50,7 @@ function ToolModalSection({
   collapsedSummary,
   autoCollapseWhen = false,
   defaultExpanded = true,
+  headerAction,
 }: ToolModalSectionProps & {
   variant: keyof typeof TOOL_SECTION_STYLES;
 }) {
@@ -79,6 +81,7 @@ function ToolModalSection({
         >
           {title}
         </h3>
+        {headerAction}
       </div>
       {collapsible && !expanded && collapsedSummary ? (
         <p className="mt-1 truncate text-[11px] text-text-secondary">
@@ -96,24 +99,26 @@ function ToolModalSection({
         backgroundColor: styles.sectionBg,
       }}
     >
-      {collapsible ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          className="flex w-full items-center justify-between gap-2 text-left"
-          aria-expanded={expanded}
-        >
-          {headerContent}
-          <ChevronDown
-            className={`size-5 shrink-0 text-text-muted transition-transform ${
-              expanded ? "rotate-180" : ""
-            }`}
-            aria-hidden="true"
-          />
-        </button>
-      ) : (
-        <header>{headerContent}</header>
-      )}
+      <div className="flex items-start gap-1.5">
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+            aria-expanded={expanded}
+          >
+            {headerContent}
+            <ChevronDown
+              className={`size-5 shrink-0 text-text-muted transition-transform ${
+                expanded ? "rotate-180" : ""
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+        ) : (
+          <header className="min-w-0 flex-1">{headerContent}</header>
+        )}
+      </div>
       {expanded ? (
         <>
           <div
@@ -141,6 +146,7 @@ export function ToolConfigSection({
   collapsedSummary,
   autoCollapseWhen,
   defaultExpanded,
+  headerAction,
 }: ToolModalSectionProps) {
   return (
     <ToolModalSection
@@ -151,6 +157,7 @@ export function ToolConfigSection({
       collapsedSummary={collapsedSummary}
       autoCollapseWhen={autoCollapseWhen}
       defaultExpanded={defaultExpanded}
+      headerAction={headerAction}
     >
       {children}
     </ToolModalSection>

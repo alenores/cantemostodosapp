@@ -668,6 +668,164 @@ export function formatHoldDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)} s`;
 }
 
+export const VOZ_OCTAVAS_NOTE_DURATION_MIN = 1;
+export const VOZ_OCTAVAS_NOTE_DURATION_MAX = 8;
+export const VOZ_OCTAVAS_NOTE_DURATION_DEFAULT = 3;
+export const VOZ_OCTAVAS_PAUSE_MS = 280;
+export const VOZ_OCTAVAS_SAMPLE_INTERVAL_MS = 80;
+/** Silencio sostenido fuera de la pausa entre notas antes de reiniciar el intento. */
+export const VOZ_OCTAVAS_SILENCE_RESET_MS = 200;
+
+export function getOctavasSequenceTotalMs(
+  noteDurationSeconds: number,
+  pauseMs = VOZ_OCTAVAS_PAUSE_MS,
+): number {
+  return noteDurationSeconds * 2000 + pauseMs;
+}
+
+export function getOctavasOverallProgress(
+  phase: "idle" | "first" | "pause" | "second" | "done",
+  phaseElapsedMs: number,
+  noteDurationMs: number,
+  pauseMs = VOZ_OCTAVAS_PAUSE_MS,
+): number {
+  const totalMs = noteDurationMs * 2 + pauseMs;
+
+  if (totalMs <= 0 || phase === "idle" || phase === "done") {
+    return 0;
+  }
+
+  if (phase === "first") {
+    return Math.min(1, phaseElapsedMs / totalMs);
+  }
+
+  if (phase === "pause") {
+    return Math.min(1, (noteDurationMs + phaseElapsedMs) / totalMs);
+  }
+
+  return Math.min(
+    1,
+    (noteDurationMs + pauseMs + phaseElapsedMs) / totalMs,
+  );
+}
+
+export function clampOctavasNoteDurationSeconds(value: number): number {
+  return Math.max(
+    VOZ_OCTAVAS_NOTE_DURATION_MIN,
+    Math.min(VOZ_OCTAVAS_NOTE_DURATION_MAX, Math.round(value)),
+  );
+}
+
+export function getOctaveUpFrequency(target: VozTarget): number {
+  return targetToFrequency(target) * 2;
+}
+
+export function getOctaveUpTarget(target: VozTarget): VozTarget {
+  return { note: target.note, octave: target.octave + 1 };
+}
+
+export type VozOctavasChartSample = {
+  phase: "first" | "second";
+  progress: number;
+  cents: number;
+  accuracy: VozAccuracy;
+};
+
+export function evaluateOctaveIntervalDeviation(
+  lowerFrequency: number,
+  higherFrequency: number,
+): number {
+  if (lowerFrequency <= 0 || higherFrequency <= 0) {
+    return 0;
+  }
+
+  const intervalCents = Math.round(
+    1200 * Math.log2(higherFrequency / lowerFrequency),
+  );
+
+  return intervalCents - 1200;
+}
+
+export function octavasCentsToChartY(
+  cents: number,
+  targetY: number,
+  centsPerPixel = 0.09,
+): number {
+  return targetY - cents * centsPerPixel;
+}
+
+function scheduleSustainedReferenceTone(
+  audioContext: AudioContext,
+  frequency: number,
+  time: number,
+  durationSeconds: number,
+): void {
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  const attack = 0.03;
+  const release = 0.05;
+  const sustainEnd = time + durationSeconds - release;
+
+  oscillator.type = "sine";
+  oscillator.frequency.value = frequency;
+  gainNode.gain.setValueAtTime(0.001, time);
+  gainNode.gain.exponentialRampToValueAtTime(0.3, time + attack);
+  gainNode.gain.setValueAtTime(0.3, Math.max(time + attack, sustainEnd));
+  gainNode.gain.exponentialRampToValueAtTime(
+    0.001,
+    time + durationSeconds,
+  );
+
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  oscillator.start(time);
+  oscillator.stop(time + durationSeconds + 0.02);
+}
+
+export function playOctaveReference(
+  target: VozTarget,
+  noteDurationSeconds: number,
+  pauseMs = VOZ_OCTAVAS_PAUSE_MS,
+): void {
+  const AudioContextClass =
+    typeof window !== "undefined"
+      ? window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext
+      : null;
+
+  if (!AudioContextClass) {
+    return;
+  }
+
+  const audioContext = new AudioContextClass();
+  const startTime = audioContext.currentTime;
+  const durationSeconds = Math.max(0.25, noteDurationSeconds);
+  const pauseSeconds = pauseMs / 1000;
+  const lowerFrequency = targetToFrequency(target);
+  const higherFrequency = getOctaveUpFrequency(target);
+
+  scheduleSustainedReferenceTone(
+    audioContext,
+    lowerFrequency,
+    startTime,
+    durationSeconds,
+  );
+  scheduleSustainedReferenceTone(
+    audioContext,
+    higherFrequency,
+    startTime + durationSeconds + pauseSeconds,
+    durationSeconds,
+  );
+
+  window.setTimeout(
+    () => {
+      void audioContext.close();
+    },
+    (durationSeconds * 2 + pauseSeconds) * 1000 + 200,
+  );
+}
+
 export function playHoldCelebration(): void {
   const AudioContextClass =
     typeof window !== "undefined"

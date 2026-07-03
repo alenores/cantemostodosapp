@@ -361,6 +361,78 @@ html.splash-active body {
   }
 }
 
+@keyframes ring-out {
+  0% {
+    width: 44px;
+    height: 44px;
+    opacity: 0.7;
+  }
+
+  100% {
+    width: 90px;
+    height: 90px;
+    opacity: 0;
+  }
+}
+
+.encajar-help-ring {
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--voz-config);
+  border-radius: 9999px;
+  opacity: 0;
+}
+
+.encajar-help-ring.animating {
+  animation: ring-out 0.7s ease-out forwards;
+}
+
+@keyframes arc-wave {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.arc-singing {
+  animation: arc-wave 1s ease-in-out infinite;
+}
+
+.arc-singing-delay-1 {
+  animation-delay: 0.25s;
+}
+
+.arc-singing-delay-2 {
+  animation-delay: 0.5s;
+}
+
+@keyframes arc-wave-octavas {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.octavas-arc-singing {
+  animation: arc-wave-octavas 0.9s ease-in-out infinite;
+}
+
+.octavas-arc-singing-delay-1 {
+  animation-delay: 0.25s;
+}
+
+.octavas-arc-singing-delay-2 {
+  animation-delay: 0.5s;
+}
+
 @keyframes ritmo-beat-select-breathe {
   0%,
   100% {

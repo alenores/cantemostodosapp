@@ -6,7 +6,6 @@ import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
 import {
   getEmbedBottomClipPx,
   getEmbedTopClipPx,
-  getLetraSourceKind,
   resolveLetraContenido,
   shouldApplyEmbedBottomClip,
   shouldApplyEmbedInitialOffset,
@@ -229,14 +228,7 @@ export default function CancionActivaSection({
     showEmbed &&
     contenido?.mode === "embed" &&
     shouldApplyEmbedBottomClip(contenido.url)
-      ? getEmbedBottomClipPx(contenido.url)
-      : undefined;
-
-  const embedBottomMaskPx =
-    showEmbed &&
-    contenido?.mode === "embed" &&
-    getLetraSourceKind(contenido.url) === "cifraclub"
-      ? getEmbedBottomClipPx(contenido.url)
+      ? getEmbedBottomClipPx(contenido.url, modoLectura)
       : undefined;
 
   const nombreRevealKey =
@@ -355,7 +347,6 @@ export default function CancionActivaSection({
                 fill
                 initialScrollOffsetPx={embedTopClipPx}
                 initialScrollBottomOffsetPx={embedBottomClipPx}
-                bottomMaskPx={embedBottomMaskPx}
                 onRevealTop={
                   embedConRecorteInicial
                     ? () => setEmbedTopRevealed(true)

@@ -154,6 +154,8 @@ export const ACORDESDCANCIONES_EMBED_TOP_CLIP_PX = 750;
 
 /** Recorte inferior del iframe (propagandas y controles flotantes). Calibrar en móvil. */
 export const CIFRACLUB_EMBED_BOTTOM_CLIP_PX = 160;
+/** Recorte inferior extra en vista expandida (botones flotantes de Cifra Club). Calibrar en móvil. */
+export const CIFRACLUB_EMBED_BOTTOM_CLIP_MODO_LECTURA_PX = 260;
 export const ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX = 160;
 
 /** @deprecated Usar CIFRACLUB_EMBED_BOTTOM_CLIP_PX */

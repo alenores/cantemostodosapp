@@ -17,6 +17,8 @@ type LetraViewerProps = {
   initialScrollBottomOffsetPx?: number;
   /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
   onRevealTop?: () => void;
+  /** Tapa botones flotantes del sitio embebido (p. ej. Cifra Club). Debe ir dentro del shell del iframe. */
+  bottomMaskPx?: number;
 };
 
 function containerRadiusClass(
@@ -102,16 +104,38 @@ type EmbedShellProps = {
   className: string;
   style?: CSSProperties;
   onRevealTop?: () => void;
+  bottomMaskPx?: number;
   children: ReactNode;
 };
 
-function EmbedShell({ className, style, onRevealTop, children }: EmbedShellProps) {
+function EmbedBottomMask({ heightPx }: { heightPx: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-letra-bg"
+      style={{
+        height: `calc(${heightPx}px + env(safe-area-inset-bottom, 0px))`,
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+
+function EmbedShell({
+  className,
+  style,
+  onRevealTop,
+  bottomMaskPx,
+  children,
+}: EmbedShellProps) {
   return (
     <div
       style={style}
       className={`relative overflow-hidden bg-letra-bg ${className}`}
     >
       {children}
+      {bottomMaskPx && bottomMaskPx > 0 ? (
+        <EmbedBottomMask heightPx={bottomMaskPx} />
+      ) : null}
       {onRevealTop ? <RevealTopControl onRevealTop={onRevealTop} /> : null}
     </div>
   );
@@ -128,6 +152,7 @@ export default function LetraViewer({
   initialScrollOffsetPx,
   initialScrollBottomOffsetPx,
   onRevealTop,
+  bottomMaskPx,
 }: LetraViewerProps) {
   const radiusClass = containerRadiusClass(edgeToEdge, flushBottom);
   const elevatedClass = elevated
@@ -138,6 +163,7 @@ export default function LetraViewer({
     return (
       <EmbedShell
         onRevealTop={onRevealTop}
+        bottomMaskPx={bottomMaskPx}
         className={`h-full w-full ${radiusClass} ${elevatedClass}`}
       >
         <LetraIframe
@@ -157,6 +183,7 @@ export default function LetraViewer({
     <EmbedShell
       style={containerStyle}
       onRevealTop={onRevealTop}
+      bottomMaskPx={bottomMaskPx}
       className={`flex min-h-0 flex-col ${radiusClass} ${elevated ? "h-full min-h-0 flex-1" : "min-h-[320px]"} ${elevatedClass}`}
     >
       <LetraIframe

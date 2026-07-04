@@ -6,6 +6,7 @@ import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
+import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
 import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -223,6 +224,7 @@ export default function SalaPageShell({
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const letraScrollRef = useRef<HTMLDivElement>(null);
+  const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
@@ -290,6 +292,7 @@ export default function SalaPageShell({
   } = useLetraAutoScroll(letraScrollRef, {
     enabled: modoLectura,
     contentKey: cancionActivaScrollKey,
+    embedIframeRef,
   });
 
   const presenceBarVisible =
@@ -649,6 +652,7 @@ export default function SalaPageShell({
               letraTexto={cancionActiva?.letra_texto ?? null}
               modoLectura={modoLectura}
               letraScrollRef={letraScrollRef}
+              embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
             />
           )}

@@ -6,6 +6,7 @@ import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
+import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
@@ -13,7 +14,6 @@ import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_AVISO_EXIT_MS,
   COLA_AVISO_SHOW_DELAY_MS,
-  getLetraModoLecturaHorizontalPadding,
   getLecturaColaAvisoTopCss,
   getLecturaFabMenuTopCss,
   getLecturaTopChromeTopCss,
@@ -194,6 +194,7 @@ export default function HomePageShell() {
   const openColaRef = useRef<(() => void) | null>(null);
   const handleSiguienteRef = useRef<(() => void) | null>(null);
   const letraScrollRef = useRef<HTMLDivElement>(null);
+  const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
@@ -214,6 +215,7 @@ export default function HomePageShell() {
   } = useLetraAutoScroll(letraScrollRef, {
     enabled: modoLectura,
     contentKey: cancionActivaScrollKey,
+    embedIframeRef,
   });
 
   const handleColaAdded = useCallback(() => {
@@ -333,6 +335,7 @@ export default function HomePageShell() {
               letraTexto={cola.cancionActiva?.letra_texto ?? null}
               modoLectura={modoLectura}
               letraScrollRef={letraScrollRef}
+              embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
               headerAction={headerLupa}
             />
@@ -367,41 +370,18 @@ export default function HomePageShell() {
       {modoLectura ? (
         <>
           {cola.cancionActiva?.nombre ? (
-            <div
-              className={`pointer-events-none fixed z-[45] max-w-[min(75vw,calc(100%-3.25rem))] px-2.5 py-1.5 ${LECTURA_TOP_CHIP}`}
-              style={{
-                top: getLecturaTopChromeTopCss(),
-                left: getLetraModoLecturaHorizontalPadding(),
-              }}
-            >
-              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                <span
-                  key={
-                    cancionNombreRevealGen > 0
-                      ? `reveal-${cancionNombreRevealGen}`
-                      : "initial"
-                  }
-                  className={`min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-accent ${
-                    cancionNombreRevealGen > 0 ? "cola-nombre-reveal block" : ""
-                  }`}
-                >
-                  {cola.cancionActiva.nombre}
-                </span>
-                {cola.cancionActiva.artista ? (
-                  <>
-                    <span
-                      className="shrink-0 text-[10px] leading-snug text-text-muted/70"
-                      aria-hidden="true"
-                    >
-                      ·
-                    </span>
-                    <span className="max-w-[38%] shrink-0 truncate text-[10px] leading-snug text-text-muted">
-                      {cola.cancionActiva.artista}
-                    </span>
-                  </>
-                ) : null}
-              </div>
-            </div>
+            <LecturaCancionChip
+              nombre={cola.cancionActiva.nombre}
+              artista={cola.cancionActiva.artista}
+              nombreRevealKey={
+                cancionNombreRevealGen > 0
+                  ? `reveal-${cancionNombreRevealGen}`
+                  : "initial"
+              }
+              nombreRevealClass={
+                cancionNombreRevealGen > 0 ? "cola-nombre-reveal block" : ""
+              }
+            />
           ) : null}
 
           <TapButton

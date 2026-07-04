@@ -1,6 +1,6 @@
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ChevronUp } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 
 type LetraViewerProps = {
   url: string;
@@ -17,6 +17,7 @@ type LetraViewerProps = {
   initialScrollBottomOffsetPx?: number;
   /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
   onRevealTop?: () => void;
+  embedIframeRef?: RefObject<HTMLIFrameElement | null>;
 };
 
 function containerRadiusClass(
@@ -60,6 +61,7 @@ type LetraIframeProps = {
   className: string;
   initialScrollOffsetPx?: number;
   initialScrollBottomOffsetPx?: number;
+  embedIframeRef?: RefObject<HTMLIFrameElement | null>;
 };
 
 function LetraIframe({
@@ -68,6 +70,7 @@ function LetraIframe({
   className,
   initialScrollOffsetPx,
   initialScrollBottomOffsetPx,
+  embedIframeRef,
 }: LetraIframeProps) {
   const offsetStyle = getIframeScrollSimulationStyle(
     initialScrollOffsetPx,
@@ -76,6 +79,7 @@ function LetraIframe({
 
   return (
     <iframe
+      ref={embedIframeRef}
       src={url}
       title={title}
       className={offsetStyle ? "w-full border-0" : className}
@@ -129,6 +133,7 @@ export default function LetraViewer({
   initialScrollOffsetPx,
   initialScrollBottomOffsetPx,
   onRevealTop,
+  embedIframeRef,
 }: LetraViewerProps) {
   const radiusClass = containerRadiusClass(edgeToEdge, flushBottom);
   const elevatedClass = elevated
@@ -147,6 +152,7 @@ export default function LetraViewer({
           className="h-full w-full border-0"
           initialScrollOffsetPx={initialScrollOffsetPx}
           initialScrollBottomOffsetPx={initialScrollBottomOffsetPx}
+          embedIframeRef={embedIframeRef}
         />
       </EmbedShell>
     );
@@ -166,6 +172,7 @@ export default function LetraViewer({
         className="size-full min-h-[320px] flex-1 border-0"
         initialScrollOffsetPx={initialScrollOffsetPx}
         initialScrollBottomOffsetPx={initialScrollBottomOffsetPx}
+        embedIframeRef={embedIframeRef}
       />
     </EmbedShell>
   );

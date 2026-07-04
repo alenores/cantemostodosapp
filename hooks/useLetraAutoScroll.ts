@@ -11,6 +11,8 @@ type UseLetraAutoScrollOptions = {
   enabled?: boolean;
   /** Al cambiar, reinicia scroll y velocidad (ej. id o nombre de canción). */
   contentKey?: string | number | null;
+  /** Iframe embebido (Cifra Club): scroll vía contentWindow cuando no hay contenedor de texto. */
+  embedIframeRef?: RefObject<HTMLIFrameElement | null>;
 };
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -20,9 +22,65 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   );
 }
 
+function elementHasScrollRange(el: HTMLDivElement): boolean {
+  return el.scrollHeight - el.clientHeight > 1;
+}
+
+function safeIframeScrollY(win: Window | null | undefined): number | null {
+  if (!win) {
+    return null;
+  }
+
+  try {
+    return win.scrollY;
+  } catch {
+    return null;
+  }
+}
+
+function safeIframeScrollTo(win: Window | null | undefined, y: number): boolean {
+  if (!win) {
+    return false;
+  }
+
+  try {
+    win.scrollTo(0, y);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readActiveScrollOffset(
+  scrollEl: HTMLDivElement | null,
+  embedIframeRef?: RefObject<HTMLIFrameElement | null>,
+): number {
+  if (scrollEl && elementHasScrollRange(scrollEl)) {
+    return scrollEl.scrollTop;
+  }
+
+  const iframeY = safeIframeScrollY(embedIframeRef?.current?.contentWindow ?? null);
+  return iframeY ?? 0;
+}
+
+function resolveScrollListenerTarget(
+  scrollEl: HTMLDivElement | null,
+  embedIframeRef?: RefObject<HTMLIFrameElement | null>,
+): HTMLElement | null {
+  if (scrollEl && elementHasScrollRange(scrollEl)) {
+    return scrollEl;
+  }
+
+  return embedIframeRef?.current ?? null;
+}
+
 export function useLetraAutoScroll(
   scrollRef: RefObject<HTMLDivElement | null>,
-  { enabled = true, contentKey = null }: UseLetraAutoScrollOptions = {},
+  {
+    enabled = true,
+    contentKey = null,
+    embedIframeRef,
+  }: UseLetraAutoScrollOptions = {},
 ) {
   const autoScrollLevelRef = useRef(0);
   const autoScrollOffsetRef = useRef(0);
@@ -62,17 +120,21 @@ export function useLetraAutoScroll(
 
   const reset = useCallback(() => {
     scrollRef.current?.scrollTo(0, 0);
+    safeIframeScrollTo(embedIframeRef?.current?.contentWindow ?? null, 0);
     autoScrollOffsetRef.current = 0;
     setAutoScrollLevel(0);
-  }, [scrollRef]);
+  }, [embedIframeRef, scrollRef]);
 
   useEffect(() => {
     autoScrollLevelRef.current = autoScrollLevel;
 
     if (autoScrollLevel > 0) {
-      autoScrollOffsetRef.current = scrollRef.current?.scrollTop ?? 0;
+      autoScrollOffsetRef.current = readActiveScrollOffset(
+        scrollRef.current,
+        embedIframeRef,
+      );
     }
-  }, [autoScrollLevel, scrollRef]);
+  }, [autoScrollLevel, embedIframeRef, scrollRef]);
 
   useEffect(() => {
     if (!enabled) {
@@ -96,7 +158,16 @@ export function useLetraAutoScroll(
       const scrollEl = scrollRef.current;
       const level = autoScrollLevelRef.current;
 
-      if (!scrollEl || level === 0 || !enabled) {
+      if (level === 0 || !enabled) {
+        return;
+      }
+
+      const usesElementScroll = Boolean(scrollEl && elementHasScrollRange(scrollEl));
+      const iframeWin = embedIframeRef?.current?.contentWindow ?? null;
+      const usesIframeScroll = !usesElementScroll && Boolean(iframeWin);
+
+      if (!usesElementScroll && !usesIframeScroll) {
+        frameId = requestAnimationFrame(tick);
         return;
       }
 
@@ -106,10 +177,28 @@ export function useLetraAutoScroll(
         return;
       }
 
-      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+      if (usesElementScroll && scrollEl) {
+        const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
 
-      if (maxScroll <= 1) {
-        setAutoScrollLevel(0);
+        if (maxScroll <= 1) {
+          setAutoScrollLevel(0);
+          return;
+        }
+
+        const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+        const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
+        autoScrollOffsetRef.current += speed * deltaSeconds;
+
+        if (autoScrollOffsetRef.current >= maxScroll) {
+          autoScrollOffsetRef.current = maxScroll;
+          scrollEl.scrollTop = maxScroll;
+          frameId = requestAnimationFrame(tick);
+          return;
+        }
+
+        scrollEl.scrollTop = autoScrollOffsetRef.current;
+        frameId = requestAnimationFrame(tick);
         return;
       }
 
@@ -118,14 +207,16 @@ export function useLetraAutoScroll(
       const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
       autoScrollOffsetRef.current += speed * deltaSeconds;
 
-      if (autoScrollOffsetRef.current >= maxScroll) {
-        autoScrollOffsetRef.current = maxScroll;
-        scrollEl.scrollTop = maxScroll;
+      if (!safeIframeScrollTo(iframeWin, autoScrollOffsetRef.current)) {
         frameId = requestAnimationFrame(tick);
         return;
       }
 
-      scrollEl.scrollTop = autoScrollOffsetRef.current;
+      const nextY = safeIframeScrollY(iframeWin);
+      if (nextY !== null) {
+        autoScrollOffsetRef.current = nextY;
+      }
+
       frameId = requestAnimationFrame(tick);
     }
 
@@ -134,56 +225,85 @@ export function useLetraAutoScroll(
     return () => {
       cancelAnimationFrame(frameId);
     };
-  }, [autoScrollLevel, enabled, scrollRef]);
+  }, [autoScrollLevel, embedIframeRef, enabled, scrollRef]);
 
   useEffect(() => {
-    const scrollEl = scrollRef.current;
-
-    if (!scrollEl || !enabled) {
+    if (!enabled) {
       return;
     }
 
-    function syncScrollOffset() {
-      autoScrollOffsetRef.current = scrollEl!.scrollTop;
-    }
+    let cleanup: (() => void) | undefined;
 
-    function endManualScroll() {
-      syncScrollOffset();
-      manualScrollActiveRef.current = false;
-    }
-
-    function onPointerDown(event: PointerEvent) {
-      if (event.pointerType === "mouse" && event.button !== 0) {
-        return;
+    function bindListeners(listenEl: HTMLElement) {
+      function syncScrollOffset() {
+        autoScrollOffsetRef.current = readActiveScrollOffset(
+          scrollRef.current,
+          embedIframeRef,
+        );
       }
 
-      if (isInteractiveTarget(event.target)) {
-        return;
-      }
-
-      if (autoScrollLevelRef.current > 0) {
-        manualScrollActiveRef.current = true;
-      }
-    }
-
-    function onScroll() {
-      if (manualScrollActiveRef.current || autoScrollLevelRef.current > 0) {
+      function endManualScroll() {
         syncScrollOffset();
+        manualScrollActiveRef.current = false;
       }
+
+      function onPointerDown(event: PointerEvent) {
+        if (event.pointerType === "mouse" && event.button !== 0) {
+          return;
+        }
+
+        if (isInteractiveTarget(event.target)) {
+          return;
+        }
+
+        if (autoScrollLevelRef.current > 0) {
+          manualScrollActiveRef.current = true;
+        }
+      }
+
+      function onScroll() {
+        if (manualScrollActiveRef.current || autoScrollLevelRef.current > 0) {
+          syncScrollOffset();
+        }
+      }
+
+      listenEl.addEventListener("pointerdown", onPointerDown);
+      listenEl.addEventListener("pointerup", endManualScroll);
+      listenEl.addEventListener("pointercancel", endManualScroll);
+      listenEl.addEventListener("scroll", onScroll, { passive: true });
+
+      return () => {
+        listenEl.removeEventListener("pointerdown", onPointerDown);
+        listenEl.removeEventListener("pointerup", endManualScroll);
+        listenEl.removeEventListener("pointercancel", endManualScroll);
+        listenEl.removeEventListener("scroll", onScroll);
+      };
     }
 
-    scrollEl.addEventListener("pointerdown", onPointerDown);
-    scrollEl.addEventListener("pointerup", endManualScroll);
-    scrollEl.addEventListener("pointercancel", endManualScroll);
-    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+    function attachListeners() {
+      cleanup?.();
+      const listenEl = resolveScrollListenerTarget(
+        scrollRef.current,
+        embedIframeRef,
+      );
+
+      if (!listenEl) {
+        return;
+      }
+
+      cleanup = bindListeners(listenEl);
+    }
+
+    attachListeners();
+
+    const iframe = embedIframeRef?.current;
+    iframe?.addEventListener("load", attachListeners);
 
     return () => {
-      scrollEl.removeEventListener("pointerdown", onPointerDown);
-      scrollEl.removeEventListener("pointerup", endManualScroll);
-      scrollEl.removeEventListener("pointercancel", endManualScroll);
-      scrollEl.removeEventListener("scroll", onScroll);
+      iframe?.removeEventListener("load", attachListeners);
+      cleanup?.();
     };
-  }, [enabled, scrollRef, contentKey]);
+  }, [contentKey, embedIframeRef, enabled, scrollRef]);
 
   return {
     autoScrollLevel,

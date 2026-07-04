@@ -93,6 +93,7 @@ type CancionActivaSectionProps = {
   letraTexto?: string | null;
   modoLectura?: boolean;
   letraScrollRef?: RefObject<HTMLDivElement | null>;
+  embedIframeRef?: RefObject<HTMLIFrameElement | null>;
   nombreRevealGeneration?: number;
   headerAction?: ReactNode;
 };
@@ -121,6 +122,7 @@ export default function CancionActivaSection({
   letraTexto = null,
   modoLectura = false,
   letraScrollRef: letraScrollRefProp,
+  embedIframeRef,
   nombreRevealGeneration = 0,
   headerAction = null,
 }: CancionActivaSectionProps) {
@@ -337,6 +339,7 @@ export default function CancionActivaSection({
                 title="Letra de la canción activa"
                 fill
                 initialScrollOffsetPx={embedTopClipPx}
+                embedIframeRef={modoLectura ? embedIframeRef : undefined}
                 onRevealTop={
                   embedConRecorteInicial
                     ? () => setEmbedTopRevealed(true)

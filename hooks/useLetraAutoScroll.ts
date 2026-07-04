@@ -1,6 +1,7 @@
 "use client";
 
 import { triggerHaptic } from "@/lib/haptic";
+import { CIFRACLUB_EMBED_MAX_VISUAL_SCROLL_PX } from "@/lib/sala-layout";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 /** px/s por nivel (1 = muy suave). Escalones uniformes y moderados. */
@@ -11,7 +12,7 @@ type UseLetraAutoScrollOptions = {
   enabled?: boolean;
   /** Al cambiar, reinicia scroll y velocidad (ej. id o nombre de canción). */
   contentKey?: string | number | null;
-  /** Iframe embebido (Cifra Club): scroll vía contentWindow cuando no hay contenedor de texto. */
+  /** Iframe embebido (Cifra Club): auto-scroll visual vía marginTop. */
   embedIframeRef?: RefObject<HTMLIFrameElement | null>;
 };
 
@@ -26,41 +27,31 @@ function elementHasScrollRange(el: HTMLDivElement): boolean {
   return el.scrollHeight - el.clientHeight > 1;
 }
 
-function safeIframeScrollY(win: Window | null | undefined): number | null {
-  if (!win) {
-    return null;
-  }
-
-  try {
-    return win.scrollY;
-  } catch {
-    return null;
-  }
+function readEmbedTopClipPx(iframe: HTMLIFrameElement): number {
+  const raw = iframe.dataset.embedTopClipPx;
+  const parsed = raw ? Number(raw) : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function safeIframeScrollTo(win: Window | null | undefined, y: number): boolean {
-  if (!win) {
-    return false;
+/** Desplaza el iframe hacia arriba (mismo truco que el recorte superior). */
+export function applyEmbedVisualScroll(
+  iframe: HTMLIFrameElement,
+  extraPx: number,
+  maxExtraPx: number = CIFRACLUB_EMBED_MAX_VISUAL_SCROLL_PX,
+) {
+  const top = readEmbedTopClipPx(iframe);
+  const extra = Math.max(0, Math.min(extraPx, maxExtraPx));
+
+  if (top === 0 && extra === 0) {
+    iframe.style.height = "";
+    iframe.style.marginTop = "";
+    iframe.style.width = "";
+    return;
   }
 
-  try {
-    win.scrollTo(0, y);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function readActiveScrollOffset(
-  scrollEl: HTMLDivElement | null,
-  embedIframeRef?: RefObject<HTMLIFrameElement | null>,
-): number {
-  if (scrollEl && elementHasScrollRange(scrollEl)) {
-    return scrollEl.scrollTop;
-  }
-
-  const iframeY = safeIframeScrollY(embedIframeRef?.current?.contentWindow ?? null);
-  return iframeY ?? 0;
+  iframe.style.width = "100%";
+  iframe.style.height = top > 0 ? `calc(100% + ${top}px)` : "100%";
+  iframe.style.marginTop = `-${top + extra}px`;
 }
 
 function resolveScrollListenerTarget(
@@ -120,8 +111,13 @@ export function useLetraAutoScroll(
 
   const reset = useCallback(() => {
     scrollRef.current?.scrollTo(0, 0);
-    safeIframeScrollTo(embedIframeRef?.current?.contentWindow ?? null, 0);
     autoScrollOffsetRef.current = 0;
+
+    const iframe = embedIframeRef?.current;
+    if (iframe) {
+      applyEmbedVisualScroll(iframe, 0);
+    }
+
     setAutoScrollLevel(0);
   }, [embedIframeRef, scrollRef]);
 
@@ -129,12 +125,12 @@ export function useLetraAutoScroll(
     autoScrollLevelRef.current = autoScrollLevel;
 
     if (autoScrollLevel > 0) {
-      autoScrollOffsetRef.current = readActiveScrollOffset(
-        scrollRef.current,
-        embedIframeRef,
-      );
+      const scrollEl = scrollRef.current;
+      if (scrollEl && elementHasScrollRange(scrollEl)) {
+        autoScrollOffsetRef.current = scrollEl.scrollTop;
+      }
     }
-  }, [autoScrollLevel, embedIframeRef, scrollRef]);
+  }, [autoScrollLevel, scrollRef]);
 
   useEffect(() => {
     if (!enabled) {
@@ -163,10 +159,10 @@ export function useLetraAutoScroll(
       }
 
       const usesElementScroll = Boolean(scrollEl && elementHasScrollRange(scrollEl));
-      const iframeWin = embedIframeRef?.current?.contentWindow ?? null;
-      const usesIframeScroll = !usesElementScroll && Boolean(iframeWin);
+      const iframe = embedIframeRef?.current;
+      const usesEmbedVisualScroll = !usesElementScroll && Boolean(iframe);
 
-      if (!usesElementScroll && !usesIframeScroll) {
+      if (!usesElementScroll && !usesEmbedVisualScroll) {
         frameId = requestAnimationFrame(tick);
         return;
       }
@@ -177,6 +173,11 @@ export function useLetraAutoScroll(
         return;
       }
 
+      const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
+      autoScrollOffsetRef.current += speed * deltaSeconds;
+
       if (usesElementScroll && scrollEl) {
         const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
 
@@ -184,11 +185,6 @@ export function useLetraAutoScroll(
           setAutoScrollLevel(0);
           return;
         }
-
-        const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
-        lastTime = now;
-        const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
-        autoScrollOffsetRef.current += speed * deltaSeconds;
 
         if (autoScrollOffsetRef.current >= maxScroll) {
           autoScrollOffsetRef.current = maxScroll;
@@ -202,19 +198,8 @@ export function useLetraAutoScroll(
         return;
       }
 
-      const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
-      lastTime = now;
-      const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
-      autoScrollOffsetRef.current += speed * deltaSeconds;
-
-      if (!safeIframeScrollTo(iframeWin, autoScrollOffsetRef.current)) {
-        frameId = requestAnimationFrame(tick);
-        return;
-      }
-
-      const nextY = safeIframeScrollY(iframeWin);
-      if (nextY !== null) {
-        autoScrollOffsetRef.current = nextY;
+      if (iframe) {
+        applyEmbedVisualScroll(iframe, autoScrollOffsetRef.current);
       }
 
       frameId = requestAnimationFrame(tick);
@@ -235,15 +220,7 @@ export function useLetraAutoScroll(
     let cleanup: (() => void) | undefined;
 
     function bindListeners(listenEl: HTMLElement) {
-      function syncScrollOffset() {
-        autoScrollOffsetRef.current = readActiveScrollOffset(
-          scrollRef.current,
-          embedIframeRef,
-        );
-      }
-
       function endManualScroll() {
-        syncScrollOffset();
         manualScrollActiveRef.current = false;
       }
 
@@ -262,8 +239,13 @@ export function useLetraAutoScroll(
       }
 
       function onScroll() {
-        if (manualScrollActiveRef.current || autoScrollLevelRef.current > 0) {
-          syncScrollOffset();
+        const scrollEl = scrollRef.current;
+        if (
+          scrollEl &&
+          elementHasScrollRange(scrollEl) &&
+          (manualScrollActiveRef.current || autoScrollLevelRef.current > 0)
+        ) {
+          autoScrollOffsetRef.current = scrollEl.scrollTop;
         }
       }
 

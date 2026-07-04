@@ -17,6 +17,8 @@ type LetraViewerProps = {
   initialScrollBottomOffsetPx?: number;
   /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
   onRevealTop?: () => void;
+  /** Clase extra para posicionar el control de revelar (p. ej. cuando hay badge). */
+  revealControlClassName?: string;
   embedIframeRef?: RefObject<HTMLIFrameElement | null>;
 };
 
@@ -37,12 +39,9 @@ function containerRadiusClass(
 
 function getIframeScrollSimulationStyle(
   topOffsetPx?: number,
-  _bottomOffsetPx?: number,
 ): CSSProperties | undefined {
   const top = topOffsetPx && topOffsetPx > 0 ? topOffsetPx : 0;
 
-  // Solo el recorte superior extiende el iframe. Sumar px abajo infla el viewport
-  // interno de Cifra Club y rompe el scroll táctil dentro del iframe.
   if (top === 0) {
     return undefined;
   }
@@ -51,7 +50,6 @@ function getIframeScrollSimulationStyle(
     height: `calc(100% + ${top}px)`,
     marginTop: `-${top}px`,
     width: "100%",
-    filter: "saturate(0.1) contrast(1.3)",
   };
 }
 
@@ -72,16 +70,18 @@ function LetraIframe({
   initialScrollBottomOffsetPx,
   embedIframeRef,
 }: LetraIframeProps) {
-  const offsetStyle = getIframeScrollSimulationStyle(
-    initialScrollOffsetPx,
-    initialScrollBottomOffsetPx,
-  );
+  const offsetStyle = getIframeScrollSimulationStyle(initialScrollOffsetPx);
+  const topClipPx =
+    initialScrollOffsetPx && initialScrollOffsetPx > 0
+      ? initialScrollOffsetPx
+      : undefined;
 
   return (
     <iframe
       ref={embedIframeRef}
       src={url}
       title={title}
+      data-embed-top-clip-px={topClipPx}
       className={offsetStyle ? "w-full border-0" : className}
       style={offsetStyle}
       sandbox="allow-scripts allow-same-origin"
@@ -90,13 +90,19 @@ function LetraIframe({
   );
 }
 
-function RevealTopControl({ onRevealTop }: { onRevealTop: () => void }) {
+function RevealTopControl({
+  onRevealTop,
+  className = "top-2",
+}: {
+  onRevealTop: () => void;
+  className?: string;
+}) {
   return (
     <TapButton
       type="button"
       aria-label="Ver inicio de la página"
       onClick={onRevealTop}
-      className="absolute right-2 top-2 z-10 flex size-7 items-center justify-center bg-transparent p-0"
+      className={`absolute right-2 z-10 flex size-7 items-center justify-center bg-transparent p-0 ${className}`}
     >
       <ChevronUp className="size-4 text-[#c4c4c4]" aria-hidden="true" />
     </TapButton>
@@ -107,17 +113,29 @@ type EmbedShellProps = {
   className: string;
   style?: CSSProperties;
   onRevealTop?: () => void;
+  revealControlClassName?: string;
   children: ReactNode;
 };
 
-function EmbedShell({ className, style, onRevealTop, children }: EmbedShellProps) {
+function EmbedShell({
+  className,
+  style,
+  onRevealTop,
+  revealControlClassName,
+  children,
+}: EmbedShellProps) {
   return (
     <div
       style={style}
       className={`relative overflow-hidden bg-letra-bg ${className}`}
     >
       {children}
-      {onRevealTop ? <RevealTopControl onRevealTop={onRevealTop} /> : null}
+      {onRevealTop ? (
+        <RevealTopControl
+          onRevealTop={onRevealTop}
+          className={revealControlClassName}
+        />
+      ) : null}
     </div>
   );
 }
@@ -133,6 +151,7 @@ export default function LetraViewer({
   initialScrollOffsetPx,
   initialScrollBottomOffsetPx,
   onRevealTop,
+  revealControlClassName,
   embedIframeRef,
 }: LetraViewerProps) {
   const radiusClass = containerRadiusClass(edgeToEdge, flushBottom);
@@ -144,6 +163,7 @@ export default function LetraViewer({
     return (
       <EmbedShell
         onRevealTop={onRevealTop}
+        revealControlClassName={revealControlClassName}
         className={`h-full w-full ${radiusClass} ${elevatedClass}`}
       >
         <LetraIframe
@@ -164,6 +184,7 @@ export default function LetraViewer({
     <EmbedShell
       style={containerStyle}
       onRevealTop={onRevealTop}
+      revealControlClassName={revealControlClassName}
       className={`flex min-h-0 flex-col ${radiusClass} ${elevated ? "h-full min-h-0 flex-1" : "min-h-[320px]"} ${elevatedClass}`}
     >
       <LetraIframe

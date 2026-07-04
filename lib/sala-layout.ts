@@ -112,6 +112,7 @@ export function getHomeSearchChromeHeightCss(): string {
 export const LECTURA_TOP_CHROME_INSET_PX = 6;
 export const LECTURA_TOP_CHROME_HEIGHT_PX = 36;
 export const LECTURA_TOP_CHROME_SIDE_PX = 16;
+export const LECTURA_TOP_CHROME_BUTTON_SIZE_PX = 36;
 export const LECTURA_FAB_MENU_GAP_PX = 8;
 /** Aire entre el botón de controles y el aviso de cola en modo lectura. */
 export const LECTURA_COLA_AVISO_GAP_PX = 8;
@@ -124,6 +125,17 @@ export const LECTURA_AUTO_SCROLL_BOTTOM_PX = 8;
 
 export function getLecturaTopChromeTopCss(): string {
   return `calc(${LECTURA_TOP_CHROME_INSET_PX}px + env(safe-area-inset-top, 0px))`;
+}
+
+/** Ancho máximo del chip: un poco más que antes, sin ocupar todo el ancho hasta el botón. */
+export function getLecturaTopChipMaxWidthCss(): string {
+  const reservedPx =
+    LECTURA_TOP_CHROME_BUTTON_SIZE_PX +
+    LECTURA_FAB_MENU_GAP_PX +
+    LECTURA_TOP_CHROME_SIDE_PX +
+    LETRA_MODO_LECTURA_HORIZONTAL_PADDING_PX +
+    4;
+  return `min(80vw, calc(100vw - ${reservedPx}px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))`;
 }
 
 export function getLecturaFabMenuTopCss(): string {
@@ -151,6 +163,9 @@ export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - COLA_BAR_
 /** Recorte superior del iframe embebido por sitio (calibrar en móvil). */
 export const CIFRACLUB_EMBED_TOP_CLIP_PX = 450;
 export const ACORDESDCANCIONES_EMBED_TOP_CLIP_PX = 750;
+
+/** Tope del auto-scroll visual en embeds (marginTop acumulado, calibrar en móvil). */
+export const CIFRACLUB_EMBED_MAX_VISUAL_SCROLL_PX = 12000;
 
 /** Recorte inferior del iframe (propagandas y controles flotantes). Calibrar en móvil. */
 export const CIFRACLUB_EMBED_BOTTOM_CLIP_PX = 160;

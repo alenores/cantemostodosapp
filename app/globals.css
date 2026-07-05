@@ -92,6 +92,7 @@
   --compositor-block-piano: #4a9fd4;
   --compositor-block-guitarra: #c4a05a;
   --compositor-block-bateria: #d9665a;
+  --compositor-block-viento: #6bb89a;
 
   /* Herramientas — práctica (acento dorado suave; fondo gris neutro, sin tinte cromático) */
   --tool-practice: #c9b07a;
@@ -136,6 +137,7 @@
   --color-compositor-block-piano: var(--compositor-block-piano);
   --color-compositor-block-guitarra: var(--compositor-block-guitarra);
   --color-compositor-block-bateria: var(--compositor-block-bateria);
+  --color-compositor-block-viento: var(--compositor-block-viento);
   --color-tool-practice: var(--tool-practice);
   --font-sans: var(--font-app);
 }
@@ -1141,6 +1143,15 @@ html.splash-active body {
   );
 }
 
+.compositor-timeline-block--viento {
+  --compositor-block-color: var(--compositor-block-viento);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--compositor-block-viento) 78%, white) 0%,
+    var(--compositor-block-viento) 100%
+  );
+}
+
 .compositor-timeline-block--guitar-pua {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
@@ -1260,6 +1271,14 @@ html.splash-active body {
   color: #1a1408;
   font-size: 8px;
   letter-spacing: -0.04em;
+}
+
+.compositor-guitar-timbre-badge--dedo {
+  min-width: 0.95rem;
+  border: 1px solid rgba(26, 20, 8, 0.35);
+  background: rgba(255, 255, 255, 0.62);
+  color: #1a1408;
+  font-size: 8px;
 }
 
 .compositor-guitar-timbre-badge--silencio {

@@ -128,7 +128,7 @@ function scheduleSustainedBeat(
 
 export type VozRitmoPracticeStartOptions = {
   /** Combo: el volumen lo marca solo suave/medio/fuerte, no la altura de la nota. */
-  dynamicsOnlyLoudness?: boolean;
+  intensidadOnlyLoudness?: boolean;
 };
 
 export type VozRitmoPracticeEngine = {
@@ -160,7 +160,7 @@ export function createVozRitmoPracticeEngine(
   let onBeat: ((beatIndex: number, expectedTimeMs: number) => void) | null =
     null;
   let playbackNotes: VozTarget[] | null = null;
-  let dynamicsOnlyLoudness = false;
+  let intensidadOnlyLoudness = false;
   const beatTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
   function clearBeatTimeouts(): void {
@@ -234,7 +234,7 @@ export function createVozRitmoPracticeEngine(
             beatTime,
             secondsPerBeat,
             NOTE_LEVEL_PEAK_GAIN[level],
-            { pitchCompensation: !dynamicsOnlyLoudness },
+            { pitchCompensation: !intensidadOnlyLoudness },
           );
         } else {
           scheduleSustainedBeat(
@@ -274,7 +274,7 @@ export function createVozRitmoPracticeEngine(
       onBeat = nextOnBeat;
       playbackNotes =
         nextNotes !== undefined && nextNotes.length > 0 ? nextNotes : null;
-      dynamicsOnlyLoudness = nextOptions?.dynamicsOnlyLoudness === true;
+      intensidadOnlyLoudness = nextOptions?.intensidadOnlyLoudness === true;
       running = true;
       currentBeatIndex = 0;
       const beatZeroTime = audioContext.currentTime;

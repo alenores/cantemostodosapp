@@ -13,7 +13,7 @@ import { useVoz } from "@/hooks/useVoz";
 import { dispatchCancioneroSyncFinished } from "@/lib/offline/cancionero-events";
 import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
 import { createClient } from "@/lib/supabase/client";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 export type CancioneroHubToolsLayerProps = {
   isLoggedIn: boolean;
@@ -47,7 +47,11 @@ export default function CancioneroHubToolsLayer({
   onGlobalCountRefresh,
 }: CancioneroHubToolsLayerProps) {
   const supabase = useMemo(() => createClient(), []);
-  const compositor = useCompositor();
+  const compositor = useCompositor({
+    isLoggedIn,
+    online,
+    cyclesEnabled: compositorOpen,
+  });
   const {
     bpm: metronomoBpm,
     isPlaying: metronomoIsPlaying,
@@ -86,6 +90,8 @@ export default function CancioneroHubToolsLayer({
     accuracy: vozAccuracy,
     feedbackLabel: vozFeedbackLabel,
     historySamples: vozHistorySamples,
+    holdHistorySamples: vozHoldHistorySamples,
+    holdChartCents: vozHoldChartCents,
     instantAttempts: vozInstantAttempts,
     clearInstantAttempts: clearVozInstantAttempts,
     holdTargetSeconds: vozHoldTargetSeconds,
@@ -116,11 +122,11 @@ export default function CancioneroHubToolsLayer({
     tapRitmoTempo: tapVozRitmoTempo,
     beatMarkers: vozBeatMarkers,
     ritmoVoiceSamples: vozRitmoVoiceSamples,
-    dinamicaVoiceSamples: vozDinamicaVoiceSamples,
+    intensidadVoiceSamples: vozIntensidadVoiceSamples,
     voiceRms: vozVoiceRms,
     effectiveTarget: vozEffectiveTarget,
     setRitmoToneEvaluation: setVozRitmoToneEvaluation,
-    setDynamicsEvaluation: setVozDynamicsEvaluation,
+    setIntensidadEvaluation: setVozIntensidadEvaluation,
     melodiaPlaying: vozMelodiaPlaying,
     toggleMelodiaPlaying: toggleVozMelodiaPlaying,
     melodiaMicActive: vozMelodiaMicActive,
@@ -140,9 +146,15 @@ export default function CancioneroHubToolsLayer({
     requestPermission: requestVozMicPermission,
     tonePracticeActive: vozTonePracticeActive,
     toggleTonePractice: toggleVozTonePractice,
-    stopTonePractice: stopVozTonePractice,
+    deactivatePracticeMic: deactivateVozPracticeMic,
     stop: stopVoz,
   } = useVoz();
+
+  useEffect(() => {
+    if (!vozOpen) {
+      stopVoz();
+    }
+  }, [vozOpen, stopVoz]);
 
   const toolModalOpen =
     afinadorOpen || metronomoOpen || vozOpen || compositorOpen || editorOpen;
@@ -202,6 +214,8 @@ export default function CancioneroHubToolsLayer({
         accuracy={vozAccuracy}
         feedbackLabel={vozFeedbackLabel}
         historySamples={vozHistorySamples}
+        holdHistorySamples={vozHoldHistorySamples}
+        holdChartCents={vozHoldChartCents}
         instantAttempts={vozInstantAttempts}
         onClearInstantAttempts={clearVozInstantAttempts}
         holdTargetSeconds={vozHoldTargetSeconds}
@@ -217,7 +231,7 @@ export default function CancioneroHubToolsLayer({
         celebrationKey={vozCelebrationKey}
         effectiveTarget={vozEffectiveTarget}
         onSetRitmoToneEvaluation={setVozRitmoToneEvaluation}
-        onSetDynamicsEvaluation={setVozDynamicsEvaluation}
+        onSetIntensidadEvaluation={setVozIntensidadEvaluation}
         ritmoPlaying={vozRitmoPlaying}
         onToggleRitmoPlaying={toggleVozRitmoPlaying}
         ritmoMicActive={vozRitmoMicActive}
@@ -235,7 +249,7 @@ export default function CancioneroHubToolsLayer({
         onTapRitmoTempo={tapVozRitmoTempo}
         beatMarkers={vozBeatMarkers}
         ritmoVoiceSamples={vozRitmoVoiceSamples}
-        dinamicaVoiceSamples={vozDinamicaVoiceSamples}
+        intensidadVoiceSamples={vozIntensidadVoiceSamples}
         voiceRms={vozVoiceRms}
         melodiaPlaying={vozMelodiaPlaying}
         onToggleMelodiaPlaying={toggleVozMelodiaPlaying}
@@ -256,7 +270,7 @@ export default function CancioneroHubToolsLayer({
         onRequestMic={() => void requestVozMicPermission()}
         tonePracticeActive={vozTonePracticeActive}
         onToggleTonePractice={toggleVozTonePractice}
-        onStopTonePractice={stopVozTonePractice}
+        onDeactivatePracticeMic={deactivateVozPracticeMic}
         onClose={() => {
           stopVoz();
           onVozOpenChange(false);
@@ -297,6 +311,8 @@ export default function CancioneroHubToolsLayer({
       <CompositorModal
         open={compositorOpen}
         onClose={() => onCompositorOpenChange(false)}
+        isLoggedIn={isLoggedIn}
+        online={online}
         {...compositor}
       />
 

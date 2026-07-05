@@ -1,6 +1,10 @@
 "use client";
 
 import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import {
+  RITMO_HELP_SONIDO_GOLPE,
+  RITMO_LABEL_SONIDO,
+} from "@/lib/ritmo-terminologia";
 import { HelpCircle, Timer, VolumeX, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -346,8 +350,8 @@ export function RitmoHelpModal({ open, onClose }: RitmoHelpModalProps) {
                 />
                 <HelpInfoCard
                   icon={<ContenidoConceptIcon />}
-                  label="Contenido"
-                  text="Para cada golpe elegís si hay que cantar o callar"
+                  label={RITMO_LABEL_SONIDO}
+                  text={RITMO_HELP_SONIDO_GOLPE}
                   shimmerDelayMs={660}
                 />
                 <HelpInfoCard

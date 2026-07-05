@@ -15,10 +15,10 @@ import {
 } from "@/lib/ritmo-compas-ui";
 import {
   formatGolpeLabel,
-  RITMO_HELP_CONTENIDO_NOTA,
+  RITMO_HELP_NOTA,
   RITMO_HELP_TIMBRE_BATERIA,
   RITMO_HELP_TIMBRE_GUITARRA,
-  RITMO_LABEL_CONTENIDO,
+  RITMO_LABEL_NOTA,
   RITMO_LABEL_SUSTENTO,
   RITMO_LABEL_TIMBRE,
 } from "@/lib/ritmo-terminologia";
@@ -28,7 +28,7 @@ function wrapIndex(index: number, length: number): number {
   return ((index % length) + length) % length;
 }
 
-function CompositorOptionCarousel<T extends string>({
+export function CompositorOptionCarousel<T extends string>({
   options,
   value,
   disabled = false,
@@ -156,9 +156,9 @@ export function CompositorSlotContenido({
   return (
     <div className="rounded-[10px] border border-border bg-bg-card px-3 py-3">
       <p className="text-xs font-bold uppercase tracking-wide text-compositor-config">
-        {RITMO_LABEL_CONTENIDO} · {formatGolpeLabel(slotIndex)}
+        {RITMO_LABEL_NOTA} · {formatGolpeLabel(slotIndex)}
       </p>
-      <p className="mt-1 text-[11px] text-text-muted">{RITMO_HELP_CONTENIDO_NOTA}</p>
+      <p className="mt-1 text-[11px] text-text-muted">{RITMO_HELP_NOTA}</p>
       <div className="mt-3">{noteControls}</div>
     </div>
   );
@@ -245,7 +245,11 @@ export function CompositorSlotTimbre({
 export function compositorHasContenidoTab(
   instrumentId: CompositorInstrumentId,
 ): boolean {
-  return instrumentId === "piano" || instrumentId === "guitarra";
+  return (
+    instrumentId === "piano" ||
+    instrumentId === "guitarra" ||
+    instrumentId === "viento"
+  );
 }
 
 export function compositorHasTimbreTab(

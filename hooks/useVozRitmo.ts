@@ -88,7 +88,7 @@ type UseVozRitmoResult = {
   setMelodiaNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
   setComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
   setRitmoPlaybackNotes: (notes: VozTarget[] | null) => void;
-  setRitmoPlaybackDynamicsOnly: (value: boolean) => void;
+  setRitmoPlaybackIntensidadOnly: (value: boolean) => void;
   tapRitmoTempo: () => void;
   tapMelodiaTempo: () => void;
   startRitmo: () => void;
@@ -137,7 +137,7 @@ export function useVozRitmo(): UseVozRitmoResult {
   const melodiaBeatDurationRef = useRef(melodiaBeatDuration);
   const melodiaNotePatternRef = useRef(melodiaNotePattern);
   const ritmoPlaybackNotesRef = useRef<VozTarget[] | null>(null);
-  const ritmoPlaybackDynamicsOnlyRef = useRef(false);
+  const ritmoPlaybackIntensidadOnlyRef = useRef(false);
   const ritmoPlayingRef = useRef(false);
   const melodiaPlayingRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("ritmo");
@@ -255,8 +255,8 @@ export function useVozRitmo(): UseVozRitmoResult {
                 });
               },
               ritmoPlaybackNotesRef.current ?? undefined,
-              ritmoPlaybackDynamicsOnlyRef.current
-                ? { dynamicsOnlyLoudness: true }
+              ritmoPlaybackIntensidadOnlyRef.current
+                ? { intensidadOnlyLoudness: true }
                 : undefined,
             );
             return;
@@ -469,8 +469,8 @@ export function useVozRitmo(): UseVozRitmoResult {
     ritmoPlaybackNotesRef.current = notes;
   }, []);
 
-  const setRitmoPlaybackDynamicsOnly = useCallback((value: boolean) => {
-    ritmoPlaybackDynamicsOnlyRef.current = value;
+  const setRitmoPlaybackIntensidadOnly = useCallback((value: boolean) => {
+    ritmoPlaybackIntensidadOnlyRef.current = value;
   }, []);
 
   const tapRitmoTempo = useCallback(() => {
@@ -633,7 +633,7 @@ export function useVozRitmo(): UseVozRitmoResult {
     setMelodiaNoteAtSlot,
     setComboNoteAtSlot,
     setRitmoPlaybackNotes,
-    setRitmoPlaybackDynamicsOnly,
+    setRitmoPlaybackIntensidadOnly,
     tapRitmoTempo,
     tapMelodiaTempo,
     startRitmo,

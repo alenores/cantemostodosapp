@@ -1,5 +1,6 @@
 "use client";
 
+import { acquireBodyScrollLock } from "@/lib/body-scroll-lock";
 import { useEffect } from "react";
 
 /** Evita que el scroll del documento se mueva detrás de overlays modales. */
@@ -9,11 +10,6 @@ export function useBodyScrollLock(locked: boolean) {
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    return acquireBodyScrollLock();
   }, [locked]);
 }

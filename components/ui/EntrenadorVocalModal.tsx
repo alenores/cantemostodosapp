@@ -24,7 +24,7 @@ import type {
   VozRitmoBeatMarker,
   VozRitmoVoiceSample,
 } from "@/lib/voz-ritmo";
-import type { VozDinamicaVoiceSample } from "@/lib/voz-dinamica";
+import type { VozIntensidadVoiceSample } from "@/lib/voz-intensidad";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -36,7 +36,7 @@ type EntrenadorVocalModalProps = {
   onRequestMic: () => void;
   tonePracticeActive: boolean;
   onToggleTonePractice: () => void;
-  onStopTonePractice: () => void;
+  onDeactivatePracticeMic: () => void;
   detection: NoteDetection | null;
   micError: string | null;
   micPermissionGranted: boolean;
@@ -49,6 +49,8 @@ type EntrenadorVocalModalProps = {
   accuracy: VozAccuracy;
   feedbackLabel: string;
   historySamples: VozHistorySample[];
+  holdHistorySamples: VozHistorySample[];
+  holdChartCents: number | null;
   instantAttempts: VozInstantAttempt[];
   onClearInstantAttempts: () => void;
   holdTargetSeconds: number;
@@ -64,7 +66,7 @@ type EntrenadorVocalModalProps = {
   celebrationKey: number;
   effectiveTarget: VozTarget;
   onSetRitmoToneEvaluation: (mode: RitmoToneEvaluation) => void;
-  onSetDynamicsEvaluation: (value: boolean) => void;
+  onSetIntensidadEvaluation: (value: boolean) => void;
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
   ritmoMicActive: boolean;
@@ -88,7 +90,7 @@ type EntrenadorVocalModalProps = {
   onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
-  dinamicaVoiceSamples: VozDinamicaVoiceSample[];
+  intensidadVoiceSamples: VozIntensidadVoiceSample[];
   voiceRms: number;
   melodiaPlaying: boolean;
   onToggleMelodiaPlaying: () => void;
@@ -167,7 +169,7 @@ export default function EntrenadorVocalModal({
   onRequestMic,
   tonePracticeActive,
   onToggleTonePractice,
-  onStopTonePractice,
+  onDeactivatePracticeMic,
   detection,
   micError,
   micPermissionGranted,
@@ -180,6 +182,8 @@ export default function EntrenadorVocalModal({
   accuracy,
   feedbackLabel,
   historySamples,
+  holdHistorySamples,
+  holdChartCents,
   instantAttempts,
   onClearInstantAttempts,
   holdTargetSeconds,
@@ -195,7 +199,7 @@ export default function EntrenadorVocalModal({
   celebrationKey,
   effectiveTarget,
   onSetRitmoToneEvaluation,
-  onSetDynamicsEvaluation,
+  onSetIntensidadEvaluation,
   ritmoPlaying,
   onToggleRitmoPlaying,
   ritmoMicActive,
@@ -213,7 +217,7 @@ export default function EntrenadorVocalModal({
   onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
-  dinamicaVoiceSamples,
+  intensidadVoiceSamples,
   voiceRms,
   melodiaPlaying,
   onToggleMelodiaPlaying,
@@ -240,12 +244,17 @@ export default function EntrenadorVocalModal({
       setActiveModeIndex(0);
       prevSlideIndexRef.current = 0;
       onStopRhythm();
-      onStopTonePractice();
+      onDeactivatePracticeMic();
       return;
     }
 
     onClearInstantAttempts();
-  }, [open, onStopRhythm, onStopTonePractice, onClearInstantAttempts]);
+  }, [
+    open,
+    onStopRhythm,
+    onDeactivatePracticeMic,
+    onClearInstantAttempts,
+  ]);
 
   useEffect(() => {
     if (!open) {
@@ -254,7 +263,7 @@ export default function EntrenadorVocalModal({
 
     if (prevSlideIndexRef.current !== activeModeIndex) {
       onStopRhythm();
-      onStopTonePractice();
+      onDeactivatePracticeMic();
       onClearInstantAttempts();
       prevSlideIndexRef.current = activeModeIndex;
     }
@@ -262,7 +271,7 @@ export default function EntrenadorVocalModal({
     activeModeIndex,
     open,
     onStopRhythm,
-    onStopTonePractice,
+    onDeactivatePracticeMic,
     onClearInstantAttempts,
   ]);
 
@@ -308,7 +317,7 @@ export default function EntrenadorVocalModal({
                 activeIndex={activeModeIndex}
                 onChangeIndex={setActiveModeIndex}
                 onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
-                onSetDynamicsEvaluation={onSetDynamicsEvaluation}
+                onSetIntensidadEvaluation={onSetIntensidadEvaluation}
                 effectiveTarget={effectiveTarget}
                 targetPicker={{
                   target,
@@ -323,6 +332,8 @@ export default function EntrenadorVocalModal({
                 feedbackLabel={feedbackLabel}
                 instantAttempts={instantAttempts}
                 historySamples={historySamples}
+                holdHistorySamples={holdHistorySamples}
+                holdChartCents={holdChartCents}
                 holdTargetSeconds={holdTargetSeconds}
                 onSetHoldTargetSeconds={onSetHoldTargetSeconds}
                 holdCalibre={holdCalibre}
@@ -353,7 +364,7 @@ export default function EntrenadorVocalModal({
                 onTapRitmoTempo={onTapRitmoTempo}
                 beatMarkers={beatMarkers}
                 ritmoVoiceSamples={ritmoVoiceSamples}
-                dinamicaVoiceSamples={dinamicaVoiceSamples}
+                intensidadVoiceSamples={intensidadVoiceSamples}
                 voiceRms={voiceRms}
                 melodiaPlaying={melodiaPlaying}
                 onToggleMelodiaPlaying={onToggleMelodiaPlaying}

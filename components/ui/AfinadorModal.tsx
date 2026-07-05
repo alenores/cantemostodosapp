@@ -2,16 +2,24 @@
 
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
-  centsToNeedleAngle,
-  getClosestStringIndex,
-  getStatusLabel,
   getTunerStatus,
-  GUITAR_STRINGS,
   type NoteDetection,
+  type TunerStatus,
 } from "@/lib/afinador";
+import {
+  centsToLadderPercent,
+  getLadderNoteSlots,
+  semitoneOffsetToLadderPercent,
+} from "@/lib/voz";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import { Mic } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+/** Oculta la bolita al inicio de cada pulsación (ataque ruidoso del mic). */
+const PITCH_MARKER_ONSET_HIDE_MS = 180;
+/** La letra grande solo aparece si la misma nota se sostiene este tiempo. */
+const DISPLAY_NOTE_HOLD_MS = 280;
 
 type AfinadorModalProps = {
   open: boolean;
@@ -24,75 +32,174 @@ type AfinadorModalProps = {
   micStarting: boolean;
 };
 
-function TunerDial({
+function useStableDisplayNote(
+  candidateNote: string | null,
+  hasSignal: boolean,
+): string | null {
+  const [displayNote, setDisplayNote] = useState<string | null>(null);
+  const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trackingNoteRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!hasSignal || candidateNote === null) {
+      trackingNoteRef.current = null;
+      setDisplayNote(null);
+
+      if (holdTimeoutRef.current !== null) {
+        clearTimeout(holdTimeoutRef.current);
+        holdTimeoutRef.current = null;
+      }
+
+      return;
+    }
+
+    if (candidateNote === trackingNoteRef.current) {
+      return;
+    }
+
+    trackingNoteRef.current = candidateNote;
+    setDisplayNote(null);
+
+    if (holdTimeoutRef.current !== null) {
+      clearTimeout(holdTimeoutRef.current);
+    }
+
+    holdTimeoutRef.current = setTimeout(() => {
+      if (trackingNoteRef.current === candidateNote) {
+        setDisplayNote(candidateNote);
+      }
+      holdTimeoutRef.current = null;
+    }, DISPLAY_NOTE_HOLD_MS);
+
+    return () => {
+      if (holdTimeoutRef.current !== null) {
+        clearTimeout(holdTimeoutRef.current);
+        holdTimeoutRef.current = null;
+      }
+    };
+  }, [candidateNote, hasSignal]);
+
+  return displayNote;
+}
+
+function TunerPitchBar({
+  targetNote,
   cents,
   status,
+  detectedNote,
 }: {
+  targetNote: string;
   cents: number;
-  status: ReturnType<typeof getTunerStatus>;
+  status: TunerStatus;
+  detectedNote: string | null;
 }) {
-  const needleAngle = centsToNeedleAngle(cents);
-  const needleColor =
+  const [showMarker, setShowMarker] = useState(false);
+  const wasSilentRef = useRef(true);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slots = getLadderNoteSlots(targetNote);
+  const markerLeft = centsToLadderPercent(cents);
+  const markerColor =
     status === "in-tune"
       ? "var(--tuner-in-tune)"
-      : "var(--tuner-flat-sharp)";
+      : status === "silent"
+        ? "var(--text-muted)"
+        : "var(--tuner-flat-sharp)";
+  const intuneWidth = (15 / (6 * 100)) * 100;
+  const hasSignal = status !== "silent";
+
+  useEffect(() => {
+    if (!hasSignal) {
+      wasSilentRef.current = true;
+      setShowMarker(false);
+
+      if (hideTimeoutRef.current !== null) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+
+      return;
+    }
+
+    if (wasSilentRef.current) {
+      wasSilentRef.current = false;
+      setShowMarker(false);
+
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowMarker(true);
+        hideTimeoutRef.current = null;
+      }, PITCH_MARKER_ONSET_HIDE_MS);
+    }
+
+    return () => {
+      if (hideTimeoutRef.current !== null) {
+        clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+    };
+  }, [hasSignal]);
 
   return (
-    <svg
-      viewBox="0 0 240 150"
-      className="mx-auto w-full max-w-[280px]"
-      aria-hidden="true"
-    >
-      <path
-        d="M 24 120 A 96 96 0 0 1 216 120"
-        fill="none"
-        stroke="var(--border)"
-        strokeWidth="3"
-      />
-
-      <path
-        d="M 24 120 A 96 96 0 0 1 96 36"
-        fill="none"
-        stroke="var(--tuner-flat-sharp)"
-        strokeOpacity="0.5"
-        strokeWidth="14"
-        strokeLinecap="round"
-      />
-
-      <path
-        d="M 96 36 A 96 96 0 0 1 144 36"
-        fill="none"
-        stroke="var(--tuner-in-tune)"
-        strokeOpacity="0.6"
-        strokeWidth="14"
-        strokeLinecap="round"
-      />
-
-      <path
-        d="M 144 36 A 96 96 0 0 1 216 120"
-        fill="none"
-        stroke="var(--tuner-flat-sharp)"
-        strokeOpacity="0.5"
-        strokeWidth="14"
-        strokeLinecap="round"
-      />
-
-      <g
-        transform={`rotate(${needleAngle} 120 120)`}
-        style={{ transition: "transform 0.28s ease-out" }}
-      >
-        <line
-          x1="120"
-          y1="120"
-          x2="120"
-          y2="38"
-          stroke={needleColor}
-          strokeWidth="3"
-          strokeLinecap="round"
+    <div className="w-full max-w-sm">
+      <div className="relative h-28 overflow-hidden rounded-[12px] border border-border bg-bg-card px-1">
+        <div
+          className="pointer-events-none absolute inset-y-2 rounded-md"
+          style={{
+            left: "50%",
+            width: `${intuneWidth}%`,
+            transform: "translateX(-50%)",
+            backgroundColor: "var(--tuner-in-tune)",
+            opacity: 0.15,
+          }}
+          aria-hidden="true"
         />
-        <circle cx="120" cy="120" r="8" fill={needleColor} />
-      </g>
-    </svg>
+
+        {slots.map((slot) => {
+          const isTarget = slot.semitoneOffset === 0;
+          const isDetected =
+            detectedNote !== null && slot.note === detectedNote;
+
+          return (
+            <span
+              key={`${slot.note}-${slot.semitoneOffset}`}
+              className={`pointer-events-none absolute top-2 -translate-x-1/2 text-[10px] font-bold leading-none ${
+                isTarget || isDetected
+                  ? "text-text-primary"
+                  : "text-text-muted"
+              }`}
+              style={{
+                left: `${semitoneOffsetToLadderPercent(slot.semitoneOffset)}%`,
+                fontSize: isTarget ? "12px" : "10px",
+              }}
+            >
+              {slot.note}
+            </span>
+          );
+        })}
+
+        {hasSignal && showMarker ? (
+          <span
+            className="pointer-events-none absolute bottom-1.5 size-3.5 -translate-x-1/2 rounded-full ring-2 ring-bg-card"
+            style={{
+              left: `${markerLeft}%`,
+              backgroundColor: markerColor,
+            }}
+            aria-hidden="true"
+          />
+        ) : null}
+
+        <div
+          className="pointer-events-none absolute bottom-0 top-0 w-px -translate-x-1/2 bg-border"
+          style={{ left: "50%" }}
+          aria-hidden="true"
+        />
+      </div>
+
+      <div className="mt-1.5 flex justify-between text-[10px] font-semibold text-text-muted">
+        <span>Más bajo</span>
+        <span>En nota</span>
+        <span>Más alto</span>
+      </div>
+    </div>
   );
 }
 
@@ -161,8 +268,13 @@ export default function AfinadorModal({
   micReady,
   micStarting,
 }: AfinadorModalProps) {
-  const status = getTunerStatus(detection?.cents ?? 0, detection !== null);
-  const closestStringIndex = getClosestStringIndex(detection?.frequency ?? null);
+  const hasSignal = detection !== null;
+  const status = getTunerStatus(detection?.cents ?? 0, hasSignal);
+  const stableDisplayNote = useStableDisplayNote(
+    detection?.note ?? null,
+    hasSignal,
+  );
+  const barTargetNote = stableDisplayNote ?? detection?.note ?? "C";
 
   if (!open) {
     return null;
@@ -207,48 +319,19 @@ export default function AfinadorModal({
                   className="text-[96px] font-extrabold leading-none text-text-primary"
                   aria-live="polite"
                 >
-                  {detection?.note ?? "—"}
+                  {stableDisplayNote ?? "—"}
                 </p>
                 <p className="mt-2 text-lg text-text-muted">
                   {detection ? `${detection.frequency.toFixed(1)} Hz` : "— Hz"}
                 </p>
               </div>
 
-              <TunerDial cents={detection?.cents ?? 0} status={status} />
-
-              <p
-                className={`text-base font-semibold ${status === "silent" ? "italic" : ""}`}
-                style={{
-                  color:
-                    status === "in-tune"
-                      ? "var(--tuner-in-tune)"
-                      : status === "silent"
-                        ? "var(--text-muted)"
-                        : "var(--accent)",
-                }}
-                aria-live="polite"
-              >
-                {getStatusLabel(status)}
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {GUITAR_STRINGS.map((string, index) => {
-                  const isClosest = closestStringIndex === index;
-
-                  return (
-                    <span
-                      key={index}
-                      className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                        isClosest
-                          ? "border-accent bg-accent text-white"
-                          : "border-border bg-bg-card text-text-secondary"
-                      }`}
-                    >
-                      {string.label}
-                    </span>
-                  );
-                })}
-              </div>
+              <TunerPitchBar
+                targetNote={barTargetNote}
+                cents={detection?.cents ?? 0}
+                status={status}
+                detectedNote={stableDisplayNote}
+              />
             </>
           )}
         </div>

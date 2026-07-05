@@ -8,6 +8,11 @@ import type {
 import { COMPOSITOR_DRUM_SOUND_OPTIONS } from "@/lib/compositor";
 import { NOTE_NAMES } from "@/lib/afinador";
 import { formatTargetLabel, getNoteIndex } from "@/lib/voz";
+import type { NotaIndex } from "@/lib/cifrado";
+import {
+  clampMelodicOctaveForInstrument,
+  melodicPitchFromAbsoluteNote,
+} from "@/lib/compositor-melodic-pitch";
 
 export const COMPOSITOR_MELODIC_MIN_ROWS = 3;
 export const COMPOSITOR_FULL_PITCH_SPAN = 10;
@@ -17,6 +22,9 @@ export const COMPOSITOR_TIMELINE_ROW_LABEL_WIDTH_PX = 18;
 
 export const COMPOSITOR_DRUM_ROW_ORDER: CompositorDrumSound[] = [
   "hihat",
+  "hihatOpen",
+  "ride",
+  "crash",
   "snare",
   "kick",
   "silencio",
@@ -117,7 +125,7 @@ export function getPrimaryOctave(events: CompositorTrackEvent[]): number {
   const counts = new Map<number, number>();
 
   for (const event of events) {
-    const octave = event.note.octave;
+    const octave = event.octavaRelativa ?? event.note.octave;
     counts.set(octave, (counts.get(octave) ?? 0) + 1);
   }
 
@@ -154,8 +162,12 @@ export function buildMelodicTimelineRows(
   }
 
   const primaryOctave = getPrimaryOctave(events);
-  const primaryEvents = events.filter((event) => event.note.octave === primaryOctave);
-  const overflowEvents = events.filter((event) => event.note.octave !== primaryOctave);
+  const primaryEvents = events.filter(
+    (event) => (event.octavaRelativa ?? event.note.octave) === primaryOctave,
+  );
+  const overflowEvents = events.filter(
+    (event) => (event.octavaRelativa ?? event.note.octave) !== primaryOctave,
+  );
   const pitchIndices = buildDynamicPitchRange(getUsedPitchIndices(primaryEvents));
 
   const rows: CompositorMelodicRow[] = pitchIndices.map((pitchIndex) => ({
@@ -209,6 +221,9 @@ export function getMelodicEventRowId(
 export function buildDrumTimelineRows(): CompositorDrumRow[] {
   const shortLabels: Record<CompositorDrumSound, string> = {
     hihat: "HH",
+    hihatOpen: "HO",
+    ride: "RD",
+    crash: "CR",
     snare: "SN",
     kick: "BD",
     silencio: "—",
@@ -278,7 +293,11 @@ export function isSustentoEditable(
     return true;
   }
 
-  return instrumentId === "piano" || instrumentId === "guitarra";
+  return (
+    instrumentId === "piano" ||
+    instrumentId === "guitarra" ||
+    instrumentId === "viento"
+  );
 }
 
 export function getSustentoHelpText(
@@ -293,8 +312,16 @@ export function getSustentoHelpText(
     return "Con púa el ataque es corto: hasta un golpe de duración.";
   }
 
+  if (instrumentId === "guitarra" && event.guitarArticulation === "dedo") {
+    return "Con dedo el bloque puede sostenerse varios pasos del ciclo.";
+  }
+
   if (instrumentId === "guitarra") {
     return "Con rasguido el bloque puede durar varios pasos del ciclo.";
+  }
+
+  if (instrumentId === "viento") {
+    return "Cuántos pasos sostiene esta nota en el ciclo.";
   }
 
   return "Cuántos pasos suena este bloque en el ciclo.";
@@ -304,8 +331,10 @@ export function clampCompositorNoteOctaves(
   note: CompositorSlotNote,
   instrumentId: CompositorInstrumentId,
 ): CompositorSlotNote {
-  const minOctave = instrumentId === "guitarra" ? 2 : 3;
-  const maxOctave = minOctave + 1;
+  const minOctave =
+    instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
+  const maxOctave =
+    instrumentId === "viento" ? 5 : minOctave + 1;
   const octave = Math.max(minOctave, Math.min(maxOctave, note.octave));
 
   return { ...note, octave };
@@ -418,15 +447,21 @@ export function pixelDeltaToRowDelta(
 export function isMelodicTimelineInstrument(
   instrumentId: CompositorInstrumentId,
 ): boolean {
-  return instrumentId === "piano" || instrumentId === "guitarra";
+  return (
+    instrumentId === "piano" ||
+    instrumentId === "guitarra" ||
+    instrumentId === "viento"
+  );
 }
 
 function getSecondaryOctave(
   primaryOctave: number,
   instrumentId: CompositorInstrumentId,
 ): number {
-  const minOctave = instrumentId === "guitarra" ? 2 : 3;
-  const maxOctave = minOctave + 1;
+  const minOctave =
+    instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
+  const maxOctave =
+    instrumentId === "viento" ? 5 : minOctave + 1;
   return primaryOctave === minOctave ? maxOctave : minOctave;
 }
 
@@ -512,7 +547,10 @@ export function noteForMelodicTimelineRow(
 }
 
 export type CompositorTimelineEventPatch = Partial<
-  Pick<CompositorTrackEvent, "startStep" | "durationSteps" | "note">
+  Pick<
+    CompositorTrackEvent,
+    "startStep" | "durationSteps" | "gradoCromatico" | "octavaRelativa" | "note"
+  >
 >;
 
 export function computeMovedEventPatch(
@@ -528,6 +566,7 @@ export function computeMovedEventPatch(
   gridSteps: number,
   subdivisionsPerGolpe: number,
   primaryOctave: number,
+  tonalidadComposicion: NotaIndex,
 ): CompositorTimelineEventPatch {
   const timing = computeMovedEventSteps(
     instrumentId,
@@ -564,6 +603,14 @@ export function computeMovedEventPatch(
     primaryOctave,
     pitchSourceRow,
   );
+  const pitch = melodicPitchFromAbsoluteNote(note, tonalidadComposicion);
 
-  return { ...timing, note };
+  return {
+    ...timing,
+    gradoCromatico: pitch.gradoCromatico,
+    octavaRelativa: clampMelodicOctaveForInstrument(
+      pitch.octavaRelativa,
+      instrumentId,
+    ),
+  };
 }

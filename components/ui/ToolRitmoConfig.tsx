@@ -40,8 +40,8 @@ import type {
 } from "@/lib/compositor";
 import {
   formatGolpeLabel,
-  getRitmoHelpContenido,
-  getRitmoHelpDinamica,
+  getRitmoHelpNota,
+  getRitmoHelpIntensidad,
   getRitmoHelpFigura,
   getRitmoHelpTimbre,
   RITMO_COMPAS_SETUP_TITLE,
@@ -49,8 +49,11 @@ import {
   RITMO_LABEL_GOLPES_TAB,
   RITMO_LABEL_CICLO,
   RITMO_LABEL_COMPAS,
-  RITMO_LABEL_CONTENIDO,
-  RITMO_LABEL_DINAMICA,
+  RITMO_LABEL_NOTA,
+  RITMO_LABEL_SONIDO,
+  RITMO_HELP_NOTAS_PATRON,
+  RITMO_HELP_SONIDO_GOLPE,
+  RITMO_LABEL_INTENSIDAD,
   RITMO_LABEL_FIGURA,
   RITMO_LABEL_NOTAS,
   RITMO_LABEL_TIMBRE,
@@ -337,7 +340,7 @@ export function BeatVolumeCarousel({
         <div
           className="min-w-0 flex-1 px-1 text-center"
           aria-live="polite"
-          aria-label={`Dinámica ${getBeatLevelLabel(level)}`}
+          aria-label={`Intensidad ${getBeatLevelLabel(level)}`}
         >
           <div className="flex h-14 items-end justify-center">
             <span
@@ -884,7 +887,7 @@ export function BpmSetupPanel({
   );
 }
 
-type CompasSetupTab = "golpes" | "figura" | "dinamica" | "contenido" | "timbre" | "notas";
+type CompasSetupTab = "golpes" | "figura" | "intensidad" | "contenido" | "timbre" | "notas";
 
 export type RitmoCompasSetupTab = CompasSetupTab;
 
@@ -941,7 +944,7 @@ export function CompasBeatSetupPanel({
   contenido,
   capas,
   vozNotaPatron,
-  hideDinamicaTab = false,
+  hideIntensidadTab = false,
   vozBeatSoundTab = false,
   hideCompasHelp = false,
   uniformFigura = false,
@@ -964,7 +967,7 @@ export function CompasBeatSetupPanel({
   contenido?: CompositorContenidoConfig;
   capas?: CompositorEditCapasConfig;
   vozNotaPatron?: VozNotaPatronConfig;
-  hideDinamicaTab?: boolean;
+  hideIntensidadTab?: boolean;
   vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
   uniformFigura?: boolean;
@@ -1042,17 +1045,17 @@ export function CompasBeatSetupPanel({
     { id: "golpes", label: RITMO_LABEL_GOLPES_TAB },
     { id: "figura", label: RITMO_LABEL_FIGURA },
   ];
-  if (scope === "full" && !hideDinamicaTab && !vozBeatSoundTab) {
-    compasTabs.push({ id: "dinamica", label: RITMO_LABEL_DINAMICA });
+  if (scope === "full" && !hideIntensidadTab && !vozBeatSoundTab) {
+    compasTabs.push({ id: "intensidad", label: RITMO_LABEL_INTENSIDAD });
   }
   if (vozNotaPatron) {
     compasTabs.push({ id: "notas", label: RITMO_LABEL_NOTAS });
   }
   if (vozBeatSoundTab && scope === "full") {
-    compasTabs.push({ id: "contenido", label: RITMO_LABEL_CONTENIDO });
+    compasTabs.push({ id: "contenido", label: RITMO_LABEL_SONIDO });
   }
   if (showContenidoTab) {
-    compasTabs.push({ id: "contenido", label: RITMO_LABEL_CONTENIDO });
+    compasTabs.push({ id: "contenido", label: RITMO_LABEL_NOTA });
   }
   if (showTimbreTab) {
     compasTabs.push({ id: "timbre", label: RITMO_LABEL_TIMBRE });
@@ -1180,7 +1183,7 @@ export function CompasBeatSetupPanel({
           </CompasSlotControls>
         ) : null}
 
-        {activeTab === "dinamica" ? (
+        {activeTab === "intensidad" ? (
           <CompasSlotControls>
             <BeatVolumeCarousel
               level={currentSlotLevel}
@@ -1255,12 +1258,14 @@ export function CompasBeatSetupPanel({
             ? RITMO_HELP_CICLO
             : activeTab === "figura"
               ? getRitmoHelpFigura(variant, uniformFigura)
-              : activeTab === "dinamica"
-                ? getRitmoHelpDinamica(variant)
+              : activeTab === "intensidad"
+                ? getRitmoHelpIntensidad(variant)
                 : activeTab === "notas"
-                  ? "Elegí la nota de cada golpe en el gráfico."
+                  ? RITMO_HELP_NOTAS_PATRON
                 : activeTab === "contenido"
-                  ? getRitmoHelpContenido()
+                  ? vozBeatSoundTab
+                    ? RITMO_HELP_SONIDO_GOLPE
+                    : getRitmoHelpNota()
                   : activeTab === "timbre" && contenido
                     ? getRitmoHelpTimbre(
                         contenido.instrumentId === "bateria"
@@ -1459,7 +1464,7 @@ export function ToolRitmoCompasPanel({
   contenido,
   capas,
   vozNotaPatron,
-  hideDinamicaTab,
+  hideIntensidadTab,
   vozBeatSoundTab,
   hideCompasHelp,
   uniformFigura,
@@ -1483,7 +1488,7 @@ export function ToolRitmoCompasPanel({
   contenido?: CompositorContenidoConfig;
   capas?: CompositorEditCapasConfig;
   vozNotaPatron?: VozNotaPatronConfig;
-  hideDinamicaTab?: boolean;
+  hideIntensidadTab?: boolean;
   vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
   uniformFigura?: boolean;
@@ -1525,7 +1530,7 @@ export function ToolRitmoCompasPanel({
           contenido={contenido}
           capas={capas}
           vozNotaPatron={vozNotaPatron}
-          hideDinamicaTab={hideDinamicaTab}
+          hideIntensidadTab={hideIntensidadTab}
           vozBeatSoundTab={vozBeatSoundTab}
           hideCompasHelp={hideCompasHelp}
           uniformFigura={uniformFigura}
@@ -1584,7 +1589,7 @@ export function RitmoConfigSection({
   prefix,
   compasLayout = "nested",
   vozNotaPatron,
-  hideDinamicaTab,
+  hideIntensidadTab,
   vozBeatSoundTab,
   hideCompasHelp,
   uniformFigura,
@@ -1607,7 +1612,7 @@ export function RitmoConfigSection({
   prefix?: ReactNode;
   compasLayout?: CompasUiLayout;
   vozNotaPatron?: VozNotaPatronConfig;
-  hideDinamicaTab?: boolean;
+  hideIntensidadTab?: boolean;
   vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
   uniformFigura?: boolean;
@@ -1642,7 +1647,7 @@ export function RitmoConfigSection({
       <ToolRitmoConfigPanels
         compasLayout={compasLayout}
         vozNotaPatron={vozNotaPatron}
-        hideDinamicaTab={hideDinamicaTab}
+        hideIntensidadTab={hideIntensidadTab}
         vozBeatSoundTab={vozBeatSoundTab}
         hideCompasHelp={hideCompasHelp}
         uniformFigura={uniformFigura}
@@ -1666,7 +1671,7 @@ export function RitmoConfigSection({
 export function ToolRitmoConfigPanels({
   compasLayout = "nested",
   vozNotaPatron,
-  hideDinamicaTab,
+  hideIntensidadTab,
   vozBeatSoundTab,
   hideCompasHelp,
   uniformFigura,
@@ -1685,7 +1690,7 @@ export function ToolRitmoConfigPanels({
 }: {
   compasLayout?: CompasUiLayout;
   vozNotaPatron?: VozNotaPatronConfig;
-  hideDinamicaTab?: boolean;
+  hideIntensidadTab?: boolean;
   vozBeatSoundTab?: boolean;
   hideCompasHelp?: boolean;
   uniformFigura?: boolean;
@@ -1713,7 +1718,7 @@ export function ToolRitmoConfigPanels({
       <ToolRitmoCompasPanel
         layout={compasLayout}
         vozNotaPatron={vozNotaPatron}
-        hideDinamicaTab={hideDinamicaTab}
+        hideIntensidadTab={hideIntensidadTab}
         vozBeatSoundTab={vozBeatSoundTab}
         hideCompasHelp={hideCompasHelp}
         uniformFigura={uniformFigura}

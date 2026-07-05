@@ -7,11 +7,11 @@ import { createPortal } from "react-dom";
 
 const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
 
-type DinamicaLevel = "fuerte" | "medio" | "suave" | "silencio";
+type IntensidadLevel = "fuerte" | "medio" | "suave" | "silencio";
 type ResultKey = "en-tono" | "cerca" | "lejos";
 
 const PATTERN: Array<{
-  level: DinamicaLevel;
+  level: IntensidadLevel;
   height: number;
   sing: boolean;
   label: string;
@@ -48,7 +48,7 @@ const AMPLITUDES: Record<ResultKey, number> = {
   lejos: 22,
 };
 
-const LEVEL_MOUTH_RY: Record<DinamicaLevel, number> = {
+const LEVEL_MOUTH_RY: Record<IntensidadLevel, number> = {
   fuerte: 5.5,
   medio: 4,
   suave: 2.5,
@@ -142,7 +142,7 @@ function FiguraConceptIcon() {
   );
 }
 
-function DinamicaConceptIcon() {
+function IntensidadConceptIcon() {
   return (
     <Volume2
       className={HELP_ICON_CLASS}
@@ -161,7 +161,7 @@ function noisyY(elapsed: number, amp: number): number {
 }
 
 function getArcState(
-  level: DinamicaLevel,
+  level: IntensidadLevel,
   arcIndex: 1 | 2 | 3,
 ): { active: boolean; opacity: number } {
   switch (level) {
@@ -219,7 +219,7 @@ function RitmoNotaHelpDemo() {
   const dotRef = useRef<SVGCircleElement>(null);
   const [statusLabel, setStatusLabel] = useState(LABELS["en-tono"]);
   const [statusColor, setStatusColor] = useState<string>(COLORS["en-tono"]);
-  const [faceLevel, setFaceLevel] = useState<DinamicaLevel>("fuerte");
+  const [faceLevel, setFaceLevel] = useState<IntensidadLevel>("fuerte");
   const [beatIndex, setBeatIndex] = useState(0);
   const [resultColor, setResultColor] = useState<string>(COLORS["en-tono"]);
 
@@ -715,8 +715,8 @@ export function RitmoNotaHelpModal({ open, onClose }: RitmoNotaHelpModalProps) {
                   shimmerDelayMs={660}
                 />
                 <HelpInfoCard
-                  icon={<DinamicaConceptIcon />}
-                  label="Dinámica"
+                  icon={<IntensidadConceptIcon />}
+                  label="Intensidad"
                   text="Para cada golpe elegís el volumen: silencio, suave, medio o fuerte."
                   shimmerDelayMs={880}
                 />

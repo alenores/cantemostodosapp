@@ -4,6 +4,7 @@ import {
   type CompasConfig,
   type NotaIndex,
 } from "@/lib/cifrado";
+import { normalizeCompasConfig } from "@/lib/cifrado-intensidad";
 import { parseLetraTradicional } from "@/lib/cifrado-import";
 import type { CancionCifradoDetalle } from "@/types";
 
@@ -37,7 +38,9 @@ export function buildCifradoEditorSession(input: {
   detalle?: CancionCifradoDetalle | null;
 }): CifradoEditorSession {
   if (input.esAvanzada && input.detalle) {
-    const compasConfig = input.detalle.compas_config ?? createDefaultCompasConfig();
+    const compasConfig = normalizeCompasConfig(
+      input.detalle.compas_config ?? createDefaultCompasConfig(),
+    );
 
     return {
       cancionId: input.cancionId ?? input.detalle.id,

@@ -4,6 +4,11 @@ import {
   rescaleTrackEvents,
 } from "@/lib/compositor-timeline";
 import {
+  DEFAULT_TONALIDAD,
+  normalizeNotaIndex,
+  type NotaIndex,
+} from "@/lib/cifrado";
+import {
   BPM_DEFAULT,
   METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
   METRONOME_PATTERN_LENGTH,
@@ -16,17 +21,31 @@ import {
 import type { VozTarget } from "@/lib/voz";
 import { clampTargetOctave, createVozTarget } from "@/lib/voz";
 import { clampEventDurationSteps } from "@/lib/compositor-timeline-layout";
+import {
+  clampGradoCromatico,
+  clampMelodicOctaveForInstrument,
+  isMelodicCompositorInstrument,
+  melodicPitchFromAbsoluteNote,
+  resolveMelodicPitchToNote,
+} from "@/lib/compositor-melodic-pitch";
 
 export const COMPOSITOR_STORAGE_KEY = "compositor-piece-v2";
 export const COMPOSITOR_LEGACY_STORAGE_KEY = "compositor-piece-v1";
 export const COMPOSITOR_SUBDIVISIONS_PER_GOLPE = 4;
 export const COMPOSITOR_MAX_EVENTS_PER_TRACK = 24;
 
-export type CompositorInstrumentId = "piano" | "guitarra" | "bateria";
+export type CompositorInstrumentId = "piano" | "guitarra" | "bateria" | "viento";
 
-export type CompositorDrumSound = "kick" | "snare" | "hihat" | "silencio";
+export type CompositorDrumSound =
+  | "kick"
+  | "snare"
+  | "hihat"
+  | "hihatOpen"
+  | "crash"
+  | "ride"
+  | "silencio";
 
-export type CompositorGuitarArticulation = "pua" | "rasguido" | "silencio";
+export type CompositorGuitarArticulation = "pua" | "rasguido" | "dedo" | "silencio";
 
 export type CompositorSlotNote = VozTarget;
 
@@ -35,6 +54,11 @@ export type CompositorTrackEvent = {
   startStep: number;
   durationSteps: number;
   level: MetronomeBeatLevel;
+  /** Grado cromático 1–12 desde la tónica del ciclo (melodías). */
+  gradoCromatico: number;
+  /** Octava del evento (2–5 según capa). */
+  octavaRelativa: number;
+  /** Legacy / caché; no usar como fuente de verdad en melodías. */
   note: CompositorSlotNote;
   drumSound: CompositorDrumSound;
   guitarArticulation: CompositorGuitarArticulation;
@@ -52,13 +76,24 @@ export type CompositorPiece = {
   cycleGolpes: number;
   cycleBeatDurations: MetronomeBeatDurationPattern;
   subdivisionsPerGolpe: number;
+  tonalidadComposicion: NotaIndex;
   tracks: CompositorTrack[];
 };
+
+export const COMPOSITOR_MELODIC_INSTRUMENT_IDS = [
+  "piano",
+  "guitarra",
+  "viento",
+] as const satisfies readonly CompositorInstrumentId[];
+
+export type CompositorMelodicInstrumentId =
+  (typeof COMPOSITOR_MELODIC_INSTRUMENT_IDS)[number];
 
 export const COMPOSITOR_INSTRUMENT_OPTIONS = [
   { id: "bateria" as const, label: "Batería" },
   { id: "guitarra" as const, label: "Guitarra" },
   { id: "piano" as const, label: "Piano" },
+  { id: "viento" as const, label: "Viento" },
 ] as const;
 
 const COMPOSITOR_INSTRUMENT_ORDER = COMPOSITOR_INSTRUMENT_OPTIONS.map(
@@ -77,12 +112,16 @@ export const COMPOSITOR_DRUM_SOUND_OPTIONS = [
   { id: "kick" as const, label: "Bombo" },
   { id: "snare" as const, label: "Caja" },
   { id: "hihat" as const, label: "Hi-hat" },
+  { id: "hihatOpen" as const, label: "Hi-hat abierto" },
+  { id: "crash" as const, label: "Platillo crash" },
+  { id: "ride" as const, label: "Platillo ride" },
   { id: "silencio" as const, label: "Silencio" },
 ] as const;
 
 export const COMPOSITOR_GUITAR_ARTICULATION_OPTIONS = [
   { id: "pua" as const, label: "Púa" },
   { id: "rasguido" as const, label: "Rasguido" },
+  { id: "dedo" as const, label: "Dedo" },
   { id: "silencio" as const, label: "Silencio" },
 ] as const;
 
@@ -113,12 +152,16 @@ function createEventId(): string {
 export function createCompositorEvent(
   partial: Partial<CompositorTrackEvent> = {},
 ): CompositorTrackEvent {
+  const note = partial.note ?? createVozTarget("C");
+
   return {
     id: partial.id ?? createEventId(),
     startStep: partial.startStep ?? 0,
     durationSteps: Math.max(1, partial.durationSteps ?? 1),
     level: partial.level ?? "medio",
-    note: partial.note ?? createVozTarget("C"),
+    gradoCromatico: partial.gradoCromatico ?? 1,
+    octavaRelativa: partial.octavaRelativa ?? note.octave,
+    note,
     drumSound: partial.drumSound ?? "kick",
     guitarArticulation: partial.guitarArticulation ?? "pua",
   };
@@ -129,7 +172,12 @@ function normalizeEvent(
   gridSteps: number,
   instrumentId: CompositorInstrumentId,
   subdivisionsPerGolpe: number,
+  tonalidadComposicion: NotaIndex,
 ): CompositorTrackEvent {
+  const noteOctave = clampTargetOctave(
+    event.note?.octave ?? createVozTarget("C").octave,
+  );
+
   const draft: CompositorTrackEvent = {
     id: event.id || createEventId(),
     startStep: event.startStep,
@@ -137,11 +185,42 @@ function normalizeEvent(
     level: event.level ?? "medio",
     note: {
       note: event.note?.note ?? "C",
-      octave: clampTargetOctave(event.note?.octave ?? createVozTarget("C").octave),
+      octave: noteOctave,
     },
+    gradoCromatico: event.gradoCromatico ?? 1,
+    octavaRelativa: event.octavaRelativa ?? noteOctave,
     drumSound: event.drumSound ?? "kick",
     guitarArticulation: event.guitarArticulation ?? "pua",
   };
+
+  if (isMelodicCompositorInstrument(instrumentId)) {
+    const hasStoredPitch =
+      typeof event.gradoCromatico === "number" &&
+      typeof event.octavaRelativa === "number";
+
+    const pitch = hasStoredPitch
+      ? {
+          gradoCromatico: clampGradoCromatico(event.gradoCromatico),
+          octavaRelativa: clampMelodicOctaveForInstrument(
+            event.octavaRelativa,
+            instrumentId,
+          ),
+        }
+      : melodicPitchFromAbsoluteNote(draft.note, tonalidadComposicion);
+
+    draft.gradoCromatico = pitch.gradoCromatico;
+    draft.octavaRelativa = clampMelodicOctaveForInstrument(
+      pitch.octavaRelativa,
+      instrumentId,
+    );
+    draft.note = resolveMelodicPitchToNote(
+      {
+        gradoCromatico: clampGradoCromatico(draft.gradoCromatico),
+        octavaRelativa: draft.octavaRelativa,
+      },
+      tonalidadComposicion,
+    );
+  }
 
   const durationSteps = clampEventDurationSteps(
     instrumentId,
@@ -168,10 +247,19 @@ function normalizeTrackEvents(
   gridSteps: number,
   instrumentId: CompositorInstrumentId,
   subdivisionsPerGolpe: number,
+  tonalidadComposicion: NotaIndex,
 ): CompositorTrackEvent[] {
   const normalized = events
     .slice(0, COMPOSITOR_MAX_EVENTS_PER_TRACK)
-    .map((event) => normalizeEvent(event, gridSteps, instrumentId, subdivisionsPerGolpe))
+    .map((event) =>
+      normalizeEvent(
+        event,
+        gridSteps,
+        instrumentId,
+        subdivisionsPerGolpe,
+        tonalidadComposicion,
+      ),
+    )
     .sort((left, right) => left.startStep - right.startStep);
 
   return normalized;
@@ -204,14 +292,16 @@ function createDefaultGuitarraEvents(gridSteps: number): CompositorTrackEvent[] 
       startStep: 0,
       durationSteps: longDuration,
       level: "medio",
-      note: { note: "G", octave: 3 },
+      gradoCromatico: 8,
+      octavaRelativa: 3,
       guitarArticulation: "rasguido",
     }),
     createCompositorEvent({
       startStep: secondStart,
       durationSteps: longDuration,
       level: "medio",
-      note: { note: "C", octave: 4 },
+      gradoCromatico: 1,
+      octavaRelativa: 4,
       guitarArticulation: "rasguido",
     }),
   ];
@@ -226,7 +316,29 @@ function createDefaultPianoEvents(gridSteps: number): CompositorTrackEvent[] {
       startStep,
       durationSteps,
       level: "medio",
-      note: { note: "E", octave: 4 },
+      gradoCromatico: 3,
+      octavaRelativa: 4,
+    }),
+  ];
+}
+
+function createDefaultVientoEvents(gridSteps: number): CompositorTrackEvent[] {
+  const stepStride = Math.max(1, Math.floor(gridSteps / 6));
+
+  return [
+    createCompositorEvent({
+      startStep: stepStride,
+      durationSteps: Math.max(1, stepStride),
+      level: "suave",
+      gradoCromatico: 8,
+      octavaRelativa: 4,
+    }),
+    createCompositorEvent({
+      startStep: stepStride * 3,
+      durationSteps: Math.max(1, stepStride),
+      level: "medio",
+      gradoCromatico: 1,
+      octavaRelativa: 5,
     }),
   ];
 }
@@ -241,7 +353,9 @@ export function createDefaultTrack(
       ? createDefaultBateriaEvents(gridSteps)
       : instrumentId === "guitarra"
         ? createDefaultGuitarraEvents(gridSteps)
-        : createDefaultPianoEvents(gridSteps);
+        : instrumentId === "viento"
+          ? createDefaultVientoEvents(gridSteps)
+          : createDefaultPianoEvents(gridSteps);
 
   return {
     instrumentId,
@@ -261,12 +375,28 @@ export function createDefaultCompositorPiece(): CompositorPiece {
     cycleGolpes,
     cycleBeatDurations: Array.from({ length: METRONOME_PATTERN_LENGTH }, () => "negra"),
     subdivisionsPerGolpe,
+    tonalidadComposicion: DEFAULT_TONALIDAD,
     tracks: [
       createDefaultTrack("bateria", true, gridSteps),
       createDefaultTrack("guitarra", true, gridSteps),
       createDefaultTrack("piano", true, gridSteps),
+      createDefaultTrack("viento", false, gridSteps),
     ],
   });
+}
+
+function ensureAllInstrumentTracks(piece: CompositorPiece): CompositorTrack[] {
+  const gridSteps = getCompositorGridSteps(piece);
+  const existingIds = new Set(piece.tracks.map((track) => track.instrumentId));
+  const tracks = [...piece.tracks];
+
+  for (const option of COMPOSITOR_INSTRUMENT_OPTIONS) {
+    if (!existingIds.has(option.id)) {
+      tracks.push(createDefaultTrack(option.id, false, gridSteps));
+    }
+  }
+
+  return tracks;
 }
 
 export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiece {
@@ -286,8 +416,11 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
     cycleGolpes,
     cycleBeatDurations: normalizeBeatDurationPattern(piece.cycleBeatDurations),
     subdivisionsPerGolpe,
+    tonalidadComposicion: normalizeNotaIndex(
+      piece.tonalidadComposicion ?? DEFAULT_TONALIDAD,
+    ),
     tracks: sortCompositorTracks(
-      piece.tracks.map((track) => ({
+      ensureAllInstrumentTracks(piece).map((track) => ({
         instrumentId: track.instrumentId,
         enabled: track.enabled,
         events: normalizeTrackEvents(
@@ -295,6 +428,7 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
           gridSteps,
           track.instrumentId,
           subdivisionsPerGolpe,
+          piece.tonalidadComposicion ?? DEFAULT_TONALIDAD,
         ),
       })),
     ),
@@ -377,6 +511,20 @@ export function setCompositorCycleBeatDurationAtSlot(
   });
 }
 
+export function setCompositorTonalidadComposicion(
+  piece: CompositorPiece,
+  tonalidadComposicion: NotaIndex,
+): CompositorPiece {
+  return normalizeCompositorPiece({
+    ...piece,
+    tonalidadComposicion: normalizeNotaIndex(tonalidadComposicion),
+  });
+}
+
+export function pieceHasCompositorEvents(piece: CompositorPiece): boolean {
+  return piece.tracks.some((track) => track.events.length > 0);
+}
+
 export function setCompositorSubdivisionsPerGolpe(
   piece: CompositorPiece,
   subdivisionsPerGolpe: number,
@@ -423,6 +571,7 @@ export function addCompositorTrackEvent(
         gridSteps,
         instrumentId,
         piece.subdivisionsPerGolpe,
+        piece.tonalidadComposicion,
       ),
     };
   });
@@ -452,6 +601,7 @@ export function updateCompositorTrackEvent(
         gridSteps,
         instrumentId,
         piece.subdivisionsPerGolpe,
+        piece.tonalidadComposicion,
       ),
     };
   });
@@ -549,6 +699,7 @@ function migrateLegacyPiece(legacy: LegacyCompositorPiece): CompositorPiece {
     cycleGolpes,
     cycleBeatDurations: legacy.beatDurations,
     subdivisionsPerGolpe,
+    tonalidadComposicion: DEFAULT_TONALIDAD,
     tracks,
   });
 }
@@ -670,6 +821,7 @@ export const COMPOSITOR_PRESETS: CompositorPreset[] = [
         ...Array(METRONOME_PATTERN_LENGTH - 4).fill("negra"),
       ] as MetronomeBeatDurationPattern,
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
+      tonalidadComposicion: DEFAULT_TONALIDAD,
       tracks: [
         {
           instrumentId: "bateria",
@@ -744,6 +896,7 @@ export const COMPOSITOR_PRESETS: CompositorPreset[] = [
         ...Array(METRONOME_PATTERN_LENGTH - 3).fill("negra"),
       ] as MetronomeBeatDurationPattern,
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
+      tonalidadComposicion: DEFAULT_TONALIDAD,
       tracks: [
         {
           instrumentId: "bateria",
@@ -822,6 +975,7 @@ export const COMPOSITOR_PRESETS: CompositorPreset[] = [
         ...Array(METRONOME_PATTERN_LENGTH - 6).fill("corchea"),
       ] as MetronomeBeatDurationPattern,
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
+      tonalidadComposicion: DEFAULT_TONALIDAD,
       tracks: [
         {
           instrumentId: "bateria",

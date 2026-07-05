@@ -5,9 +5,10 @@ import { useVozRitmo } from "@/hooks/useVozRitmo";
 import { getBeatPositionAtTime, getActivePatternSlice } from "@/lib/metronomo";
 import { getActiveNotaSlice } from "@/lib/voz-nota-patron";
 import {
-  getDinamicaVoiceCompliance,
-  type VozDinamicaVoiceSample,
-} from "@/lib/voz-dinamica";
+  getIntensidadVoiceCompliance,
+  hasAudiblePitchVolume,
+  type VozIntensidadVoiceSample,
+} from "@/lib/voz-intensidad";
 import {
   buildMelodiaSingPattern,
   buildUniformBeatDurations,
@@ -19,8 +20,11 @@ import {
   getVozAccuracy,
   getVozFeedbackLabel,
   playHoldCelebration,
-  resolveTargetComparison,
+  resolveTargetComparisonWithOctaveFold,
   trimHistorySamples,
+  smoothChartCents,
+  createSostenerRollingCentsBuffer,
+  updateSostenerRollingChartCents,
   VOZ_DEFAULT_TARGET,
   VOZ_HISTORY_SAMPLE_INTERVAL_MS,
   VOZ_HOLD_TARGET_DEFAULT,
@@ -74,11 +78,15 @@ export function useVoz() {
   const setOctavasScaleRepetitions = useCallback((value: number) => {
     setOctavasScaleRepetitionsState(clampOctavasScaleRepetitions(value));
   }, []);
-  const [dynamicsEvaluation, setDynamicsEvaluation] = useState(false);
+  const [intensidadEvaluation, setIntensidadEvaluation] = useState(false);
   const setHoldTargetSeconds = useCallback((value: number) => {
     setHoldTargetSecondsState(clampHoldTargetSeconds(value));
   }, []);
   const [historySamples, setHistorySamples] = useState<VozHistorySample[]>([]);
+  const [holdHistorySamples, setHoldHistorySamples] = useState<VozHistorySample[]>(
+    [],
+  );
+  const [holdChartCents, setHoldChartCents] = useState<number | null>(null);
   const [instantAttempts, setInstantAttempts] = useState<VozInstantAttempt[]>(
     [],
   );
@@ -86,15 +94,18 @@ export function useVoz() {
   const [ritmoVoiceSamples, setRitmoVoiceSamples] = useState<
     VozRitmoVoiceSample[]
   >([]);
-  const [dinamicaVoiceSamples, setDinamicaVoiceSamples] = useState<
-    VozDinamicaVoiceSample[]
+  const [intensidadVoiceSamples, setIntensidadVoiceSamples] = useState<
+    VozIntensidadVoiceSample[]
   >([]);
   const [ritmoToneEvaluation, setRitmoToneEvaluation] =
     useState<RitmoToneEvaluation>("none");
   const [beatSyncTick, setBeatSyncTick] = useState(0);
 
   const historyRef = useRef<VozHistorySample[]>([]);
+  const holdHistoryRef = useRef<VozHistorySample[]>([]);
+  const holdRollingBufferRef = useRef(createSostenerRollingCentsBuffer());
   const lastSampleAtRef = useRef(0);
+  const smoothedHistoryCentsRef = useRef<number | null>(null);
   const lastRitmoVoiceSampleAtRef = useRef(0);
   const detectionRef = useRef(afinador.detection);
   const beatMarkersRef = useRef(ritmo.beatMarkers);
@@ -109,7 +120,7 @@ export function useVoz() {
   const comboNotePatternRef = useRef(ritmo.comboNotePattern);
   const melodiaPlayingRef = useRef(ritmo.melodiaPlaying);
   const ritmoToneEvaluationRef = useRef(ritmoToneEvaluation);
-  const dynamicsEvaluationRef = useRef(dynamicsEvaluation);
+  const intensidadEvaluationRef = useRef(intensidadEvaluation);
   const voiceRmsRef = useRef(afinador.voiceRms);
 
   detectionRef.current = afinador.detection;
@@ -126,7 +137,7 @@ export function useVoz() {
   comboNotePatternRef.current = ritmo.comboNotePattern;
   melodiaPlayingRef.current = ritmo.melodiaPlaying;
   ritmoToneEvaluationRef.current = ritmoToneEvaluation;
-  dynamicsEvaluationRef.current = dynamicsEvaluation;
+  intensidadEvaluationRef.current = intensidadEvaluation;
   const inBurstRef = useRef(false);
   const burstBestAccuracyRef = useRef<VozAccuracy>("lejos");
   const celebratedHoldRef = useRef(false);
@@ -172,6 +183,15 @@ export function useVoz() {
 
   const stopTonePractice = useCallback(() => {
     setTonePracticeActive(false);
+  }, []);
+
+  const deactivatePracticeMic = useCallback(() => {
+    setTonePracticeActive(false);
+    setRitmoMicActive(false);
+    setMelodiaMicActive(false);
+    pendingTonePracticeRef.current = false;
+    pendingRitmoMicRef.current = false;
+    pendingMelodiaMicRef.current = false;
   }, []);
 
   const toggleTonePractice = useCallback(() => {
@@ -288,14 +308,19 @@ export function useVoz() {
     setRitmoVoiceSamples([]);
   }, []);
 
-  const clearDinamicaVoiceSamples = useCallback(() => {
-    setDinamicaVoiceSamples([]);
+  const clearIntensidadVoiceSamples = useCallback(() => {
+    setIntensidadVoiceSamples([]);
   }, []);
 
   const clearHistory = useCallback(() => {
     historyRef.current = [];
+    holdHistoryRef.current = [];
+    holdRollingBufferRef.current = createSostenerRollingCentsBuffer();
     lastSampleAtRef.current = 0;
+    smoothedHistoryCentsRef.current = null;
     setHistorySamples([]);
+    setHoldHistorySamples([]);
+    setHoldChartCents(null);
     celebratedHoldRef.current = false;
   }, []);
 
@@ -392,7 +417,7 @@ export function useVoz() {
       return null;
     }
 
-    return resolveTargetComparison(
+    return resolveTargetComparisonWithOctaveFold(
       afinador.detection.frequency,
       effectiveTarget,
       true,
@@ -434,7 +459,7 @@ export function useVoz() {
           ritmo.ritmoPatternLength,
         ),
       );
-      ritmo.setRitmoPlaybackDynamicsOnly(true);
+      ritmo.setRitmoPlaybackIntensidadOnly(true);
       return;
     }
 
@@ -442,18 +467,18 @@ export function useVoz() {
       ritmo.setRitmoPlaybackNotes(
         Array.from({ length: ritmo.ritmoPatternLength }, () => target),
       );
-      ritmo.setRitmoPlaybackDynamicsOnly(false);
+      ritmo.setRitmoPlaybackIntensidadOnly(false);
       return;
     }
 
     ritmo.setRitmoPlaybackNotes(null);
-    ritmo.setRitmoPlaybackDynamicsOnly(false);
+    ritmo.setRitmoPlaybackIntensidadOnly(false);
   }, [
     ritmoToneEvaluation,
     ritmo.comboNotePattern,
     ritmo.ritmoPatternLength,
     ritmo.setRitmoPlaybackNotes,
-    ritmo.setRitmoPlaybackDynamicsOnly,
+    ritmo.setRitmoPlaybackIntensidadOnly,
     target,
   ]);
 
@@ -479,16 +504,29 @@ export function useVoz() {
       return;
     }
 
+    if (!hasAudiblePitchVolume(afinador.voiceRms)) {
+      smoothedHistoryCentsRef.current = null;
+      holdRollingBufferRef.current = createSostenerRollingCentsBuffer();
+      setHoldChartCents(null);
+      return;
+    }
+
     if (now - lastSampleAtRef.current < VOZ_HISTORY_SAMPLE_INTERVAL_MS) {
       return;
     }
 
     lastSampleAtRef.current = now;
 
+    const chartCents = smoothChartCents(
+      smoothedHistoryCentsRef.current,
+      centsFromTarget,
+    );
+    smoothedHistoryCentsRef.current = chartCents;
+
     const nextSample: VozHistorySample = {
       timestamp: now,
-      cents: centsFromTarget,
-      accuracy,
+      cents: chartCents,
+      accuracy: getVozAccuracy(chartCents, true, holdCalibre),
     };
 
     historyRef.current = trimHistorySamples(
@@ -496,11 +534,34 @@ export function useVoz() {
       now,
     );
     setHistorySamples([...historyRef.current]);
+
+    const holdUpdate = updateSostenerRollingChartCents(
+      holdRollingBufferRef.current,
+      now,
+      centsFromTarget,
+    );
+    holdRollingBufferRef.current = holdUpdate.buffer;
+    setHoldChartCents(holdUpdate.chartCents);
+
+    if (holdUpdate.shouldRecord && holdUpdate.chartCents !== null) {
+      const holdSample: VozHistorySample = {
+        timestamp: now,
+        cents: holdUpdate.chartCents,
+        accuracy: getVozAccuracy(holdUpdate.chartCents, true, holdCalibre),
+      };
+
+      holdHistoryRef.current = trimHistorySamples(
+        [...holdHistoryRef.current, holdSample],
+        now,
+      );
+      setHoldHistorySamples([...holdHistoryRef.current]);
+    }
   }, [
     afinador.detection,
     afinador.micReady,
+    afinador.voiceRms,
     centsFromTarget,
-    accuracy,
+    holdCalibre,
   ]);
 
   useEffect(() => {
@@ -558,13 +619,13 @@ export function useVoz() {
   }, [accuracy, afinador.micReady]);
 
   useEffect(() => {
-    if (historySamples.length === 0) {
+    if (holdHistorySamples.length === 0) {
       celebratedHoldRef.current = false;
       return;
     }
 
     const holdMs = computeEnTonoHoldMs(
-      historySamples,
+      holdHistorySamples,
       performance.now(),
       holdCalibre,
     );
@@ -579,7 +640,7 @@ export function useVoz() {
     if (holdMs < 400) {
       celebratedHoldRef.current = false;
     }
-  }, [historySamples, holdTargetSeconds, holdCalibre]);
+  }, [holdHistorySamples, holdTargetSeconds, holdCalibre]);
 
   useEffect(() => {
     if (prevRitmoPlayingRef.current && !ritmo.ritmoPlaying) {
@@ -600,13 +661,13 @@ export function useVoz() {
   useEffect(() => {
     if (!ritmo.ritmoPlaying && !ritmo.melodiaPlaying) {
       clearRitmoVoiceSamples();
-      clearDinamicaVoiceSamples();
+      clearIntensidadVoiceSamples();
     }
   }, [
     ritmo.ritmoPlaying,
     ritmo.melodiaPlaying,
     clearRitmoVoiceSamples,
-    clearDinamicaVoiceSamples,
+    clearIntensidadVoiceSamples,
   ]);
 
   useEffect(() => {
@@ -635,7 +696,7 @@ export function useVoz() {
       lastRitmoVoiceSampleAtRef.current = now;
 
       const isMelodia = melodiaPlayingRef.current;
-      const isDynamics = dynamicsEvaluationRef.current && !isMelodia;
+      const isIntensidad = intensidadEvaluationRef.current && !isMelodia;
       const bpm = isMelodia ? melodiaBpmRef.current : ritmoBpmRef.current;
       const patternLength = isMelodia
         ? melodiaPatternLengthRef.current
@@ -660,21 +721,21 @@ export function useVoz() {
       );
       const beatIndex = position?.beatIndex ?? 0;
 
-      if (isDynamics) {
+      if (isIntensidad) {
         const activePattern = getActivePatternSlice(
           ritmoBeatPattern,
           patternLength,
         );
         const expectedLevel = activePattern[beatIndex] ?? "silencio";
         const rms = voiceRmsRef.current;
-        const sample: VozDinamicaVoiceSample = {
+        const sample: VozIntensidadVoiceSample = {
           timestamp: now,
           rms,
           expectedLevel,
-          compliance: getDinamicaVoiceCompliance(expectedLevel, rms),
+          compliance: getIntensidadVoiceCompliance(expectedLevel, rms),
         };
 
-        setDinamicaVoiceSamples((previous) => {
+        setIntensidadVoiceSamples((previous) => {
           const next = [...previous, sample];
           return next.length > 120 ? next.slice(next.length - 120) : next;
         });
@@ -743,12 +804,7 @@ export function useVoz() {
 
   const stop = useCallback(() => {
     ritmo.stopRitmo();
-    setTonePracticeActive(false);
-    setRitmoMicActive(false);
-    setMelodiaMicActive(false);
-    pendingTonePracticeRef.current = false;
-    pendingRitmoMicRef.current = false;
-    pendingMelodiaMicRef.current = false;
+    deactivatePracticeMic();
     clearHistory();
     if (attemptsArmTimeoutRef.current !== null) {
       window.clearTimeout(attemptsArmTimeoutRef.current);
@@ -759,13 +815,14 @@ export function useVoz() {
     attemptsArmedRef.current = false;
     setInstantAttempts([]);
     clearRitmoVoiceSamples();
-    clearDinamicaVoiceSamples();
+    clearIntensidadVoiceSamples();
     afinador.stop();
   }, [
     afinador.stop,
     clearHistory,
     clearRitmoVoiceSamples,
-    clearDinamicaVoiceSamples,
+    clearIntensidadVoiceSamples,
+    deactivatePracticeMic,
     ritmo.stopRitmo,
   ]);
 
@@ -782,6 +839,7 @@ export function useVoz() {
     tonePracticeActive,
     toggleTonePractice,
     stopTonePractice,
+    deactivatePracticeMic,
     target,
     setTarget,
     holdTargetSeconds,
@@ -800,15 +858,17 @@ export function useVoz() {
     accuracy,
     feedbackLabel,
     historySamples,
+    holdHistorySamples,
+    holdChartCents,
     instantAttempts,
     clearInstantAttempts,
     celebrationKey,
     ritmoVoiceSamples,
-    dinamicaVoiceSamples,
+    intensidadVoiceSamples,
     ritmoToneEvaluation,
     setRitmoToneEvaluation,
-    dynamicsEvaluation,
-    setDynamicsEvaluation,
+    intensidadEvaluation,
+    setIntensidadEvaluation,
     voiceRms: afinador.voiceRms,
     effectiveTarget,
   };

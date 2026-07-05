@@ -2,6 +2,7 @@
 
 import { CifradoLyricsBlock } from "@/components/cifrado/CifradoLyricsView";
 import { COMPAS_LABELS, type AcordePos, type CompasMarker } from "@/lib/cifrado";
+import { getIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import {
@@ -69,6 +70,9 @@ export default function LetraCifradoPanel({
           acordes={acordes}
           barras={compasConfig?.barras ?? []}
           tipoCompas={tipoCompas}
+          intensidadPlantilla={
+            compasConfig ? getIntensidadPlantilla(compasConfig) : []
+          }
           showCompas={showCompasMarcadores}
           activeBeatAnchors={activeBeatAnchors}
           activePlaybackLineIndex={activePlaybackLineIndex}

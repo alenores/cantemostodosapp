@@ -1,18 +1,28 @@
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import { getRitmoComplianceColor } from "@/lib/voz-ritmo";
 
-export type VozDinamicaCompliance = "correcto" | "cerca" | "incorrecto";
+export type VozIntensidadCompliance = "correcto" | "cerca" | "incorrecto";
 
-export type VozDinamicaVoiceSample = {
+export type VozIntensidadVoiceSample = {
   timestamp: number;
   rms: number;
   expectedLevel: MetronomeBeatLevel;
-  compliance: VozDinamicaCompliance;
+  compliance: VozIntensidadCompliance;
 };
 
-const RMS_SILENCE_MAX = 0.01;
+export const VOZ_RMS_SILENCE_MAX = 0.01;
+/** Umbral más bajo solo para pintar pitch (graves suenan más bajito al mic). */
+export const VOZ_RMS_PITCH_AUDIBLE_MIN = 0.005;
 const RMS_SUAVE_MAX = 0.028;
 const RMS_MEDIO_MAX = 0.06;
+
+export function hasAudibleVoiceVolume(rms: number): boolean {
+  return rms >= VOZ_RMS_SILENCE_MAX;
+}
+
+export function hasAudiblePitchVolume(rms: number): boolean {
+  return rms >= VOZ_RMS_PITCH_AUDIBLE_MIN;
+}
 
 const LEVEL_RANK: Record<MetronomeBeatLevel, number> = {
   silencio: 0,
@@ -22,7 +32,7 @@ const LEVEL_RANK: Record<MetronomeBeatLevel, number> = {
 };
 
 export function rmsToObservedLevel(rms: number): MetronomeBeatLevel {
-  if (rms < RMS_SILENCE_MAX) {
+  if (rms < VOZ_RMS_SILENCE_MAX) {
     return "silencio";
   }
 
@@ -37,10 +47,10 @@ export function rmsToObservedLevel(rms: number): MetronomeBeatLevel {
   return "fuerte";
 }
 
-export function getDinamicaVoiceCompliance(
+export function getIntensidadVoiceCompliance(
   expectedLevel: MetronomeBeatLevel,
   rms: number,
-): VozDinamicaCompliance {
+): VozIntensidadCompliance {
   const observedLevel = rmsToObservedLevel(rms);
   const difference = Math.abs(
     LEVEL_RANK[observedLevel] - LEVEL_RANK[expectedLevel],
@@ -74,8 +84,8 @@ export function levelPercentToFilledSegments(
   return Math.max(1, Math.ceil((clamped / 100) * segmentCount));
 }
 
-export function getDinamicaComplianceColor(
-  compliance: VozDinamicaCompliance,
+export function getIntensidadComplianceColor(
+  compliance: VozIntensidadCompliance,
 ): string {
   return getRitmoComplianceColor(compliance);
 }

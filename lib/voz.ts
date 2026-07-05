@@ -75,6 +75,23 @@ export const VOZ_LADDER_SEMITONE_SPAN = 6;
 export const VOZ_HISTORY_WINDOW_MS = 12_000;
 export const VOZ_HISTORY_SAMPLE_INTERVAL_MS = 100;
 export const VOZ_HISTORY_GAP_MS = 300;
+/** Suavizado de cents en gráficos de historial (Ritmo, Melodía, etc.). */
+export const VOZ_HISTORY_CENTS_EMA_ALPHA = 0.36;
+
+/** --- Sostener: promedio móvil + rechazo de outliers (ajustables) --- */
+/** Ventana del promedio móvil de cents (ms). Ej.: 400 = ~4 ticks a 100 ms. */
+export const VOZ_HOLD_ROLLING_WINDOW_MS = 400;
+/** Intervalo entre muestras del gráfico de Sostener (ms). */
+export const VOZ_HOLD_SAMPLE_INTERVAL_MS = VOZ_HISTORY_SAMPLE_INTERVAL_MS;
+/** Si una lectura se aleja más que esto del promedio actual, entra en evaluación (no al promedio al instante). */
+export const VOZ_HOLD_OUTLIER_CENTS = 65;
+/** Cuánto debe sostenerse una nota alejada (ms) para reemplazar el promedio. ~3 ticks a 100 ms. */
+export const VOZ_HOLD_SUSTAINED_PITCH_MS = 280;
+/** Mínimo de muestras sostenidas para confirmar cambio de nota. */
+export const VOZ_HOLD_SUSTAINED_MIN_SAMPLES = 3;
+/** Las muestras candidatas deben ser parecidas entre sí (cents). */
+export const VOZ_HOLD_CANDIDATE_DRIFT_CENTS = 42;
+
 export const VOZ_HISTORY_CHART_MAX_CENTS = VOZ_CERCA_CENTS;
 /** Rango vertical del gráfico de tono en ritmo/combo (±6 semitonos). */
 export const VOZ_HISTORY_CHART_WIDE_MAX_CENTS =
@@ -223,6 +240,23 @@ export function getCentsFromTarget(
   return Math.round(1200 * Math.log2(frequency / targetFrequency));
 }
 
+export function getCentsFromTargetWithOctaveFold(
+  frequency: number,
+  targetFrequency: number,
+): number {
+  let best = getCentsFromTarget(frequency, targetFrequency);
+
+  for (const factor of [0.5, 2]) {
+    const candidate = getCentsFromTarget(frequency * factor, targetFrequency);
+
+    if (Math.abs(candidate) < Math.abs(best)) {
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
 export function getVozAccuracy(
   cents: number,
   hasSignal: boolean,
@@ -312,6 +346,35 @@ export function resolveTargetComparison(
     referenceFrequency: null,
     referenceLabel: target.note,
   };
+}
+
+/** Elige la lectura más cercana al objetivo probando octavas (graves en celular). */
+export function resolveTargetComparisonWithOctaveFold(
+  frequency: number,
+  target: VozTarget,
+  octaveExact: boolean,
+): VozComparison {
+  const primary = resolveTargetComparison(frequency, target, octaveExact);
+
+  if (!octaveExact) {
+    return primary;
+  }
+
+  let best = primary;
+
+  for (const factor of [0.5, 2]) {
+    const candidate = resolveTargetComparison(
+      frequency * factor,
+      target,
+      octaveExact,
+    );
+
+    if (Math.abs(candidate.cents) < Math.abs(best.cents)) {
+      best = candidate;
+    }
+  }
+
+  return best;
 }
 
 export function getVozFeedbackLabel(
@@ -546,6 +609,211 @@ export function trimHistorySamples(
 ): VozHistorySample[] {
   const cutoff = now - windowMs;
   return samples.filter((sample) => sample.timestamp >= cutoff);
+}
+
+export function smoothChartCents(
+  previous: number | null,
+  next: number,
+  emaAlpha = VOZ_HISTORY_CENTS_EMA_ALPHA,
+): number {
+  if (previous === null) {
+    return next;
+  }
+
+  return previous + emaAlpha * (next - previous);
+}
+
+export type SostenerRollingCentsSample = {
+  timestamp: number;
+  cents: number;
+};
+
+export type SostenerRollingCentsBuffer = {
+  samples: SostenerRollingCentsSample[];
+  chartCents: number | null;
+  /** Lecturas alejadas del promedio en evaluación (¿cambio real o error?). */
+  candidateSamples: SostenerRollingCentsSample[];
+};
+
+export function createSostenerRollingCentsBuffer(): SostenerRollingCentsBuffer {
+  return { samples: [], chartCents: null, candidateSamples: [] };
+}
+
+function averageRollingCents(samples: SostenerRollingCentsSample[]): number {
+  if (samples.length === 0) {
+    return 0;
+  }
+
+  let sum = 0;
+
+  for (const sample of samples) {
+    sum += sample.cents;
+  }
+
+  return sum / samples.length;
+}
+
+function trimRollingSamples(
+  samples: SostenerRollingCentsSample[],
+  timestamp: number,
+  windowMs: number,
+): SostenerRollingCentsSample[] {
+  return samples.filter((sample) => timestamp - sample.timestamp <= windowMs);
+}
+
+function isCandidateClusterStable(
+  candidateSamples: SostenerRollingCentsSample[],
+  driftCents: number,
+): boolean {
+  if (candidateSamples.length === 0) {
+    return false;
+  }
+
+  const referenceCents = candidateSamples[0]!.cents;
+
+  return candidateSamples.every(
+    (sample) => Math.abs(sample.cents - referenceCents) <= driftCents,
+  );
+}
+
+function isSustainedPitchChange(
+  candidateSamples: SostenerRollingCentsSample[],
+  timestamp: number,
+  sustainedMs: number,
+  minSamples: number,
+): boolean {
+  if (candidateSamples.length < minSamples) {
+    return false;
+  }
+
+  const spanMs = timestamp - candidateSamples[0]!.timestamp;
+
+  return spanMs >= sustainedMs;
+}
+
+function appendCandidateSample(
+  candidateSamples: SostenerRollingCentsSample[],
+  timestamp: number,
+  rawCents: number,
+  driftCents: number,
+): SostenerRollingCentsSample[] {
+  const nextSample = { timestamp, cents: rawCents };
+
+  if (candidateSamples.length === 0) {
+    return [nextSample];
+  }
+
+  const candidateAverage = averageRollingCents(candidateSamples);
+
+  if (Math.abs(rawCents - candidateAverage) <= driftCents) {
+    return [...candidateSamples, nextSample];
+  }
+
+  return [nextSample];
+}
+
+export type SostenerRollingCentsUpdate = {
+  buffer: SostenerRollingCentsBuffer;
+  chartCents: number | null;
+  shouldRecord: boolean;
+};
+
+/**
+ * Sostener: bolita y línea comparten promedio móvil de cents.
+ * - Cambios chicos → entran al promedio.
+ * - Picos breves lejanos → se ignoran (promedio se mantiene).
+ * - Nota lejana sostenida → nuevo promedio.
+ */
+export function updateSostenerRollingChartCents(
+  buffer: SostenerRollingCentsBuffer,
+  timestamp: number,
+  rawCents: number,
+  windowMs = VOZ_HOLD_ROLLING_WINDOW_MS,
+  outlierCents = VOZ_HOLD_OUTLIER_CENTS,
+  sustainedMs = VOZ_HOLD_SUSTAINED_PITCH_MS,
+  sustainedMinSamples = VOZ_HOLD_SUSTAINED_MIN_SAMPLES,
+  candidateDriftCents = VOZ_HOLD_CANDIDATE_DRIFT_CENTS,
+): SostenerRollingCentsUpdate {
+  const trimmedSamples = trimRollingSamples(buffer.samples, timestamp, windowMs);
+  const currentAverage =
+    buffer.chartCents ??
+    (trimmedSamples.length > 0 ? averageRollingCents(trimmedSamples) : null);
+
+  if (currentAverage === null) {
+    const nextSamples = [{ timestamp, cents: rawCents }];
+    const chartCents = rawCents;
+
+    return {
+      buffer: {
+        samples: nextSamples,
+        chartCents,
+        candidateSamples: [],
+      },
+      chartCents,
+      shouldRecord: true,
+    };
+  }
+
+  const deltaFromAverage = Math.abs(rawCents - currentAverage);
+
+  if (deltaFromAverage <= outlierCents) {
+    const nextSamples = trimRollingSamples(
+      [...trimmedSamples, { timestamp, cents: rawCents }],
+      timestamp,
+      windowMs,
+    );
+    const chartCents = averageRollingCents(nextSamples);
+
+    return {
+      buffer: {
+        samples: nextSamples,
+        chartCents,
+        candidateSamples: [],
+      },
+      chartCents,
+      shouldRecord: true,
+    };
+  }
+
+  const candidateSamples = appendCandidateSample(
+    buffer.candidateSamples,
+    timestamp,
+    rawCents,
+    candidateDriftCents,
+  );
+
+  if (
+    isCandidateClusterStable(candidateSamples, candidateDriftCents) &&
+    isSustainedPitchChange(
+      candidateSamples,
+      timestamp,
+      sustainedMs,
+      sustainedMinSamples,
+    )
+  ) {
+    const nextSamples = trimRollingSamples(candidateSamples, timestamp, windowMs);
+    const chartCents = averageRollingCents(nextSamples);
+
+    return {
+      buffer: {
+        samples: nextSamples,
+        chartCents,
+        candidateSamples: [],
+      },
+      chartCents,
+      shouldRecord: true,
+    };
+  }
+
+  return {
+    buffer: {
+      samples: trimmedSamples,
+      chartCents: currentAverage,
+      candidateSamples,
+    },
+    chartCents: currentAverage,
+    shouldRecord: true,
+  };
 }
 
 export function splitHistorySegments(

@@ -12,6 +12,7 @@ import {
   removeCompositorTrackEvent,
   setCompositorCycleBeatDurationAtSlot,
   setCompositorCycleGolpes,
+  setCompositorTonalidadComposicion,
   toggleCompositorTrack,
   updateCompositorTrackEvent,
   writeStoredCompositorPiece,
@@ -22,7 +23,12 @@ import {
 } from "@/lib/compositor";
 import { getCompositorGridSteps } from "@/lib/compositor-timeline";
 import { createCompositorEngine, type CompositorEngine } from "@/lib/compositor-audio";
-import { loadCompositorSamples } from "@/lib/compositor-samples";
+import {
+  ensureCompositorSamplesForPiece,
+  loadCompositorCoreSamples,
+  prefetchCompositorSamplePack,
+} from "@/lib/compositor-samples";
+import { useCompositorCycles, type UseCompositorCyclesResult } from "@/hooks/useCompositorCycles";
 import {
   BPM_MAX,
   BPM_MIN,
@@ -30,6 +36,7 @@ import {
   type MetronomeBeatDuration,
   type MetronomeBeatDurationPattern,
 } from "@/lib/metronomo";
+import type { NotaIndex } from "@/lib/cifrado";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const TAP_TEMPO_RESET_MS = 2200;
@@ -38,6 +45,12 @@ const TAP_TEMPO_MIN_TAPS = 2;
 function clampBpm(value: number): number {
   return Math.max(BPM_MIN, Math.min(BPM_MAX, Math.round(value)));
 }
+
+export type UseCompositorOptions = {
+  isLoggedIn?: boolean;
+  online?: boolean;
+  cyclesEnabled?: boolean;
+};
 
 export type UseCompositorResult = {
   piece: CompositorPiece;
@@ -51,6 +64,7 @@ export type UseCompositorResult = {
   isPreviewingTrack: boolean;
   cycleProgress: number | null;
   tapTempoTapCount: number;
+  samplesLoading: boolean;
   setActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
   setSelectedEventId: (eventId: string | null) => void;
   setBpm: (value: number) => void;
@@ -59,6 +73,8 @@ export type UseCompositorResult = {
     slotIndex: number,
     duration: MetronomeBeatDuration,
   ) => void;
+  tonalidadComposicion: NotaIndex;
+  setTonalidadComposicion: (value: NotaIndex) => void;
   addTrackEvent: (instrumentId?: CompositorInstrumentId) => void;
   updateTrackEvent: (
     eventId: string,
@@ -74,9 +90,14 @@ export type UseCompositorResult = {
   resetPiece: () => void;
   applyPreset: (presetId: CompositorPresetId) => void;
   isPieceModifiedFromBaseline: boolean;
-};
+  discardCycleChanges: () => void;
+} & UseCompositorCyclesResult;
 
-export function useCompositor(): UseCompositorResult {
+export function useCompositor({
+  isLoggedIn = false,
+  online = true,
+  cyclesEnabled = false,
+}: UseCompositorOptions = {}): UseCompositorResult {
   const [piece, setPieceState] = useState<CompositorPiece>(
     createDefaultCompositorPiece,
   );
@@ -90,6 +111,7 @@ export function useCompositor(): UseCompositorResult {
   const [isPreviewingTrack, setIsPreviewingTrack] = useState(false);
   const [cycleProgress, setCycleProgress] = useState<number | null>(null);
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
+  const [samplesLoading, setSamplesLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [baselinePiece, setBaselinePiece] = useState<CompositorPiece>(
     createDefaultCompositorPiece,
@@ -185,19 +207,44 @@ export function useCompositor(): UseCompositorResult {
 
     if (!samplesReadyRef.current) {
       try {
-        const samples = await loadCompositorSamples(audioContext);
-        engineRef.current = createCompositorEngine(audioContext, samples);
+        await loadCompositorCoreSamples(audioContext);
         samplesReadyRef.current = true;
       } catch {
-        engineRef.current = createCompositorEngine(audioContext, null);
         samplesReadyRef.current = true;
       }
-    } else if (!engineRef.current) {
-      engineRef.current = createCompositorEngine(audioContext, null);
+    }
+
+    if (!engineRef.current) {
+      try {
+        const samples = await loadCompositorCoreSamples(audioContext);
+        engineRef.current = createCompositorEngine(audioContext, samples);
+      } catch {
+        engineRef.current = createCompositorEngine(audioContext, null);
+      }
     }
 
     return audioContext;
   }, []);
+
+  const prepareSamplesForPlayback = useCallback(
+    async (options?: { includeInstrumentId?: CompositorInstrumentId }) => {
+      setSamplesLoading(true);
+
+      try {
+        const audioContext = await ensureAudioContext();
+        const samples = await ensureCompositorSamplesForPiece(
+          audioContext,
+          pieceRef.current,
+          options,
+        );
+        engineRef.current?.stop();
+        engineRef.current = createCompositorEngine(audioContext, samples);
+      } finally {
+        setSamplesLoading(false);
+      }
+    },
+    [ensureAudioContext],
+  );
 
   const handleProgress = useCallback((progress: number) => {
     setCycleProgress(progress);
@@ -209,7 +256,7 @@ export function useCompositor(): UseCompositorResult {
     }
 
     try {
-      await ensureAudioContext();
+      await prepareSamplesForPlayback();
       setCycleProgress(0);
 
       engineRef.current?.start(pieceRef.current, (progress) => {
@@ -221,7 +268,7 @@ export function useCompositor(): UseCompositorResult {
     } catch {
       stop();
     }
-  }, [ensureAudioContext, handleProgress, stop]);
+  }, [handleProgress, prepareSamplesForPlayback, stop]);
 
   const previewActiveTrack = useCallback(async () => {
     if (isPlayingRef.current) {
@@ -234,7 +281,7 @@ export function useCompositor(): UseCompositorResult {
     }
 
     try {
-      await ensureAudioContext();
+      await prepareSamplesForPlayback({ includeInstrumentId: activeTrackId });
       setCycleProgress(0);
       setIsPreviewingTrack(true);
       isPreviewingRef.current = true;
@@ -252,7 +299,7 @@ export function useCompositor(): UseCompositorResult {
     } catch {
       stop();
     }
-  }, [activeTrackId, ensureAudioContext, handleProgress, stop]);
+  }, [activeTrackId, handleProgress, prepareSamplesForPlayback, stop]);
 
   const restartIfPlaying = useCallback(() => {
     if (!isPlayingRef.current) {
@@ -285,6 +332,16 @@ export function useCompositor(): UseCompositorResult {
     (slotIndex: number, duration: MetronomeBeatDuration) => {
       updatePiece((current) =>
         setCompositorCycleBeatDurationAtSlot(current, slotIndex, duration),
+      );
+      restartIfPlaying();
+    },
+    [restartIfPlaying, updatePiece],
+  );
+
+  const setTonalidadComposicion = useCallback(
+    (value: NotaIndex) => {
+      updatePiece((current) =>
+        setCompositorTonalidadComposicion(current, value),
       );
       restartIfPlaying();
     },
@@ -409,6 +466,16 @@ export function useCompositor(): UseCompositorResult {
     restartIfPlaying();
   }, [restartIfPlaying, updatePiece]);
 
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    void ensureAudioContext()
+      .then((audioContext) => prefetchCompositorSamplePack(audioContext, activeTrackId))
+      .catch(() => undefined);
+  }, [activeTrackId, ensureAudioContext, hydrated]);
+
   const setActiveTrackId = useCallback((instrumentId: CompositorInstrumentId) => {
     if (isPreviewingRef.current) {
       engineRef.current?.stop();
@@ -421,6 +488,45 @@ export function useCompositor(): UseCompositorResult {
     setSelectedEventIdState(null);
   }, []);
 
+  const applyPieceFromLibrary = useCallback(
+    (nextPiece: CompositorPiece) => {
+      stop();
+      const normalized = normalizeCompositorPiece(cloneCompositorPiece(nextPiece));
+      setPieceState(normalized);
+      setBaselinePiece(cloneCompositorPiece(normalized));
+      setActivePresetId(null);
+      setActiveTrackIdState("bateria");
+      setSelectedEventIdState(null);
+    },
+    [stop],
+  );
+
+  const cycles = useCompositorCycles({
+    isLoggedIn,
+    online,
+    enabled: cyclesEnabled,
+    getPiece: () => pieceRef.current,
+    onApplyPiece: applyPieceFromLibrary,
+    onStopPlayback: stop,
+  });
+
+  const {
+    clearActiveCycle,
+    savedCycles,
+    activeCycleId,
+    activeCycle,
+    cyclesLoading,
+    cyclesBusy,
+    cyclesError,
+    refreshCycles,
+    saveCurrentCycle,
+    updateActiveCycle,
+    loadCycle,
+    renameCycle,
+    deleteCycle,
+    suggestCycleName,
+  } = cycles;
+
   const resetPiece = useCallback(() => {
     stop();
     const next = createDefaultCompositorPiece();
@@ -429,7 +535,8 @@ export function useCompositor(): UseCompositorResult {
     setActivePresetId(null);
     setActiveTrackIdState("bateria");
     setSelectedEventIdState(null);
-  }, [stop]);
+    clearActiveCycle();
+  }, [clearActiveCycle, stop]);
 
   const applyPreset = useCallback(
     (presetId: CompositorPresetId) => {
@@ -446,9 +553,25 @@ export function useCompositor(): UseCompositorResult {
       setActivePresetId(presetId);
       setActiveTrackIdState("bateria");
       setSelectedEventIdState(null);
+      clearActiveCycle();
     },
-    [stop],
+    [clearActiveCycle, stop],
   );
+
+  const discardCycleChanges = useCallback(() => {
+    stop();
+
+    if (activeCycleId) {
+      const cycle = savedCycles.find((entry) => entry.id === activeCycleId);
+
+      if (cycle) {
+        applyPieceFromLibrary(cycle.piece);
+        return;
+      }
+    }
+
+    resetPiece();
+  }, [activeCycleId, applyPieceFromLibrary, resetPiece, savedCycles, stop]);
 
   useEffect(() => {
     return () => {
@@ -472,11 +595,14 @@ export function useCompositor(): UseCompositorResult {
     isPreviewingTrack,
     cycleProgress,
     tapTempoTapCount,
+    samplesLoading,
     setActiveTrackId,
     setSelectedEventId: setSelectedEventIdState,
     setBpm,
     setCycleGolpes,
     setCycleBeatDurationAtSlot,
+    tonalidadComposicion: piece.tonalidadComposicion,
+    setTonalidadComposicion,
     addTrackEvent,
     updateTrackEvent,
     removeTrackEvent,
@@ -488,6 +614,21 @@ export function useCompositor(): UseCompositorResult {
     resetPiece,
     applyPreset,
     isPieceModifiedFromBaseline,
+    discardCycleChanges,
+    savedCycles,
+    activeCycleId,
+    activeCycle,
+    cyclesLoading,
+    cyclesBusy,
+    cyclesError,
+    refreshCycles,
+    saveCurrentCycle,
+    updateActiveCycle,
+    loadCycle,
+    renameCycle,
+    deleteCycle,
+    suggestCycleName,
+    clearActiveCycle,
   };
 }
 

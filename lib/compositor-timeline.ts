@@ -6,6 +6,7 @@ import type {
   CompositorSlotNote,
   CompositorTrackEvent,
 } from "@/lib/compositor";
+import { resolveEventMelodicNote } from "@/lib/compositor-melodic-pitch";
 import {
   getActiveBeatDurationSlice,
   getSecondsPerBeat,
@@ -142,7 +143,11 @@ export function buildCompositorScheduledSounds(
         cycleOffsetSeconds: stepToCycleOffsetSeconds(piece, event.startStep),
         durationSeconds: durationStepsToSeconds(piece, event.durationSteps),
         level: event.level,
-        note: event.note,
+        note: resolveEventMelodicNote(
+          event,
+          piece.tonalidadComposicion,
+          track.instrumentId,
+        ),
         drumSound: event.drumSound,
         guitarArticulation: event.guitarArticulation,
       });

@@ -1,4 +1,4 @@
-import { levelPercentToFilledSegments } from "@/lib/voz-dinamica";
+import { levelPercentToFilledSegments } from "@/lib/voz-intensidad";
 
 type VolumeSegmentMeterProps = {
   levelPercent: number;

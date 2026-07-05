@@ -1,4 +1,4 @@
-export type MetronomeConceptId = "golpes" | "figura" | "dinamica" | "tempo";
+export type MetronomeConceptId = "golpes" | "figura" | "intensidad" | "tempo";
 
 export type MetronomeConcept = {
   id: MetronomeConceptId;
@@ -21,8 +21,8 @@ export const METRONOME_CONCEPTS: MetronomeConcept[] = [
     tip: "Dejá todos en Negra hasta entender cómo suena cada una.",
   },
   {
-    id: "dinamica",
-    label: "Dinámica",
+    id: "intensidad",
+    label: "Intensidad",
     text: "Qué tan fuerte suena cada click: silencio, suave, medio o fuerte. Sirve para saber dónde empieza la vuelta.",
     tip: "Primer golpe fuerte, el resto en medio.",
   },

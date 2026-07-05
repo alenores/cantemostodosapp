@@ -11,23 +11,23 @@ export default function AppTopHeader({ usuario }: AppTopHeaderProps) {
   const displayName = usuario.nombre.trim() || "Mi perfil";
 
   return (
-    <header className="shrink-0 border-b border-accent/40 bg-accent px-4 py-3 lg:px-6 lg:py-3.5">
-      <div className="app-page-container flex items-center gap-2.5 lg:gap-3">
+    <header className="shrink-0 border-b border-accent/40 bg-accent px-4 py-3 lg:hidden">
+      <div className="app-page-container flex items-center gap-2.5">
         <Image
           src="/logo.svg"
           alt=""
           width={32}
           height={32}
-          className="size-8 shrink-0 rounded-lg lg:hidden"
+          className="size-8 shrink-0 rounded-lg"
           aria-hidden="true"
         />
-        <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-bg-darker lg:text-xl">
+        <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-bg-darker">
           CantemosTodosApp
         </h1>
         <TapLink
           href="/perfil"
           ariaLabel="Mi perfil"
-          className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1 lg:hidden"
+          className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1"
         >
           <span className="max-w-[7rem] truncate text-sm font-semibold text-bg-darker">
             {displayName}

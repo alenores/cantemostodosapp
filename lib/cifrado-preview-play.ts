@@ -1,4 +1,13 @@
-import type { BarraCompas, CompasMarker, CompasMarkerKind } from "@/lib/cifrado";
+import type { MetronomeBeatLevel } from "@/lib/metronomo";
+
+const LEVEL_AUDIO: Record<
+  Exclude<MetronomeBeatLevel, "silencio">,
+  { frequency: number; peakGain: number; duration: number }
+> = {
+  suave: { frequency: 620, peakGain: 0.14, duration: 0.014 },
+  medio: { frequency: 900, peakGain: 0.38, duration: 0.022 },
+  fuerte: { frequency: 1500, peakGain: 0.72, duration: 0.045 },
+};
 
 let sharedAudioContext: AudioContext | null = null;
 
@@ -28,7 +37,8 @@ async function getAudioContext(): Promise<AudioContext | null> {
 }
 
 export async function playCifradoClick(
-  kind: CompasMarkerKind,
+  kind: import("@/lib/cifrado").CompasMarkerKind,
+  intensidad?: MetronomeBeatLevel,
 ): Promise<void> {
   const audioContext = await getAudioContext();
 
@@ -37,6 +47,27 @@ export async function playCifradoClick(
   }
 
   const now = audioContext.currentTime;
+
+  if (intensidad !== undefined) {
+    if (intensidad === "silencio") {
+      return;
+    }
+
+    const audio = LEVEL_AUDIO[intensidad];
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = audio.frequency;
+    gainNode.gain.setValueAtTime(audio.peakGain, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + audio.duration);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + audio.duration);
+    return;
+  }
+
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
 
@@ -62,13 +93,16 @@ export type PreviewPlaybackAnchor = {
 };
 
 export type PreviewPlaybackBeat = {
-  kind: CompasMarkerKind;
+  kind: import("@/lib/cifrado").CompasMarkerKind;
   anchors: PreviewPlaybackAnchor[];
+  intensidad: MetronomeBeatLevel;
+  cycleId?: string | null;
+  cycleStepIndex?: number;
 };
 
 /** Secuencia de golpes usando las pastillas visibles (posiciones exactas en pantalla). */
 export function buildDisplayedPreviewPlaybackBeats(
-  markersByLine: Record<number, CompasMarker[]>,
+  markersByLine: Record<number, import("@/lib/cifrado").CompasMarker[]>,
   lineCount: number,
 ): PreviewPlaybackBeat[] {
   const beats: PreviewPlaybackBeat[] = [];
@@ -79,7 +113,7 @@ export function buildDisplayedPreviewPlaybackBeats(
 
     if (lineIndex > 0 && lineMarkers.length > 0 && beats.length > 0) {
       const sharedMarker = lineMarkers[0];
-      const lastBeat = beats[beats.length - 1];
+      const lastBeat = beats[beats.length - 1]!;
 
       lastBeat.anchors.push({
         lineIndex,
@@ -90,6 +124,15 @@ export function buildDisplayedPreviewPlaybackBeats(
         lastBeat.kind = "measure";
       }
 
+      if (sharedMarker.intensidad) {
+        lastBeat.intensidad = sharedMarker.intensidad;
+      }
+
+      if (sharedMarker.cycleId) {
+        lastBeat.cycleId = sharedMarker.cycleId;
+        lastBeat.cycleStepIndex = sharedMarker.cycleStepIndex;
+      }
+
       startIndex = 1;
     }
 
@@ -98,11 +141,16 @@ export function buildDisplayedPreviewPlaybackBeats(
       markerIndex < lineMarkers.length;
       markerIndex += 1
     ) {
-      const marker = lineMarkers[markerIndex];
+      const marker = lineMarkers[markerIndex]!;
 
       beats.push({
         kind: marker.kind,
         anchors: [{ lineIndex, leftPx: marker.leftPx }],
+        intensidad:
+          marker.intensidad ??
+          (marker.kind === "measure" ? "fuerte" : "medio"),
+        cycleId: marker.cycleId ?? null,
+        cycleStepIndex: marker.cycleStepIndex,
       });
     }
   }
@@ -111,9 +159,9 @@ export function buildDisplayedPreviewPlaybackBeats(
 }
 
 export function findNearestMarkerLeftPx(
-  markers: CompasMarker[],
+  markers: import("@/lib/cifrado").CompasMarker[],
   targetLeftPx: number,
-  preferredKind?: CompasMarkerKind,
+  preferredKind?: import("@/lib/cifrado").CompasMarkerKind,
 ): number | null {
   if (markers.length === 0) {
     return null;
@@ -125,8 +173,8 @@ export function findNearestMarkerLeftPx(
       : markers;
   const candidates = pool.length > 0 ? pool : markers;
 
-  let nearest = candidates[0];
-  let nearestDistance = Math.abs(candidates[0].leftPx - targetLeftPx);
+  let nearest = candidates[0]!;
+  let nearestDistance = Math.abs(candidates[0]!.leftPx - targetLeftPx);
 
   for (const marker of candidates) {
     const distance = Math.abs(marker.leftPx - targetLeftPx);
@@ -143,7 +191,7 @@ export function findNearestMarkerLeftPx(
 /** @deprecated Usar buildDisplayedPreviewPlaybackBeats. */
 export function buildGlobalPreviewPlaybackBeats(
   lines: string[],
-  barras: BarraCompas[],
+  barras: import("@/lib/cifrado").BarraCompas[],
   beatCount: number,
   _positionsByLine: Record<number, { left: number; center: number }[]>,
 ): PreviewPlaybackBeat[] {
@@ -155,7 +203,7 @@ export function buildGlobalPreviewPlaybackBeats(
 
 /** @deprecated Usar buildDisplayedPreviewPlaybackBeats. */
 export function flattenPreviewPlaybackBeats(
-  markersByLine: Record<number, { kind: CompasMarkerKind; leftPx: number }[]>,
+  markersByLine: Record<number, { kind: import("@/lib/cifrado").CompasMarkerKind; leftPx: number }[]>,
   lineCount: number,
 ): PreviewPlaybackBeat[] {
   return buildDisplayedPreviewPlaybackBeats(markersByLine, lineCount);

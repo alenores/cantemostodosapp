@@ -26,8 +26,9 @@ import {
 } from "@/lib/notacion-acordes";
 import {
   buildDisplayedPreviewPlaybackBeats,
-  playCifradoClick,
 } from "@/lib/cifrado-preview-play";
+import { playCifradoPreviewBeat } from "@/lib/cifrado-cycle-playback";
+import { useCifradoCycles } from "@/hooks/useCifradoCycles";
 import {
   computeCifradoPlaybackScrollTop,
   getActivePlaybackLineIndex,
@@ -184,20 +185,32 @@ export default function CifradoViewerModal({
   const bpmRef = useRef(bpm);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const cyclesByIdRef = useRef<
+    ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>
+  >(new Map());
 
   const detalle = useMemo(
     () => resolveDetalle(cancion, cifradoDetalle),
     [cancion, cifradoDetalle],
   );
 
+  const compasConfig = detalle?.compas_config;
+  const showCompas = Boolean(compasConfig?.barras?.length);
+
+  const { cyclesById } = useCifradoCycles({
+    online: typeof navigator !== "undefined" ? navigator.onLine : true,
+    enabled: open && showCompas,
+  });
+
+  useEffect(() => {
+    cyclesByIdRef.current = cyclesById;
+  }, [cyclesById]);
+  const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
+  const barras = compasConfig?.barras ?? [];
+
   const tieneLetra = Boolean(cancion?.letra?.trim());
   const loadingCifrado =
     Boolean(cancion?.tiene_cifrado_avanzado) && !detalle && open;
-
-  const compasConfig = detalle?.compas_config;
-  const showCompas = Boolean(compasConfig?.barras?.length);
-  const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
-  const barras = compasConfig?.barras ?? [];
 
   const viewerMode: ViewerMode = !cancion?.tiene_cifrado_avanzado
     ? "standard"
@@ -402,7 +415,7 @@ export default function CifradoViewerModal({
         kind: beat.kind,
         anchors: beat.anchors,
       });
-      void playCifradoClick(beat.kind);
+      void playCifradoPreviewBeat(beat, cyclesByIdRef.current);
 
       playbackIndexRef.current += 1;
 
@@ -435,7 +448,8 @@ export default function CifradoViewerModal({
           previous.every(
             (marker, index) =>
               marker.leftPx === markers[index]?.leftPx &&
-              marker.kind === markers[index]?.kind,
+              marker.kind === markers[index]?.kind &&
+              marker.intensidad === markers[index]?.intensidad,
           )
         ) {
           return current;
@@ -562,6 +576,7 @@ export default function CifradoViewerModal({
                   onLineRef={handleLineRef}
                   letraSheet
                   notacion={notacion}
+                  cyclePiecesById={cyclesById}
                 />
               </div>
             ) : tieneLetra ? (

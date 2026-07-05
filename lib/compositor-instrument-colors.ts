@@ -11,6 +11,7 @@ export const COMPOSITOR_CAPA_TAB_ACTIVE_CLASS: Record<
   piano: "bg-compositor-block-piano text-white",
   guitarra: "bg-compositor-block-guitarra text-[#1a1408]",
   bateria: "bg-compositor-block-bateria text-white",
+  viento: "bg-compositor-block-viento text-white",
 };
 
 export function getCompositorTimelineBlockClassName({

@@ -1,5 +1,6 @@
 "use client";
 
+import type { NotaIndex } from "@/lib/cifrado";
 import type { CompositorInstrumentId, CompositorTrackEvent } from "@/lib/compositor";
 import {
   canResizeEventSustento,
@@ -26,6 +27,7 @@ export type MelodicRowDragContext = {
   rows: CompositorMelodicRow[];
   octaveExact: boolean;
   events: CompositorTrackEvent[];
+  tonalidadComposicion: NotaIndex;
   rowHeightPx?: number;
 };
 
@@ -113,6 +115,7 @@ export function useCompositorTimelineBlockDrag({
               gridSteps,
               subdivisionsPerGolpe,
               origin.primaryOctave,
+              melodicRowDrag.tonalidadComposicion,
             ),
           );
           return;

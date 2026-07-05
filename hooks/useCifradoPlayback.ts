@@ -9,8 +9,9 @@ import {
 } from "@/lib/cifrado";
 import {
   buildDisplayedPreviewPlaybackBeats,
-  playCifradoClick,
 } from "@/lib/cifrado-preview-play";
+import { playCifradoPreviewBeat } from "@/lib/cifrado-cycle-playback";
+import { useCifradoCycles } from "@/hooks/useCifradoCycles";
 import {
   computeCifradoPlaybackScrollTop,
   getActivePlaybackLineIndex,
@@ -65,6 +66,18 @@ export function useCifradoPlayback({
   >([]);
   const bpmRef = useRef(bpm);
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const cyclesByIdRef = useRef<
+    ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>
+  >(new Map());
+
+  const { cyclesById } = useCifradoCycles({
+    online: typeof navigator !== "undefined" ? navigator.onLine : true,
+    enabled,
+  });
+
+  useEffect(() => {
+    cyclesByIdRef.current = cyclesById;
+  }, [cyclesById]);
 
   const lines = useMemo(
     () => splitLyricsLines(detalle?.letra ?? ""),
@@ -181,7 +194,7 @@ export function useCifradoPlayback({
         kind: beat.kind,
         anchors: beat.anchors,
       });
-      void playCifradoClick(beat.kind);
+      void playCifradoPreviewBeat(beat, cyclesByIdRef.current);
 
       playbackIndexRef.current += 1;
 
@@ -251,7 +264,8 @@ export function useCifradoPlayback({
           previous.every(
             (marker, index) =>
               marker.leftPx === markers[index]?.leftPx &&
-              marker.kind === markers[index]?.kind,
+              marker.kind === markers[index]?.kind &&
+              marker.intensidad === markers[index]?.intensidad,
           )
         ) {
           return current;

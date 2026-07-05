@@ -70,7 +70,7 @@ export function MelodiaConfigSection({
       collapsedSummary={summary}
       autoCollapseWhen={autoCollapseWhen}
       configHeaderAction={headerAction}
-      hideDinamicaTab
+      hideIntensidadTab
       hideCompasHelp
       uniformFigura
       vozNotaPatron={vozNotaPatron}

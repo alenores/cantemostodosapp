@@ -13,9 +13,9 @@ import {
   OctavasHelpModal,
 } from "@/components/ui/entrenador-vocal/OctavasHelpModal";
 import {
-  DinamicaHelpButton,
-  DinamicaHelpModal,
-} from "@/components/ui/entrenador-vocal/DinamicaHelpModal";
+  IntensidadHelpButton,
+  IntensidadHelpModal,
+} from "@/components/ui/entrenador-vocal/IntensidadHelpModal";
 import {
   RitmoHelpButton,
   RitmoHelpModal,
@@ -88,6 +88,7 @@ import {
   formatTargetLabel,
   frequencyToDisplayOctave,
   getCentsFromTarget,
+  getCentsFromTargetWithOctaveFold,
   getLadderNoteSlots,
   getNoteLabelAtSemitoneOffset,
   getOctaveUpFrequency,
@@ -111,6 +112,7 @@ import {
   playOctaveReference,
   semitoneOffsetToLadderPercent,
   splitHistorySegments,
+  smoothChartCents,
   targetToFrequency,
   VOZ_CALIBRE_OPTIONS,
   VOZ_CERCA_CENTS,
@@ -144,10 +146,11 @@ import {
   type VozTarget,
 } from "@/lib/voz";
 import {
-  getDinamicaComplianceColor,
+  getIntensidadComplianceColor,
+  hasAudiblePitchVolume,
   rmsToBarHeightPercent,
-  type VozDinamicaVoiceSample,
-} from "@/lib/voz-dinamica";
+  type VozIntensidadVoiceSample,
+} from "@/lib/voz-intensidad";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getRitmoCycleVolumeBarHeightPx,
@@ -177,7 +180,7 @@ export const VOZ_MODE_SLIDES = [
   { id: "octavas", label: "Octavas" },
   { id: "melodia", label: "Melodía" },
   { id: "ritmo", label: "Ritmo" },
-  { id: "ritmo-dinamica", label: "Ritmo-Dinámica" },
+  { id: "ritmo-intensidad", label: "Ritmo-Intensidad" },
   { id: "ritmo-nota", label: "Ritmo-Nota" },
   { id: "combo", label: "Combo" },
 ] as const;
@@ -640,12 +643,14 @@ function PitchLadderBar({
   cents,
   accuracy,
   detectedNote,
+  voiceRms = 0,
   size = "default",
 }: {
   targetNote: string;
   cents: number;
   accuracy: VozAccuracy;
   detectedNote: string | null;
+  voiceRms?: number;
   size?: "default" | "large";
 }) {
   const barHeightClass = size === "large" ? "h-28" : "h-14";
@@ -654,6 +659,8 @@ function PitchLadderBar({
   const markerColor = getVozAccuracyColor(accuracy, cents);
   const intuneWidth =
     (VOZ_INTUNE_CENTS / (VOZ_LADDER_SEMITONE_SPAN * 100)) * 100;
+  const hasAudibleVoice =
+    accuracy !== "silencio" && hasAudiblePitchVolume(voiceRms);
 
   return (
     <div className="w-full">
@@ -677,7 +684,7 @@ function PitchLadderBar({
           const isDetected =
             detectedNote !== null &&
             slot.note === detectedNote &&
-            accuracy !== "silencio";
+            hasAudibleVoice;
 
           return (
             <span
@@ -699,7 +706,7 @@ function PitchLadderBar({
           );
         })}
 
-        {accuracy !== "silencio" ? (
+        {hasAudibleVoice ? (
           <span
             className="pointer-events-none absolute bottom-1.5 size-3.5 -translate-x-1/2 rounded-full ring-2 ring-bg-card transition-none"
             style={{
@@ -1186,23 +1193,28 @@ function ChartLiveNoteRail({
   accuracy,
   cents,
   calibre = "estandar",
+  voiceRms = 0,
 }: {
   detection: NoteDetection | null;
   accuracy: VozAccuracy;
   cents: number;
   calibre?: VozCalibre;
+  voiceRms?: number;
 }) {
+  const hasAudibleVoice =
+    accuracy !== "silencio" && hasAudiblePitchVolume(voiceRms);
   const noteLabel =
-    detection !== null
+    hasAudibleVoice && detection !== null
       ? `${detection.note}${frequencyToDisplayOctave(detection.frequency)}`
       : "—";
+  const displayAccuracy: VozAccuracy = hasAudibleVoice ? accuracy : "silencio";
 
   return (
     <div
       className="flex w-12 shrink-0 flex-col items-center justify-center rounded-[10px] border border-border/60 bg-bg-dark/35 px-0.5 py-2"
       aria-live="polite"
       aria-label={
-        detection
+        hasAudibleVoice && detection
           ? `Nota detectada ${noteLabel}`
           : "Sin nota detectada"
       }
@@ -1214,15 +1226,17 @@ function ChartLiveNoteRail({
         className="mt-1 text-center text-lg font-extrabold leading-none"
         style={{
           color:
-            accuracy === "silencio"
+            displayAccuracy === "silencio"
               ? "var(--text-muted)"
-              : getVozAccuracyColor(accuracy, cents, calibre),
+              : getVozAccuracyColor(displayAccuracy, cents, calibre),
         }}
       >
         {noteLabel}
       </span>
       <span className="mt-1 text-center text-xs font-semibold tabular-nums text-text-muted">
-        {detection ? `${detection.frequency.toFixed(0)} Hz` : "—"}
+        {hasAudibleVoice && detection
+          ? `${detection.frequency.toFixed(0)} Hz`
+          : "—"}
       </span>
     </div>
   );
@@ -1355,6 +1369,8 @@ function PitchHistoryChart({
   beatPattern,
   playbackSynced = false,
   showLiveNoteRail = false,
+  voiceRms = 0,
+  liveChartCents,
 }: {
   samples: VozHistorySample[];
   active: boolean;
@@ -1373,6 +1389,9 @@ function PitchHistoryChart({
   beatPattern?: MetronomeBeatPattern;
   playbackSynced?: boolean;
   showLiveNoteRail?: boolean;
+  voiceRms?: number;
+  /** Sostener: posición de bolita (= promedio móvil); null = oculta. */
+  liveChartCents?: number | null;
 }) {
   const isMelodia = mode === "melodia";
   const isSostener = mode === "sostener";
@@ -1551,9 +1570,17 @@ function PitchHistoryChart({
     maxCents,
   );
   const centerY = historyCentsToChartY(0, chartHeight, maxCents);
+  const hasAudibleVoice =
+    accuracy !== "silencio" && hasAudiblePitchVolume(voiceRms);
+  const markerCents = liveChartCents !== undefined ? liveChartCents : cents;
+  const markerAccuracy = getVozAccuracy(
+    markerCents ?? 0,
+    markerCents !== null,
+    calibre,
+  );
   const liveNoteMarkerY =
-    !isMelodia && accuracy !== "silencio"
-      ? historyCentsToChartY(cents, chartHeight, maxCents)
+    !isMelodia && hasAudibleVoice && markerCents !== null
+      ? historyCentsToChartY(markerCents, chartHeight, maxCents)
       : null;
   const semitoneGuides = [-VOZ_LADDER_SEMITONE_SPAN, -3, 0, 3, VOZ_LADDER_SEMITONE_SPAN];
   const yAxisLabels = useMemo(() => {
@@ -1812,7 +1839,7 @@ function PitchHistoryChart({
               cx={melodiaNowLineX}
               cy={liveNoteMarkerY}
               r={5}
-              fill={getVozSampleColor(cents, accuracy, calibre)}
+              fill={getVozSampleColor(markerCents ?? 0, markerAccuracy, calibre)}
               stroke="var(--bg-card)"
               strokeWidth={2}
             />
@@ -1825,6 +1852,7 @@ function PitchHistoryChart({
             accuracy={accuracy}
             cents={cents}
             calibre={calibre}
+            voiceRms={voiceRms}
           />
         ) : null}
       </div>
@@ -2053,6 +2081,7 @@ function VozComboPractice({
   cents,
   accuracy,
   holdCalibre,
+  voiceRms = 0,
 }: {
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
@@ -2072,6 +2101,7 @@ function VozComboPractice({
   cents: number;
   accuracy: VozAccuracy;
   holdCalibre?: VozCalibre;
+  voiceRms?: number;
 }) {
   return (
     <>
@@ -2099,6 +2129,7 @@ function VozComboPractice({
         beatPattern={ritmoBeatPattern}
         playbackSynced={ritmoPlaying}
         showLiveNoteRail
+        voiceRms={voiceRms}
       />
 
       <VozRitmoPlayControl
@@ -2236,6 +2267,7 @@ function VozRitmoPractice({
   accuracy,
   historySamples,
   holdCalibre,
+  voiceRms = 0,
 }: {
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
@@ -2258,6 +2290,7 @@ function VozRitmoPractice({
   accuracy: VozAccuracy;
   historySamples: VozHistorySample[];
   holdCalibre?: VozCalibre;
+  voiceRms?: number;
 }) {
   return (
     <>
@@ -2294,6 +2327,7 @@ function VozRitmoPractice({
             cents={cents}
             accuracy={accuracy}
             detectedNote={detection?.note ?? null}
+            voiceRms={voiceRms}
           />
           <PitchHistoryChart
             samples={historySamples}
@@ -2305,6 +2339,7 @@ function VozRitmoPractice({
             accuracy={accuracy}
             cents={cents}
             calibre={holdCalibre}
+            voiceRms={voiceRms}
           />
         </>
       ) : null}
@@ -2663,6 +2698,7 @@ function VozOctavasPractice({
   noteDurationSeconds,
   detection,
   practiceActive,
+  voiceRms = 0,
 }: {
   baseTarget: VozTarget;
   pitchMode: VozOctavasPitchMode;
@@ -2670,6 +2706,7 @@ function VozOctavasPractice({
   noteDurationSeconds: number;
   detection: NoteDetection | null;
   practiceActive: boolean;
+  voiceRms?: number;
 }) {
   const [runPhase, setRunPhase] = useState<OctavasRunPhase>("idle");
   const [samples, setSamples] = useState<VozOctavasChartSample[]>([]);
@@ -2678,6 +2715,7 @@ function VozOctavasPractice({
   const runPhaseRef = useRef(runPhase);
   const phaseStartedAtRef = useRef(0);
   const lastSampleAtRef = useRef(0);
+  const smoothedChartCentsRef = useRef<number | null>(null);
   const detectionRef = useRef(detection);
 
   runPhaseRef.current = runPhase;
@@ -2701,6 +2739,7 @@ function VozOctavasPractice({
     setSequenceProgress(0);
     phaseStartedAtRef.current = 0;
     lastSampleAtRef.current = 0;
+    smoothedChartCentsRef.current = null;
   }, []);
 
   const resetScaleProgress = useCallback(() => {
@@ -2836,6 +2875,10 @@ function VozOctavasPractice({
   }, [practiceActive, runPhase, noteDurationMs, pauseMs]);
 
   useEffect(() => {
+    smoothedChartCentsRef.current = null;
+  }, [runPhase]);
+
+  useEffect(() => {
     if (!practiceActive || (runPhase !== "first" && runPhase !== "second")) {
       return;
     }
@@ -2854,7 +2897,11 @@ function VozOctavasPractice({
 
     lastSampleAtRef.current = now;
 
-    if (!detection) {
+    const hasAudibleVoice =
+      detection !== null && hasAudiblePitchVolume(voiceRms);
+
+    if (!hasAudibleVoice) {
+      smoothedChartCentsRef.current = null;
       setSamples((previous) => {
         const last = previous[previous.length - 1];
 
@@ -2880,7 +2927,12 @@ function VozOctavasPractice({
       return;
     }
 
-    const cents = getCentsFromTarget(detection.frequency, referenceFrequency);
+    const rawCents = getCentsFromTargetWithOctaveFold(
+      detection.frequency,
+      referenceFrequency,
+    );
+    const cents = smoothChartCents(smoothedChartCentsRef.current, rawCents);
+    smoothedChartCentsRef.current = cents;
     const accuracy = getVozAccuracy(cents, true);
 
     setSamples((previous) => {
@@ -2904,7 +2956,7 @@ function VozOctavasPractice({
         },
       ];
     });
-  }, [practiceActive, detection, noteDurationMs, practiceTarget, runPhase]);
+  }, [practiceActive, detection, noteDurationMs, practiceTarget, runPhase, voiceRms]);
 
   function handlePlayReference() {
     triggerHaptic();
@@ -2931,7 +2983,7 @@ function VozOctavasPractice({
   );
 }
 
-function getDinamicaBeatSegments(
+function getIntensidadBeatSegments(
   beatMarkers: VozRitmoBeatMarker[],
   now: number,
   bpm: number,
@@ -2978,7 +3030,7 @@ function getDinamicaBeatSegments(
   });
 }
 
-function VozDinamicaTimeline({
+function VozIntensidadTimeline({
   beatMarkers,
   bpm,
   ritmoBeatPattern,
@@ -2993,7 +3045,7 @@ function VozDinamicaTimeline({
   patternLength: number;
   ritmoBeatDurations: MetronomeBeatDurationPattern;
   isPlaying: boolean;
-  voiceSamples: VozDinamicaVoiceSample[];
+  voiceSamples: VozIntensidadVoiceSample[];
 }) {
   const now = useTimelineNow(
     isPlaying || beatMarkers.length > 0,
@@ -3008,7 +3060,7 @@ function VozDinamicaTimeline({
   const playbackOriginMs = isPlaying ? getPlaybackStartMs() : null;
   const beatSegments = useMemo(
     () =>
-      getDinamicaBeatSegments(
+      getIntensidadBeatSegments(
         beatMarkers,
         now,
         bpm,
@@ -3078,7 +3130,7 @@ function VozDinamicaTimeline({
 
               return (
                 <span
-                  key={`dinamica-pattern-${segment.startMs}-${index}`}
+                  key={`intensidad-pattern-${segment.startMs}-${index}`}
                   className="absolute bottom-0 rounded-full"
                   style={{
                     left: `${left}%`,
@@ -3098,7 +3150,7 @@ function VozDinamicaTimeline({
           <div className="relative mt-1 h-8">
             {visibleVoiceSamples.map((sample, index) => (
               <div
-                key={`dinamica-voice-${sample.timestamp}-${index}`}
+                key={`intensidad-voice-${sample.timestamp}-${index}`}
                 className="absolute bottom-0 -translate-x-1/2"
                 style={{
                   left: `${timeToPercent(sample.timestamp)}%`,
@@ -3108,7 +3160,7 @@ function VozDinamicaTimeline({
                 <VolumeSegmentMeter
                   levelPercent={rmsToBarHeightPercent(sample.rms)}
                   segmentCount={4}
-                  filledColor={getDinamicaComplianceColor(sample.compliance)}
+                  filledColor={getIntensidadComplianceColor(sample.compliance)}
                   emptyClassName="bg-border/35"
                   segmentClassName="h-[2px] w-[5px] rounded-full"
                   gapClassName="gap-[2px]"
@@ -3123,7 +3175,7 @@ function VozDinamicaTimeline({
   );
 }
 
-function VozDinamicaPractice({
+function VozIntensidadPractice({
   ritmoPlaying,
   onToggleRitmoPlaying,
   ritmoMicActive,
@@ -3147,7 +3199,7 @@ function VozDinamicaPractice({
   ritmoBeatPattern: MetronomeBeatPattern;
   ritmoPatternLength: number;
   ritmoBeatDurations: MetronomeBeatDurationPattern;
-  voiceSamples: VozDinamicaVoiceSample[];
+  voiceSamples: VozIntensidadVoiceSample[];
   voiceRms: number;
 }) {
   const liveLevelPercent = rmsToBarHeightPercent(voiceRms);
@@ -3166,7 +3218,7 @@ function VozDinamicaPractice({
         </div>
       ) : null}
 
-      <VozDinamicaTimeline
+      <VozIntensidadTimeline
         beatMarkers={beatMarkers}
         bpm={ritmoBpm}
         ritmoBeatPattern={ritmoBeatPattern}
@@ -3188,7 +3240,7 @@ export type VozModeSlidesProps = {
   activeIndex: number;
   onChangeIndex: (index: number) => void;
   onSetRitmoToneEvaluation: (mode: "none" | "fixed" | "perBeat") => void;
-  onSetDynamicsEvaluation: (value: boolean) => void;
+  onSetIntensidadEvaluation: (value: boolean) => void;
   effectiveTarget: VozTarget;
   targetPicker: TargetPickerProps;
   detection: NoteDetection | null;
@@ -3200,6 +3252,8 @@ export type VozModeSlidesProps = {
   feedbackLabel: string;
   instantAttempts: VozInstantAttempt[];
   historySamples: VozHistorySample[];
+  holdHistorySamples: VozHistorySample[];
+  holdChartCents: number | null;
   holdTargetSeconds: number;
   onSetHoldTargetSeconds: (value: number) => void;
   holdCalibre: VozCalibre;
@@ -3236,7 +3290,7 @@ export type VozModeSlidesProps = {
   onTapRitmoTempo: () => void;
   beatMarkers: VozRitmoBeatMarker[];
   ritmoVoiceSamples: VozRitmoVoiceSample[];
-  dinamicaVoiceSamples: VozDinamicaVoiceSample[];
+  intensidadVoiceSamples: VozIntensidadVoiceSample[];
   voiceRms: number;
   melodiaPlaying: boolean;
   onToggleMelodiaPlaying: () => void;
@@ -3260,7 +3314,7 @@ export function VozModeSlides({
   activeIndex,
   onChangeIndex,
   onSetRitmoToneEvaluation,
-  onSetDynamicsEvaluation,
+  onSetIntensidadEvaluation,
   effectiveTarget,
   targetPicker,
   detection,
@@ -3272,6 +3326,8 @@ export function VozModeSlides({
   feedbackLabel,
   instantAttempts,
   historySamples,
+  holdHistorySamples,
+  holdChartCents,
   holdTargetSeconds,
   onSetHoldTargetSeconds,
   holdCalibre,
@@ -3302,7 +3358,7 @@ export function VozModeSlides({
   onTapRitmoTempo,
   beatMarkers,
   ritmoVoiceSamples,
-  dinamicaVoiceSamples,
+  intensidadVoiceSamples,
   voiceRms,
   melodiaPlaying,
   onToggleMelodiaPlaying,
@@ -3325,7 +3381,7 @@ export function VozModeSlides({
   const [sostenerHelpOpen, setSostenerHelpOpen] = useState(false);
   const [octavasHelpOpen, setOctavasHelpOpen] = useState(false);
   const [ritmoHelpOpen, setRitmoHelpOpen] = useState(false);
-  const [dinamicaHelpOpen, setDinamicaHelpOpen] = useState(false);
+  const [intensidadHelpOpen, setIntensidadHelpOpen] = useState(false);
   const [melodiaHelpOpen, setMelodiaHelpOpen] = useState(false);
   const [ritmoNotaHelpOpen, setRitmoNotaHelpOpen] = useState(false);
 
@@ -3334,23 +3390,29 @@ export function VozModeSlides({
 
     if (slideId === "combo") {
       onSetRitmoToneEvaluation("perBeat");
-      onSetDynamicsEvaluation(false);
+      onSetIntensidadEvaluation(false);
     } else if (slideId === "ritmo-nota") {
       onSetRitmoToneEvaluation("fixed");
-      onSetDynamicsEvaluation(false);
-    } else if (slideId === "ritmo-dinamica") {
+      onSetIntensidadEvaluation(false);
+    } else if (slideId === "ritmo-intensidad") {
       onSetRitmoToneEvaluation("none");
-      onSetDynamicsEvaluation(true);
+      onSetIntensidadEvaluation(true);
     } else {
       onSetRitmoToneEvaluation("none");
-      onSetDynamicsEvaluation(false);
+      onSetIntensidadEvaluation(false);
     }
-  }, [activeIndex, onSetDynamicsEvaluation, onSetRitmoToneEvaluation]);
+  }, [activeIndex, onSetIntensidadEvaluation, onSetRitmoToneEvaluation]);
 
-  const hasVoiceSignal = detection !== null;
+  const hasVoiceSignal =
+    detection !== null && hasAudiblePitchVolume(voiceRms);
   const holdAccuracy = useMemo(
-    () => getVozAccuracy(centsFromTarget, hasVoiceSignal, holdCalibre),
-    [centsFromTarget, hasVoiceSignal, holdCalibre],
+    () =>
+      getVozAccuracy(
+        holdChartCents ?? centsFromTarget,
+        hasVoiceSignal && holdChartCents !== null,
+        holdCalibre,
+      ),
+    [holdChartCents, centsFromTarget, hasVoiceSignal, holdCalibre],
   );
   const holdCalibreLabel =
     VOZ_CALIBRE_OPTIONS.find((option) => option.id === holdCalibre)?.label ??
@@ -3400,9 +3462,9 @@ export function VozModeSlides({
         );
       case "ritmo":
         return <RitmoHelpButton onClick={() => setRitmoHelpOpen(true)} />;
-      case "ritmo-dinamica":
+      case "ritmo-intensidad":
         return (
-          <DinamicaHelpButton onClick={() => setDinamicaHelpOpen(true)} />
+          <IntensidadHelpButton onClick={() => setIntensidadHelpOpen(true)} />
         );
       case "ritmo-nota":
         return (
@@ -3435,6 +3497,7 @@ export function VozModeSlides({
                 cents={centsFromTarget}
                 accuracy={accuracy}
                 detectedNote={detection?.note ?? null}
+                voiceRms={voiceRms}
                 size="large"
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
@@ -3500,22 +3563,24 @@ export function VozModeSlides({
                 micStarting={micStarting}
               />
               <PitchHistoryChart
-                samples={historySamples}
+                samples={holdHistorySamples}
                 active
                 mode="sostener"
                 targetNote={targetNote}
                 targetOctave={targetPicker.target.octave}
                 detection={detection}
                 accuracy={holdAccuracy}
-                cents={centsFromTarget}
+                cents={holdChartCents ?? centsFromTarget}
+                liveChartCents={holdChartCents}
                 calibre={holdCalibre}
+                voiceRms={voiceRms}
               />
               <HoldTimerPanel
-                samples={historySamples}
+                samples={holdHistorySamples}
                 holdTargetSeconds={holdTargetSeconds}
                 celebrationKey={celebrationKey}
                 accuracy={holdAccuracy}
-                cents={centsFromTarget}
+                cents={holdChartCents ?? centsFromTarget}
                 calibre={holdCalibre}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
@@ -3597,6 +3662,7 @@ export function VozModeSlides({
                 noteDurationSeconds={octavasNoteDurationSeconds}
                 detection={detection}
                 practiceActive={tonePracticeActive}
+                voiceRms={voiceRms}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
             </VozPracticeArea>
@@ -3650,7 +3716,7 @@ export function VozModeSlides({
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
               hideCompasHelp
-              hideDinamicaTab
+              hideIntensidadTab
               vozBeatSoundTab
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
@@ -3687,12 +3753,13 @@ export function VozModeSlides({
                 cents={centsFromTarget}
                 accuracy={accuracy}
                 historySamples={historySamples}
+                voiceRms={voiceRms}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
             </VozPracticeArea>
           </div>
         );
-      case "ritmo-dinamica":
+      case "ritmo-intensidad":
         return (
           <div className="space-y-3">
             <RitmoConfigSection
@@ -3705,7 +3772,7 @@ export function VozModeSlides({
               bpm={ritmoBpm}
               isPlaying={ritmoPlaying}
               tapTempoTapCount={ritmoTapTempoTapCount}
-              patternLengthInputId="voz-ritmo-dinamica-pattern-length"
+              patternLengthInputId="voz-ritmo-intensidad-pattern-length"
               onSetPatternLength={onSetRitmoPatternLength}
               onSetBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
               onSetBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
@@ -3713,7 +3780,7 @@ export function VozModeSlides({
               onTapTempo={onTapRitmoTempo}
             />
             <VozPracticeArea>
-              <VozDinamicaPractice
+              <VozIntensidadPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
                 ritmoMicActive={ritmoMicActive}
@@ -3724,7 +3791,7 @@ export function VozModeSlides({
                 ritmoBeatPattern={ritmoBeatPattern}
                 ritmoPatternLength={ritmoPatternLength}
                 ritmoBeatDurations={ritmoBeatDurations}
-                voiceSamples={dinamicaVoiceSamples}
+                voiceSamples={intensidadVoiceSamples}
                 voiceRms={voiceRms}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
@@ -3775,6 +3842,7 @@ export function VozModeSlides({
                 accuracy={accuracy}
                 historySamples={historySamples}
                 holdCalibre={holdCalibre}
+                voiceRms={voiceRms}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
             </VozPracticeArea>
@@ -3824,6 +3892,7 @@ export function VozModeSlides({
                 cents={centsFromTarget}
                 accuracy={accuracy}
                 holdCalibre={holdCalibre}
+                voiceRms={voiceRms}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
             </VozPracticeArea>
@@ -3860,9 +3929,9 @@ export function VozModeSlides({
         open={ritmoHelpOpen}
         onClose={() => setRitmoHelpOpen(false)}
       />
-      <DinamicaHelpModal
-        open={dinamicaHelpOpen}
-        onClose={() => setDinamicaHelpOpen(false)}
+      <IntensidadHelpModal
+        open={intensidadHelpOpen}
+        onClose={() => setIntensidadHelpOpen(false)}
       />
       <MelodiaHelpModal
         open={melodiaHelpOpen}

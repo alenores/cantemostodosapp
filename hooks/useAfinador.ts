@@ -2,16 +2,15 @@
 
 import {
   autoCorrelate,
+  detectVocalPitch,
+  CHROMATIC_ATTACK_IGNORE_MS,
+  CHROMATIC_NOTE_FREQUENCY_EMA_ALPHA,
   computeBufferRms,
-  createDebouncedNoteState,
   ema,
   frequencyToMidi,
   frequencyToNote,
-  midiToNoteName,
-  updateDebouncedDisplayNote,
-  TUNER_CENTS_EMA_ALPHA,
-  TUNER_DISPLAY_HZ_EMA_ALPHA,
-  TUNER_FREQUENCY_EMA_ALPHA,
+  GUITAR_STRING_LOCK_HANGOVER_MS,
+  resolveStableNoteDetection,
   VOCAL_CENTS_EMA_ALPHA,
   type NoteDetection,
 } from "@/lib/afinador";
@@ -67,8 +66,27 @@ function getMicErrorMessage(error: unknown): string {
   return "No se pudo acceder al micrófono. Intentá de nuevo.";
 }
 
+function shouldProcessTunerSample(options: {
+  hadSignalRef: { current: boolean };
+  attackIgnoreUntilRef: { current: number };
+  attackIgnoreMs: number;
+  nowMs: number;
+  resetSmoothing: () => void;
+}): boolean {
+  const isNewOnset = !options.hadSignalRef.current;
+  options.hadSignalRef.current = true;
+
+  if (isNewOnset) {
+    options.attackIgnoreUntilRef.current =
+      options.nowMs + options.attackIgnoreMs;
+    options.resetSmoothing();
+  }
+
+  return options.nowMs >= options.attackIgnoreUntilRef.current;
+}
+
 type UseAfinadorOptions = {
-  /** `tuner`: aguja estable. `vocal`: nota al instante para práctica. */
+  /** `tuner`: afinador cromático. `vocal`: nota al instante para práctica. */
   profile?: "tuner" | "vocal";
 };
 
@@ -88,8 +106,7 @@ type UseAfinadorResult = {
 export function useAfinador(
   options: UseAfinadorOptions = {},
 ): UseAfinadorResult {
-  const profile = options.profile ?? "tuner";
-  const isVocalProfile = profile === "vocal";
+  const isVocalProfile = options.profile === "vocal";
   const [detection, setDetection] = useState<NoteDetection | null>(null);
   const [voiceRms, setVoiceRms] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
@@ -101,18 +118,20 @@ export function useAfinador(
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const dataBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const runningRef = useRef(false);
   const micStartingRef = useRef(false);
   const startGenerationRef = useRef(0);
-  const smoothedFrequencyRef = useRef<number | null>(null);
-  const displayFrequencyRef = useRef<number | null>(null);
+  const noteFrequencyRef = useRef<number | null>(null);
   const smoothedCentsRef = useRef<number | null>(null);
-  const displayNoteStateRef = useRef(createDebouncedNoteState());
-  const lastDisplayMidiRef = useRef<number | null>(null);
+  const lockedMidiRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
+  const hadSignalRef = useRef(false);
+  const attackIgnoreUntilRef = useRef(0);
+  const silenceStartedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     micStartingRef.current = micStarting;
@@ -129,22 +148,40 @@ export function useAfinador(
       animationFrameRef.current = null;
     }
 
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    mediaStreamRef.current = null;
+    const source = mediaStreamSourceRef.current;
+    if (source) {
+      try {
+        source.disconnect();
+      } catch {
+        // Ya desconectado.
+      }
+      mediaStreamSourceRef.current = null;
+    }
 
-    if (audioContextRef.current) {
-      void audioContextRef.current.close();
-      audioContextRef.current = null;
+    const stream = mediaStreamRef.current;
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        track.enabled = false;
+        track.stop();
+      }
+      mediaStreamRef.current = null;
+    }
+
+    const audioContext = audioContextRef.current;
+    audioContextRef.current = null;
+    if (audioContext && audioContext.state !== "closed") {
+      void audioContext.close();
     }
 
     analyserRef.current = null;
     dataBufferRef.current = null;
-    smoothedFrequencyRef.current = null;
-    displayFrequencyRef.current = null;
+    noteFrequencyRef.current = null;
     smoothedCentsRef.current = null;
-    displayNoteStateRef.current = createDebouncedNoteState();
-    lastDisplayMidiRef.current = null;
+    lockedMidiRef.current = null;
     lastNoteRef.current = null;
+    hadSignalRef.current = false;
+    attackIgnoreUntilRef.current = 0;
+    silenceStartedAtRef.current = null;
     setDetection(null);
     setMicReady(false);
   }, []);
@@ -245,12 +282,13 @@ export function useAfinador(
     setMicReady(false);
     setDetection(null);
     setMicStarting(true);
-    smoothedFrequencyRef.current = null;
-    displayFrequencyRef.current = null;
+    noteFrequencyRef.current = null;
     smoothedCentsRef.current = null;
-    displayNoteStateRef.current = createDebouncedNoteState();
-    lastDisplayMidiRef.current = null;
+    lockedMidiRef.current = null;
     lastNoteRef.current = null;
+    hadSignalRef.current = false;
+    attackIgnoreUntilRef.current = 0;
+    silenceStartedAtRef.current = null;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -286,6 +324,7 @@ export function useAfinador(
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
 
+      mediaStreamSourceRef.current = source;
       mediaStreamRef.current = stream;
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
@@ -315,23 +354,45 @@ export function useAfinador(
         currentAnalyser.getFloatTimeDomainData(buffer);
         const rms = computeBufferRms(buffer);
         setVoiceRms(rms);
-        const frequency = autoCorrelate(buffer, context.sampleRate);
+        const frequency = isVocalProfile
+          ? detectVocalPitch(buffer, context.sampleRate)
+          : autoCorrelate(buffer, context.sampleRate);
 
         if (frequency === null) {
-          if (smoothedFrequencyRef.current !== null) {
-            smoothedFrequencyRef.current = null;
-            displayFrequencyRef.current = null;
-            smoothedCentsRef.current = null;
-            displayNoteStateRef.current = createDebouncedNoteState();
-            lastDisplayMidiRef.current = null;
-            lastNoteRef.current = null;
+          hadSignalRef.current = false;
+          attackIgnoreUntilRef.current = 0;
+
+          if (isVocalProfile) {
+            if (silenceStartedAtRef.current === null) {
+              silenceStartedAtRef.current = performance.now();
+            }
+
+            const silenceMs =
+              performance.now() - silenceStartedAtRef.current;
+            const releaseDetection =
+              silenceMs >= GUITAR_STRING_LOCK_HANGOVER_MS;
+
+            if (noteFrequencyRef.current !== null || releaseDetection) {
+              noteFrequencyRef.current = null;
+              smoothedCentsRef.current = null;
+
+              if (releaseDetection) {
+                lockedMidiRef.current = null;
+                lastNoteRef.current = null;
+                setDetection(null);
+              }
+            }
+          } else {
+            noteFrequencyRef.current = null;
+            lockedMidiRef.current = null;
             setDetection(null);
           }
         } else {
+          silenceStartedAtRef.current = null;
           const rawDetection = frequencyToNote(frequency);
 
           if (isVocalProfile) {
-            const isOnset = smoothedFrequencyRef.current === null;
+            const isOnset = noteFrequencyRef.current === null;
             const noteChanged =
               lastNoteRef.current !== null &&
               lastNoteRef.current !== rawDetection.note;
@@ -348,7 +409,7 @@ export function useAfinador(
               smoothedCentsRef.current = rawDetection.cents;
             }
 
-            smoothedFrequencyRef.current = frequency;
+            noteFrequencyRef.current = frequency;
             lastNoteRef.current = rawDetection.note;
 
             setDetection({
@@ -357,61 +418,42 @@ export function useAfinador(
               cents: smoothedCentsRef.current,
             });
           } else {
-            const smoothedFrequency = ema(
-              smoothedFrequencyRef.current,
-              frequency,
-              TUNER_FREQUENCY_EMA_ALPHA,
-            );
-            smoothedFrequencyRef.current = smoothedFrequency;
+            const readyToMeasure = shouldProcessTunerSample({
+              hadSignalRef,
+              attackIgnoreUntilRef,
+              attackIgnoreMs: CHROMATIC_ATTACK_IGNORE_MS,
+              nowMs: performance.now(),
+              resetSmoothing: () => {
+                noteFrequencyRef.current = null;
+                lockedMidiRef.current = null;
+              },
+            });
 
-            const displayFrequency = ema(
-              displayFrequencyRef.current,
-              smoothedFrequency,
-              TUNER_DISPLAY_HZ_EMA_ALPHA,
-            );
-            displayFrequencyRef.current = displayFrequency;
-
-            const debounced = updateDebouncedDisplayNote(
-              displayNoteStateRef.current,
-              smoothedFrequency,
-              performance.now(),
-            );
-            displayNoteStateRef.current = debounced.state;
-            const displayMidi = debounced.displayMidi;
-
-            const rawCents =
-              displayMidi === null
-                ? 0
-                : (frequencyToMidi(smoothedFrequency) - displayMidi) * 100;
-
-            const noteChanged =
-              lastDisplayMidiRef.current !== null &&
-              displayMidi !== null &&
-              lastDisplayMidiRef.current !== displayMidi;
-
-            lastDisplayMidiRef.current = displayMidi;
-
-            let displayCents: number;
-
-            if (noteChanged || smoothedCentsRef.current === null) {
-              displayCents = rawCents;
-              smoothedCentsRef.current = rawCents;
-            } else {
-              displayCents = ema(
-                smoothedCentsRef.current,
-                rawCents,
-                TUNER_CENTS_EMA_ALPHA,
-              );
-              smoothedCentsRef.current = displayCents;
+            if (!readyToMeasure) {
+              animationFrameRef.current = requestAnimationFrame(updatePitch);
+              return;
             }
 
+            const noteFrequency = ema(
+              noteFrequencyRef.current,
+              frequency,
+              CHROMATIC_NOTE_FREQUENCY_EMA_ALPHA,
+            );
+            noteFrequencyRef.current = noteFrequency;
+
+            const stable = resolveStableNoteDetection(
+              noteFrequency,
+              lockedMidiRef.current,
+            );
+            lockedMidiRef.current = stable.midi;
+
+            const liveMidi = frequencyToMidi(frequency);
+            const liveCents = (liveMidi - stable.midi) * 100;
+
             setDetection({
-              note:
-                displayMidi === null
-                  ? "—"
-                  : midiToNoteName(displayMidi),
-              frequency: displayFrequency,
-              cents: displayCents,
+              note: stable.note,
+              frequency,
+              cents: liveCents,
             });
           }
         }

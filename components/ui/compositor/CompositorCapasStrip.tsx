@@ -18,6 +18,48 @@ export type CompositorEditCapasConfig = {
 
 const CAPA_TAB_ACTIVE_CLASS = COMPOSITOR_CAPA_TAB_ACTIVE_CLASS;
 
+export function CompositorMelodicCapasTabs({
+  activeTrackId,
+  disabled = false,
+  onSelectTrack,
+}: CompositorEditCapasConfig & { disabled?: boolean }) {
+  const melodicOptions = COMPOSITOR_INSTRUMENT_OPTIONS.filter((option) =>
+    (["piano", "guitarra", "viento"] as CompositorInstrumentId[]).includes(
+      option.id,
+    ),
+  );
+
+  return (
+    <div
+      className="flex min-w-0 flex-1 gap-1 rounded-full border border-border bg-bg-darker p-0.5"
+      role="tablist"
+      aria-label={`${RITMO_LABEL_CAPAS} · melodías`}
+    >
+      {melodicOptions.map((option) => {
+        const isActive = activeTrackId === option.id;
+
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            disabled={disabled}
+            onClick={() => onSelectTrack(option.id)}
+            className={`min-w-0 flex-1 rounded-full px-1.5 py-1.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+              isActive
+                ? CAPA_TAB_ACTIVE_CLASS[option.id]
+                : "text-text-muted"
+            }`}
+          >
+            <span className="block truncate">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CompositorCapasTabs({
   activeTrackId,
   disabled = false,

@@ -5,11 +5,11 @@ import { HelpCircle, Timer, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-type DinamicaLevel = "fuerte" | "medio" | "suave" | "silencio";
+type IntensidadLevel = "fuerte" | "medio" | "suave" | "silencio";
 
 const BEAT_MS = 600;
 const BEAT_CONTAINER_PX = 44;
-const BEAT_PATTERN: DinamicaLevel[] = [
+const BEAT_PATTERN: IntensidadLevel[] = [
   "fuerte",
   "suave",
   "medio",
@@ -19,7 +19,7 @@ const BEAT_PATTERN: DinamicaLevel[] = [
 ];
 
 const BEAT_DEFS: Array<{
-  level: DinamicaLevel;
+  level: IntensidadLevel;
   heightPercent: number | null;
   label: string;
 }> = [
@@ -31,14 +31,14 @@ const BEAT_DEFS: Array<{
   { level: "medio", heightPercent: 58, label: "M" },
 ];
 
-const LEVEL_STATUS: Record<DinamicaLevel, string> = {
+const LEVEL_STATUS: Record<IntensidadLevel, string> = {
   fuerte: "Fuerte",
   medio: "Medio",
   suave: "Suave",
   silencio: "Silencio",
 };
 
-const LEVEL_MOUTH_RY: Record<DinamicaLevel, number> = {
+const LEVEL_MOUTH_RY: Record<IntensidadLevel, number> = {
   fuerte: 5.5,
   medio: 4,
   suave: 2.5,
@@ -47,7 +47,7 @@ const LEVEL_MOUTH_RY: Record<DinamicaLevel, number> = {
 
 const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
 
-function DinamicaIcon() {
+function IntensidadIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect
@@ -108,7 +108,7 @@ function FiguraConceptIcon() {
   );
 }
 
-function DinamicaConceptIcon() {
+function IntensidadConceptIcon() {
   return (
     <Volume2
       className={HELP_ICON_CLASS}
@@ -127,7 +127,7 @@ function getBeatBaseHeight(heightPercent: number | null): number {
 }
 
 function getArcState(
-  level: DinamicaLevel,
+  level: IntensidadLevel,
   arcIndex: 1 | 2 | 3,
 ): { active: boolean; opacity: number } {
   switch (level) {
@@ -146,9 +146,9 @@ function getArcState(
   }
 }
 
-function DinamicaHelpDemo() {
+function IntensidadHelpDemo() {
   const [beatIndex, setBeatIndex] = useState(0);
-  const [level, setLevel] = useState<DinamicaLevel>(BEAT_PATTERN[0]!);
+  const [level, setLevel] = useState<IntensidadLevel>(BEAT_PATTERN[0]!);
 
   useEffect(() => {
     let cancelled = false;
@@ -313,12 +313,12 @@ function DinamicaHelpDemo() {
   );
 }
 
-type DinamicaHelpModalProps = {
+type IntensidadHelpModalProps = {
   open: boolean;
   onClose: () => void;
 };
 
-export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
+export function IntensidadHelpModal({ open, onClose }: IntensidadHelpModalProps) {
   useEffect(() => {
     if (!open) {
       return;
@@ -349,14 +349,14 @@ export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
     <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 py-6">
       <button
         type="button"
-        aria-label="Cerrar ayuda de Ritmo-Dinámica"
+        aria-label="Cerrar ayuda de Ritmo-Intensidad"
         className="absolute inset-0 bg-black/70"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dinamica-help-titulo"
+        aria-labelledby="intensidad-help-titulo"
         className="relative z-10 flex h-[min(88vh,620px)] w-full max-w-sm flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-2xl"
       >
         <header
@@ -382,13 +382,13 @@ export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
                   "color-mix(in srgb, var(--voz-config) 25%, transparent)",
               }}
             >
-              <DinamicaIcon />
+              <IntensidadIcon />
             </div>
             <h2
-              id="dinamica-help-titulo"
+              id="intensidad-help-titulo"
               className="text-xl font-extrabold text-text-primary"
             >
-              Ritmo-Dinámica
+              Ritmo-Intensidad
             </h2>
             <p className="text-center text-xs text-text-muted">
               Entrenador vocal · cómo funciona este modo
@@ -398,7 +398,7 @@ export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
 
         <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
           <div className="space-y-3">
-            <DinamicaHelpDemo />
+            <IntensidadHelpDemo />
 
             <section>
               <h3 className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
@@ -406,7 +406,7 @@ export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
               </h3>
               <div className="mt-2 space-y-2">
                 <HelpInfoCard
-                  icon={<DinamicaIcon />}
+                  icon={<IntensidadIcon />}
                   label="¿Para qué sirve?"
                   text="Entrenás ritmo y volumen al mismo tiempo. La app reproduce el patrón y vos tenés que seguirlo: cantando en el momento justo y con la intensidad correcta."
                   shimmerDelayMs={0}
@@ -424,8 +424,8 @@ export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
                   shimmerDelayMs={440}
                 />
                 <HelpInfoCard
-                  icon={<DinamicaConceptIcon />}
-                  label="Dinámica"
+                  icon={<IntensidadConceptIcon />}
+                  label="Intensidad"
                   text="Para cada golpe elegís el volumen: silencio, suave, medio o fuerte. Ese es el patrón de intensidad que tenés que reproducir con la voz."
                   shimmerDelayMs={660}
                 />
@@ -451,7 +451,7 @@ export function DinamicaHelpModal({ open, onClose }: DinamicaHelpModalProps) {
   );
 }
 
-export function DinamicaHelpButton({ onClick }: { onClick: () => void }) {
+export function IntensidadHelpButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
@@ -459,7 +459,7 @@ export function DinamicaHelpButton({ onClick }: { onClick: () => void }) {
         event.stopPropagation();
         onClick();
       }}
-      aria-label="Ayuda para el modo Ritmo-Dinámica"
+      aria-label="Ayuda para el modo Ritmo-Intensidad"
       className="flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors hover:bg-bg-card"
       style={{
         borderColor: "color-mix(in srgb, var(--voz-config) 35%, var(--border))",

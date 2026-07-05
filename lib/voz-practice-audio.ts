@@ -106,7 +106,7 @@ function connectPracticeOscillator(
 }
 
 export type VozPracticeNoteOptions = {
-  /** Si false, solo importa el volumen pedido (p. ej. dinámica en Combo). */
+  /** Si false, solo importa el volumen pedido (p. ej. intensidad en Combo). */
   pitchCompensation?: boolean;
 };
 

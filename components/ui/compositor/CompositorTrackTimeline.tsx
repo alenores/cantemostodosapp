@@ -1,6 +1,6 @@
 "use client";
 
-import { CompositorCapasTabs } from "@/components/ui/compositor/CompositorCapasStrip";
+import { CompositorCapasTabs, CompositorMelodicCapasTabs } from "@/components/ui/compositor/CompositorCapasStrip";
 import { CompositorTimelineBlock } from "@/components/ui/compositor/CompositorTimelineBlock";
 import {
   CompositorScrollableTimelineGrid,
@@ -28,6 +28,8 @@ import {
   getMelodicEventRowId,
   type CompositorTimelineEventPatch,
 } from "@/lib/compositor-timeline-layout";
+import { resolveEventMelodicNote } from "@/lib/compositor-melodic-pitch";
+import type { MelodicRowDragContext } from "@/components/ui/compositor/useCompositorTimelineBlockDrag";
 import {
   eventOverlapsStep,
   getCompositorCycleDurationSeconds,
@@ -61,6 +63,7 @@ type CompositorTrackTimelineProps = {
   onRemoveEvent: (eventId: string) => void;
   onSelectTrack?: (instrumentId: CompositorInstrumentId) => void;
   onPreviewTrack?: () => void;
+  capasMode?: "all" | "melodic" | "none";
 };
 
 function renderTimelineBlock({
@@ -84,11 +87,7 @@ function renderTimelineBlock({
   selectedEventId: string | null;
   disabled: boolean;
   showNoteLabel: boolean;
-  melodicRowDrag?: {
-    rows: ReturnType<typeof buildMelodicTimelineRows>;
-    octaveExact: boolean;
-    events: CompositorTrackEvent[];
-  };
+  melodicRowDrag?: MelodicRowDragContext;
   onSelectEvent: (eventId: string | null) => void;
   onUpdateEvent: (
     eventId: string,
@@ -150,14 +149,32 @@ function MelodicTimeline({
     patch: CompositorTimelineEventPatch,
   ) => void;
 }) {
+  const resolvedEvents = useMemo(
+    () =>
+      events.map((event) => ({
+        ...event,
+        note: resolveEventMelodicNote(
+          event,
+          piece.tonalidadComposicion,
+          instrumentId,
+        ),
+      })),
+    [events, instrumentId, piece.tonalidadComposicion],
+  );
+
   const rows = useMemo(
-    () => buildMelodicTimelineRows(events, octaveExact),
-    [events, octaveExact],
+    () => buildMelodicTimelineRows(resolvedEvents, octaveExact),
+    [resolvedEvents, octaveExact],
   );
 
   const melodicRowDrag = useMemo(
-    () => ({ rows, octaveExact, events }),
-    [events, octaveExact, rows],
+    () => ({
+      rows,
+      octaveExact,
+      events: resolvedEvents,
+      tonalidadComposicion: piece.tonalidadComposicion,
+    }),
+    [resolvedEvents, octaveExact, piece.tonalidadComposicion, rows],
   );
 
   const eventsByRow = useMemo(() => {
@@ -167,7 +184,7 @@ function MelodicTimeline({
       grouped.set(row.id, []);
     }
 
-    for (const event of events) {
+    for (const event of resolvedEvents) {
       const rowId = getMelodicEventRowId(event, rows, octaveExact);
       const bucket = grouped.get(rowId) ?? [];
       bucket.push(event);
@@ -175,7 +192,7 @@ function MelodicTimeline({
     }
 
     return grouped;
-  }, [events, octaveExact, rows]);
+  }, [resolvedEvents, octaveExact, rows]);
 
   const scrollRows = rows.map((row) => ({ id: row.id, label: row.label }));
   const trackWidthPx = gridSteps * COMPOSITOR_TIMELINE_STEP_MIN_PX;
@@ -302,6 +319,7 @@ export function CompositorTrackTimeline({
   onRemoveEvent,
   onSelectTrack,
   onPreviewTrack,
+  capasMode = "all",
 }: CompositorTrackTimelineProps) {
   const gridSteps = getCompositorGridSteps(piece);
   const cycleSeconds = getCompositorCycleDurationSeconds(piece);
@@ -311,15 +329,24 @@ export function CompositorTrackTimeline({
       : Math.min(gridSteps - 1, Math.floor(cycleProgress * gridSteps));
 
   const canRemoveSelected = selectedEventId != null && !disabled;
+  const showCapasTabs = onSelectTrack && capasMode !== "none";
 
   return (
     <div className="rounded-[10px] border border-border bg-bg-card px-2 py-3">
-      {onSelectTrack ? (
-        <CompositorCapasTabs
-          activeTrackId={instrumentId}
-          disabled={disabled}
-          onSelectTrack={onSelectTrack}
-        />
+      {showCapasTabs ? (
+        capasMode === "melodic" ? (
+          <CompositorMelodicCapasTabs
+            activeTrackId={instrumentId}
+            disabled={disabled}
+            onSelectTrack={onSelectTrack}
+          />
+        ) : (
+          <CompositorCapasTabs
+            activeTrackId={instrumentId}
+            disabled={disabled}
+            onSelectTrack={onSelectTrack}
+          />
+        )
       ) : (
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-bold uppercase tracking-wide text-compositor-config">
@@ -329,7 +356,7 @@ export function CompositorTrackTimeline({
         </div>
       )}
 
-      <div className={onSelectTrack ? "mt-2" : ""}>
+      <div className={showCapasTabs ? "mt-2" : ""}>
         {compositorHasContenidoTab(instrumentId) ? (
           <MelodicTimeline
             piece={piece}

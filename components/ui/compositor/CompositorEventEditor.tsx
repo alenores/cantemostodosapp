@@ -1,11 +1,12 @@
 "use client";
 
+import { CompositorGradoPicker } from "@/components/ui/compositor/CompositorGradoPicker";
 import {
-  CompositorSlotContenido,
   CompositorSlotTimbre,
   compositorHasContenidoTab,
   compositorHasTimbreTab,
 } from "@/components/ui/compositor/CompositorSlotDetail";
+import { clampMelodicOctaveForInstrument } from "@/lib/compositor-melodic-pitch";
 import {
   BeatVolumeCarousel,
   CompasNumericCarousel,
@@ -15,12 +16,10 @@ import type {
   CompositorGuitarArticulation,
   CompositorInstrumentId,
   CompositorPiece,
-  CompositorSlotNote,
   CompositorTrackEvent,
 } from "@/lib/compositor";
 import {
   clampEventDurationSteps,
-  clampCompositorNoteOctaves,
   getEventMaxDurationSteps,
   getSustentoHelpText,
   isSustentoEditable,
@@ -34,11 +33,11 @@ import { COMPAS_SLOT_CONTROLS_CLASS } from "@/lib/ritmo-compas-ui";
 import {
   COMPOSITOR_HELP_EVENTO_POSICION,
   COMPOSITOR_LABEL_SONIDO_SELECCIONADO,
-  getRitmoHelpContenido,
-  getRitmoHelpDinamica,
+  getRitmoHelpNota,
+  getRitmoHelpIntensidad,
   getRitmoHelpTimbre,
-  RITMO_LABEL_CONTENIDO,
-  RITMO_LABEL_DINAMICA,
+  RITMO_LABEL_NOTA,
+  RITMO_LABEL_INTENSIDAD,
   RITMO_LABEL_POSICION,
   RITMO_LABEL_SUSTENTO,
   RITMO_LABEL_TIMBRE,
@@ -49,7 +48,7 @@ import { useEffect, useMemo, useState } from "react";
 type EventEditorTab =
   | "posicion"
   | "sustento"
-  | "dinamica"
+  | "intensidad"
   | "contenido"
   | "timbre";
 
@@ -90,9 +89,9 @@ export function CompositorEventEditor({
     if (showSustento) {
       options.push({ id: "sustento", label: RITMO_LABEL_SUSTENTO });
     }
-    options.push({ id: "dinamica", label: RITMO_LABEL_DINAMICA });
+    options.push({ id: "intensidad", label: RITMO_LABEL_INTENSIDAD });
     if (showContenido) {
-      options.push({ id: "contenido", label: RITMO_LABEL_CONTENIDO });
+      options.push({ id: "contenido", label: RITMO_LABEL_NOTA });
     }
     if (showTimbre) {
       options.push({ id: "timbre", label: RITMO_LABEL_TIMBRE });
@@ -119,10 +118,10 @@ export function CompositorEventEditor({
       ? COMPOSITOR_HELP_EVENTO_POSICION
       : tab === "sustento"
         ? getSustentoHelpText(instrumentId, event)
-        : tab === "dinamica"
-          ? getRitmoHelpDinamica("compositor")
+        : tab === "intensidad"
+          ? getRitmoHelpIntensidad("compositor")
           : tab === "contenido"
-            ? getRitmoHelpContenido()
+            ? getRitmoHelpNota()
             : showTimbre
               ? getRitmoHelpTimbre(
                   instrumentId === "bateria" ? "bateria" : "guitarra",
@@ -214,7 +213,7 @@ export function CompositorEventEditor({
           />
         ) : null}
 
-        {tab === "dinamica" ? (
+        {tab === "intensidad" ? (
           <BeatVolumeCarousel
             level={event.level}
             beatIndex={0}
@@ -225,14 +224,21 @@ export function CompositorEventEditor({
         ) : null}
 
         {tab === "contenido" && showContenido ? (
-          <CompositorSlotContenido
-            embedded
-            slotIndex={event.startStep}
-            note={event.note}
+          <CompositorGradoPicker
+            gradoCromatico={event.gradoCromatico}
+            octavaRelativa={event.octavaRelativa}
+            tonalidadComposicion={piece.tonalidadComposicion}
+            instrumentId={instrumentId}
             disabled={disabled}
-            onSetNote={(note: CompositorSlotNote) =>
+            onGradoChange={(grado) =>
+              onUpdateEvent({ gradoCromatico: grado })
+            }
+            onOctavaChange={(octava) =>
               onUpdateEvent({
-                note: clampCompositorNoteOctaves(note, instrumentId),
+                octavaRelativa: clampMelodicOctaveForInstrument(
+                  octava,
+                  instrumentId,
+                ),
               })
             }
           />

@@ -27,8 +27,8 @@ export default function CifradoNotacionToggle({
     <div
       className={
         embedded
-          ? "mt-3 border-t border-border/40 pt-3"
-          : "rounded-[10px] border border-border/40 bg-bg-dark/40 px-2.5 py-2"
+          ? "mt-3 border-t border-compositor-config-border/40 pt-3"
+          : "rounded-[10px] border border-border/70 bg-bg-dark/60 px-2.5 py-2"
       }
     >
       <p className={CIFRADO_NOTACION_LABEL_CLASS}>Ver acordes como</p>

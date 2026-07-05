@@ -1,5 +1,6 @@
-// Las 12 notas cromáticas en español (índice = posición cromática)
+import { createDefaultIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import { formatAcordeNotacion, type NotacionAcordes } from "@/lib/notacion-acordes";
+import type { MetronomeBeatLevel } from "@/lib/metronomo";
 
 export type { NotacionAcordes };
 export const NOTAS_ES = [
@@ -59,6 +60,12 @@ export type BarraCompas = {
   lineIndex: number;
   charOffset: number;
   compasNumero: number;
+  /** Tipo de compás de este ciclo. Si falta, usa el de la plantilla al cargar. */
+  tipoCompas?: TipoCompas;
+  /** Intensidad por golpe de este compás (hasta el siguiente). Si falta, usa la plantilla. */
+  intensidad?: MetronomeBeatLevel[];
+  /** Ciclo guardado del Compositor para la batería de este compás. */
+  cycleId?: string | null;
 };
 
 // Datos completos de cifrado (se guarda en columna `cifrado`)
@@ -72,6 +79,8 @@ export type CompasConfig = {
   tipoCompas: TipoCompas;
   bpm: number;
   barras: BarraCompas[];
+  /** Modelo de intensidad al colocar compases nuevos. */
+  intensidadPlantilla?: MetronomeBeatLevel[];
   compositorPresetId?: TipoCompas;
   /** 2 = cada barra marca el inicio de un compás (movible). Ausente/1 = formato legacy. */
   barrasVersion?: 1 | 2;
@@ -235,9 +244,9 @@ export function computeBeatTickCenters(
 export function computeLineBeatTicks(
   barras: BarraCompas[],
   getOffsetPx: (charOffset: number) => number | undefined,
-  beatCount: number,
+  getBeatCount: (barra: BarraCompas) => number,
 ): number[] {
-  if (barras.length === 0 || beatCount <= 0) {
+  if (barras.length === 0) {
     return [];
   }
 
@@ -245,7 +254,14 @@ export function computeLineBeatTicks(
   const ticks: number[] = [];
 
   for (let index = 0; index < sorted.length; index += 1) {
-    const startPx = getOffsetPx(sorted[index].charOffset);
+    const barra = sorted[index]!;
+    const beatCount = getBeatCount(barra);
+
+    if (beatCount <= 0) {
+      continue;
+    }
+
+    const startPx = getOffsetPx(barra.charOffset);
 
     if (startPx === undefined) {
       continue;
@@ -253,7 +269,7 @@ export function computeLineBeatTicks(
 
     const endPx =
       index + 1 < sorted.length
-        ? getOffsetPx(sorted[index + 1].charOffset)
+        ? getOffsetPx(sorted[index + 1]!.charOffset)
         : undefined;
 
     if (endPx === undefined || endPx <= startPx) {
@@ -271,14 +287,22 @@ export type CompasMarkerKind = "measure" | "beat";
 export type CompasMarker = {
   kind: CompasMarkerKind;
   leftPx: number;
+  intensidad?: MetronomeBeatLevel;
+  cycleId?: string | null;
+  /** Índice del golpe dentro del compás (0 = primer golpe). */
+  cycleStepIndex?: number;
 };
 
 export function computeLineCompasMarkersPx(
   barras: BarraCompas[],
-  beatCount: number,
+  getBeatCount: (barra: BarraCompas) => number,
   getOffsetPx: (charOffset: number) => number | undefined,
+  resolveIntensidad?: (
+    barra: BarraCompas,
+    beatIndexInMeasure: number,
+  ) => MetronomeBeatLevel,
 ): CompasMarker[] {
-  if (barras.length === 0 || beatCount <= 0) {
+  if (barras.length === 0) {
     return [];
   }
 
@@ -286,7 +310,14 @@ export function computeLineCompasMarkersPx(
   const markers: CompasMarker[] = [];
 
   for (let index = 0; index < sorted.length; index += 1) {
-    const startOffset = sorted[index].charOffset;
+    const barra = sorted[index]!;
+    const beatCount = getBeatCount(barra);
+
+    if (beatCount <= 0) {
+      continue;
+    }
+
+    const startOffset = barra.charOffset;
     const endOffset = sorted[index + 1]?.charOffset;
     const startPx = getOffsetPx(startOffset);
 
@@ -297,6 +328,9 @@ export function computeLineCompasMarkersPx(
     markers.push({
       kind: "measure",
       leftPx: startPx,
+      intensidad: resolveIntensidad?.(barra, 0),
+      cycleId: barra.cycleId ?? null,
+      cycleStepIndex: 0,
     });
 
     if (endOffset === undefined) {
@@ -316,6 +350,9 @@ export function computeLineCompasMarkersPx(
       markers.push({
         kind: "beat",
         leftPx: startPx + step * beat,
+        intensidad: resolveIntensidad?.(barra, beat),
+        cycleId: barra.cycleId ?? null,
+        cycleStepIndex: beat,
       });
     }
   }
@@ -428,11 +465,14 @@ export function createEmptyCifrado(): CifradoData {
 }
 
 export function createDefaultCompasConfig(): CompasConfig {
+  const tipoCompas: TipoCompas = "4-4";
+
   return {
-    tipoCompas: "4-4",
+    tipoCompas,
     bpm: DEFAULT_BPM,
     barras: [],
     barrasVersion: 2,
+    intensidadPlantilla: createDefaultIntensidadPlantilla(tipoCompas),
   };
 }
 

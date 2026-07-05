@@ -25,10 +25,15 @@ export default function AfinadorLayer({
   } = useAfinador();
 
   useEffect(() => {
-    if (open && micPermissionGranted) {
+    if (!open) {
+      stop();
+      return;
+    }
+
+    if (micPermissionGranted) {
       void start();
     }
-  }, [open, micPermissionGranted, start]);
+  }, [open, micPermissionGranted, start, stop]);
 
   useHardwareBack(open, () => {
     stop();

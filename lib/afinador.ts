@@ -18,6 +18,8 @@ export type GuitarString = {
   frequency: number;
 };
 
+export type TunerInstrumentMode = "guitar" | "chromatic" | "prueba";
+
 export const GUITAR_STRINGS: GuitarString[] = [
   { label: "Mi", frequency: 82.41 },
   { label: "La", frequency: 110.0 },
@@ -41,15 +43,45 @@ const FLAT_SHARP_THRESHOLD_CENTS = 15;
 const MIN_DETECTABLE_HZ = 60;
 const MAX_DETECTABLE_HZ = 1200;
 const MIN_RMS = 0.002;
+/** Entrenador vocal: graves más sensibles (C2 ≈ 65 Hz). */
+export const VOCAL_MIN_DETECTABLE_HZ = 50;
+export const VOCAL_MIN_RMS = 0.001;
 
-/** Suavizado de frecuencia (~300 ms a 60 fps). */
-export const TUNER_FREQUENCY_EMA_ALPHA = 0.06;
+export type AutoCorrelateOptions = {
+  minHz?: number;
+  maxHz?: number;
+  minRms?: number;
+};
+
+/** Suavizado ligero solo para decidir la nota (~120 ms a 60 fps). */
+export const TUNER_NOTE_FREQUENCY_EMA_ALPHA = 0.18;
 /** Suavizado de Hz mostrado (~500 ms a 60 fps). */
 export const TUNER_DISPLAY_HZ_EMA_ALPHA = 0.04;
-/** Suavizado de cents para la aguja (~250 ms a 60 fps). */
-export const TUNER_CENTS_EMA_ALPHA = 0.1;
+/** Suavizado de cents para la aguja (~400 ms a 60 fps). */
+export const TUNER_CENTS_EMA_ALPHA = 0.06;
+/** Modo libre: nota un poco más viva (~80 ms a 60 fps). */
+export const CHROMATIC_NOTE_FREQUENCY_EMA_ALPHA = 0.28;
+/** Modo libre: aguja un poco más expresiva (~200 ms a 60 fps). */
+export const CHROMATIC_CENTS_EMA_ALPHA = 0.12;
 /** Entrenador vocal: cents dentro de la misma nota. */
 export const VOCAL_CENTS_EMA_ALPHA = 0.45;
+/** Histéresis al cambiar de cuerda en modo guitarra (auto). */
+export const GUITAR_STRING_SWITCH_HYSTERESIS_CENTS = 60;
+/** Tolerancia para tratar una lectura como armónico de la cuerda bloqueada. */
+export const GUITAR_HARMONIC_MATCH_CENTS = 48;
+/** Tiempo que se conserva la cuerda bloqueada tras micro-silencios en el sustain. */
+export const GUITAR_STRING_LOCK_HANGOVER_MS = 450;
+/** Al salir de un grave bloqueado, la otra cuerda debe encajar muy bien (evita Mi→Re). */
+export const GUITAR_BASS_CONFIDENT_SWITCH_CENTS = 45;
+/** Banda del armónico del Mi grave (ratio respecto a ~82 Hz). */
+const LOW_E_HARMONIC_RATIO_MIN = 1.72;
+const LOW_E_HARMONIC_RATIO_MAX = 2.55;
+/** Otra cuerda encaja claramente como fundamental (no armónico). */
+const GUITAR_FUNDAMENTAL_MATCH_CENTS = 38;
+/** Ignorar lecturas tras un nuevo golpe (pico agudo del ataque). */
+export const TUNER_ATTACK_IGNORE_MS = 220;
+/** Modo libre: ventana más corta, el ataque también existe pero suele ser menor. */
+export const CHROMATIC_ATTACK_IGNORE_MS = 140;
 /** Cents necesarios para llevar la aguja de punta a punta (menor = menos expresiva). */
 export const NEEDLE_FULL_DEFLECTION_CENTS = 22;
 /** Distancia desde la nota bloqueada para permitir cambiar de nota (histéresis). */
@@ -82,16 +114,20 @@ export function computeBufferRms(buffer: Float32Array): number {
 export function autoCorrelate(
   buffer: Float32Array,
   sampleRate: number,
+  options: AutoCorrelateOptions = {},
 ): number | null {
+  const minHz = options.minHz ?? MIN_DETECTABLE_HZ;
+  const maxHz = options.maxHz ?? MAX_DETECTABLE_HZ;
+  const minRms = options.minRms ?? MIN_RMS;
   const bufferLength = buffer.length;
   const rms = computeBufferRms(buffer);
 
-  if (rms < MIN_RMS) {
+  if (rms < minRms) {
     return null;
   }
 
-  const minLag = Math.floor(sampleRate / MAX_DETECTABLE_HZ);
-  const maxLag = Math.ceil(sampleRate / MIN_DETECTABLE_HZ);
+  const minLag = Math.floor(sampleRate / maxHz);
+  const maxLag = Math.ceil(sampleRate / minHz);
 
   const correlations = new Float32Array(maxLag + 1);
 
@@ -129,7 +165,81 @@ export function autoCorrelate(
 
   const frequency = sampleRate / refinedLag;
 
-  if (frequency < MIN_DETECTABLE_HZ || frequency > MAX_DETECTABLE_HZ) {
+  if (frequency < minHz || frequency > maxHz) {
+    return null;
+  }
+
+  return frequency;
+}
+
+/** Pitch para voz: más sensible en graves y preferencia por fundamental. */
+export function detectVocalPitch(
+  buffer: Float32Array,
+  sampleRate: number,
+): number | null {
+  const bufferLength = buffer.length;
+  const rms = computeBufferRms(buffer);
+
+  if (rms < VOCAL_MIN_RMS) {
+    return null;
+  }
+
+  const minHz = VOCAL_MIN_DETECTABLE_HZ;
+  const maxHz = MAX_DETECTABLE_HZ;
+  const minLag = Math.floor(sampleRate / maxHz);
+  const maxLag = Math.ceil(sampleRate / minHz);
+  const correlations = new Float32Array(maxLag + 1);
+
+  for (let lag = minLag; lag <= maxLag; lag += 1) {
+    let sum = 0;
+
+    for (let index = 0; index < bufferLength - lag; index += 1) {
+      sum += buffer[index] * buffer[index + lag];
+    }
+
+    correlations[lag] = sum;
+  }
+
+  let peakLag = minLag;
+
+  for (let lag = minLag + 1; lag <= maxLag; lag += 1) {
+    if (correlations[lag] > correlations[peakLag]) {
+      peakLag = lag;
+    }
+  }
+
+  if (correlations[peakLag] <= 0) {
+    return null;
+  }
+
+  // En graves el mic suele enganchar el 2.º armónico: preferir el lag más largo (más grave).
+  for (const harmonic of [2, 3]) {
+    const subLag = peakLag * harmonic;
+
+    if (subLag > maxLag) {
+      break;
+    }
+
+    const subCorrelation = correlations[subLag] ?? 0;
+
+    if (subCorrelation >= correlations[peakLag] * 0.82) {
+      peakLag = subLag;
+    }
+  }
+
+  let refinedLag = peakLag;
+  const previous = correlations[peakLag - 1] ?? correlations[peakLag];
+  const current = correlations[peakLag];
+  const next = correlations[peakLag + 1] ?? correlations[peakLag];
+  const denominator = 2 * current - previous - next;
+
+  if (denominator !== 0) {
+    refinedLag += (next - previous) / (2 * denominator);
+  }
+
+  const frequency = sampleRate / refinedLag;
+
+  if (frequency < minHz || frequency > maxHz) {
     return null;
   }
 
@@ -138,6 +248,28 @@ export function autoCorrelate(
 
 export function frequencyToMidi(frequency: number): number {
   return 69 + 12 * Math.log2(frequency / A4_FREQUENCY);
+}
+
+const TUNER_FOLD_MIN_HZ = 65;
+const TUNER_FOLD_MAX_HZ = 500;
+
+/** Corrige lecturas en octava incorrecta (armónicos) sin cambiar la nota. */
+export function foldFrequencyToTuningRange(
+  frequency: number,
+  minHz = TUNER_FOLD_MIN_HZ,
+  maxHz = TUNER_FOLD_MAX_HZ,
+): number {
+  let folded = frequency;
+
+  while (folded > maxHz) {
+    folded /= 2;
+  }
+
+  while (folded < minHz) {
+    folded *= 2;
+  }
+
+  return folded;
 }
 
 export function midiToNoteName(midi: number): string {
@@ -308,6 +440,258 @@ export function getClosestStringIndex(frequency: number | null): number | null {
   }
 
   return closestIndex;
+}
+
+/** ¿La frecuencia es un armónico (octava) de la cuerda dada? */
+export function isFrequencyHarmonicOfString(
+  frequency: number,
+  stringIndex: number,
+  maxCents = GUITAR_HARMONIC_MATCH_CENTS,
+): boolean {
+  const target = GUITAR_STRINGS[stringIndex]?.frequency;
+
+  if (!target) {
+    return false;
+  }
+
+  const ratio = frequency / target;
+
+  if (ratio <= 0) {
+    return false;
+  }
+
+  const harmonicOrder = Math.round(Math.log2(ratio));
+
+  if (harmonicOrder < -1 || harmonicOrder > 4) {
+    return false;
+  }
+
+  const folded = frequency / 2 ** harmonicOrder;
+  const cents = Math.abs(1200 * Math.log2(folded / target));
+
+  return cents <= maxCents;
+}
+
+/** Lectura típica del sustain del Mi grave (p. ej. ~165 Hz), no otra cuerda. */
+export function isConfidentFundamentalMatch(
+  frequency: number,
+  stringIndex: number,
+  maxCents = GUITAR_FUNDAMENTAL_MATCH_CENTS,
+): boolean {
+  const target = GUITAR_STRINGS[stringIndex]?.frequency;
+
+  if (!target) {
+    return false;
+  }
+
+  return (
+    Math.abs(1200 * Math.log2(frequency / target)) <= maxCents
+  );
+}
+
+/** Mantener Mi grave bloqueado solo en la banda armónica ambigua (no La/Sol al aire). */
+export function shouldHoldLowEStringLock(
+  frequency: number,
+  lockedIndex: number,
+): boolean {
+  if (lockedIndex !== 0) {
+    return false;
+  }
+
+  const target = GUITAR_STRINGS[0].frequency;
+  const ratio = frequency / target;
+
+  if (ratio < LOW_E_HARMONIC_RATIO_MIN || ratio > LOW_E_HARMONIC_RATIO_MAX) {
+    return false;
+  }
+
+  // Re (índice 2) comparte zona con el 2.º armónico del Mi: no usarla para soltar.
+  for (let index = 1; index < GUITAR_STRINGS.length; index += 1) {
+    if (index === 2) {
+      continue;
+    }
+
+    if (isConfidentFundamentalMatch(frequency, index)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/** @deprecated Usar shouldHoldLowEStringLock */
+export function isInLowEHarmonicShadow(
+  frequency: number,
+  lockedIndex: number,
+): boolean {
+  return shouldHoldLowEStringLock(frequency, lockedIndex);
+}
+
+/** Pliega armónicos hacia la fundamental de una cuerda concreta. */
+export function foldFrequencyToStringFundamental(
+  frequency: number,
+  stringIndex: number,
+): number {
+  const target = GUITAR_STRINGS[stringIndex]?.frequency;
+
+  if (!target) {
+    return frequency;
+  }
+
+  if (stringIndex === 0 && shouldHoldLowEStringLock(frequency, 0)) {
+    const halved = frequency / 2;
+    const halfError = Math.abs(1200 * Math.log2(halved / target));
+
+    if (halfError <= 150) {
+      return halved;
+    }
+
+    return target;
+  }
+
+  // La grave: banda del 2.º armónico → dividir por 2.
+  if (stringIndex === 1) {
+    const ratio = frequency / target;
+
+    if (ratio >= 1.45 && ratio <= 2.35) {
+      const halved = frequency / 2;
+      const halfError = Math.abs(1200 * Math.log2(halved / target));
+
+      if (halfError <= 150) {
+        return halved;
+      }
+    }
+  }
+
+  let bestFrequency = frequency;
+  let bestError = Infinity;
+
+  for (let harmonic = 0; harmonic <= 4; harmonic += 1) {
+    const harmonicTarget = target * 2 ** harmonic;
+    const error = Math.abs(1200 * Math.log2(frequency / harmonicTarget));
+    const candidate = frequency / 2 ** harmonic;
+
+    if (error < bestError) {
+      bestError = error;
+      bestFrequency = candidate;
+    }
+  }
+
+  return bestFrequency;
+}
+
+export function getStringPitchClass(stringIndex: number): number {
+  const midi = Math.round(
+    frequencyToMidi(GUITAR_STRINGS[stringIndex]?.frequency ?? A4_FREQUENCY),
+  );
+
+  return ((midi % 12) + 12) % 12;
+}
+
+export function getGuitarStringMatchError(
+  frequency: number,
+  stringIndex: number,
+): number {
+  const target = GUITAR_STRINGS[stringIndex]?.frequency;
+
+  if (!target) {
+    return Infinity;
+  }
+
+  const folded = foldFrequencyToStringFundamental(frequency, stringIndex);
+
+  return Math.abs(1200 * Math.log2(folded / target));
+}
+
+export function getHarmonicClosestStringIndex(frequency: number): number {
+  let bestIndex = 0;
+  let bestError = Infinity;
+  let bestTargetDistance = Infinity;
+
+  for (let index = 0; index < GUITAR_STRINGS.length; index += 1) {
+    const error = getGuitarStringMatchError(frequency, index);
+    const targetDistance = Math.abs(frequency - GUITAR_STRINGS[index].frequency);
+
+    if (
+      error < bestError - 3 ||
+      (Math.abs(error - bestError) <= 3 && targetDistance < bestTargetDistance)
+    ) {
+      bestError = error;
+      bestIndex = index;
+      bestTargetDistance = targetDistance;
+    }
+  }
+
+  return bestIndex;
+}
+
+export function pickGuitarStringIndex(
+  frequency: number,
+  lockedIndex: number | null,
+  manualIndex: number | null,
+): number {
+  if (
+    manualIndex !== null &&
+    manualIndex >= 0 &&
+    manualIndex < GUITAR_STRINGS.length
+  ) {
+    return manualIndex;
+  }
+
+  const harmonicClosest = getHarmonicClosestStringIndex(frequency);
+
+  if (lockedIndex === null) {
+    return harmonicClosest;
+  }
+
+  if (harmonicClosest === lockedIndex) {
+    return lockedIndex;
+  }
+
+  if (shouldHoldLowEStringLock(frequency, lockedIndex)) {
+    return lockedIndex;
+  }
+
+  // Mi grave y Mi agudo comparten pitch class: no saltar entre ellos en auto.
+  if (
+    getStringPitchClass(harmonicClosest) === getStringPitchClass(lockedIndex)
+  ) {
+    return lockedIndex;
+  }
+
+  const lockedError = getGuitarStringMatchError(frequency, lockedIndex);
+  const closestError = getGuitarStringMatchError(frequency, harmonicClosest);
+
+  if (closestError + GUITAR_STRING_SWITCH_HYSTERESIS_CENTS < lockedError) {
+    const leavingBassString = lockedIndex <= 1;
+    const confidentNewString =
+      closestError <= GUITAR_BASS_CONFIDENT_SWITCH_CENTS;
+
+    if (leavingBassString && !confidentNewString) {
+      return lockedIndex;
+    }
+
+    return harmonicClosest;
+  }
+
+  return lockedIndex;
+}
+
+export function resolveGuitarStringDetection(
+  frequency: number,
+  stringIndex: number,
+): NoteDetection & { stringIndex: number } {
+  const targetFrequency = GUITAR_STRINGS[stringIndex].frequency;
+  const targetMidi = frequencyToMidi(targetFrequency);
+  const midi = frequencyToMidi(frequency);
+  const cents = (midi - targetMidi) * 100;
+
+  return {
+    note: midiToNoteName(Math.round(targetMidi)),
+    frequency,
+    cents,
+    stringIndex,
+  };
 }
 
 export function centsToNeedleAngle(cents: number): number {

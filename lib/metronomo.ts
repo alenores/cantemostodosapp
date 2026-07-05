@@ -665,7 +665,7 @@ export function getBeatLevelBarAppearance(
   };
 }
 
-/** Grosor de la línea objetivo en gráficos de melodía/combo según dinámica. */
+/** Grosor de la línea objetivo en gráficos de melodía/combo según intensidad. */
 export function getMelodiaTargetLineStrokeWidth(
   level: MetronomeBeatLevel,
   emphasized = false,
@@ -681,7 +681,7 @@ export function getMelodiaTargetLineStrokeWidth(
   return emphasized ? base + 2.5 : base;
 }
 
-/** Color de la línea objetivo en gráficos de melodía/combo según dinámica. */
+/** Color de la línea objetivo en gráficos de melodía/combo según intensidad. */
 export function getMelodiaTargetLineColor(level: MetronomeBeatLevel): string {
   return getBeatLevelConfigColor(level);
 }

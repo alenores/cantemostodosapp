@@ -9,7 +9,10 @@ import type {
 } from "@/lib/compositor";
 import { getCompositorTimelineBlockClassName } from "@/lib/compositor-instrument-colors";
 import type { CompositorTimelineEventPatch } from "@/lib/compositor-timeline-layout";
-import { formatTargetLabel } from "@/lib/voz";
+import {
+  formatCompositorGradoLabel,
+  isMelodicCompositorInstrument,
+} from "@/lib/compositor-melodic-pitch";
 
 function GuitarTimbreBadge({
   articulation,
@@ -34,6 +37,17 @@ function GuitarTimbreBadge({
         aria-hidden="true"
       >
         ↓↑
+      </span>
+    );
+  }
+
+  if (articulation === "dedo") {
+    return (
+      <span
+        className="compositor-guitar-timbre-badge compositor-guitar-timbre-badge--dedo"
+        aria-hidden="true"
+      >
+        f
       </span>
     );
   }
@@ -81,7 +95,9 @@ export function CompositorTimelineBlock({
   onUpdateTiming,
   melodicRowDrag,
 }: CompositorTimelineBlockProps) {
-  const noteLabel = formatTargetLabel(event.note, true);
+  const noteLabel = isMelodicCompositorInstrument(instrumentId)
+    ? formatCompositorGradoLabel(event.gradoCromatico, event.octavaRelativa)
+    : "";
 
   const {
     canResize,

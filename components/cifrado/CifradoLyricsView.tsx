@@ -1,18 +1,21 @@
 "use client";
 
+import type { CompositorPiece } from "@/lib/compositor";
 import {
   computeLineCompasMarkersPx,
-  getBeatCountForCompas,
   resolveCharOffsetPx,
   type AcordePos,
   type BarraCompas,
   type CompasMarker,
   type TipoCompas,
 } from "@/lib/cifrado";
+import { getBarraBeatCount } from "@/lib/cifrado-barra-cycles";
+import { getBarraIntensidad } from "@/lib/cifrado-intensidad";
 import {
   formatAcordeNotacion,
   type NotacionAcordes,
 } from "@/lib/notacion-acordes";
+import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import {
   useCallback,
@@ -130,6 +133,7 @@ export type CifradoLyricsLineProps = {
   acordes: AcordePos[];
   barras?: BarraCompas[];
   tipoCompas?: TipoCompas;
+  intensidadPlantilla?: MetronomeBeatLevel[];
   showCompas?: boolean;
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
@@ -137,6 +141,7 @@ export type CifradoLyricsLineProps = {
   letraSheet?: boolean;
   isPlaybackActiveLine?: boolean;
   notacion?: NotacionAcordes;
+  cyclePiecesById?: ReadonlyMap<string, CompositorPiece>;
 };
 
 export function CifradoLyricsLine({
@@ -145,6 +150,7 @@ export function CifradoLyricsLine({
   acordes,
   barras = [],
   tipoCompas = "4-4",
+  intensidadPlantilla = [],
   showCompas = false,
   activeBeatAnchors = [],
   onMarkersReady,
@@ -152,12 +158,21 @@ export function CifradoLyricsLine({
   letraSheet = false,
   isPlaybackActiveLine = false,
   notacion = "es",
+  cyclePiecesById,
 }: CifradoLyricsLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
   const characters = [...text];
   const extensionStart = getCompasExtensionStart(characters.length);
-  const beatCount = getBeatCountForCompas(tipoCompas);
+  const compasConfigForLine = useMemo(
+    () => ({
+      tipoCompas,
+      intensidadPlantilla,
+      bpm: 0,
+      barras: [] as BarraCompas[],
+    }),
+    [intensidadPlantilla, tipoCompas],
+  );
   const activeBeatLeftPx =
     activeBeatAnchors.find((anchor) => anchor.lineIndex === lineIndex)?.leftPx ??
     null;
@@ -220,11 +235,14 @@ export function CifradoLyricsLine({
       showCompas && barras.length > 0
         ? computeLineCompasMarkersPx(
             barras,
-            beatCount,
+            (barra) => getBarraBeatCount(barra, compasConfigForLine, cyclePiecesById),
             (offset) => resolveCharOffsetPx(offset, charPositions),
+            (barra, beatIndex) =>
+              getBarraIntensidad(barra, compasConfigForLine)[beatIndex] ??
+              "medio",
           )
         : [],
-    [barras, beatCount, charPositions, showCompas],
+    [barras, charPositions, compasConfigForLine, cyclePiecesById, showCompas],
   );
 
   useEffect(() => {
@@ -348,6 +366,7 @@ export type CifradoLyricsBlockProps = {
   acordes: AcordePos[];
   barras?: BarraCompas[];
   tipoCompas?: TipoCompas;
+  intensidadPlantilla?: MetronomeBeatLevel[];
   showCompas?: boolean;
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
@@ -357,6 +376,7 @@ export type CifradoLyricsBlockProps = {
   letraSheet?: boolean;
   className?: string;
   notacion?: NotacionAcordes;
+  cyclePiecesById?: ReadonlyMap<string, CompositorPiece>;
 };
 
 export function CifradoLyricsBlock({
@@ -364,6 +384,7 @@ export function CifradoLyricsBlock({
   acordes,
   barras = [],
   tipoCompas = "4-4",
+  intensidadPlantilla = [],
   showCompas = false,
   activeBeatAnchors = [],
   onMarkersReady,
@@ -373,6 +394,7 @@ export function CifradoLyricsBlock({
   letraSheet = false,
   className = "",
   notacion = "es",
+  cyclePiecesById,
 }: CifradoLyricsBlockProps) {
   const lines = useMemo(() => splitLyricsLines(letra), [letra]);
 
@@ -389,6 +411,7 @@ export function CifradoLyricsBlock({
             acordes={acordes.filter((acorde) => acorde.lineIndex === lineIndex)}
             barras={barras.filter((barra) => barra.lineIndex === lineIndex)}
             tipoCompas={tipoCompas}
+            intensidadPlantilla={intensidadPlantilla}
             showCompas={showCompas}
             activeBeatAnchors={activeBeatAnchors}
             onMarkersReady={onMarkersReady}
@@ -399,6 +422,7 @@ export function CifradoLyricsBlock({
               activePlaybackLineIndex === lineIndex
             }
             notacion={notacion}
+            cyclePiecesById={cyclePiecesById}
           />
         </div>
       ))}

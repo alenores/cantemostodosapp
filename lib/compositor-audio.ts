@@ -11,11 +11,17 @@ import {
   type CompositorScheduledSound,
 } from "@/lib/compositor-timeline";
 import {
-  COMPOSITOR_GUITAR_ROOT,
-  COMPOSITOR_PIANO_ROOT,
   getCompositorPlaybackRate,
+  pickNearestMultiSample,
+  type CompositorResolvedSample,
   type CompositorSampleBank,
 } from "@/lib/compositor-samples";
+
+const COMPOSITOR_GUITAR_PUA_ROOT: CompositorSlotNote = { note: "E", octave: 2 };
+
+function getGuitarNotePlaybackRate(note: CompositorSlotNote): number {
+  return getCompositorPlaybackRate(note, COMPOSITOR_GUITAR_PUA_ROOT);
+}
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import { targetToFrequency } from "@/lib/voz";
 
@@ -127,6 +133,52 @@ function scheduleSample(
   source.stop(time + duration + 0.02);
 }
 
+/** Envolvente y filtro suaves para muestras de viento sostenidas. */
+function scheduleWindSample(
+  audioContext: AudioContext,
+  time: number,
+  buffer: AudioBuffer,
+  peakGain: number,
+  playbackRate: number,
+  maxDuration: number,
+): void {
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = playbackRate;
+
+  const filter = audioContext.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.Q.value = 0.7;
+  filter.frequency.value =
+    playbackRate > 1.08
+      ? 7200
+      : playbackRate < 0.92
+        ? 9800
+        : 11000;
+
+  const gainNode = audioContext.createGain();
+  const naturalDuration = buffer.duration / Math.max(playbackRate, 0.01);
+  const duration = Math.min(naturalDuration, maxDuration);
+  const attack = Math.min(0.03, duration * 0.1);
+  const release = Math.min(0.14, duration * 0.18);
+  const sustainEnd = Math.max(time + attack, time + duration - release);
+
+  gainNode.gain.setValueAtTime(0.0001, time);
+  gainNode.gain.exponentialRampToValueAtTime(
+    Math.max(peakGain, 0.0002),
+    time + attack,
+  );
+  gainNode.gain.setValueAtTime(peakGain, sustainEnd);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+
+  source.start(time);
+  source.stop(time + duration + 0.03);
+}
+
 function schedulePitchedNoteSynth(
   audioContext: AudioContext,
   time: number,
@@ -151,12 +203,10 @@ function schedulePitchedNoteSynth(
   );
 }
 
-function schedulePitchedSample(
+function scheduleResolvedSample(
   audioContext: AudioContext,
   time: number,
-  buffer: AudioBuffer,
-  note: CompositorSlotNote,
-  rootNote: CompositorSlotNote,
+  resolved: CompositorResolvedSample,
   level: MetronomeBeatLevel,
   gainScale: number,
   maxDuration?: number,
@@ -170,11 +220,40 @@ function schedulePitchedSample(
   scheduleSample(
     audioContext,
     time,
-    buffer,
+    resolved.buffer,
     gain * gainScale,
-    getCompositorPlaybackRate(note, rootNote),
+    resolved.playbackRate,
     maxDuration,
   );
+}
+
+function scheduleMelodicFromMultiSample(
+  audioContext: AudioContext,
+  time: number,
+  note: CompositorSlotNote,
+  level: MetronomeBeatLevel,
+  durationSeconds: number,
+  samples: CompositorSampleBank | null,
+  sampleSet: CompositorSampleBank["piano"],
+  gainScale: number,
+  synthWave: OscillatorType,
+): void {
+  const duration = clampMelodicDuration(durationSeconds);
+  const resolved = pickNearestMultiSample(note, sampleSet);
+
+  if (resolved) {
+    scheduleResolvedSample(
+      audioContext,
+      time,
+      resolved,
+      level,
+      gainScale,
+      duration,
+    );
+    return;
+  }
+
+  schedulePitchedNoteSynth(audioContext, time, note, level, synthWave, duration);
 }
 
 function schedulePianoNote(
@@ -185,23 +264,49 @@ function schedulePianoNote(
   durationSeconds: number,
   samples: CompositorSampleBank | null,
 ): void {
-  const duration = clampMelodicDuration(durationSeconds);
+  scheduleMelodicFromMultiSample(
+    audioContext,
+    time,
+    note,
+    level,
+    durationSeconds,
+    samples,
+    samples?.piano ?? null,
+    0.72,
+    "sine",
+  );
+}
 
-  if (samples) {
-    schedulePitchedSample(
+function scheduleVientoNote(
+  audioContext: AudioContext,
+  time: number,
+  note: CompositorSlotNote,
+  level: MetronomeBeatLevel,
+  durationSeconds: number,
+  samples: CompositorSampleBank | null,
+): void {
+  const gain = levelToGain(level);
+
+  if (gain === null) {
+    return;
+  }
+
+  const duration = clampMelodicDuration(durationSeconds);
+  const resolved = pickNearestMultiSample(note, samples?.viento ?? null);
+
+  if (resolved) {
+    scheduleWindSample(
       audioContext,
       time,
-      samples.piano,
-      note,
-      COMPOSITOR_PIANO_ROOT,
-      level,
-      0.72,
+      resolved.buffer,
+      gain * 0.88,
+      resolved.playbackRate,
       duration,
     );
     return;
   }
 
-  schedulePitchedNoteSynth(audioContext, time, note, level, "sine", duration);
+  schedulePitchedNoteSynth(audioContext, time, note, level, "triangle", duration);
 }
 
 function scheduleGuitarNote(
@@ -224,30 +329,15 @@ function scheduleGuitarNote(
   }
 
   const duration = clampMelodicDuration(durationSeconds);
+  const guitarBuffer = samples?.guitar?.[articulation] ?? null;
 
-  if (samples) {
-    if (articulation === "rasguido") {
-      schedulePitchedSample(
-        audioContext,
-        time,
-        samples.guitarStrum,
-        note,
-        COMPOSITOR_GUITAR_ROOT,
-        level,
-        0.58,
-        duration,
-      );
-      return;
-    }
-
-    schedulePitchedSample(
+  if (guitarBuffer) {
+    scheduleSample(
       audioContext,
       time,
-      samples.guitarNote,
-      note,
-      COMPOSITOR_GUITAR_ROOT,
-      level,
-      0.62,
+      guitarBuffer,
+      gain * (articulation === "rasguido" ? 0.58 : articulation === "dedo" ? 0.54 : 0.62),
+      articulation === "rasguido" || articulation === "dedo" ? 1 : getGuitarNotePlaybackRate(note),
       duration,
     );
     return;
@@ -321,6 +411,16 @@ function scheduleDrumHitSynth(
     case "hihat":
       scheduleNoiseBurst(audioContext, time, 0.04, gain * 0.35, "highpass", 6000);
       break;
+    case "hihatOpen":
+      scheduleNoiseBurst(audioContext, time, 0.14, gain * 0.42, "highpass", 5200);
+      break;
+    case "crash":
+      scheduleNoiseBurst(audioContext, time, 0.55, gain * 0.48, "highpass", 4200);
+      scheduleTone(audioContext, time, 280, gain * 0.12, 0.35, "sine");
+      break;
+    case "ride":
+      scheduleNoiseBurst(audioContext, time, 0.22, gain * 0.3, "bandpass", 5200);
+      break;
     default:
       break;
   }
@@ -348,20 +448,27 @@ function scheduleDrumHit(
     return;
   }
 
-  const buffer =
-    sound === "kick"
-      ? samples.kick
-      : sound === "snare"
-        ? samples.snare
-        : sound === "hihat"
-          ? samples.hihat
-          : null;
+  const buffer = samples?.drums?.[sound] ?? null;
 
   if (!buffer) {
+    scheduleDrumHitSynth(audioContext, time, sound, level);
     return;
   }
 
-  const gainScale = sound === "kick" ? 0.95 : sound === "snare" ? 0.78 : 0.62;
+  const gainScale =
+    sound === "kick"
+      ? 0.95
+      : sound === "snare"
+        ? 0.78
+        : sound === "hihat"
+          ? 0.62
+          : sound === "hihatOpen"
+            ? 0.68
+            : sound === "crash"
+              ? 0.72
+              : sound === "ride"
+                ? 0.58
+                : 0.62;
   scheduleSample(audioContext, time, buffer, gain * gainScale);
 }
 
@@ -399,6 +506,16 @@ export function scheduleCompositorSound(
         time,
         sound.drumSound,
         sound.level,
+        samples,
+      );
+      break;
+    case "viento":
+      scheduleVientoNote(
+        audioContext,
+        time,
+        sound.note,
+        sound.level,
+        sound.durationSeconds,
         samples,
       );
       break;

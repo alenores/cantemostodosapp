@@ -37,13 +37,13 @@ Usar siempre estos términos en UI y documentación (`lib/ritmo-terminologia.ts`
 |---------|-------------------|
 | **Tempo** | Velocidad (BPM), compartida |
 | **Ciclo** | Duración compartida de la vuelta (golpes + figura del ciclo) |
-| **Capa** | Piano, guitarra o batería (On/Off en Practicar + edición de su línea) |
+| **Capa** | Piano, guitarra, batería o viento (On/Off en Practicar + edición de su línea) |
 | **Evento** | Un sonido en una capa: cuándo empieza, cuánto dura, qué suena |
-| **Dinámica** | Silencio / suave / medio / fuerte por evento |
-| **Contenido** | Nota (piano, guitarra) |
+| **Intensidad** | Silencio / suave / medio / fuerte por golpe o evento (volumen). Constantes: `RITMO_LABEL_INTENSIDAD`, `lib/voz-intensidad.ts`. |
+| **Nota** | Altura de cada golpe o evento (piano, guitarra, viento) |
+| **Sonido** | Cantar o callar en cada golpe (modo Ritmo del Entrenador Vocal) |
 | **Timbre** | Púa/rasguido o elemento de batería |
 | **Sustento** | Duración del evento en el ciclo (pasos del bloque) |
-
 ### Roadmap Herramientas (decisiones de producto)
 
 Documentación de dirección acordada. **No implementar** lo marcado como visión futura hasta nueva decisión explícita.
@@ -54,30 +54,138 @@ Documentación de dirección acordada. **No implementar** lo marcado como visió
 - Sin selector de instrumento ni samples: el timbre del click no aporta al objetivo.
 - Módulo estable; no sumar complejidad salvo bugs o mejoras menores de UX.
 
-#### Entrenador Vocal — escalera de 6 modos (implementado)
+#### Entrenador Vocal — escalera de modos (implementado)
 
-Carrusel horizontal con seis slides:
+Carrusel horizontal con ocho slides:
 
 | Modo | Rol |
 |------|-----|
 | Encajar | Pinchazo corto en una nota |
 | Sostener | Una nota, mantenerla con cronómetro |
+| Octavas | Misma nota en distintas octavas |
 | Melodía | Varias notas por ciclo, tiempo uniforme; sin cronómetro de meta |
 | Ritmo | Patrón de tiempos; sin evaluar tono |
+| Ritmo-Intensidad | Patrón rítmico + intensidad por golpe; evaluar volumen de la voz |
 | Ritmo-Nota | Patrón rítmico + una nota fija + evaluar tono |
-| Combo | Patrón rítmico + nota distinta en cada tiempo + evaluar tono |
+| Combo | Patrón rítmico + nota distinta en cada tiempo + evaluar tono e intensidad |
 
 Agrupación pedagógica:
 
-- **Tono**: Encajar → Sostener → Melodía
-- **Ritmo + voz**: Ritmo → Ritmo-Nota → Combo
+- **Tono**: Encajar → Sostener → Octavas → Melodía
+- **Ritmo + voz**: Ritmo → Ritmo-Intensidad → Ritmo-Nota → Combo
+
+#### Afinador y Entrenador Vocal — detección de pitch (MOMENTO APROBADO, jul 2026)
+
+**Estado estable acordado.** Cualquier cambio en mic/deteción/gráficos debe ser **punto por punto**, **un solo cambio**, probar en dispositivo real, y **esperar OK del usuario** antes del siguiente. No expandir alcance ni tocar varios modos a la vez.
+
+##### Metodología de trabajo (obligatoria)
+
+1. **Aislar** — ¿falla el mic, el gráfico, o la lógica de un modo concreto?
+2. **Un cambio mínimo** — un archivo / una responsabilidad por turno, salvo OK explícito del usuario.
+3. **Probar** — el usuario valida en la app antes de seguir.
+4. **No asumir** — no “arreglar de más” (detección + gráfico + otros modos) por un síntoma visual.
+
+##### Dos perfiles de mic (no mezclar)
+
+| Perfil | Hook / entrada | Rol |
+|--------|----------------|-----|
+| **Afinador** | `useAfinador({ profile: "tuner" })` | Nota cromática estable; modo Prueba en UI. |
+| **Entrenador vocal** | `useAfinador({ profile: "vocal" })` | Pitch para modos de voz; `detectVocalPitch` en graves. |
+
+Archivos clave: `lib/afinador.ts`, `hooks/useAfinador.ts`, `hooks/useVoz.ts`, `lib/voz.ts`, `lib/voz-intensidad.ts`, `components/ui/entrenador-vocal/VozModeSlides.tsx`.
+
+##### Sostener — bolita y línea (implementación aprobada)
+
+**Principio:** la bolita y la línea comparten **un solo valor** (`holdChartCents`). La línea es la huella de la bolita. El panel **VOS** (derecha) sigue mostrando la lectura en vivo del mic; no unificar con el gráfico salvo nueva decisión.
+
+**Algoritmo:** promedio móvil de cents respecto al objetivo + tres reglas:
+
+1. **Cerca del promedio** (≤ `VOZ_HOLD_OUTLIER_CENTS`) → la lectura entra al promedio (glissando fino).
+2. **Lejana pero breve** → va a buffer **candidato**; el gráfico **mantiene** el promedio actual (ignora picos espurios).
+3. **Lejana y sostenida** (candidato estable ≥ `VOZ_HOLD_SUSTAINED_MIN_SAMPLES` y ≥ `VOZ_HOLD_SUSTAINED_PITCH_MS`) → **nuevo promedio** (cambio real de nota).
+
+Implementación: `updateSostenerRollingChartCents` en `lib/voz.ts`; historial de Sostener en `holdHistorySamples` / `holdChartCents` dentro de `hooks/useVoz.ts`. Ritmo, Melodía y Combo siguen usando `historySamples` + `smoothChartCents` (sin promedio móvil de Sostener).
+
+**Parámetros ajustables** (solo tocar tras probar; todos en `lib/voz.ts`):
+
+| Constante | Valor actual | Efecto |
+|-----------|--------------|--------|
+| `VOZ_HOLD_ROLLING_WINDOW_MS` | 400 | Ventana del promedio móvil (ms) |
+| `VOZ_HOLD_SAMPLE_INTERVAL_MS` | 100 | Intervalo entre muestras (= historial global) |
+| `VOZ_HOLD_OUTLIER_CENTS` | 65 | A partir de cuánto una lectura es “lejana” |
+| `VOZ_HOLD_SUSTAINED_PITCH_MS` | 280 | Tiempo sostenido para aceptar cambio de nota |
+| `VOZ_HOLD_SUSTAINED_MIN_SAMPLES` | 3 | Mínimo de lecturas sostenidas |
+| `VOZ_HOLD_CANDIDATE_DRIFT_CENTS` | 42 | Las lecturas candidatas deben ser parecidas entre sí |
+
+**Prohibido sin prueba y OK explícito:**
+
+- Volver a separar bolita (live) y línea (suavizada) en Sostener.
+- Reintroducir “todo o nada” (cortar línea / ocultar bolita cuando hay inestabilidad).
+- Cambiar `detectVocalPitch`, umbrales globales de RMS o `useAfinador` vocal al arreglar solo el gráfico de Sostener.
+- Aplicar la lógica de Sostener a Ritmo/Melodía/Octavas/Encajar sin decisión de producto.
+
+**Otros modos vocales (sin cambiar salvo pedido):**
+
+- **Encajar** — `hasAudiblePitchVolume`; bolita oculta sin voz audible.
+- **Octavas** — gráfico propio en `VozOctavasPractice`; no usa `holdHistorySamples`.
+- **Ritmo / Melodía / Combo** — `historySamples` + `smoothChartCents` (EMA α = `VOZ_HISTORY_CENTS_EMA_ALPHA`).
 
 #### Compositor — v2 (implementado)
 
 - **Nombre oficial**: Compositor.
 - **Rol**: armar ritmos y melodías propias del usuario (crear / experimentar), separado del Entrenador Vocal (practicar / evaluar).
-- **v2 (implementado)**: ciclo compartido + **línea de tiempo por capa** (eventos con posición, sustento, dinámica, contenido y timbre); superposición entre capas; motor de audio por tiempo absoluto; guardado `compositor-piece-v2` (migra desde v1).
-- **Pendiente**: biblioteca de varias piezas guardadas, integración con Entrenador Vocal, multi-sample piano (más rangos), arrastrar bloques en la línea de tiempo.
+- **v2 (implementado)**: ciclo compartido + **línea de tiempo por capa** (eventos con posición, sustento, intensidad, nota y timbre); superposición entre capas; motor de audio por tiempo absoluto; guardado `compositor-piece-v2` (migra desde v1).
+- **Audio v3 (implementado)**: multi-sample piano (Salamander C2–C6), guitarra ampliada (púa/rasguido/dedo), batería ampliada (6 timbres), capa **viento** (flauta acústica C/E/A en octavas 4–5, tonejs-instruments); carga lazy por pack (`lib/compositor-sample-manifest.ts`, `lib/compositor-samples.ts`).
+
+#### Compositor ↔ Editor de canciones — plan aprobado (jul 2026)
+
+**Principio**: el Compositor fabrica **ciclos guardados**; el **Editor de canciones** los ordena en la canción (`compas_config`); el **Cancionero** reproduce adaptado a la tonalidad del usuario.
+
+| Rol | Responsabilidad |
+|-----|-----------------|
+| **Compositor** | Un ciclo = una `CompositorPiece` guardable (plantilla reutilizable) |
+| **Editor** | Referencia ciclos por compás / sección; la canción guarda el conjunto |
+| **Playback cifrado** | Batería del ciclo reemplaza click genérico; melodías se transponen |
+
+**Fases de implementación** (orden obligatorio):
+
+1. **Fase A — Biblioteca de ciclos (batería)**  
+   Guardar/listar/renombrar/eliminar ciclos (`CompositorCycle` = metadata + `CompositorPiece`). Persistencia: local (invitado) + Supabase (logueado). UI: “Guardar ciclo”, “Mis ciclos”. Sin melodías relativas aún.
+
+2. **Fase B — Editor elige ciclo + playback batería**  
+   En `BarraCompas` (o `CompasConfig`): `cycleId` opcional. Selector en editor al editar compás. Playback (`cifrado-preview-play`, `useCifradoPlayback`, preview editor): si hay ciclo con batería → motor Compositor (`scheduleDrumHit`); si no → click actual. Mapear golpes del compás ↔ pasos del ciclo.
+
+3. **Fase C — Melodías relativas (piano, guitarra, viento)**  
+   Extender modelo: `tonalidadComposicion` en el ciclo; eventos melódicos con **grado cromático 1–12** desde tónica (`lib/cifrado-escala.ts`) + octava relativa, no `Do`/`Sol` absoluto. UI Compositor: modo batería vs modo melodías; bloques muestran numeración como acordes. Resolver grado → nota al reproducir.
+
+4. **Fase D — Playback melódico en cancionero**  
+   Al reproducir canción: `tonalidadPlayback = tonalidadUsuario`; transponer eventos melódicos como acordes (`semitonos = playback - tonalidadComposicion`). Capas opcionales On/Off en visor.
+
+5. **Fase E (futuro)** — Entrenador Vocal + ciclos; import MIDI → ciclos; arrastrar bloques en timeline.
+
+**Tipos canónicos (dirección)**:
+
+```ts
+// Ciclo guardado (Fase A)
+type CompositorCycle = {
+  id: string;
+  nombre: string;
+  piece: CompositorPiece; // v2 hoy; v3 con grados en Fase C
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Referencia en canción (Fase B)
+// BarraCompas.cycleId?: string | null;
+
+// Evento melódico v3 (Fase C) — alternativa a note absoluta
+// gradoCromatico: 1..12; octavaRelativa: number;
+// tonalidadComposicion: NotaIndex en CompositorPiece o CompositorCycle
+```
+
+**Archivos clave por fase**: `lib/compositor.ts`, `lib/compositor-cycles.ts` (nuevo), `lib/cifrado.ts` (`BarraCompas`), `lib/cifrado-preview-play.ts`, `hooks/useCifradoPlayback.ts`, `components/ui/CifradoEditor.tsx`, Supabase tabla `compositor_ciclos` o JSON en perfil.
+
+- **Pendiente (otros)**: integración Entrenador Vocal, arrastrar bloques en línea de tiempo, import MIDI.
 
 Tres herramientas, tres preguntas:
 

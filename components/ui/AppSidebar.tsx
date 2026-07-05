@@ -149,14 +149,9 @@ export default function AppSidebar() {
           className="size-9 shrink-0 rounded-lg"
           aria-hidden="true"
         />
-        <div className="min-w-0">
-          <p className="truncate text-base font-extrabold tracking-tight text-bg-darker">
-            CantemosTodos
-          </p>
-          <p className="truncate text-[11px] font-medium text-bg-darker/70">
-            Letras en tiempo real
-          </p>
-        </div>
+        <p className="min-w-0 truncate text-base font-extrabold tracking-tight text-bg-darker">
+          CantemosTodos
+        </p>
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">

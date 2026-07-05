@@ -7,6 +7,7 @@ import {
   type MetronomeConceptId,
 } from "@/lib/metronomo-help-content";
 import { HelpCircle, Timer, Volume2, X } from "lucide-react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
@@ -15,7 +16,7 @@ const HELP_ICON_CLASS = "shrink-0 text-[var(--voz-config)]";
 const CONCEPT_SHIMMER_DELAY_MS: Record<MetronomeConceptId, number> = {
   golpes: 0,
   figura: 220,
-  dinamica: 440,
+  intensidad: 440,
   tempo: 660,
 };
 function GolpesConceptIcon() {
@@ -53,7 +54,7 @@ function FiguraConceptIcon() {
   );
 }
 
-function DinamicaConceptIcon() {
+function IntensidadConceptIcon() {
   return (
     <Volume2
       className={`size-4 ${HELP_ICON_CLASS}`}
@@ -76,7 +77,7 @@ function TempoConceptIcon() {
 const CONCEPT_ICONS: Record<MetronomeConceptId, () => ReactNode> = {
   golpes: GolpesConceptIcon,
   figura: FiguraConceptIcon,
-  dinamica: DinamicaConceptIcon,
+  intensidad: IntensidadConceptIcon,
   tempo: TempoConceptIcon,
 };
 
@@ -89,13 +90,12 @@ export function MetronomoConfigHelpModal({
   open,
   onClose,
 }: MetronomoConfigHelpModalProps) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -106,7 +106,6 @@ export function MetronomoConfigHelpModal({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);

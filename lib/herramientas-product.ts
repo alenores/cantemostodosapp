@@ -6,8 +6,8 @@ export const COMPOSITOR_COMING_SOON_LEAD =
   "Acá vas a poder crear y guardar tus ideas musicales, separado del entrenador vocal.";
 
 export const COMPOSITOR_VISION_ITEMS = [
-  "Definir ciclo, figura y dinámica de cada golpe",
-  "Elegir notas cuando el instrumento lo permita (contenido)",
+  "Definir ciclo, figura e intensidad de cada golpe",
+  "Elegir la nota en piano, guitarra y viento",
   "Elegir timbre en batería y guitarra (púa, rasguido, bombo, caja…)",
   "Combinar varias capas (instrumentos) en la misma pieza",
 ] as const;

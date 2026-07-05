@@ -36,7 +36,7 @@
     <p id="status">Cargando CantemosTodos...</p>
     <script>
       (function () {
-        var FALLBACK_PATHS = ["/salas", "/pwa-boot.html", "/~offline"];
+        var FALLBACK_PATHS = ["/", "/pwa-boot.html", "/~offline", "/salas"];
 
         function setStatus(text, muted) {
           var node = document.getElementById("status");
@@ -114,7 +114,7 @@
           await registerWorkerIfOnline();
 
           if (navigator.onLine) {
-            window.location.replace("/salas");
+            window.location.replace("/");
             return;
           }
 

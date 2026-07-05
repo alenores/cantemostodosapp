@@ -15,17 +15,17 @@ type TabConfig = {
 
 const TABS: TabConfig[] = [
   {
-    href: "/",
-    label: "Home",
-    icon: Home,
-    isActive: (pathname) => pathname === "/",
-  },
-  {
     href: "/individual",
     label: "Individual",
     icon: Music2,
     isActive: (pathname) =>
       pathname === "/individual" || pathname.startsWith("/individual/"),
+  },
+  {
+    href: "/",
+    label: "Inicio",
+    icon: Home,
+    isActive: (pathname) => pathname === "/",
   },
   {
     href: "/salas",
@@ -89,7 +89,7 @@ export default function AppFooter() {
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-bg-dark"
+      className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-bg-dark lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <nav className="flex h-[56px] w-full flex-row items-center">

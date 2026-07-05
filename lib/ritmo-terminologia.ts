@@ -86,6 +86,11 @@ export const COMPOSITOR_LABEL_ESCUCHAR_CAPA = "Escuchar capa";
 
 export const COMPOSITOR_LABEL_RESET_ZONA = "Dejar todo en cero";
 
+export const COMPOSITOR_LABEL_PLANTILLAS = "Plantillas";
+
+export const COMPOSITOR_CONFIRM_LOAD_PRESET_MESSAGE = (label: string) =>
+  `¿Cargar la plantilla "${label}"? Se reemplazará la composición actual.`;
+
 export const COMPOSITOR_CONFIRM_RESET_MESSAGE =
   "Se va a restablecer todo el compositor: ciclo compartido, tempo y bloques de piano, guitarra y batería. Las tres capas quedan activas con el contenido inicial. ¿Continuar?";
 

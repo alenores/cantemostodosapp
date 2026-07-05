@@ -1,6 +1,7 @@
 import SplashScreen from "@/components/SplashScreen";
 import AuthSessionListener from "@/components/auth/AuthSessionListener";
 import AppFooter from "@/components/ui/AppFooter";
+import AppSidebar from "@/components/ui/AppSidebar";
 import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
 import OfflinePrefetchRunner from "@/components/offline/OfflinePrefetchRunner";
 import OfflineWarmRunner from "@/components/offline/OfflineWarmRunner";
@@ -114,7 +115,10 @@ export default function RootLayout({
                 <OfflineWarmRunner />
                 <AuthSessionListener />
                 <SplashScreen />
-                {children}
+                <AppSidebar />
+                <div className="app-shell-main flex min-h-dvh min-w-0 flex-1 flex-col">
+                  {children}
+                </div>
                 <AppFooter />
               </NavigationProgressProvider>
             </Suspense>

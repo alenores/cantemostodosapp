@@ -8,8 +8,10 @@ import CancioneroListSkeleton, {
 } from "@/components/cancionero/CancioneroListSkeleton";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
+import CifradoViewerModal from "@/components/cifrado/CifradoViewerModal";
 import AddButton from "@/components/ui/AddButton";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
+import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
@@ -17,17 +19,30 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
   deleteCancionCancionero,
+  fetchCancionCifradoDetalle,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
 import {
   agregarAMisCanciones,
   getMisCanciones,
 } from "@/lib/mis-canciones";
-import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
-import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
+import {
+  CANCIONERO_SYNC_EVENT,
+  dispatchCancioneroSyncFinished,
+} from "@/lib/offline/cancionero-events";
+import {
+  getCancioneroLocalAsCancionero,
+  patchCancioneroLocalRecord,
+} from "@/lib/offline/cancionero-store";
 import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
+import { buildCifradoEditorSession } from "@/lib/cifrado-editor-session";
+import type {
+  CifradoEditorSession,
+  CifradoSaveResult,
+} from "@/lib/cifrado-editor-session";
 import { createClient } from "@/lib/supabase/client";
-import type { CancionCancionero } from "@/types";
+import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
+import type { CancioneroFormData } from "@/lib/cancionero";
 import { Music, Search, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -59,6 +74,15 @@ export default function CancioneroPageClient({
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
   );
+  const [cifradoDetalle, setCifradoDetalle] =
+    useState<CancionCifradoDetalle | null>(null);
+  const [cifradoLoading, setCifradoLoading] = useState(false);
+  const [cifradoViewerOpen, setCifradoViewerOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorSession, setEditorSession] = useState<CifradoEditorSession | null>(
+    null,
+  );
+  const [editorLoading, setEditorLoading] = useState(false);
   const [cancionAEliminar, setCancionAEliminar] = useState<CancionCancionero | null>(
     null,
   );
@@ -168,8 +192,9 @@ export default function CancioneroPageClient({
       return;
     }
 
-    await syncCancioneroLocal(supabase);
+    await syncCancioneroLocal(supabase, { force: true });
     await loadLocalCanciones();
+    dispatchCancioneroSyncFinished();
   }, [loadLocalCanciones, online, supabase]);
 
   const sumarAMisCanciones = useCallback(
@@ -235,14 +260,154 @@ export default function CancioneroPageClient({
     setFormOpen(true);
   }
 
+  async function handleAdicionAvanzada(form: CancioneroFormData) {
+    if (!online || !usuarioLogueado || editorLoading) {
+      return;
+    }
+
+    setEditorLoading(true);
+    setActionError(null);
+
+    try {
+      const esAvanzada = Boolean(cancionEditando?.tiene_cifrado_avanzado);
+      let detalle: CancionCifradoDetalle | null = null;
+
+      if (esAvanzada && cancionEditando) {
+        detalle = await fetchCancionCifradoDetalle(supabase, cancionEditando.id);
+
+        if (!detalle) {
+          throw new Error("No se pudo cargar el cifrado guardado de esta canción.");
+        }
+      }
+
+      const session = buildCifradoEditorSession({
+        cancionId: cancionEditando?.id,
+        nombre: form.nombre,
+        artista: form.artista,
+        letra: form.letra,
+        esAvanzada,
+        detalle,
+      });
+
+      setFormOpen(false);
+      setCancionEditando(null);
+      setEditorSession(session);
+      setEditorOpen(true);
+    } catch (adicionError) {
+      setActionError(
+        adicionError instanceof Error
+          ? adicionError.message
+          : "No se pudo abrir el editor avanzado",
+      );
+    } finally {
+      setEditorLoading(false);
+    }
+  }
+
+  function handleEditorClose() {
+    setEditorOpen(false);
+    setEditorSession(null);
+  }
+
+  async function refreshCifradoDetalle(cancionId: number) {
+    try {
+      const detalle = await fetchCancionCifradoDetalle(supabase, cancionId);
+      setCifradoDetalle(detalle);
+    } catch {
+      setCifradoDetalle(null);
+    }
+  }
+
+  async function handleEditorSaved(result?: CifradoSaveResult) {
+    if (result) {
+      await patchCancioneroLocalRecord(result.id, {
+        nombre: result.nombre,
+        artista: result.artista,
+        letra: result.letra,
+        tiene_cifrado_avanzado: result.tiene_cifrado_avanzado,
+      });
+
+      setCanciones((prev) =>
+        prev.map((cancion) =>
+          cancion.id === result.id
+            ? {
+                ...cancion,
+                nombre: result.nombre,
+                artista: result.artista,
+                letra: result.letra,
+                tiene_cifrado_avanzado: result.tiene_cifrado_avanzado,
+              }
+            : cancion,
+        ),
+      );
+
+      if (cancionViendo?.id === result.id) {
+        setCancionViendo((prev) =>
+          prev
+            ? {
+                ...prev,
+                nombre: result.nombre,
+                artista: result.artista,
+                letra: result.letra,
+                tiene_cifrado_avanzado: result.tiene_cifrado_avanzado,
+              }
+            : prev,
+        );
+        await refreshCifradoDetalle(result.id);
+      } else if (cifradoDetalle?.id === result.id) {
+        await refreshCifradoDetalle(result.id);
+      }
+    }
+
+    await reloadCanciones();
+    handleEditorClose();
+  }
+
   function handleVer(cancion: CancionCancionero) {
     if (modoSeleccionMisCanciones) {
       void sumarAMisCanciones(cancion);
       return;
     }
 
+    setCifradoDetalle(null);
     setCancionViendo(cancion);
+
+    if (cancion.tiene_cifrado_avanzado && online) {
+      void refreshCifradoDetalle(cancion.id);
+    }
   }
+
+  useEffect(() => {
+    if (!cancionViendo?.tiene_cifrado_avanzado || !online) {
+      setCifradoDetalle(null);
+      setCifradoLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCifradoLoading(true);
+
+    void fetchCancionCifradoDetalle(supabase, cancionViendo.id)
+      .then((detalle) => {
+        if (!cancelled) {
+          setCifradoDetalle(detalle);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCifradoDetalle(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCifradoLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cancionViendo?.id, cancionViendo?.tiene_cifrado_avanzado, online, supabase]);
 
   const cancionViendoIndex = useMemo(() => {
     if (!cancionViendo) {
@@ -316,7 +481,11 @@ export default function CancioneroPageClient({
     navigateWithProgress("/cancionero/mis-canciones");
   }
 
-  useHardwareBack(cancionViendo !== null && !formOpen, () => {
+  useHardwareBack(cifradoViewerOpen, () => {
+    setCifradoViewerOpen(false);
+  });
+
+  useHardwareBack(cancionViendo !== null && !formOpen && !cifradoViewerOpen, () => {
     setCancionViendo(null);
   });
 
@@ -335,7 +504,7 @@ export default function CancioneroPageClient({
       <AppReadyMarker />
       <CancioneroSubpageShell
         title="Cancionero"
-        modalOpen={cancionViendo !== null || formOpen}
+        modalOpen={cancionViendo !== null || formOpen || cifradoViewerOpen}
         headerAction={
           usuarioLogueado ? (
             <AddButton
@@ -421,7 +590,7 @@ export default function CancioneroPageClient({
                 No hay canciones que coincidan con tu búsqueda.
               </p>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="app-list-grid">
                 {cancionesFiltradas.map((cancion, index) => (
                   <div
                     key={cancion.id}
@@ -471,11 +640,22 @@ export default function CancioneroPageClient({
         onSaved={() => void reloadCanciones()}
         cancion={cancionEditando}
         cancionesExistentes={canciones}
+        onAdicionAvanzada={(form) => void handleAdicionAvanzada(form)}
+      />
+
+      <CifradoEditor
+        open={editorOpen}
+        isLoggedIn={usuarioLogueado}
+        session={editorSession}
+        onClose={handleEditorClose}
+        onSaved={(result) => void handleEditorSaved(result)}
       />
 
       <CancioneroVerModal
-        open={cancionViendo !== null}
+        open={cancionViendo !== null && !cifradoViewerOpen}
         cancion={cancionViendo}
+        cifradoDetalle={cifradoDetalle}
+        cifradoLoading={cifradoLoading}
         cancionAnterior={
           cancionViendoIndex > 0
             ? cancionesFiltradas[cancionViendoIndex - 1]!
@@ -487,14 +667,25 @@ export default function CancioneroPageClient({
             ? cancionesFiltradas[cancionViendoIndex + 1]!
             : null
         }
-        onClose={() => setCancionViendo(null)}
+        onClose={() => {
+          setCancionViendo(null);
+          setCifradoDetalle(null);
+        }}
         onAnterior={() => handleNavigateCancion(-1)}
         onSiguiente={() => handleNavigateCancion(1)}
+        onExpand={() => setCifradoViewerOpen(true)}
         tieneAnterior={cancionViendoIndex > 0}
         tieneSiguiente={
           cancionViendoIndex >= 0 &&
           cancionViendoIndex < cancionesFiltradas.length - 1
         }
+      />
+
+      <CifradoViewerModal
+        open={cifradoViewerOpen}
+        cancion={cancionViendo}
+        cifradoDetalle={cifradoDetalle}
+        onClose={() => setCifradoViewerOpen(false)}
       />
 
       <ConfirmDialog

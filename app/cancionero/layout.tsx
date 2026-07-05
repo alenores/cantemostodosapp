@@ -19,7 +19,9 @@ export default async function CancioneroLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
-      <AppTopHeader usuario={usuario} />
+      <div className="lg:hidden">
+        <AppTopHeader usuario={usuario} />
+      </div>
       {children}
     </div>
   );

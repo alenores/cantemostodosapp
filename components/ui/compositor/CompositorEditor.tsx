@@ -19,18 +19,22 @@ import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { COMPOSITOR_DUMMY_BEAT_PATTERN } from "@/hooks/useCompositor";
 import {
+  COMPOSITOR_PRESETS,
   formatCompositorCycleSummary,
   getCompositorTrack,
   getInstrumentLabel,
   type CompositorInstrumentId,
   type CompositorPiece,
+  type CompositorPresetId,
   type CompositorTrackEvent,
 } from "@/lib/compositor";
 import { getCompositorCycleDurationSeconds } from "@/lib/compositor-timeline";
 import {
+  COMPOSITOR_CONFIRM_LOAD_PRESET_MESSAGE,
   COMPOSITOR_CONFIRM_RESET_MESSAGE,
   COMPOSITOR_LABEL_CICLO_COMPARTIDO,
   COMPOSITOR_LABEL_CAPAS_INSTRUMENTOS,
+  COMPOSITOR_LABEL_PLANTILLAS,
   COMPOSITOR_LABEL_RESET_ZONA,
 } from "@/lib/ritmo-terminologia";
 import type {
@@ -43,6 +47,8 @@ import { useState } from "react";
 type CompositorEditorProps = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
+  activePresetId: CompositorPresetId | null;
+  isPieceModifiedFromBaseline: boolean;
   selectedEventId: string | null;
   cycleGolpes: number;
   cycleBeatDurations: MetronomeBeatDurationPattern;
@@ -71,11 +77,14 @@ type CompositorEditorProps = {
   onPreviewActiveTrack: () => void;
   onStop: () => void;
   onReset: () => void;
+  onApplyPreset: (presetId: CompositorPresetId) => void;
 };
 
 export function CompositorEditor({
   piece,
   activeTrackId,
+  activePresetId,
+  isPieceModifiedFromBaseline,
   selectedEventId,
   cycleGolpes,
   cycleBeatDurations,
@@ -98,6 +107,7 @@ export function CompositorEditor({
   onPreviewActiveTrack,
   onStop,
   onReset,
+  onApplyPreset,
 }: CompositorEditorProps) {
   const activeTrack = getCompositorTrack(piece, activeTrackId);
   const selectedEvent =
@@ -113,6 +123,34 @@ export function CompositorEditor({
 
   const configLocked = isPlaying || isPreviewingTrack;
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [presetConfirmOpen, setPresetConfirmOpen] = useState(false);
+  const [pendingPresetId, setPendingPresetId] = useState<CompositorPresetId | null>(
+    null,
+  );
+  const [hoveredPresetId, setHoveredPresetId] = useState<CompositorPresetId | null>(
+    null,
+  );
+
+  const pendingPreset = pendingPresetId
+    ? COMPOSITOR_PRESETS.find((preset) => preset.id === pendingPresetId)
+    : null;
+  const hoveredPreset = hoveredPresetId
+    ? COMPOSITOR_PRESETS.find((preset) => preset.id === hoveredPresetId)
+    : null;
+
+  function handlePresetClick(presetId: CompositorPresetId) {
+    if (configLocked) {
+      return;
+    }
+
+    if (isPieceModifiedFromBaseline) {
+      setPendingPresetId(presetId);
+      setPresetConfirmOpen(true);
+      return;
+    }
+
+    onApplyPreset(presetId);
+  }
 
   return (
     <div className="space-y-3">
@@ -120,6 +158,58 @@ export function CompositorEditor({
         collapsible
         collapsedSummary={configSummary}
       >
+        <div className="mb-2">
+          <div className="flex items-center gap-2">
+            <p className="w-[4.75rem] shrink-0 text-[10px] font-bold uppercase leading-none tracking-wide text-compositor-config">
+              {COMPOSITOR_LABEL_PLANTILLAS}
+            </p>
+            <div
+              className="flex min-w-0 flex-1 gap-0.5 rounded-full border border-border bg-bg-darker p-0.5"
+              role="group"
+              aria-label={COMPOSITOR_LABEL_PLANTILLAS}
+            >
+              {COMPOSITOR_PRESETS.map((preset) => {
+                const isActive = activePresetId === preset.id;
+
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    disabled={configLocked}
+                    aria-pressed={isActive}
+                    title={preset.descripcion}
+                    onClick={() => handlePresetClick(preset.id)}
+                    onMouseEnter={() => setHoveredPresetId(preset.id)}
+                    onMouseLeave={() =>
+                      setHoveredPresetId((current) =>
+                        current === preset.id ? null : current,
+                      )
+                    }
+                    onFocus={() => setHoveredPresetId(preset.id)}
+                    onBlur={() =>
+                      setHoveredPresetId((current) =>
+                        current === preset.id ? null : current,
+                      )
+                    }
+                    className={`min-w-0 flex-1 rounded-full px-1 py-1 text-[10px] font-bold leading-none transition-colors disabled:opacity-50 ${
+                      isActive
+                        ? "bg-[#454545] text-white"
+                        : "text-text-muted hover:text-text-primary"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {hoveredPreset?.descripcion ? (
+            <p className="mt-1 truncate pl-[5.25rem] text-[10px] leading-tight text-text-muted">
+              {hoveredPreset.descripcion}
+            </p>
+          ) : null}
+        </div>
+
         <ToolRitmoCompasPanel
           beatPattern={COMPOSITOR_DUMMY_BEAT_PATTERN}
           patternLength={cycleGolpes}
@@ -233,6 +323,31 @@ export function CompositorEditor({
           />
         </div>
       </ToolPracticeSection>
+
+      <ConfirmDialog
+        open={presetConfirmOpen}
+        message={
+          pendingPreset
+            ? COMPOSITOR_CONFIRM_LOAD_PRESET_MESSAGE(pendingPreset.label)
+            : ""
+        }
+        confirmLabel="Sí, cargar"
+        cancelLabel="Cancelar"
+        deleteConfirm
+        zIndex={60}
+        onConfirm={() => {
+          if (pendingPresetId) {
+            onApplyPreset(pendingPresetId);
+          }
+
+          setPresetConfirmOpen(false);
+          setPendingPresetId(null);
+        }}
+        onCancel={() => {
+          setPresetConfirmOpen(false);
+          setPendingPresetId(null);
+        }}
+      />
 
       <ConfirmDialog
         open={resetConfirmOpen}

@@ -15,11 +15,7 @@ import { Plus, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-const AVISO_MENSAJES: Record<string, string> = {
-  "perfil-actualizado": "Perfil actualizado.",
-  "email-pendiente":
-    "Te enviamos un email para confirmar el cambio. Hasta entonces seguís entrando con el email actual.",
-};
+import { getPerfilAvisoMensaje } from "@/lib/perfil-avisos";
 
 type SalasPageClientProps = {
   salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
@@ -38,7 +34,7 @@ export default function SalasPageClient({
   const online = useOnlineStatus();
   const { enterSala, registerSalaNames } = useSalasNavigation();
   const [modalOpen, setModalOpen] = useState(false);
-  const avisoMensaje = avisoInicial ? AVISO_MENSAJES[avisoInicial] : null;
+  const avisoMensaje = getPerfilAvisoMensaje(avisoInicial);
   const salaIds = useMemo(() => salas.map((sala) => sala.id), [salas]);
   const presenceBySalaId = useSalasPresence(salaIds, online);
 
@@ -68,7 +64,8 @@ export default function SalasPageClient({
       <AppReadyMarker />
       <AppTopHeader usuario={usuario} />
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
+      <main className="app-page-main flex flex-1 flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-1 flex-col gap-3 lg:gap-4">
         {!online && (
           <p
             className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
@@ -107,7 +104,7 @@ export default function SalasPageClient({
             No se pudieron cargar las salas: {errorMessage}
           </p>
         ) : salas.length > 0 ? (
-          <div className="flex flex-col gap-3">
+          <div className="app-list-grid">
             {salas.map((sala) => (
               <SalaCard
                 key={sala.id}
@@ -123,6 +120,7 @@ export default function SalasPageClient({
             No hay salas disponibles. Creá la primera con el botón +.
           </p>
         )}
+        </div>
       </main>
 
       <BuildVersionFooter />

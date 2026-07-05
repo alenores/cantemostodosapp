@@ -1,14 +1,24 @@
 "use client";
 
+import {
+  CifradoLyricsBlock,
+} from "@/components/cifrado/CifradoLyricsView";
 import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
-import {
-  LETRA_AUTO_SCROLL_MAX_LEVEL,
-  LETRA_AUTO_SCROLL_SPEEDS,
-} from "@/hooks/useLetraAutoScroll";
 import { triggerHaptic } from "@/lib/haptic";
-import type { CancionCancionero } from "@/types";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X } from "lucide-react";
+import {
+  getLetraModoLecturaHorizontalPadding,
+  getLetraModoLecturaHorizontalPaddingRight,
+} from "@/lib/sala-layout";
+import { COMPAS_LABELS } from "@/lib/cifrado";
+import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Star,
+  X,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -39,11 +49,14 @@ type ActiveGesture = {
 type CancioneroVerModalProps = {
   open: boolean;
   cancion: CancionCancionero | null;
+  cifradoDetalle?: CancionCifradoDetalle | null;
+  cifradoLoading?: boolean;
   cancionAnterior?: CancionCancionero | null;
   cancionSiguiente?: CancionCancionero | null;
   onClose: () => void;
   onAnterior?: () => void;
   onSiguiente?: () => void;
+  onExpand?: () => void;
   tieneAnterior?: boolean;
   tieneSiguiente?: boolean;
 };
@@ -80,26 +93,20 @@ function applyRubberBand(offset: number, canGo: boolean): number {
 type CancionNavBarProps = {
   tieneAnterior: boolean;
   tieneSiguiente: boolean;
-  tieneLetra: boolean;
-  autoScrollLevel: number;
+  puedeExpandir: boolean;
   onAnterior?: () => void;
   onSiguiente?: () => void;
-  onAutoScrollAccelerate?: () => void;
-  onAutoScrollDecelerate?: () => void;
+  onExpand?: () => void;
 };
 
 function CancionNavBar({
   tieneAnterior,
   tieneSiguiente,
-  tieneLetra,
-  autoScrollLevel,
+  puedeExpandir,
   onAnterior,
   onSiguiente,
-  onAutoScrollAccelerate,
-  onAutoScrollDecelerate,
+  onExpand,
 }: CancionNavBarProps) {
-  const isScrolling = autoScrollLevel > 0;
-
   return (
     <div className={BOTTOM_NAV_CLASS}>
       <div className="flex items-center justify-between gap-2">
@@ -113,35 +120,16 @@ function CancionNavBar({
           <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
         </TapButton>
 
-        <div
-          className={`flex shrink-0 items-center gap-0.5 rounded-full p-0.5 ${
-            isScrolling ? "bg-accent/20" : "bg-bg-card"
-          }`}
+        <TapButton
+          type="button"
+          aria-label="Expandir letra"
+          disabled={!puedeExpandir}
+          onClick={onExpand}
+          className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-bg-card px-3 py-2 text-sm font-medium text-text-primary disabled:opacity-30"
         >
-          <TapButton
-            type="button"
-            aria-label="Desacelerar desplazamiento de la letra"
-            disabled={!tieneLetra || autoScrollLevel === 0}
-            onClick={onAutoScrollDecelerate}
-            className="flex size-7 items-center justify-center rounded-full disabled:opacity-30"
-          >
-            <ChevronUp className="size-3.5 text-text-primary" aria-hidden="true" />
-          </TapButton>
-          {isScrolling && (
-            <span className="min-w-[10px] text-center text-[9px] font-bold leading-none text-accent">
-              {autoScrollLevel}
-            </span>
-          )}
-          <TapButton
-            type="button"
-            aria-label="Acelerar desplazamiento de la letra"
-            disabled={!tieneLetra || autoScrollLevel >= LETRA_AUTO_SCROLL_MAX_LEVEL}
-            onClick={onAutoScrollAccelerate}
-            className="flex size-7 items-center justify-center rounded-full disabled:opacity-30"
-          >
-            <ChevronDown className="size-3.5 text-text-primary" aria-hidden="true" />
-          </TapButton>
-        </div>
+          <Maximize2 className="size-4 shrink-0 text-accent" aria-hidden="true" />
+          <span>Expandir</span>
+        </TapButton>
 
         <TapButton
           type="button"
@@ -159,28 +147,28 @@ function CancionNavBar({
 
 type CancionSlideProps = {
   cancion: CancionCancionero | null;
+  cifradoDetalle?: CancionCifradoDetalle | null;
+  cifradoLoading?: boolean;
   scrollRef?: RefObject<HTMLDivElement | null>;
   isCurrent?: boolean;
   tieneAnterior?: boolean;
   tieneSiguiente?: boolean;
-  autoScrollLevel?: number;
   onAnterior?: () => void;
   onSiguiente?: () => void;
-  onAutoScrollAccelerate?: () => void;
-  onAutoScrollDecelerate?: () => void;
+  onExpand?: () => void;
 };
 
 function CancionSlide({
   cancion,
+  cifradoDetalle = null,
+  cifradoLoading = false,
   scrollRef,
   isCurrent = false,
   tieneAnterior = false,
   tieneSiguiente = false,
-  autoScrollLevel = 0,
   onAnterior,
   onSiguiente,
-  onAutoScrollAccelerate,
-  onAutoScrollDecelerate,
+  onExpand,
 }: CancionSlideProps) {
   if (!cancion) {
     return (
@@ -193,22 +181,31 @@ function CancionSlide({
   }
 
   const tieneLetra = Boolean(cancion.letra?.trim());
+  const tieneCifradoAvanzado = Boolean(cancion.tiene_cifrado_avanzado);
+  const cifradoDisplay =
+    cifradoDetalle && cifradoDetalle.id === cancion.id
+      ? cifradoDetalle.cifrado
+      : null;
+  const compasConfig =
+    cifradoDetalle && cifradoDetalle.id === cancion.id
+      ? cifradoDetalle.compas_config
+      : null;
+  const showCompasMarcadores = Boolean(compasConfig?.barras?.length);
+  const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
+  const compasLabel = COMPAS_LABELS[tipoCompas];
   const navProps = isCurrent
     ? {
         tieneAnterior,
         tieneSiguiente,
-        tieneLetra,
-        autoScrollLevel,
+        puedeExpandir: tieneLetra && Boolean(onExpand),
         onAnterior,
         onSiguiente,
-        onAutoScrollAccelerate,
-        onAutoScrollDecelerate,
+        onExpand,
       }
     : {
         tieneAnterior: false,
         tieneSiguiente: false,
-        tieneLetra: false,
-        autoScrollLevel: 0,
+        puedeExpandir: false,
       };
 
   return (
@@ -220,9 +217,15 @@ function CancionSlide({
         <div className="min-w-0">
           <h2
             id={isCurrent ? "cancionero-ver-titulo" : undefined}
-            className="truncate text-lg font-extrabold text-accent"
+            className="flex min-w-0 items-center gap-1.5 truncate text-lg font-extrabold text-accent"
           >
-            {cancion.nombre}
+            {tieneCifradoAvanzado && (
+              <Star
+                className="size-3.5 shrink-0 fill-[var(--tuner-cerca)] text-[var(--tuner-cerca)]"
+                aria-hidden="true"
+              />
+            )}
+            <span className="truncate">{cancion.nombre}</span>
           </h2>
           {cancion.artista && (
             <p className="mt-0.5 truncate text-sm text-text-muted">
@@ -232,18 +235,55 @@ function CancionSlide({
         </div>
       </header>
 
-      <div
-        ref={isCurrent ? scrollRef : undefined}
-        data-cancionero-letra-scroll=""
-        className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain"
-      >
-        {tieneLetra ? (
-          <LetraTexto texto={cancion.letra!} edgeToEdge />
-        ) : (
-          <p className="px-4 py-8 text-center text-sm text-text-muted">
-            Esta canción no tiene letra guardada.
-          </p>
-        )}
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={isCurrent ? scrollRef : undefined}
+          data-cancionero-letra-scroll=""
+          className={`h-full touch-pan-y overflow-y-auto overscroll-y-contain ${
+            cifradoDisplay && cancion.letra ? "bg-letra-bg" : ""
+          }`}
+        >
+          {cifradoLoading && isCurrent && tieneCifradoAvanzado ? (
+            <p className="px-4 py-8 text-center text-sm text-text-muted">
+              Cargando cifrado…
+            </p>
+          ) : cifradoDisplay && cancion.letra ? (
+            <div className="min-h-full bg-letra-bg py-5">
+              {tieneCifradoAvanzado && (
+                <p
+                  className="mb-3 text-sm font-semibold text-letra-text/70"
+                  style={{
+                    paddingLeft: getLetraModoLecturaHorizontalPadding(),
+                    paddingRight: getLetraModoLecturaHorizontalPaddingRight(),
+                  }}
+                >
+                  Compás {compasLabel}
+                </p>
+              )}
+              <div
+                style={{
+                  paddingLeft: getLetraModoLecturaHorizontalPadding(),
+                  paddingRight: getLetraModoLecturaHorizontalPaddingRight(),
+                }}
+              >
+                <CifradoLyricsBlock
+                  letra={cancion.letra}
+                  acordes={cifradoDisplay.acordes}
+                  barras={compasConfig?.barras ?? []}
+                  tipoCompas={tipoCompas}
+                  showCompas={showCompasMarcadores}
+                  letraSheet
+                />
+              </div>
+            </div>
+          ) : tieneLetra ? (
+            <LetraTexto texto={cancion.letra!} edgeToEdge />
+          ) : (
+            <p className="px-4 py-8 text-center text-sm text-text-muted">
+              Esta canción no tiene letra guardada.
+            </p>
+          )}
+        </div>
       </div>
 
       <CancionNavBar {...navProps} />
@@ -254,11 +294,14 @@ function CancionSlide({
 export default function CancioneroVerModal({
   open,
   cancion,
+  cifradoDetalle = null,
+  cifradoLoading = false,
   cancionAnterior = null,
   cancionSiguiente = null,
   onClose,
   onAnterior,
   onSiguiente,
+  onExpand,
   tieneAnterior = false,
   tieneSiguiente = false,
 }: CancioneroVerModalProps) {
@@ -267,9 +310,6 @@ export default function CancioneroVerModal({
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<ActiveGesture | null>(null);
   const lockedRef = useRef(false);
-  const autoScrollLevelRef = useRef(0);
-  const autoScrollOffsetRef = useRef(0);
-  const manualScrollActiveRef = useRef(false);
 
   const tieneAnteriorRef = useRef(tieneAnterior);
   const tieneSiguienteRef = useRef(tieneSiguiente);
@@ -278,37 +318,6 @@ export default function CancioneroVerModal({
 
   const [offsetX, setOffsetX] = useState(0);
   const [animating, setAnimating] = useState(false);
-  const [autoScrollLevel, setAutoScrollLevel] = useState(0);
-
-  const handleAutoScrollAccelerate = useCallback(() => {
-    setAutoScrollLevel((level) => {
-      if (level >= LETRA_AUTO_SCROLL_MAX_LEVEL) {
-        return level;
-      }
-
-      triggerHaptic();
-      return level + 1;
-    });
-  }, []);
-
-  const handleAutoScrollDecelerate = useCallback(() => {
-    setAutoScrollLevel((level) => {
-      if (level <= 0) {
-        return 0;
-      }
-
-      triggerHaptic();
-      return level - 1;
-    });
-  }, []);
-
-  useEffect(() => {
-    autoScrollLevelRef.current = autoScrollLevel;
-
-    if (autoScrollLevel > 0) {
-      autoScrollOffsetRef.current = letraScrollRef.current?.scrollTop ?? 0;
-    }
-  }, [autoScrollLevel]);
 
   useEffect(() => {
     tieneAnteriorRef.current = tieneAnterior;
@@ -323,7 +332,6 @@ export default function CancioneroVerModal({
 
   useEffect(() => {
     if (!open) {
-      setAutoScrollLevel(0);
       return;
     }
 
@@ -401,67 +409,13 @@ export default function CancioneroVerModal({
   );
 
   useEffect(() => {
-    if (autoScrollLevel === 0) {
-      return;
-    }
-
-    let lastTime = performance.now();
-    let frameId = 0;
-
-    function tick(now: number) {
-      const scrollEl = letraScrollRef.current;
-      const level = autoScrollLevelRef.current;
-
-      if (!scrollEl || level === 0) {
-        return;
-      }
-
-      if (manualScrollActiveRef.current) {
-        lastTime = now;
-        frameId = requestAnimationFrame(tick);
-        return;
-      }
-
-      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-
-      if (maxScroll <= 1) {
-        setAutoScrollLevel(0);
-        return;
-      }
-
-      const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
-      lastTime = now;
-      const speed = LETRA_AUTO_SCROLL_SPEEDS[level - 1] ?? LETRA_AUTO_SCROLL_SPEEDS[0];
-      autoScrollOffsetRef.current += speed * deltaSeconds;
-
-      if (autoScrollOffsetRef.current >= maxScroll) {
-        autoScrollOffsetRef.current = maxScroll;
-        scrollEl.scrollTop = maxScroll;
-        frameId = requestAnimationFrame(tick);
-        return;
-      }
-
-      scrollEl.scrollTop = autoScrollOffsetRef.current;
-      frameId = requestAnimationFrame(tick);
-    }
-
-    frameId = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-    };
-  }, [autoScrollLevel]);
-
-  useEffect(() => {
     if (!cancion) {
       return;
     }
 
     letraScrollRef.current?.scrollTo(0, 0);
-    autoScrollOffsetRef.current = 0;
     setOffsetX(0);
     setAnimating(false);
-    setAutoScrollLevel(0);
     gestureRef.current = null;
   }, [cancion?.id]);
 
@@ -481,15 +435,6 @@ export default function CancioneroVerModal({
 
     let letraGesture: LetraGesture | null = null;
 
-    function syncScrollOffset() {
-      autoScrollOffsetRef.current = scrollEl!.scrollTop;
-    }
-
-    function endManualScroll() {
-      syncScrollOffset();
-      manualScrollActiveRef.current = false;
-    }
-
     function onLetraPointerDown(event: PointerEvent) {
       if (event.pointerType === "mouse" && event.button !== 0) {
         return;
@@ -497,10 +442,6 @@ export default function CancioneroVerModal({
 
       if (isInteractiveTarget(event.target)) {
         return;
-      }
-
-      if (autoScrollLevelRef.current > 0) {
-        manualScrollActiveRef.current = true;
       }
 
       letraGesture = {
@@ -556,28 +497,18 @@ export default function CancioneroVerModal({
 
         letraGesture = null;
       }
-
-      endManualScroll();
-    }
-
-    function onLetraScroll() {
-      if (manualScrollActiveRef.current || autoScrollLevelRef.current > 0) {
-        syncScrollOffset();
-      }
     }
 
     scrollEl.addEventListener("pointerdown", onLetraPointerDown);
     scrollEl.addEventListener("pointermove", onLetraPointerMove);
     scrollEl.addEventListener("pointerup", onLetraPointerUp);
     scrollEl.addEventListener("pointercancel", onLetraPointerUp);
-    scrollEl.addEventListener("scroll", onLetraScroll, { passive: true });
 
     return () => {
       scrollEl.removeEventListener("pointerdown", onLetraPointerDown);
       scrollEl.removeEventListener("pointermove", onLetraPointerMove);
       scrollEl.removeEventListener("pointerup", onLetraPointerUp);
       scrollEl.removeEventListener("pointercancel", onLetraPointerUp);
-      scrollEl.removeEventListener("scroll", onLetraScroll);
     };
   }, [open, handleRelease, cancion?.id]);
 
@@ -735,7 +666,7 @@ export default function CancioneroVerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancionero-ver-titulo"
-        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <TapButton
           aria-label="Cerrar"
@@ -762,15 +693,15 @@ export default function CancioneroVerModal({
             <CancionSlide cancion={cancionAnterior} />
             <CancionSlide
               cancion={cancion}
+              cifradoDetalle={cifradoDetalle}
+              cifradoLoading={cifradoLoading}
               scrollRef={letraScrollRef}
               isCurrent
               tieneAnterior={tieneAnterior}
               tieneSiguiente={tieneSiguiente}
-              autoScrollLevel={autoScrollLevel}
               onAnterior={() => navigateByDirection(-1)}
               onSiguiente={() => navigateByDirection(1)}
-              onAutoScrollAccelerate={handleAutoScrollAccelerate}
-              onAutoScrollDecelerate={handleAutoScrollDecelerate}
+              onExpand={onExpand}
             />
             <CancionSlide cancion={cancionSiguiente} />
           </div>

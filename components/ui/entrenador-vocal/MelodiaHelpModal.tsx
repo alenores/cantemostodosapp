@@ -1,8 +1,11 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { HelpCircle, Music2, Timer, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
 
 const NOTES = [
   { name: "Do", targetY: 112, xStart: 20, xEnd: 38 },
@@ -81,6 +84,41 @@ function MelodiaIcon() {
   );
 }
 
+function GolpesConceptIcon() {
+  return (
+    <svg
+      viewBox="0 0 28 10"
+      className="h-2.5 w-7 shrink-0 text-[var(--voz-config)]"
+      aria-hidden="true"
+    >
+      {[5, 11, 17, 23].map((cx) => (
+        <circle key={cx} cx={cx} cy="5" r="2.5" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+function FiguraConceptIcon() {
+  return (
+    <svg
+      viewBox="0 0 32 40"
+      className="h-4 w-3 shrink-0 text-[var(--voz-config)]"
+      aria-hidden="true"
+    >
+      <ellipse cx="12" cy="30" rx="9" ry="6.5" fill="currentColor" />
+      <line
+        x1="21"
+        y1="30"
+        x2="21"
+        y2="4"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function noisyY(targetY: number, elapsed: number, amp: number): number {
   return (
     targetY +
@@ -115,15 +153,6 @@ function getTargetY(x: number): number {
   }
 
   return NOTES[NOTES.length - 1]!.targetY;
-}
-
-function MelodiaConfigCard({ label, text }: { label: string; text: string }) {
-  return (
-    <div className="space-y-1 rounded-[12px] border border-border bg-bg-dark p-3">
-      <p className="text-[13px] font-bold text-text-primary">{label}</p>
-      <p className="text-[12px] leading-relaxed text-text-secondary">{text}</p>
-    </div>
-  );
 }
 
 function MelodiaHelpDemo() {
@@ -667,25 +696,47 @@ export function MelodiaHelpModal({ open, onClose }: MelodiaHelpModalProps) {
                 Qué configurar
               </h3>
               <div className="mt-2 space-y-2">
-                <MelodiaConfigCard
+                <HelpInfoCard
+                  icon={<MelodiaIcon />}
                   label="¿Para qué sirve?"
                   text="Entrenás una melodía. Cada golpe del ciclo tiene una nota asignada que tenés que cantar al ritmo marcado. La app evalúa si cantaste la nota correcta en el momento justo."
+                  shimmerDelayMs={0}
                 />
-                <MelodiaConfigCard
+                <HelpInfoCard
+                  icon={
+                    <Music2
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Notas"
                   text="Para cada golpe elegís qué nota tenés que cantar. Eso define la melodía del ciclo."
+                  shimmerDelayMs={220}
                 />
-                <MelodiaConfigCard
+                <HelpInfoCard
+                  icon={<GolpesConceptIcon />}
                   label="Golpes"
                   text="Cuántos tiempos tiene el ciclo que se repite."
+                  shimmerDelayMs={440}
                 />
-                <MelodiaConfigCard
+                <HelpInfoCard
+                  icon={<FiguraConceptIcon />}
                   label="Figura"
                   text="Cuánto dura cada golpe. En este modo la figura es igual para todos los golpes."
+                  shimmerDelayMs={660}
                 />
-                <MelodiaConfigCard
+                <HelpInfoCard
+                  icon={
+                    <Timer
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Tempo"
                   text="La velocidad del ciclo."
+                  shimmerDelayMs={880}
                 />
               </div>
             </section>

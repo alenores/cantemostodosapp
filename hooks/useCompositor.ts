@@ -2,7 +2,10 @@
 
 import {
   addCompositorTrackEvent,
+  cloneCompositorPiece,
+  compositorPiecesEqualContent,
   createDefaultCompositorPiece,
+  getCompositorPresetById,
   getCompositorTrack,
   normalizeCompositorPiece,
   readStoredCompositorPiece,
@@ -14,6 +17,7 @@ import {
   writeStoredCompositorPiece,
   type CompositorInstrumentId,
   type CompositorPiece,
+  type CompositorPresetId,
   type CompositorTrackEvent,
 } from "@/lib/compositor";
 import { getCompositorGridSteps } from "@/lib/compositor-timeline";
@@ -38,6 +42,7 @@ function clampBpm(value: number): number {
 export type UseCompositorResult = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
+  activePresetId: CompositorPresetId | null;
   selectedEventId: string | null;
   cycleGolpes: number;
   cycleBeatDurations: MetronomeBeatDurationPattern;
@@ -67,6 +72,8 @@ export type UseCompositorResult = {
   previewActiveTrack: () => Promise<void>;
   stop: () => void;
   resetPiece: () => void;
+  applyPreset: (presetId: CompositorPresetId) => void;
+  isPieceModifiedFromBaseline: boolean;
 };
 
 export function useCompositor(): UseCompositorResult {
@@ -74,13 +81,19 @@ export function useCompositor(): UseCompositorResult {
     createDefaultCompositorPiece,
   );
   const [activeTrackId, setActiveTrackIdState] =
-    useState<CompositorInstrumentId>("piano");
+    useState<CompositorInstrumentId>("bateria");
+  const [activePresetId, setActivePresetId] = useState<CompositorPresetId | null>(
+    null,
+  );
   const [selectedEventId, setSelectedEventIdState] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreviewingTrack, setIsPreviewingTrack] = useState(false);
   const [cycleProgress, setCycleProgress] = useState<number | null>(null);
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [baselinePiece, setBaselinePiece] = useState<CompositorPiece>(
+    createDefaultCompositorPiece,
+  );
 
   const pieceRef = useRef(piece);
   const isPlayingRef = useRef(false);
@@ -95,15 +108,18 @@ export function useCompositor(): UseCompositorResult {
   isPlayingRef.current = isPlaying;
 
   const activeTrack = getCompositorTrack(piece, activeTrackId);
+  const isPieceModifiedFromBaseline = !compositorPiecesEqualContent(
+    piece,
+    baselinePiece,
+  );
 
   useEffect(() => {
     const stored = readStoredCompositorPiece();
+    const initial = stored ?? createDefaultCompositorPiece();
 
-    if (stored) {
-      setPieceState(stored);
-      setSelectedEventIdState(null);
-    }
-
+    setPieceState(initial);
+    setBaselinePiece(cloneCompositorPiece(initial));
+    setSelectedEventIdState(null);
     setHydrated(true);
   }, []);
 
@@ -126,6 +142,7 @@ export function useCompositor(): UseCompositorResult {
 
   const updatePiece = useCallback(
     (updater: (current: CompositorPiece) => CompositorPiece) => {
+      setActivePresetId(null);
       setPieceState((current) => normalizeCompositorPiece(updater(current)));
     },
     [],
@@ -408,9 +425,30 @@ export function useCompositor(): UseCompositorResult {
     stop();
     const next = createDefaultCompositorPiece();
     setPieceState(next);
-    setActiveTrackIdState("piano");
+    setBaselinePiece(cloneCompositorPiece(next));
+    setActivePresetId(null);
+    setActiveTrackIdState("bateria");
     setSelectedEventIdState(null);
   }, [stop]);
+
+  const applyPreset = useCallback(
+    (presetId: CompositorPresetId) => {
+      const preset = getCompositorPresetById(presetId);
+
+      if (!preset) {
+        return;
+      }
+
+      stop();
+      const next = cloneCompositorPiece(preset.piece);
+      setPieceState(next);
+      setBaselinePiece(cloneCompositorPiece(next));
+      setActivePresetId(presetId);
+      setActiveTrackIdState("bateria");
+      setSelectedEventIdState(null);
+    },
+    [stop],
+  );
 
   useEffect(() => {
     return () => {
@@ -425,6 +463,7 @@ export function useCompositor(): UseCompositorResult {
   return {
     piece,
     activeTrackId,
+    activePresetId,
     selectedEventId,
     cycleGolpes: piece.cycleGolpes,
     cycleBeatDurations: piece.cycleBeatDurations,
@@ -447,6 +486,8 @@ export function useCompositor(): UseCompositorResult {
     previewActiveTrack,
     stop,
     resetPiece,
+    applyPreset,
+    isPieceModifiedFromBaseline,
   };
 }
 

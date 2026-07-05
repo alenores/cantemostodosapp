@@ -20,11 +20,11 @@ export default function HomeHubDestinations() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-extrabold text-text-primary">{HUB_WELCOME_TITLE}</h2>
+      <h2 className="text-xl font-extrabold text-text-primary lg:text-2xl">{HUB_WELCOME_TITLE}</h2>
 
       <HerramientasHubSectionLabel label={HUB_SECTION_DESTINOS_LABEL} />
 
-      <div className="grid grid-cols-2 gap-[10px]">
+        <div className="app-hub-grid-destinos">
         <HubModuleCard
           label={HUB_DESTINATION_SALAS_LABEL}
           icon={Users}

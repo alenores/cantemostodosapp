@@ -7,12 +7,20 @@ ALTER TABLE canciones_guardadas ADD COLUMN IF NOT EXISTS letra text null;
 -- Cola: texto manual para canciones del cancionero (ya usado en la app como letra_texto).
 ALTER TABLE cola_juntada ADD COLUMN IF NOT EXISTS letra_texto text null;
 
--- Permisos y RLS para editar canciones del cancionero.
-GRANT UPDATE ON public.canciones_guardadas TO authenticated;
+-- Permisos y RLS para leer/editar canciones del cancionero.
+GRANT SELECT, UPDATE ON public.canciones_guardadas TO authenticated;
+
+DROP POLICY IF EXISTS "auth lee guardadas" ON public.canciones_guardadas;
+CREATE POLICY "auth lee guardadas"
+  ON public.canciones_guardadas
+  FOR SELECT
+  TO authenticated
+  USING (true);
 
 DROP POLICY IF EXISTS "auth modifica guardadas" ON canciones_guardadas;
 CREATE POLICY "auth modifica guardadas"
   ON canciones_guardadas
   FOR UPDATE
   TO authenticated
-  USING (true);
+  USING (true)
+  WITH CHECK (true);

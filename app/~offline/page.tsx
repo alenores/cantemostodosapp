@@ -1,5 +1,6 @@
 import { APP_SHELL_BG } from "@/lib/splash-theme";
 import { WifiOff } from "lucide-react";
+import Link from "next/link";
 
 export default function OfflinePage() {
   return (
@@ -13,6 +14,12 @@ export default function OfflinePage() {
         Abrí la app con WiFi al menos una vez. Después, desde Home o
         Individual podés usar la copia local del celular sin internet.
       </p>
+      <Link
+        href="/"
+        className="mt-2 rounded-[10px] bg-accent px-5 py-2.5 text-sm font-semibold text-white"
+      >
+        Volver al inicio
+      </Link>
     </div>
   );
 }

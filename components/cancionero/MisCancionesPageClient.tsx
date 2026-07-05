@@ -77,6 +77,7 @@ function getIconoTipo(cancion: UsuarioCancion): ResultadoIconoTipo {
 
 type MiCancionItemProps = {
   cancion: UsuarioCancion;
+  tieneCifradoAvanzado: boolean;
   actionsOpen: boolean;
   colaDeshabilitada: boolean;
   onOpenActions: () => void;
@@ -88,6 +89,7 @@ type MiCancionItemProps = {
 
 function MiCancionItem({
   cancion,
+  tieneCifradoAvanzado,
   actionsOpen,
   colaDeshabilitada,
   onOpenActions,
@@ -189,7 +191,10 @@ function MiCancionItem({
       onClick={handleClick}
     >
       <div className="flex items-center gap-3">
-        <LetraFuenteIcon tipo={getIconoTipo(cancion)} />
+        <LetraFuenteIcon
+          tipo={getIconoTipo(cancion)}
+          premium={tieneCifradoAvanzado}
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[17px] font-semibold text-text-primary">
             {cancion.nombre}
@@ -248,6 +253,9 @@ export default function MisCancionesPageClient() {
   const supabase = useMemo(() => createClient(), []);
   const cola = useColaIndividual();
   const [canciones, setCanciones] = useState<UsuarioCancion[]>([]);
+  const [cifradoAvanzadoIds, setCifradoAvanzadoIds] = useState<Set<number>>(
+    new Set(),
+  );
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [activeCardId, setActiveCardId] = useState<number | null>(null);
@@ -310,6 +318,40 @@ export default function MisCancionesPageClient() {
     try {
       const data = await getMisCanciones(supabase);
       setCanciones(data);
+
+      const globalIds = data
+        .map((item) => item.cancion_guardada_id)
+        .filter((id): id is number => id !== null);
+
+      if (globalIds.length === 0) {
+        setCifradoAvanzadoIds(new Set());
+      } else {
+        const avanzadoIds = new Set<number>();
+        const { data: remoteRows, error: remoteError } = await supabase
+          .from("canciones_guardadas")
+          .select("id, tiene_cifrado_avanzado")
+          .in("id", globalIds);
+
+        if (!remoteError && remoteRows) {
+          for (const row of remoteRows) {
+            if (row.tiene_cifrado_avanzado) {
+              avanzadoIds.add(row.id);
+            }
+          }
+        } else {
+          const local = await getCancioneroLocalAsCancionero();
+
+          for (const id of globalIds) {
+            const found = local.find((item) => item.id === id);
+
+            if (found?.tiene_cifrado_avanzado) {
+              avanzadoIds.add(id);
+            }
+          }
+        }
+
+        setCifradoAvanzadoIds(avanzadoIds);
+      }
     } catch (error) {
       console.error("[mis-canciones] error al cargar", error);
       setActionError(
@@ -552,11 +594,15 @@ export default function MisCancionesPageClient() {
                 No hay canciones que coincidan con tu búsqueda.
               </p>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="app-list-grid">
                 {cancionesFiltradas.map((cancion) => (
                   <MiCancionItem
                     key={cancion.id}
                     cancion={cancion}
+                    tieneCifradoAvanzado={
+                      cancion.cancion_guardada_id !== null &&
+                      cifradoAvanzadoIds.has(cancion.cancion_guardada_id)
+                    }
                     colaDeshabilitada={!cola.hasActivaOPendiente}
                     actionsOpen={activeCardId === cancion.id}
                     onOpenActions={() => setActiveCardId(cancion.id)}

@@ -7,8 +7,10 @@ import {
   getDuplicadoCancioneroNivel,
   insertCancionCancionero,
   updateCancionCancionero,
+  updateCancionCancioneroMetadatos,
   type CancioneroFormData,
 } from "@/lib/cancionero";
+import { puedeUsarAdicionAvanzada } from "@/lib/cifrado-import";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero } from "@/types";
 import { X } from "lucide-react";
@@ -31,6 +33,7 @@ type CancioneroFormModalProps = {
   cancionesExistentes?: CancionCancionero[];
   initialValues?: CancioneroFormData | null;
   onSubmit?: (form: CancioneroFormData) => Promise<void>;
+  onAdicionAvanzada?: (form: CancioneroFormData) => void;
   title?: string;
   submitLabel?: string;
 };
@@ -51,10 +54,12 @@ export default function CancioneroFormModal({
   cancionesExistentes = [],
   initialValues = null,
   onSubmit,
+  onAdicionAvanzada,
   title,
   submitLabel,
 }: CancioneroFormModalProps) {
   const isEditing = cancion !== null;
+  const esCifradoAvanzado = Boolean(cancion?.tiene_cifrado_avanzado);
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
   const [letra, setLetra] = useState("");
@@ -72,6 +77,15 @@ export default function CancioneroFormModal({
     nombre.trim().length > 0 &&
     artista.trim().length > 0 &&
     letra.trim().length > 0;
+
+  const puedeAdicionAvanzada =
+    Boolean(onAdicionAvanzada) &&
+    puedeUsarAdicionAvanzada(letra) &&
+    nombre.trim().length > 0;
+
+  const adicionAvanzadaLabel = cancion?.tiene_cifrado_avanzado
+    ? "Editar cifrado avanzado"
+    : "Adición avanzada";
 
   const duplicadoNivel = useMemo(
     () =>
@@ -157,7 +171,14 @@ export default function CancioneroFormModal({
       if (onSubmit) {
         await onSubmit(formData);
       } else if (isEditing && cancion) {
-        await updateCancionCancionero(supabase, cancion.id, formData);
+        if (esCifradoAvanzado) {
+          await updateCancionCancioneroMetadatos(supabase, cancion.id, {
+            nombre: formData.nombre,
+            artista: formData.artista,
+          });
+        } else {
+          await updateCancionCancionero(supabase, cancion.id, formData);
+        }
       } else {
         await insertCancionCancionero(supabase, formData);
       }
@@ -217,7 +238,7 @@ export default function CancioneroFormModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="cancionero-form-titulo"
-          className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[16px] border border-border bg-bg-card p-5 shadow-xl"
+          className="relative z-10 tool-modal-panel max-h-[90vh] overflow-y-auto rounded-[16px] border border-border bg-bg-card p-5 shadow-xl"
         >
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
@@ -327,9 +348,14 @@ export default function CancioneroFormModal({
                 id="cancionero-letra"
                 rows={10}
                 required
+                readOnly={esCifradoAvanzado}
                 placeholder="Pegá acá la letra limpia con acordes..."
                 value={letra}
                 onChange={(event) => {
+                  if (esCifradoAvanzado) {
+                    return;
+                  }
+
                   setLetra(event.target.value);
                   if (fieldErrors.letra) {
                     setFieldErrors((current) => ({
@@ -338,9 +364,15 @@ export default function CancioneroFormModal({
                     }));
                   }
                 }}
-                className={textareaClassName}
+                className={`${textareaClassName}${esCifradoAvanzado ? " opacity-80" : ""}`}
                 aria-invalid={Boolean(fieldErrors.letra)}
               />
+              {esCifradoAvanzado && (
+                <p className="mt-1.5 text-xs text-text-muted">
+                  La letra y los acordes se editan con &quot;Editar cifrado
+                  avanzado&quot;.
+                </p>
+              )}
               {fieldErrors.letra && (
                 <p className="mt-1.5 text-xs text-accent" role="alert">
                   {fieldErrors.letra}
@@ -352,6 +384,23 @@ export default function CancioneroFormModal({
               <p className="text-sm text-accent" role="alert">
                 {error}
               </p>
+            )}
+
+            {puedeAdicionAvanzada && (
+              <TapButton
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  onAdicionAvanzada?.({
+                    nombre: nombre.trim(),
+                    artista: artista.trim(),
+                    letra: letra.trim(),
+                  });
+                }}
+                className="min-h-11 w-full rounded-[10px] border border-accent/60 bg-bg-dark text-base font-semibold text-accent disabled:opacity-60"
+              >
+                {adicionAvanzadaLabel}
+              </TapButton>
             )}
 
             <TapButton

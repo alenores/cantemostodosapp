@@ -2,13 +2,15 @@
 
 import { TapButton } from "@/components/ui/TapFeedback";
 import { LETRA_AUTO_SCROLL_MAX_LEVEL } from "@/hooks/useLetraAutoScroll";
-import { getLecturaAutoScrollBottomCss } from "@/lib/sala-layout";
+import { getLecturaAutoScrollBottomCss, getLecturaFixedRightCss } from "@/lib/sala-layout";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 type AutoScrollControlProps = {
   level: number;
   maxLevel?: number;
   enabled?: boolean;
+  placement?: "fixed" | "inline";
+  fixedRightCss?: string;
   onAccelerate: () => void;
   onDecelerate: () => void;
 };
@@ -17,21 +19,30 @@ export default function AutoScrollControl({
   level,
   maxLevel = LETRA_AUTO_SCROLL_MAX_LEVEL,
   enabled = true,
+  placement = "fixed",
+  fixedRightCss,
   onAccelerate,
   onDecelerate,
 }: AutoScrollControlProps) {
   const isScrolling = level > 0;
+  const isFixed = placement === "fixed";
 
   return (
     <div
-      className={`fixed z-[45] flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-dark/90 p-0.5 backdrop-blur-md ${
+      className={`flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-dark/90 p-0.5 backdrop-blur-md ${
         isScrolling ? "border-accent/30" : "border-border/50"
-      }`}
-      style={{
-        bottom: getLecturaAutoScrollBottomCss(),
-        right: 16,
-        boxShadow: "0 2px 10px rgba(0,0,0,0.28)",
-      }}
+      } ${isFixed ? "fixed z-[45]" : ""}`}
+      style={
+        isFixed
+          ? {
+              bottom: getLecturaAutoScrollBottomCss(),
+              right: fixedRightCss ?? getLecturaFixedRightCss(),
+              boxShadow: "0 2px 10px rgba(0,0,0,0.28)",
+            }
+          : {
+              boxShadow: "0 2px 10px rgba(0,0,0,0.28)",
+            }
+      }
     >
       <TapButton
         type="button"

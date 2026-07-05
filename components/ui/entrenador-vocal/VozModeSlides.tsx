@@ -166,7 +166,7 @@ import {
 import {
   TargetPicker,
   VozConfigSection,
-  VozPracticeSection,
+  VozPracticeArea,
   type TargetPickerProps,
 } from "./EntrenadorVocalShared";
 import { VolumeSegmentMeter } from "./VolumeSegmentMeter";
@@ -253,10 +253,12 @@ function ModeCarouselShell({
   activeIndex,
   onChangeIndex,
   renderSlide,
+  titleAction,
 }: {
   activeIndex: number;
   onChangeIndex: (index: number) => void;
   renderSlide: (index: number) => ReactNode;
+  titleAction?: ReactNode;
 }) {
   const slideCount = VOZ_MODE_SLIDES.length;
   const activeSlide = VOZ_MODE_SLIDES[activeIndex] ?? VOZ_MODE_SLIDES[0]!;
@@ -494,7 +496,7 @@ function ModeCarouselShell({
       return null;
     }
 
-    return <div className="px-3 py-3">{renderSlide(index)}</div>;
+    return <div className="px-3 pt-3 pb-1">{renderSlide(index)}</div>;
   }
 
   function renderPanelColumn(index: number, isCenter = false) {
@@ -525,9 +527,12 @@ function ModeCarouselShell({
         </button>
 
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-sm font-bold uppercase tracking-wide text-text-primary">
-            {activeSlide.label}
-          </p>
+          <div className="flex items-center justify-center gap-1.5">
+            <p className="truncate text-sm font-bold uppercase tracking-wide text-text-primary">
+              {activeSlide.label}
+            </p>
+            {titleAction}
+          </div>
           <p className="mt-0.5 text-[10px] font-semibold text-text-muted">
             {activeIndex + 1} de {slideCount}
           </p>
@@ -544,7 +549,10 @@ function ModeCarouselShell({
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-[14px] border-2 border-border-card bg-bg-dark/55 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_5%,transparent)]">
+      <div
+        className="overflow-hidden rounded-[14px] border-2 border-border-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_5%,transparent)]"
+        style={{ backgroundColor: "var(--tool-practice-section-bg)" }}
+      >
         <div
           ref={viewportRef}
           className="touch-pan-y overflow-hidden transition-[height] duration-200 ease-out"
@@ -567,7 +575,7 @@ function ModeCarouselShell({
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 border-t border-border bg-bg-dark/40 px-3 py-2">
+        <div className="flex items-center justify-center gap-1.5 border-t border-border px-3 py-2">
           {VOZ_MODE_SLIDES.map((slide, index) => (
             <button
               key={slide.id}
@@ -752,7 +760,7 @@ function InstantAttemptsStrip({
   });
 
   return (
-    <div className="-mt-2 w-full rounded-[10px] border border-border bg-bg-card/60 px-3 py-2.5">
+    <div className="mt-2 w-full rounded-[10px] border border-border bg-bg-card/60 px-3 py-2.5">
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
         Tus intentos
       </p>
@@ -1543,6 +1551,10 @@ function PitchHistoryChart({
     maxCents,
   );
   const centerY = historyCentsToChartY(0, chartHeight, maxCents);
+  const liveNoteMarkerY =
+    !isMelodia && accuracy !== "silencio"
+      ? historyCentsToChartY(cents, chartHeight, maxCents)
+      : null;
   const semitoneGuides = [-VOZ_LADDER_SEMITONE_SPAN, -3, 0, 3, VOZ_LADDER_SEMITONE_SPAN];
   const yAxisLabels = useMemo(() => {
     const target: VozTarget = { note: axisNote, octave: axisOctave };
@@ -1795,6 +1807,16 @@ function PitchHistoryChart({
             strokeWidth={isMelodia && melodiaBeatFlash ? 1.5 : 1}
             opacity={isMelodia && melodiaBeatFlash ? 1 : 0.7}
           />
+          {liveNoteMarkerY !== null ? (
+            <circle
+              cx={melodiaNowLineX}
+              cy={liveNoteMarkerY}
+              r={5}
+              fill={getVozSampleColor(cents, accuracy, calibre)}
+              stroke="var(--bg-card)"
+              strokeWidth={2}
+            />
+          ) : null}
         </svg>
         </div>
         {!isMelodia || showLiveNoteRail ? (
@@ -3358,6 +3380,39 @@ export function VozModeSlides({
   const practiceTargetOctave = effectiveTarget.octave;
   const practiceObjectiveLabel = formatTargetLabel(effectiveTarget);
 
+  function renderActiveSlideHelpButton(slideId: VozModeSlideId) {
+    switch (slideId) {
+      case "encajar":
+        return (
+          <EncajarHelpButton onClick={() => setEncajarHelpOpen(true)} />
+        );
+      case "sostener":
+        return (
+          <SostenerHelpButton onClick={() => setSostenerHelpOpen(true)} />
+        );
+      case "octavas":
+        return (
+          <OctavasHelpButton onClick={() => setOctavasHelpOpen(true)} />
+        );
+      case "melodia":
+        return (
+          <MelodiaHelpButton onClick={() => setMelodiaHelpOpen(true)} />
+        );
+      case "ritmo":
+        return <RitmoHelpButton onClick={() => setRitmoHelpOpen(true)} />;
+      case "ritmo-dinamica":
+        return (
+          <DinamicaHelpButton onClick={() => setDinamicaHelpOpen(true)} />
+        );
+      case "ritmo-nota":
+        return (
+          <RitmoNotaHelpButton onClick={() => setRitmoNotaHelpOpen(true)} />
+        );
+      default:
+        return null;
+    }
+  }
+
   function renderSlideContent(slideId: VozModeSlideId) {
     switch (slideId) {
       case "encajar":
@@ -3366,13 +3421,10 @@ export function VozModeSlides({
             <VozConfigSection
               collapsible
               collapsedSummary={encajarConfigSummary}
-              headerAction={
-                <EncajarHelpButton onClick={() => setEncajarHelpOpen(true)} />
-              }
             >
               <TargetPicker {...targetPicker} collapsible={false} />
             </VozConfigSection>
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozTonePracticePlayControl
                 practiceActive={tonePracticeActive}
                 onTogglePractice={onToggleTonePractice}
@@ -3386,7 +3438,7 @@ export function VozModeSlides({
                 size="large"
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "sostener":
@@ -3395,9 +3447,6 @@ export function VozModeSlides({
             <VozConfigSection
               collapsible
               collapsedSummary={sostenerConfigSummary}
-              headerAction={
-                <SostenerHelpButton onClick={() => setSostenerHelpOpen(true)} />
-              }
             >
               <TargetPicker {...targetPicker} collapsible={false} />
               <VozCalibrePicker
@@ -3444,7 +3493,7 @@ export function VozModeSlides({
                 </div>
               </div>
             </VozConfigSection>
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozTonePracticePlayControl
                 practiceActive={tonePracticeActive}
                 onTogglePractice={onToggleTonePractice}
@@ -3470,7 +3519,7 @@ export function VozModeSlides({
                 calibre={holdCalibre}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "octavas":
@@ -3479,9 +3528,6 @@ export function VozModeSlides({
             <VozConfigSection
               collapsible
               collapsedSummary={octavasConfigSummary}
-              headerAction={
-                <OctavasHelpButton onClick={() => setOctavasHelpOpen(true)} />
-              }
             >
               <TargetPicker {...targetPicker} collapsible={false} />
               <OctavasQueDigaPicker
@@ -3538,7 +3584,7 @@ export function VozModeSlides({
                 </div>
               </div>
             </VozConfigSection>
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozTonePracticePlayControl
                 practiceActive={tonePracticeActive}
                 onTogglePractice={onToggleTonePractice}
@@ -3553,7 +3599,7 @@ export function VozModeSlides({
                 practiceActive={tonePracticeActive}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "melodia":
@@ -3561,9 +3607,6 @@ export function VozModeSlides({
           <div className="space-y-3">
             <MelodiaConfigSection
               collapsedSummary={melodiaConfigSummary}
-              headerAction={
-                <MelodiaHelpButton onClick={() => setMelodiaHelpOpen(true)} />
-              }
               patternLength={melodiaPatternLength}
               beatDuration={melodiaBeatDuration}
               beatPattern={melodiaCompas.beatPattern}
@@ -3579,7 +3622,7 @@ export function VozModeSlides({
               onSetBpm={onSetMelodiaBpm}
               onTapTempo={onTapMelodiaTempo}
             />
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozMelodiaPractice
                 melodiaPlaying={melodiaPlaying}
                 onToggleMelodiaPlaying={onToggleMelodiaPlaying}
@@ -3597,7 +3640,7 @@ export function VozModeSlides({
                 holdCalibre={holdCalibre}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "ritmo":
@@ -3609,9 +3652,6 @@ export function VozModeSlides({
               hideCompasHelp
               hideDinamicaTab
               vozBeatSoundTab
-              configHeaderAction={
-                <RitmoHelpButton onClick={() => setRitmoHelpOpen(true)} />
-              }
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
               beatDurations={ritmoBeatDurations}
@@ -3625,7 +3665,7 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozRitmoPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -3649,7 +3689,7 @@ export function VozModeSlides({
                 historySamples={historySamples}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "ritmo-dinamica":
@@ -3659,9 +3699,6 @@ export function VozModeSlides({
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
               hideCompasHelp
-              configHeaderAction={
-                <DinamicaHelpButton onClick={() => setDinamicaHelpOpen(true)} />
-              }
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
               beatDurations={ritmoBeatDurations}
@@ -3675,7 +3712,7 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozDinamicaPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -3691,7 +3728,7 @@ export function VozModeSlides({
                 voiceRms={voiceRms}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "ritmo-nota":
@@ -3701,9 +3738,6 @@ export function VozModeSlides({
               compasLayout="flat"
               collapsedSummary={ritmoNotaConfigSummary}
               hideCompasHelp
-              configHeaderAction={
-                <RitmoNotaHelpButton onClick={() => setRitmoNotaHelpOpen(true)} />
-              }
               prefix={<TargetPicker {...targetPicker} collapsible={false} />}
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
@@ -3718,7 +3752,7 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozRitmoPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -3743,7 +3777,7 @@ export function VozModeSlides({
                 holdCalibre={holdCalibre}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
       case "combo":
@@ -3770,7 +3804,7 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeSection>
+            <VozPracticeArea>
               <VozComboPractice
                 ritmoPlaying={ritmoPlaying}
                 onToggleRitmoPlaying={onToggleRitmoPlaying}
@@ -3792,7 +3826,7 @@ export function VozModeSlides({
                 holdCalibre={holdCalibre}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeSection>
+            </VozPracticeArea>
           </div>
         );
     }
@@ -3803,6 +3837,9 @@ export function VozModeSlides({
       <ModeCarouselShell
         activeIndex={activeIndex}
         onChangeIndex={onChangeIndex}
+        titleAction={renderActiveSlideHelpButton(
+          VOZ_MODE_SLIDES[activeIndex]?.id ?? "encajar",
+        )}
         renderSlide={(index) =>
           renderSlideContent(VOZ_MODE_SLIDES[index]!.id)
         }

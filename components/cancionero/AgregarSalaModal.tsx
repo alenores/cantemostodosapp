@@ -1,6 +1,7 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import type { Sala } from "@/types";
 import { X } from "lucide-react";
 
@@ -19,6 +20,8 @@ export default function AgregarSalaModal({
   onSelectSala,
   onClose,
 }: AgregarSalaModalProps) {
+  useHardwareBack(open, onClose);
+
   if (!open) {
     return null;
   }

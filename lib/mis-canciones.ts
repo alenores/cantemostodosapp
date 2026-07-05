@@ -2,6 +2,20 @@ import type { CancionInput } from "@/lib/cola-logic";
 import type { CancionCancionero, UsuarioCancion } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export async function countMisCanciones(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("usuarios_canciones")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
 export async function getMisCanciones(
   supabase: SupabaseClient,
 ): Promise<UsuarioCancion[]> {

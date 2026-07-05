@@ -199,7 +199,7 @@ export default function PerfilPageClient({
     router.refresh();
     const aviso = emailCambiado ? "email-pendiente" : "perfil-actualizado";
     startNavigation();
-    router.push(`/salas?aviso=${aviso}`);
+    router.push(`/?aviso=${aviso}`);
   }
 
   const previewUrl = avatarPreview ?? avatarUrl;
@@ -211,9 +211,9 @@ export default function PerfilPageClient({
       <header className="border-b border-accent/40 bg-accent px-4 py-3">
         <div className="flex items-center gap-2">
           <TapLink
-            href="/salas"
-            ariaLabel="Volver a salas"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-bg-darker"
+            href="/"
+            ariaLabel="Volver al inicio"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-bg-darker lg:hidden"
           >
             <ArrowLeft className="size-5" aria-hidden="true" />
           </TapLink>
@@ -223,7 +223,8 @@ export default function PerfilPageClient({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-6 px-4 py-6">
+      <main className="app-page-main flex flex-1 flex-col gap-6 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <div className="app-page-container mx-auto w-full max-w-xl">
         {!tieneNombreGuardado && (
           <p className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary">
             Tu cuenta no tiene nombre guardado todavía. Completalo acá abajo.
@@ -389,6 +390,7 @@ export default function PerfilPageClient({
         >
           {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
         </TapButton>
+        </div>
       </main>
     </div>
   );

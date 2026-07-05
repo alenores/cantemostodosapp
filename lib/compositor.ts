@@ -56,10 +56,22 @@ export type CompositorPiece = {
 };
 
 export const COMPOSITOR_INSTRUMENT_OPTIONS = [
-  { id: "piano" as const, label: "Piano" },
-  { id: "guitarra" as const, label: "Guitarra" },
   { id: "bateria" as const, label: "Batería" },
+  { id: "guitarra" as const, label: "Guitarra" },
+  { id: "piano" as const, label: "Piano" },
 ] as const;
+
+const COMPOSITOR_INSTRUMENT_ORDER = COMPOSITOR_INSTRUMENT_OPTIONS.map(
+  (option) => option.id,
+);
+
+function sortCompositorTracks(tracks: CompositorTrack[]): CompositorTrack[] {
+  return [...tracks].sort(
+    (left, right) =>
+      COMPOSITOR_INSTRUMENT_ORDER.indexOf(left.instrumentId) -
+      COMPOSITOR_INSTRUMENT_ORDER.indexOf(right.instrumentId),
+  );
+}
 
 export const COMPOSITOR_DRUM_SOUND_OPTIONS = [
   { id: "kick" as const, label: "Bombo" },
@@ -250,9 +262,9 @@ export function createDefaultCompositorPiece(): CompositorPiece {
     cycleBeatDurations: Array.from({ length: METRONOME_PATTERN_LENGTH }, () => "negra"),
     subdivisionsPerGolpe,
     tracks: [
-      createDefaultTrack("piano", true, gridSteps),
-      createDefaultTrack("guitarra", true, gridSteps),
       createDefaultTrack("bateria", true, gridSteps),
+      createDefaultTrack("guitarra", true, gridSteps),
+      createDefaultTrack("piano", true, gridSteps),
     ],
   });
 }
@@ -274,16 +286,18 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
     cycleGolpes,
     cycleBeatDurations: normalizeBeatDurationPattern(piece.cycleBeatDurations),
     subdivisionsPerGolpe,
-    tracks: piece.tracks.map((track) => ({
-      instrumentId: track.instrumentId,
-      enabled: track.enabled,
-      events: normalizeTrackEvents(
-        track.events,
-        gridSteps,
-        track.instrumentId,
-        subdivisionsPerGolpe,
-      ),
-    })),
+    tracks: sortCompositorTracks(
+      piece.tracks.map((track) => ({
+        instrumentId: track.instrumentId,
+        enabled: track.enabled,
+        events: normalizeTrackEvents(
+          track.events,
+          gridSteps,
+          track.instrumentId,
+          subdivisionsPerGolpe,
+        ),
+      })),
+    ),
   };
 }
 
@@ -595,4 +609,294 @@ export function writeStoredCompositorPiece(piece: CompositorPiece): void {
 export function formatCompositorCycleSummary(piece: CompositorPiece): string {
   const seconds = getCompositorCycleDurationSeconds(piece);
   return `Ciclo de ${piece.cycleGolpes} golpes · ~${seconds.toFixed(1)} s · ${piece.bpm} BPM`;
+}
+
+function compositorPieceWithoutEventIds(piece: CompositorPiece): CompositorPiece {
+  return {
+    ...piece,
+    tracks: piece.tracks.map((track) => ({
+      ...track,
+      events: track.events.map((event) => ({
+        ...event,
+        id: "",
+      })),
+    })),
+  };
+}
+
+export function compositorPiecesEqualContent(
+  left: CompositorPiece,
+  right: CompositorPiece,
+): boolean {
+  const normalizedLeft = compositorPieceWithoutEventIds(normalizeCompositorPiece(left));
+  const normalizedRight = compositorPieceWithoutEventIds(normalizeCompositorPiece(right));
+
+  return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight);
+}
+
+export function isDefaultCompositorPiece(piece: CompositorPiece): boolean {
+  return compositorPiecesEqualContent(piece, createDefaultCompositorPiece());
+}
+
+export function cloneCompositorPiece(piece: CompositorPiece): CompositorPiece {
+  return normalizeCompositorPiece(
+    JSON.parse(JSON.stringify(piece)) as CompositorPiece,
+  );
+}
+
+export type CompositorPresetId = "4-4" | "3-4" | "6-8";
+
+export type CompositorPreset = {
+  id: CompositorPresetId;
+  label: string;
+  descripcion: string;
+  piece: CompositorPiece;
+};
+
+export const COMPOSITOR_PRESETS: CompositorPreset[] = [
+  {
+    id: "4-4",
+    label: "4/4",
+    descripcion: "Cuatro tiempos · rock, cumbia, folclore",
+    piece: normalizeCompositorPiece({
+      version: 2,
+      bpm: 80,
+      cycleGolpes: 4,
+      cycleBeatDurations: [
+        "negra",
+        "negra",
+        "negra",
+        "negra",
+        ...Array(METRONOME_PATTERN_LENGTH - 4).fill("negra"),
+      ] as MetronomeBeatDurationPattern,
+      subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
+      tracks: [
+        {
+          instrumentId: "bateria",
+          enabled: true,
+          events: [
+            createCompositorEvent({
+              startStep: 0,
+              durationSteps: 1,
+              level: "fuerte",
+              drumSound: "kick",
+            }),
+            createCompositorEvent({
+              startStep: 4,
+              durationSteps: 1,
+              level: "medio",
+              drumSound: "hihat",
+            }),
+            createCompositorEvent({
+              startStep: 8,
+              durationSteps: 1,
+              level: "fuerte",
+              drumSound: "snare",
+            }),
+            createCompositorEvent({
+              startStep: 12,
+              durationSteps: 1,
+              level: "medio",
+              drumSound: "hihat",
+            }),
+          ],
+        },
+        {
+          instrumentId: "guitarra",
+          enabled: true,
+          events: [
+            createCompositorEvent({
+              startStep: 0,
+              durationSteps: 6,
+              level: "medio",
+              note: { note: "G", octave: 3 },
+              guitarArticulation: "rasguido",
+            }),
+            createCompositorEvent({
+              startStep: 8,
+              durationSteps: 6,
+              level: "medio",
+              note: { note: "C", octave: 4 },
+              guitarArticulation: "rasguido",
+            }),
+          ],
+        },
+        {
+          instrumentId: "piano",
+          enabled: false,
+          events: [],
+        },
+      ],
+    }),
+  },
+  {
+    id: "3-4",
+    label: "3/4",
+    descripcion: "Tres tiempos · vals, chamamé",
+    piece: normalizeCompositorPiece({
+      version: 2,
+      bpm: 120,
+      cycleGolpes: 3,
+      cycleBeatDurations: [
+        "negra",
+        "negra",
+        "negra",
+        ...Array(METRONOME_PATTERN_LENGTH - 3).fill("negra"),
+      ] as MetronomeBeatDurationPattern,
+      subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
+      tracks: [
+        {
+          instrumentId: "bateria",
+          enabled: true,
+          events: [
+            createCompositorEvent({
+              startStep: 0,
+              durationSteps: 1,
+              level: "fuerte",
+              drumSound: "kick",
+            }),
+            createCompositorEvent({
+              startStep: 4,
+              durationSteps: 1,
+              level: "suave",
+              drumSound: "hihat",
+            }),
+            createCompositorEvent({
+              startStep: 8,
+              durationSteps: 1,
+              level: "suave",
+              drumSound: "hihat",
+            }),
+          ],
+        },
+        {
+          instrumentId: "guitarra",
+          enabled: true,
+          events: [
+            createCompositorEvent({
+              startStep: 0,
+              durationSteps: 3,
+              level: "fuerte",
+              note: { note: "G", octave: 3 },
+              guitarArticulation: "rasguido",
+            }),
+            createCompositorEvent({
+              startStep: 4,
+              durationSteps: 3,
+              level: "suave",
+              note: { note: "G", octave: 3 },
+              guitarArticulation: "rasguido",
+            }),
+            createCompositorEvent({
+              startStep: 8,
+              durationSteps: 3,
+              level: "suave",
+              note: { note: "G", octave: 3 },
+              guitarArticulation: "rasguido",
+            }),
+          ],
+        },
+        {
+          instrumentId: "piano",
+          enabled: false,
+          events: [],
+        },
+      ],
+    }),
+  },
+  {
+    id: "6-8",
+    label: "6/8",
+    descripcion: "Seis por ocho · milonga, zamba",
+    piece: normalizeCompositorPiece({
+      version: 2,
+      bpm: 80,
+      cycleGolpes: 6,
+      cycleBeatDurations: [
+        "corchea",
+        "corchea",
+        "corchea",
+        "corchea",
+        "corchea",
+        "corchea",
+        ...Array(METRONOME_PATTERN_LENGTH - 6).fill("corchea"),
+      ] as MetronomeBeatDurationPattern,
+      subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
+      tracks: [
+        {
+          instrumentId: "bateria",
+          enabled: true,
+          events: [
+            createCompositorEvent({
+              startStep: 0,
+              durationSteps: 1,
+              level: "fuerte",
+              drumSound: "kick",
+            }),
+            createCompositorEvent({
+              startStep: 4,
+              durationSteps: 1,
+              level: "suave",
+              drumSound: "hihat",
+            }),
+            createCompositorEvent({
+              startStep: 8,
+              durationSteps: 1,
+              level: "suave",
+              drumSound: "hihat",
+            }),
+            createCompositorEvent({
+              startStep: 12,
+              durationSteps: 1,
+              level: "fuerte",
+              drumSound: "snare",
+            }),
+            createCompositorEvent({
+              startStep: 16,
+              durationSteps: 1,
+              level: "suave",
+              drumSound: "hihat",
+            }),
+            createCompositorEvent({
+              startStep: 20,
+              durationSteps: 1,
+              level: "suave",
+              drumSound: "hihat",
+            }),
+          ],
+        },
+        {
+          instrumentId: "guitarra",
+          enabled: true,
+          events: [
+            createCompositorEvent({
+              startStep: 0,
+              durationSteps: 5,
+              level: "fuerte",
+              note: { note: "G", octave: 3 },
+              guitarArticulation: "rasguido",
+            }),
+            createCompositorEvent({
+              startStep: 12,
+              durationSteps: 5,
+              level: "fuerte",
+              note: { note: "G", octave: 3 },
+              guitarArticulation: "rasguido",
+            }),
+          ],
+        },
+        {
+          instrumentId: "piano",
+          enabled: false,
+          events: [],
+        },
+      ],
+    }),
+  },
+];
+
+export function getCompositorPresetById(
+  presetId: CompositorPresetId,
+): CompositorPreset | undefined {
+  return COMPOSITOR_PRESETS.find((preset) => preset.id === presetId);
 }

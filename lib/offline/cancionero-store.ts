@@ -22,6 +22,7 @@ export function toCancionCancionero(
     nombre: record.nombre,
     artista: record.artista,
     letra: record.letra,
+    tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
   };
 }
 
@@ -132,6 +133,33 @@ export async function clearCancioneroLocal(): Promise<void> {
   await tx.done;
 }
 
+export async function patchCancioneroLocalRecord(
+  id: number,
+  patch: Partial<
+    Pick<
+      CancioneroLocalRecord,
+      "nombre" | "artista" | "letra" | "tiene_cifrado_avanzado" | "updated_at"
+    >
+  >,
+): Promise<void> {
+  if (!isOfflineBrowser()) {
+    return;
+  }
+
+  const db = await getOfflineDb();
+  const existing = await db.get("canciones", id);
+
+  if (!existing) {
+    return;
+  }
+
+  await db.put("canciones", {
+    ...existing,
+    ...patch,
+    updated_at: patch.updated_at ?? new Date().toISOString(),
+  });
+}
+
 export function getCancioneroLocalForBusqueda(
   records: CancioneroLocalRecord[],
 ) {
@@ -141,5 +169,6 @@ export function getCancioneroLocalForBusqueda(
     artista: record.artista,
     letra: record.letra,
     url_letra: record.url_letra,
+    tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
   }));
 }

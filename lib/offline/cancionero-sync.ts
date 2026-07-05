@@ -90,7 +90,7 @@ export async function fetchCancioneroRemoteAll(
 ): Promise<CancioneroLocalRecord[]> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, nombre, artista, letra, url_letra, updated_at")
+    .select("id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado")
     .is("sala_id", null);
 
   if (error) {
@@ -104,11 +104,13 @@ export async function fetchCancioneroRemoteAll(
     letra: row.letra,
     url_letra: row.url_letra ?? "",
     updated_at: normalizeTimestamp(row.updated_at) ?? new Date().toISOString(),
+    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
   }));
 }
 
 export async function syncCancioneroLocal(
   supabase: SupabaseClient,
+  options?: { force?: boolean },
 ): Promise<CancioneroSyncResult> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { status: "skipped", reason: "offline" };
@@ -119,7 +121,7 @@ export async function syncCancioneroLocal(
     getCancioneroLocalMeta(),
   ]);
 
-  if (!needsCancioneroSync(remoteSnapshot, localMeta)) {
+  if (!options?.force && !needsCancioneroSync(remoteSnapshot, localMeta)) {
     return { status: "skipped", reason: "unchanged" };
   }
 

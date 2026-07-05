@@ -20,6 +20,8 @@ type LetraViewerProps = {
   /** Clase extra para posicionar el control de revelar (p. ej. cuando hay badge). */
   revealControlClassName?: string;
   embedIframeRef?: RefObject<HTMLIFrameElement | null>;
+  /** Escala horizontal para tapar márgenes del sitio embebido (Cifra Club). */
+  fillScaleX?: number;
 };
 
 function containerRadiusClass(
@@ -39,18 +41,34 @@ function containerRadiusClass(
 
 function getIframeScrollSimulationStyle(
   topOffsetPx?: number,
+  fillScaleX?: number,
 ): CSSProperties | undefined {
   const top = topOffsetPx && topOffsetPx > 0 ? topOffsetPx : 0;
+  const scaleX =
+    fillScaleX && fillScaleX > 1 && Number.isFinite(fillScaleX)
+      ? fillScaleX
+      : 1;
+  const hasScale = scaleX > 1;
 
-  if (top === 0) {
+  if (top === 0 && !hasScale) {
     return undefined;
   }
 
-  return {
-    height: `calc(100% + ${top}px)`,
-    marginTop: `-${top}px`,
+  const style: CSSProperties = {
     width: "100%",
   };
+
+  if (top > 0) {
+    style.height = `calc(100% + ${top}px)`;
+    style.marginTop = `-${top}px`;
+  }
+
+  if (hasScale) {
+    style.transform = `scaleX(${scaleX})`;
+    style.transformOrigin = "top left";
+  }
+
+  return style;
 }
 
 type LetraIframeProps = {
@@ -60,6 +78,7 @@ type LetraIframeProps = {
   initialScrollOffsetPx?: number;
   initialScrollBottomOffsetPx?: number;
   embedIframeRef?: RefObject<HTMLIFrameElement | null>;
+  fillScaleX?: number;
 };
 
 function LetraIframe({
@@ -69,8 +88,12 @@ function LetraIframe({
   initialScrollOffsetPx,
   initialScrollBottomOffsetPx,
   embedIframeRef,
+  fillScaleX,
 }: LetraIframeProps) {
-  const offsetStyle = getIframeScrollSimulationStyle(initialScrollOffsetPx);
+  const offsetStyle = getIframeScrollSimulationStyle(
+    initialScrollOffsetPx,
+    fillScaleX,
+  );
   const topClipPx =
     initialScrollOffsetPx && initialScrollOffsetPx > 0
       ? initialScrollOffsetPx
@@ -82,7 +105,7 @@ function LetraIframe({
       src={url}
       title={title}
       data-embed-top-clip-px={topClipPx}
-      className={offsetStyle ? "w-full border-0" : className}
+      className={offsetStyle ? "block h-full w-full border-0" : className}
       style={offsetStyle}
       sandbox="allow-scripts allow-same-origin"
       referrerPolicy="no-referrer-when-downgrade"
@@ -153,6 +176,7 @@ export default function LetraViewer({
   onRevealTop,
   revealControlClassName,
   embedIframeRef,
+  fillScaleX,
 }: LetraViewerProps) {
   const radiusClass = containerRadiusClass(edgeToEdge, flushBottom);
   const elevatedClass = elevated
@@ -173,6 +197,7 @@ export default function LetraViewer({
           initialScrollOffsetPx={initialScrollOffsetPx}
           initialScrollBottomOffsetPx={initialScrollBottomOffsetPx}
           embedIframeRef={embedIframeRef}
+          fillScaleX={fillScaleX}
         />
       </EmbedShell>
     );
@@ -194,6 +219,7 @@ export default function LetraViewer({
         initialScrollOffsetPx={initialScrollOffsetPx}
         initialScrollBottomOffsetPx={initialScrollBottomOffsetPx}
         embedIframeRef={embedIframeRef}
+        fillScaleX={fillScaleX}
       />
     </EmbedShell>
   );

@@ -3,10 +3,11 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
+import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
-import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
+import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
@@ -16,9 +17,9 @@ import {
   COLA_AVISO_SHOW_DELAY_MS,
   getLecturaColaAvisoTopCss,
   getLecturaFabMenuTopCss,
+  getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
   getSalaMainFooterPaddingCss,
-  LECTURA_TOP_CHROME_SIDE_PX,
 } from "@/lib/sala-layout";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -31,7 +32,8 @@ import {
   X,
 } from "lucide-react";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
-import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import { useColaSidePanel } from "@/hooks/useColaSidePanel";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const FLOAT_BTN_SECONDARY =
@@ -93,6 +95,8 @@ function HomeModoLecturaFabOption({
 type HomeModoLecturaOverlayProps = {
   abierto: boolean;
   pendientesCount: number;
+  fixedRightCss: string;
+  menuCompacto?: boolean;
   onCerrar: () => void;
   onContraer: () => void;
   onSiguiente: () => void;
@@ -104,6 +108,8 @@ type HomeModoLecturaOverlayProps = {
 function HomeModoLecturaOverlay({
   abierto,
   pendientesCount,
+  fixedRightCss,
+  menuCompacto = false,
   onCerrar,
   onContraer,
   onSiguiente,
@@ -128,7 +134,7 @@ function HomeModoLecturaOverlay({
         className="pointer-events-none fixed z-40 flex flex-col items-end gap-2"
         style={{
           top: getLecturaFabMenuTopCss(),
-          right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+          right: fixedRightCss,
         }}
         role="menu"
         aria-label="Controles de modo lectura"
@@ -139,39 +145,43 @@ function HomeModoLecturaOverlay({
           cascadeIndex={0}
           onClick={onContraer}
         />
-        <HomeModoLecturaFabOption
-          icon={Search}
-          label="Buscar"
-          cascadeIndex={1}
-          onClick={() => {
-            onCerrar();
-            onBuscar();
-          }}
-        />
-        <HomeModoLecturaFabOption
-          icon={SkipForward}
-          label="Siguiente"
-          iconAfter
-          cascadeIndex={2}
-          disabled={pendientesCount === 0}
-          onClick={() => {
-            onCerrar();
-            onSiguiente();
-          }}
-        />
-        <HomeModoLecturaFabOption
-          icon={ListMusic}
-          label={`Cola · ${pendientesCount}`}
-          cascadeIndex={3}
-          onClick={() => {
-            onCerrar();
-            onCola();
-          }}
-        />
+        {!menuCompacto ? (
+          <>
+            <HomeModoLecturaFabOption
+              icon={Search}
+              label="Buscar"
+              cascadeIndex={1}
+              onClick={() => {
+                onCerrar();
+                onBuscar();
+              }}
+            />
+            <HomeModoLecturaFabOption
+              icon={SkipForward}
+              label="Siguiente"
+              iconAfter
+              cascadeIndex={2}
+              disabled={pendientesCount === 0}
+              onClick={() => {
+                onCerrar();
+                onSiguiente();
+              }}
+            />
+            <HomeModoLecturaFabOption
+              icon={ListMusic}
+              label={`Cola · ${pendientesCount}`}
+              cascadeIndex={3}
+              onClick={() => {
+                onCerrar();
+                onCola();
+              }}
+            />
+          </>
+        ) : null}
         <HomeModoLecturaFabOption
           icon={Music2}
           label="Afinador"
-          cascadeIndex={4}
+          cascadeIndex={menuCompacto ? 1 : 4}
           onClick={() => {
             onCerrar();
             onAfinador();
@@ -183,8 +193,8 @@ function HomeModoLecturaOverlay({
 }
 
 export default function HomePageShell() {
-  const navigateWithProgress = useNavigateWithProgress();
   const cola = useColaIndividual();
+  const colaSidePanel = useColaSidePanel();
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -197,8 +207,12 @@ export default function HomePageShell() {
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
   const [buscadorOpen, setBuscadorOpen] = useState(false);
+  const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
+  const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
+  const lecturaConColaLateral = modoLectura && colaSidePanel;
+  const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
   const [colaAviso, setColaAviso] = useState<string | null>(null);
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
   const [cancionNombreRevealGen, setCancionNombreRevealGen] = useState(0);
@@ -250,8 +264,20 @@ export default function HomePageShell() {
 
   const salirModoLectura = useCallback(() => {
     setOverlayAbierto(false);
+    setAfinadorOpen(false);
     setModoLectura(false);
   }, []);
+
+  const handleModoLecturaBack = useCallback(() => {
+    if (overlayAbierto) {
+      setOverlayAbierto(false);
+      return;
+    }
+
+    salirModoLectura();
+  }, [overlayAbierto, salirModoLectura]);
+
+  useHardwareBack(modoLectura, handleModoLecturaBack);
 
   useEffect(() => {
     if (modoLectura) {
@@ -298,16 +324,14 @@ export default function HomePageShell() {
     };
   }, []);
 
-  const headerLupa = !modoLectura ? (
-    <TapButton
-      type="button"
-      aria-label="Buscar canción"
-      onClick={() => setBuscadorOpen(true)}
-      className="flex size-9 items-center justify-center rounded-full border border-border/60 bg-bg-dark/80 text-text-primary"
-    >
-      <Search className="size-4 text-accent" aria-hidden="true" />
-    </TapButton>
-  ) : null;
+  const headerActions =
+    !modoLectura && !colaSidePanel ? (
+      <CantarControlHeaderActions onSearch={() => setBuscadorOpen(true)} />
+    ) : null;
+
+  const handleExpand = useCallback(() => {
+    setModoLectura(true);
+  }, []);
 
   return (
     <div
@@ -315,16 +339,18 @@ export default function HomePageShell() {
       style={{ height: "100dvh" }}
     >
       <main
-        className={`relative flex min-h-0 flex-col ${
-          modoLectura ? "overflow-hidden" : "flex-1 overflow-hidden"
+        className={`sala-cantar-main relative flex min-h-0 flex-col ${
+          lecturaPantallaCompleta
+            ? "overflow-hidden"
+            : "flex-1 overflow-hidden lg:flex-row"
         }`}
         style={
-          modoLectura
+          lecturaPantallaCompleta
             ? { height: "100dvh" }
             : { paddingBottom: getSalaMainFooterPaddingCss() }
         }
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {cola.loading ? (
             <SalaColaBootstrapSkeleton />
           ) : (
@@ -337,7 +363,10 @@ export default function HomePageShell() {
               letraScrollRef={letraScrollRef}
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
-              headerAction={headerLupa}
+              headerAction={headerActions}
+              onExpand={
+                !modoLectura && cola.cancionActiva ? handleExpand : undefined
+              }
             />
           )}
         </div>
@@ -345,7 +374,7 @@ export default function HomePageShell() {
         <ColaIndividualSheet
           items={cola.items}
           onOpenBuscador={() => setBuscadorOpen(true)}
-          presentacionOculta={modoLectura}
+          presentacionOculta={lecturaPantallaCompleta}
           onExpand={
             !modoLectura && cola.cancionActiva
               ? () => setModoLectura(true)
@@ -369,20 +398,6 @@ export default function HomePageShell() {
 
       {modoLectura ? (
         <>
-          {cola.cancionActiva?.nombre ? (
-            <LecturaCancionChip
-              nombre={cola.cancionActiva.nombre}
-              artista={cola.cancionActiva.artista}
-              nombreRevealKey={
-                cancionNombreRevealGen > 0
-                  ? `reveal-${cancionNombreRevealGen}`
-                  : "initial"
-              }
-              nombreRevealClass={
-                cancionNombreRevealGen > 0 ? "cola-nombre-reveal block" : ""
-              }
-            />
-          ) : null}
 
           <TapButton
             type="button"
@@ -397,7 +412,7 @@ export default function HomePageShell() {
             }`}
             style={{
               top: getLecturaTopChromeTopCss(),
-              right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+              right: lecturaFixedRightCss,
             }}
           >
             {overlayAbierto ? (
@@ -413,17 +428,20 @@ export default function HomePageShell() {
           <HomeModoLecturaOverlay
             abierto={overlayAbierto}
             pendientesCount={cola.pendientesCount}
+            fixedRightCss={lecturaFixedRightCss}
+            menuCompacto={lecturaConColaLateral}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
             onBuscar={() => setBuscadorOpen(true)}
-            onAfinador={() => navigateWithProgress("/")}
+            onAfinador={() => setAfinadorOpen(true)}
           />
 
           <AutoScrollControl
             level={autoScrollLevel}
             enabled={Boolean(cola.cancionActiva)}
+            fixedRightCss={lecturaFixedRightCss}
             onAccelerate={accelerateAutoScroll}
             onDecelerate={decelerateAutoScroll}
           />
@@ -437,10 +455,12 @@ export default function HomePageShell() {
           className="fixed z-[48]"
           style={{
             top: getLecturaColaAvisoTopCss(),
-            right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+            right: lecturaFixedRightCss,
           }}
         />
       ) : null}
+
+      <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />
 
       {buscadorOpen ? (
         <BuscadorModal

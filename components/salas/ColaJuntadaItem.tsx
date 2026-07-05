@@ -30,6 +30,7 @@ type ColaDisplayItem = Pick<
 type ColaJuntadaItemProps = {
   item: ColaDisplayItem;
   variant: ColaJuntadaItemVariant;
+  premium?: boolean;
   showAgregadoAvatar?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
   onVolverAPendiente?: (id: number) => void;
@@ -42,6 +43,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
     {
       item,
       variant,
+      premium = false,
       dragHandleProps,
       onVolverAPendiente,
       nombreRevealGeneration,
@@ -161,7 +163,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
             className="flex size-5 shrink-0 items-center justify-center self-center"
             aria-hidden="true"
           >
-            <LetraFuenteIcon tipo={iconoTipo} uniform />
+            <LetraFuenteIcon tipo={iconoTipo} uniform premium={premium} />
           </div>
 
           <div className="min-w-0 flex-1">

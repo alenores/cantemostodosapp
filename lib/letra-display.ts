@@ -1,3 +1,4 @@
+import { isCancioneroUrl } from "@/lib/cancionero-url";
 import { isUsefulExtractedLetra } from "@/lib/letra-extract";
 import {
   ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX,
@@ -17,6 +18,10 @@ export type LetraDisplayMode = "texto" | "embed";
 export type LetraContenido =
   | { mode: "texto"; texto: string }
   | { mode: "embed"; url: string };
+
+export function isCifraClubEmbed(url: string): boolean {
+  return getLetraSourceKind(url) === "cifraclub";
+}
 
 export function getLetraSourceKind(url: string): LetraSourceKind {
   try {
@@ -38,6 +43,10 @@ export function getLetraSourceKind(url: string): LetraSourceKind {
 
 /** Fuentes donde priorizamos texto extraído (hoja blanca). Cifra Club va directo a iframe. */
 export function shouldPreferTextExtract(url: string): boolean {
+  if (isCancioneroUrl(url)) {
+    return false;
+  }
+
   const kind = getLetraSourceKind(url);
   return kind === "acordesdcanciones" || kind === "desconocido";
 }
@@ -103,6 +112,10 @@ export function resolveLetraContenido(input: {
   const url = input.urlLetra?.trim();
 
   if (!url) {
+    return null;
+  }
+
+  if (isCancioneroUrl(url)) {
     return null;
   }
 

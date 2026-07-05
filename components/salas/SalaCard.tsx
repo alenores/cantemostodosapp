@@ -41,7 +41,7 @@ export default function SalaCard({
       }
       onClick={handleOpen}
       disabled={pending || disabled}
-      className="relative flex min-h-11 w-full items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left disabled:opacity-50"
+      className="relative flex min-h-11 w-full items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left transition-[border-color,background-color] duration-200 disabled:opacity-50 lg:min-h-[4.5rem] lg:px-5 lg:py-4 lg:hover:border-accent/35 lg:hover:bg-bg-card-hover"
     >
       {pending && (
         <span

@@ -1,6 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import AuthBackButton from "@/components/auth/AuthBackButton";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -42,7 +43,7 @@ export default function LoginPageClient() {
 
       if (session && online) {
         startNavigation();
-        router.replace("/salas");
+        router.replace("/");
         return;
       }
 
@@ -84,7 +85,7 @@ export default function LoginPageClient() {
     router.refresh();
     void warmOfflineCache();
     startNavigation();
-    router.push("/salas");
+    router.push("/");
   }
 
   function handleContinueOffline() {
@@ -102,9 +103,10 @@ export default function LoginPageClient() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-bg-app px-6">
+    <div className="app-auth-shell relative bg-bg-app">
       <AppReadyMarker />
-      <div className="w-full max-w-sm">
+      <AuthBackButton />
+      <div className="app-auth-card">
         <h1 className="mb-10 text-center text-2xl font-extrabold text-text-primary">
           CantemosTodosApp
         </h1>

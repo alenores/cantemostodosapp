@@ -11,6 +11,7 @@ export type CancionBusquedaLocal = {
   artista: string | null;
   letra: string | null;
   url_letra: string;
+  tiene_cifrado_avanzado?: boolean;
 };
 
 const PESO_NOMBRE = 10;
@@ -106,7 +107,7 @@ export async function fetchCancioneroBusqueda(
 ): Promise<CancionBusquedaLocal[]> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, nombre, artista, letra, url_letra")
+    .select("id, nombre, artista, letra, url_letra, tiene_cifrado_avanzado")
     .is("sala_id", null);
 
   if (error) {

@@ -1,4 +1,5 @@
 import { extractSitio, parseTituloArtista } from "@/lib/brave-search";
+import { parseCancioneroUrlId } from "@/lib/cancionero-url";
 import type { CancionBusquedaLocal } from "@/lib/sala-data";
 import type { FuenteBusqueda, ResultadoBusquedaBuscador } from "@/types";
 
@@ -46,7 +47,32 @@ export function mapCancionLocalAResultado(
         : extractSitio(cancion.url_letra),
     fuente,
     letra: cancion.letra,
+    tiene_cifrado_avanzado: cancion.tiene_cifrado_avanzado ?? false,
   };
+}
+
+export function isResultadoPremium(
+  resultado: ResultadoBusquedaBuscador,
+  premiumIds: ReadonlySet<number> = new Set(),
+): boolean {
+  if (resultado.tiene_cifrado_avanzado) {
+    return true;
+  }
+
+  if (resultado.fuente === "cancionero" && resultado.id != null) {
+    return premiumIds.has(resultado.id);
+  }
+
+  return false;
+}
+
+export function isColaItemPremium(
+  item: { url_letra?: string | null },
+  premiumIds: ReadonlySet<number>,
+): boolean {
+  const cancioneroId = parseCancioneroUrlId(item.url_letra);
+
+  return cancioneroId !== null && premiumIds.has(cancioneroId);
 }
 
 export function resultadoKey(resultado: ResultadoBusquedaBuscador): string {

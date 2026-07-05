@@ -279,7 +279,10 @@ export default function CancioneroItemCard({
       onClick={handleClick}
     >
       <div className="flex items-center gap-3">
-        <LetraFuenteIcon tipo="cancionero" />
+        <LetraFuenteIcon
+          tipo="cancionero"
+          premium={cancion.tiene_cifrado_avanzado}
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[17px] font-semibold text-text-primary">
             {cancion.nombre}
@@ -306,7 +309,7 @@ export default function CancioneroItemCard({
             className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none"
             onClick={onCloseActions}
           />
-          <div className="absolute right-3 top-1/2 z-50 flex -translate-y-1/2 flex-col gap-2">
+          <div className="absolute right-3 top-1/2 z-50 flex -translate-y-1/2 flex-col items-end gap-2">
             {actionButtons.map(
               ({ key, label, className, icon: Icon, action }, index) => {
                 const cascadeIndex = actionButtons.length - 1 - index;

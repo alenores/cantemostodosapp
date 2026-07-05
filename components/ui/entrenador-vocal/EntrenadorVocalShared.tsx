@@ -48,10 +48,44 @@ export function TargetPickerPanel({
   );
 }
 
-export {
-  ToolConfigSection as VozConfigSection,
-  ToolPracticeSection as VozPracticeSection,
-} from "@/components/ui/ToolModalSections";
+export { ToolConfigSection as VozConfigSection } from "@/components/ui/ToolModalSections";
+
+export function VozPracticeDivider() {
+  const accentColor = "#0f2435";
+  const lineColor = "#1a3a52";
+
+  return (
+    <div
+      className="flex w-full min-w-0 items-center gap-2.5 py-0.5"
+      role="separator"
+      aria-label="Practicar"
+    >
+      <div
+        className="min-w-0 flex-1 border-t-2"
+        style={{ borderColor: lineColor }}
+      />
+      <span
+        className="shrink-0 text-sm font-extrabold uppercase tracking-wider"
+        style={{ color: accentColor }}
+      >
+        PRACTICAR
+      </span>
+      <div
+        className="min-w-0 flex-1 border-t-2"
+        style={{ borderColor: lineColor }}
+      />
+    </div>
+  );
+}
+
+export function VozPracticeArea({ children }: { children: ReactNode }) {
+  return (
+    <div className="-mx-3 space-y-3 px-3 pb-1 pt-3">
+      <VozPracticeDivider />
+      {children}
+    </div>
+  );
+}
 
 export type TargetPickerProps = {
   target: VozTarget;

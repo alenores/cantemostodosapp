@@ -1,58 +1,74 @@
 "use client";
 
+import LetraCifradoLecturaShell from "@/components/cifrado/LetraCifradoLecturaShell";
+import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
+import LetraExpandirFlotante from "@/components/salas/LetraExpandirFlotante";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
+import CifraClubEmbedBadge from "@/components/salas/CifraClubEmbedBadge";
+import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
 import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
+import { useCifradoDetalle } from "@/hooks/useCifradoDetalle";
+import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import {
   getEmbedTopClipPx,
+  isCifraClubEmbed,
   resolveLetraContenido,
   shouldApplyEmbedInitialOffset,
   shouldPreferTextExtract,
 } from "@/lib/letra-display";
+import { parseCancioneroUrlId } from "@/lib/cancionero-url";
 import {
-  getHomeSearchChromeHeightCss,
+  CONTROL_LETRA_SHELL_CLASS,
+  CIFRACLUB_EMBED_FILL_SCALE_X,
+  getControlCantarHorizontalPaddingStyle,
+  getControlHeaderPaddingStyle,
+  getControlHeaderVerticalPaddingStyle,
   getLetraEmbedBottomPadding,
   getLetraSectionBottomPadding,
   getLetraSectionTextBottomPadding,
   getLetraTextScrollEndPadding,
 } from "@/lib/sala-layout";
+import { Star } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-
-function HeaderActionSlot({ action }: { action: ReactNode }) {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end px-0.5 pt-1.5">
-      <div className="pointer-events-auto">{action}</div>
-    </div>
-  );
-}
 
 function CancionActivaHeader({
   cancionNombre,
   artista,
   nombreRevealKey,
   nombreRevealClass,
+  headerLeading,
   headerAction,
+  tieneCifradoAvanzado = false,
+  insetHorizontalInParent = false,
 }: {
   cancionNombre: string | null;
   artista: string | null;
   nombreRevealKey: string;
   nombreRevealClass: string;
+  headerLeading?: ReactNode;
   headerAction?: ReactNode;
+  tieneCifradoAvanzado?: boolean;
+  insetHorizontalInParent?: boolean;
 }) {
   return (
     <header
-      className={`flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala px-2 py-1.5 ${
-        headerAction ? "relative" : ""
-      }`}
+      className="flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala"
+      style={
+        insetHorizontalInParent
+          ? getControlHeaderVerticalPaddingStyle()
+          : getControlHeaderPaddingStyle()
+      }
     >
+      {headerLeading ? <div className="shrink-0">{headerLeading}</div> : null}
       <CancionActivaTitulo
         cancionNombre={cancionNombre}
         artista={artista}
         nombreRevealKey={nombreRevealKey}
         nombreRevealClass={nombreRevealClass}
-        reserveHeaderActionSpace={Boolean(headerAction)}
+        tieneCifradoAvanzado={tieneCifradoAvanzado}
       />
-      {headerAction ? <HeaderActionSlot action={headerAction} /> : null}
+      {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
     </header>
   );
 }
@@ -62,18 +78,24 @@ function CancionActivaTitulo({
   artista,
   nombreRevealKey,
   nombreRevealClass,
-  reserveHeaderActionSpace = false,
+  tieneCifradoAvanzado = false,
 }: {
   cancionNombre: string | null;
   artista: string | null;
   nombreRevealKey: string;
   nombreRevealClass: string;
-  reserveHeaderActionSpace?: boolean;
+  tieneCifradoAvanzado?: boolean;
 }) {
   return (
-    <div className={`min-w-0 flex-1 ${reserveHeaderActionSpace ? "pr-11" : ""}`}>
-      <h2 className="text-xl font-bold leading-tight text-accent">
-        <span key={nombreRevealKey} className={nombreRevealClass}>
+    <div className="min-w-0 flex-1">
+      <h2 className="flex min-w-0 items-center gap-1.5 text-xl font-bold leading-tight text-accent">
+        {tieneCifradoAvanzado ? (
+          <Star
+            className="size-3.5 shrink-0 fill-[var(--tuner-cerca)] text-[var(--tuner-cerca)]"
+            aria-hidden="true"
+          />
+        ) : null}
+        <span key={nombreRevealKey} className={`${nombreRevealClass} truncate`}>
           {cancionNombre}
         </span>
       </h2>
@@ -95,7 +117,9 @@ type CancionActivaSectionProps = {
   letraScrollRef?: RefObject<HTMLDivElement | null>;
   embedIframeRef?: RefObject<HTMLIFrameElement | null>;
   nombreRevealGeneration?: number;
+  headerLeading?: ReactNode;
   headerAction?: ReactNode;
+  onExpand?: () => void;
 };
 
 function LetraEmptySheet({ modoLectura }: { modoLectura: boolean }) {
@@ -103,7 +127,7 @@ function LetraEmptySheet({ modoLectura }: { modoLectura: boolean }) {
     <div className={`flex min-h-0 flex-1 flex-col ${modoLectura ? "" : ""}`}>
       <div
         className={`flex min-h-0 flex-1 items-center justify-center bg-letra-bg ${
-          modoLectura ? "" : "rounded-[12px]"
+          modoLectura ? "" : CONTROL_LETRA_SHELL_CLASS
         }`}
         style={{ minHeight: modoLectura ? undefined : "min(52vh, 420px)" }}
       >
@@ -124,7 +148,9 @@ export default function CancionActivaSection({
   letraScrollRef: letraScrollRefProp,
   embedIframeRef,
   nombreRevealGeneration = 0,
+  headerLeading = null,
   headerAction = null,
+  onExpand,
 }: CancionActivaSectionProps) {
   const letraScrollRefLocal = useRef<HTMLDivElement>(null);
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
@@ -135,6 +161,12 @@ export default function CancionActivaSection({
   const hasCancion = Boolean(cancionNombre);
   const hasManualText = Boolean(letraTexto?.trim());
   const hasUrl = Boolean(urlLetra?.trim());
+  const cancioneroId = parseCancioneroUrlId(urlLetra);
+  const { detalle: cifradoDetalle, loading: cifradoLoading, tieneCifradoAvanzado } =
+    useCifradoDetalle(cancioneroId);
+  const showCifradoAvanzado =
+    Boolean(cifradoDetalle?.letra?.trim()) && tieneCifradoAvanzado;
+  const esperandoCifrado = cancioneroId != null && cifradoLoading;
 
   useEffect(() => {
     if (hasManualText || !hasUrl || !urlLetra) {
@@ -219,6 +251,11 @@ export default function CancionActivaSection({
     contenido?.mode === "embed" &&
     shouldApplyEmbedInitialOffset(contenido.url);
 
+  const showCifraClubBadge =
+    showEmbed &&
+    contenido?.mode === "embed" &&
+    isCifraClubEmbed(contenido.url);
+
   const embedTopClipPx =
     embedConRecorteInicial && !embedTopRevealed
       ? getEmbedTopClipPx(contenido.url)
@@ -231,46 +268,116 @@ export default function CancionActivaSection({
   const nombreRevealClass =
     nombreRevealGeneration > 0 ? "cola-nombre-reveal block" : "block";
 
-  if (showTexto && contenido?.mode === "texto") {
+  const colaSidePanel = useColaSidePanel();
+  const lecturaChipProps =
+    modoLectura && cancionNombre
+      ? {
+          nombre: cancionNombre,
+          artista,
+          nombreRevealKey,
+          nombreRevealClass,
+        }
+      : null;
+  const lecturaChipViewport = lecturaChipProps ? (
+    <LecturaCancionChip
+      {...lecturaChipProps}
+      reservarColaLateral={colaSidePanel}
+    />
+  ) : null;
+
+  const showLetraSheet =
+    (showTexto && contenido?.mode === "texto") ||
+    (cancioneroId != null &&
+      hasCancion &&
+      (esperandoCifrado || showCifradoAvanzado));
+
+  if (showLetraSheet) {
+    const scrollEndPadding = modoLectura
+      ? "calc(16px + env(safe-area-inset-bottom, 0px))"
+      : getLetraTextScrollEndPadding();
+    const textoPlano =
+      contenido?.mode === "texto" ? contenido.texto : letraTexto?.trim() ?? "";
+
     return (
       <section
         className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala ${
-          modoLectura ? "px-0 pt-0" : "px-2 pt-0"
+          modoLectura ? "px-0 pt-0" : "pt-0"
         }`}
         style={{
+          ...(modoLectura ? {} : getControlCantarHorizontalPaddingStyle()),
           paddingBottom: modoLectura
             ? "env(safe-area-inset-bottom, 0px)"
             : getLetraSectionTextBottomPadding(),
         }}
       >
+        {lecturaChipViewport}
         {!modoLectura ? (
           <CancionActivaHeader
             cancionNombre={cancionNombre}
             artista={artista}
             nombreRevealKey={nombreRevealKey}
             nombreRevealClass={nombreRevealClass}
+            headerLeading={headerLeading}
             headerAction={headerAction}
+            tieneCifradoAvanzado={showCifradoAvanzado}
+            insetHorizontalInParent
           />
         ) : null}
 
         <div
-          ref={letraScrollRef}
-          data-cancionero-letra-scroll=""
-          className={`relative min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain bg-letra-bg ${
-            modoLectura ? "rounded-[12px]" : "rounded-none"
-          }`}
+          className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${
+            modoLectura ? "h-full w-full" : ""
+          } ${modoLectura ? "" : CONTROL_LETRA_SHELL_CLASS}`}
         >
-          <LetraTexto
-            texto={contenido.texto}
-            edgeToEdge
-            fillViewport
-            compactHorizontalPadding={modoLectura}
-            scrollEndPadding={
-              modoLectura
-                ? "calc(16px + env(safe-area-inset-bottom, 0px))"
-                : getLetraTextScrollEndPadding()
-            }
-          />
+          {!modoLectura && onExpand ? (
+            <LetraExpandirFlotante onExpand={onExpand} />
+          ) : null}
+          {modoLectura && showCifradoAvanzado && cifradoDetalle ? (
+            <LetraCifradoLecturaShell
+              detalle={cifradoDetalle}
+              scrollRef={letraScrollRef}
+              scrollEndPadding={scrollEndPadding}
+            />
+          ) : (
+            <div
+              ref={letraScrollRef}
+              data-cancionero-letra-scroll=""
+              className={`relative h-full min-h-0 w-full touch-pan-y overscroll-y-contain bg-letra-bg ${
+                modoLectura
+                  ? "overflow-y-auto rounded-[12px]"
+                  : "overflow-y-auto"
+              }`}
+            >
+              {esperandoCifrado ? (
+                <div
+                  className="flex min-h-[12rem] items-center justify-center px-4"
+                  role="status"
+                  aria-live="polite"
+                  aria-label="Cargando cifrado"
+                >
+                  <p className="text-sm text-text-muted">Cargando cifrado…</p>
+                </div>
+              ) : showCifradoAvanzado && cifradoDetalle ? (
+                <LetraCifradoPanel
+                  detalle={cifradoDetalle}
+                  modoLectura={modoLectura}
+                  scrollEndPadding={scrollEndPadding}
+                />
+              ) : textoPlano ? (
+                <LetraTexto
+                  texto={textoPlano}
+                  edgeToEdge
+                  fillViewport
+                  compactHorizontalPadding={modoLectura}
+                  scrollEndPadding={scrollEndPadding}
+                />
+              ) : (
+                <p className="px-4 py-8 text-center text-sm text-text-muted">
+                  Esta canción no tiene letra disponible.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
     );
@@ -281,22 +388,22 @@ export default function CancionActivaSection({
       className={`flex h-full min-h-0 flex-1 flex-col bg-bg-sala ${
         modoLectura
           ? "overflow-hidden px-0 pb-0 pt-0"
-          : `px-2 pt-0 ${
-              showEmbed
-                ? "overflow-hidden pb-0"
-                : "overflow-y-auto overscroll-y-contain pb-3"
-            }`
+          : showEmbed
+            ? "overflow-hidden pb-0 pt-0"
+            : "overflow-y-auto overscroll-y-contain pb-3 pt-0"
       }`}
       style={
         modoLectura
           ? undefined
           : {
+              ...getControlCantarHorizontalPaddingStyle(),
               paddingBottom: showEmbed
                 ? getLetraEmbedBottomPadding()
                 : getLetraSectionBottomPadding(),
             }
       }
     >
+      {lecturaChipViewport}
       {hasCancion ? (
         <>
           {!modoLectura ? (
@@ -305,14 +412,18 @@ export default function CancionActivaSection({
               artista={artista}
               nombreRevealKey={nombreRevealKey}
               nombreRevealClass={nombreRevealClass}
+              headerLeading={headerLeading}
               headerAction={headerAction}
+              insetHorizontalInParent
             />
           ) : null}
 
           {waitingForExtract && (
             <div
-              className={`relative min-h-0 flex-1 overflow-hidden bg-letra-bg ${
-                modoLectura ? "mx-0 rounded-[12px]" : "rounded-none"
+              className={`relative min-h-0 flex-1 bg-letra-bg ${
+                modoLectura
+                  ? "mx-0 overflow-hidden rounded-[12px]"
+                  : CONTROL_LETRA_SHELL_CLASS
               }`}
               role="status"
               aria-live="polite"
@@ -333,19 +444,39 @@ export default function CancionActivaSection({
           )}
 
           {showEmbed && contenido.mode === "embed" && (
-            <div className="relative min-h-0 w-full flex-1">
-              <LetraViewer
-                url={contenido.url}
-                title="Letra de la canción activa"
-                fill
-                initialScrollOffsetPx={embedTopClipPx}
-                embedIframeRef={modoLectura ? embedIframeRef : undefined}
-                onRevealTop={
-                  embedConRecorteInicial
-                    ? () => setEmbedTopRevealed(true)
-                    : undefined
-                }
-              />
+            <div
+              className={`relative min-h-0 w-full flex-1 ${
+                modoLectura ? "" : CONTROL_LETRA_SHELL_CLASS
+              }`}
+            >
+              {!modoLectura && onExpand ? (
+                <LetraExpandirFlotante onExpand={onExpand} />
+              ) : null}
+              {showCifraClubBadge ? (
+                <CifraClubEmbedBadge
+                  placement={modoLectura ? "lectura" : "control"}
+                />
+              ) : null}
+              <div className="absolute inset-0 min-h-0">
+                <LetraViewer
+                  url={contenido.url}
+                  title="Letra de la canción activa"
+                  fill
+                  edgeToEdge={!modoLectura}
+                  fillScaleX={
+                    isCifraClubEmbed(contenido.url)
+                      ? CIFRACLUB_EMBED_FILL_SCALE_X
+                      : undefined
+                  }
+                  initialScrollOffsetPx={embedTopClipPx}
+                  embedIframeRef={modoLectura ? embedIframeRef : undefined}
+                  onRevealTop={
+                    embedConRecorteInicial
+                      ? () => setEmbedTopRevealed(true)
+                      : undefined
+                  }
+                />
+              </div>
             </div>
           )}
         </>
@@ -353,8 +484,8 @@ export default function CancionActivaSection({
         <>
           {!modoLectura && headerAction ? (
             <div
-              className="flex shrink-0 items-center justify-end px-0.5"
-              style={{ minHeight: getHomeSearchChromeHeightCss() }}
+              className="flex shrink-0 items-start justify-end"
+              style={getControlHeaderVerticalPaddingStyle()}
             >
               {headerAction}
             </div>

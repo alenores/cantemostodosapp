@@ -20,6 +20,7 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
     useNativeEsbuild: true,
     additionalPrecacheEntries: [
       { url: "/pwa-boot.html", revision },
+      { url: "/", revision },
       { url: "/~offline", revision },
       { url: "/salas", revision },
       { url: "/auth/login", revision },

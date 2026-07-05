@@ -6,21 +6,45 @@ export type Sala = {
   created_at: string;
 };
 
+import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
+
 export type CancionGuardada = {
   id: number;
   sala_id: number | null;
   nombre: string;
   artista: string | null;
-  url_letra: string;
+  url_letra: string | null;
   letra: string | null;
+  cifrado?: CifradoData | null;
+  compas_config?: CompasConfig | null;
+  tonalidad_default?: NotaIndex | null;
+  bpm_default?: number | null;
+  tiene_cifrado_avanzado: boolean;
   created_at: string;
   updated_at: string;
 };
 
 export type CancionCancionero = Pick<
   CancionGuardada,
-  "id" | "nombre" | "artista" | "letra"
+  "id" | "nombre" | "artista" | "letra" | "tiene_cifrado_avanzado"
 >;
+
+export type CancionCifradoDetalle = Pick<
+  CancionGuardada,
+  | "id"
+  | "nombre"
+  | "artista"
+  | "letra"
+  | "cifrado"
+  | "compas_config"
+  | "tonalidad_default"
+  | "bpm_default"
+  | "tiene_cifrado_avanzado"
+> & {
+  cifrado: CifradoData;
+  tonalidad_default: NotaIndex;
+  bpm_default: number;
+};
 
 export type EstadoCola = "pendiente" | "activa" | "tocada";
 
@@ -59,6 +83,7 @@ export type ResultadoBusquedaBuscador = ResultadoBusqueda & {
   fuente: FuenteBusqueda;
   id?: number;
   letra?: string | null;
+  tiene_cifrado_avanzado?: boolean;
 };
 
 export type UsuarioActivo = {

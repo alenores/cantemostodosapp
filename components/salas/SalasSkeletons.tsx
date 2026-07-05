@@ -1,5 +1,10 @@
 import {
   APP_FOOTER_HEIGHT_PX,
+  CONTROL_LETRA_SHELL_CLASS,
+  getControlCantarHorizontalPaddingStyle,
+  getControlHeaderPaddingStyle,
+  getControlHeaderVerticalPaddingStyle,
+  getLetraSectionTextBottomPadding,
   getSalaFloatControlsBottomCss,
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
@@ -142,26 +147,38 @@ export function SalaLetraSkeleton({
 }) {
   return (
     <section
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala px-2 pt-0"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala pt-0"
+      style={{
+        ...getControlCantarHorizontalPaddingStyle(),
+        ...(showHeader
+          ? {}
+          : { paddingBottom: getLetraSectionTextBottomPadding() }),
+      }}
       role="status"
       aria-live="polite"
       aria-label="Cargando letra"
     >
       {showHeader ? (
-        <header className="shrink-0 border-b border-border bg-bg-sala px-2 py-1.5">
+        <header
+          className="shrink-0 border-b border-border bg-bg-sala"
+          style={getControlHeaderPaddingStyle()}
+        >
           <ShimmerBlock className="h-6 w-[58%] rounded-md" />
           <ShimmerBlock className="mt-1.5 h-[13px] w-[34%] rounded-md" delayMs={50} />
         </header>
       ) : (
-        <div className="shrink-0 space-y-1.5">
+        <div
+          className="shrink-0 space-y-1.5"
+          style={getControlHeaderVerticalPaddingStyle()}
+        >
           <ShimmerBlock className="h-6 w-[58%] rounded-md" />
           <ShimmerBlock className="mt-0.5 h-[13px] w-[34%] rounded-md" delayMs={50} />
         </div>
       )}
 
       <div
-        className={`relative mt-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-letra-bg ${
-          showHeader ? "mt-0 rounded-none" : ""
+        className={`relative flex min-h-0 flex-1 flex-col bg-letra-bg ${
+          showHeader ? "mt-2 overflow-hidden rounded-[12px]" : CONTROL_LETRA_SHELL_CLASS
         }`}
       >
         <SalaLetraLinesSkeleton />

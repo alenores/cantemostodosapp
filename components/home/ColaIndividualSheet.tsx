@@ -4,12 +4,22 @@ import ColaFilaFloatButton from "@/components/salas/ColaFilaFloatButton";
 import ColaJuntadaItem, {
   type ColaJuntadaItemVariant,
 } from "@/components/salas/ColaJuntadaItem";
+import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
-import AddButton, { COLA_ADD_BUTTON_SIZE } from "@/components/ui/AddButton";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import type { ColaIndividualRow } from "@/hooks/useColaIndividual";
 import { triggerHaptic } from "@/lib/haptic";
+import { isColaItemPremium } from "@/lib/buscador";
+import {
+  COLA_DELETE_ALL_STEP1,
+  COLA_DELETE_ALL_STEP2,
+  COLA_PANEL_ARIA_LABEL,
+  COLA_PANEL_EMPTY_MESSAGE,
+  COLA_SIDE_PANEL_CLASS,
+} from "@/lib/cola-ui";
 import {
   COLA_FINALIZE_BUTTON_MS,
   COLA_MODAL_HORIZONTAL_INSET_PX,
@@ -143,6 +153,7 @@ type SortableRowProps = {
   items: ColaIndividualRow[];
   listIndex: number;
   nombreRevealGeneration: number;
+  premiumIds: ReadonlySet<number>;
 };
 
 function SortableColaIndividualRow({
@@ -150,6 +161,7 @@ function SortableColaIndividualRow({
   items,
   listIndex,
   nombreRevealGeneration,
+  premiumIds,
 }: SortableRowProps) {
   const variant = getIndividualVariant(item, items);
   const {
@@ -178,6 +190,7 @@ function SortableColaIndividualRow({
       ref={setNodeRef}
       item={item}
       variant={variant}
+      premium={isColaItemPremium(item, premiumIds)}
       showAgregadoAvatar={false}
       nombreRevealGeneration={nombreRevealGeneration}
       nombreRevealIndex={listIndex}
@@ -201,6 +214,8 @@ export default function ColaIndividualSheet({
   onVolverAPendiente,
   onReorder,
 }: ColaIndividualSheetProps) {
+  const premiumIds = usePremiumCancioneroIds();
+  const colaSidePanelMode = useColaSidePanel() && !presentacionOculta;
   const [abierto, setAbierto] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetExiting, setSheetExiting] = useState(false);
@@ -267,6 +282,10 @@ export default function ColaIndividualSheet({
   }, []);
 
   const closeCola = useCallback(() => {
+    if (colaSidePanelMode) {
+      return;
+    }
+
     if (!sheetVisible || sheetExiting) {
       return;
     }
@@ -279,7 +298,7 @@ export default function ColaIndividualSheet({
       setSheetExiting(false);
       sheetCloseTimerRef.current = null;
     }, COLA_SHEET_EXIT_MS);
-  }, [sheetExiting, sheetVisible]);
+  }, [colaSidePanelMode, sheetExiting, sheetVisible]);
 
   useEffect(() => {
     setPortalMounted(true);
@@ -297,7 +316,7 @@ export default function ColaIndividualSheet({
     onRequestOpen?.(openCola);
   }, [onRequestOpen, openCola]);
 
-  useHardwareBack(sheetVisible && !sheetExiting, () => {
+  useHardwareBack(sheetVisible && !sheetExiting && !colaSidePanelMode, () => {
     if (showDeleteAllDialog) {
       setShowDeleteAllDialog(false);
       return;
@@ -307,7 +326,9 @@ export default function ColaIndividualSheet({
   });
 
   function handleOpenBuscador() {
-    closeCola();
+    if (!colaSidePanelMode) {
+      closeCola();
+    }
     onOpenBuscador();
   }
 
@@ -316,11 +337,15 @@ export default function ColaIndividualSheet({
       return;
     }
 
-    closeCola();
+    if (!colaSidePanelMode) {
+      closeCola();
+    }
     triggerHaptic();
-    await new Promise((resolve) =>
-      setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
-    );
+    if (!colaSidePanelMode) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
+      );
+    }
     await onSiguiente();
   }
 
@@ -370,8 +395,143 @@ export default function ColaIndividualSheet({
   const modalBottom = getColaModalBottomCss();
   const listaVacia = sortedItems.length === 0;
 
-  const colaModalLayer =
-    sheetVisible && portalMounted
+  function renderColaListBody() {
+    return (
+      <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
+        <div
+          className="min-h-0 flex-1 touch-pan-y select-none overflow-y-auto overscroll-none px-3 py-3"
+          style={{
+            paddingBottom: activeDragId
+              ? "max(4.5rem, env(safe-area-inset-bottom, 0px))"
+              : "max(1rem, env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          {listaVacia ? (
+            <p className="py-8 text-center text-sm text-text-muted">
+              {COLA_PANEL_EMPTY_MESSAGE}
+            </p>
+          ) : (
+            <>
+              {tocadas.length > 0 ? (
+                <div className="mb-2 space-y-0.5">
+                  {tocadas.map((item) => (
+                    <ColaJuntadaItem
+                      key={item.id}
+                      item={item}
+                      variant="tocada"
+                      showAgregadoAvatar={false}
+                      onVolverAPendiente={(id) => void onVolverAPendiente(id)}
+                    />
+                  ))}
+                  <div
+                    className="mx-1 my-2 border-b border-border/40"
+                    aria-hidden="true"
+                  />
+                </div>
+              ) : null}
+
+              {activaItem ? (
+                <div className="mb-2">
+                  <ColaJuntadaItem
+                    item={activaItem}
+                    variant="activa"
+                    showAgregadoAvatar={false}
+                  />
+                </div>
+              ) : null}
+
+              {pendientes.length > 0 ? (
+                <SortableContext
+                  items={pendientesIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {pendientes.map((item, index) => (
+                      <SortableColaIndividualRow
+                        key={item.id}
+                        item={item}
+                        items={items}
+                        listIndex={index}
+                        nombreRevealGeneration={nombreRevealGeneration}
+                        premiumIds={premiumIds}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        <ColaDragDeleteZone
+          visible={activeDragId !== null}
+          highlighted={dragOverDelete}
+        />
+      </div>
+    );
+  }
+
+  function renderColaPanelShell(
+    shellClassName: string,
+    shellStyle?: CSSProperties,
+    dialogProps?: { role: "dialog"; "aria-modal": true },
+    onClose?: () => void,
+  ) {
+    return (
+      <div
+        className={shellClassName}
+        style={shellStyle}
+        aria-label={COLA_PANEL_ARIA_LABEL}
+        {...dialogProps}
+      >
+        <ColaPanelHeader
+          pendientesCount={pendientesCount}
+          onDeleteAll={() => setShowDeleteAllDialog(true)}
+          onSiguiente={() => void handleSiguiente()}
+          onAdd={handleOpenBuscador}
+          onClose={onClose}
+        />
+        {renderColaListBody()}
+      </div>
+    );
+  }
+
+  const colaDndLayer = (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={colaDragCollisionDetection}
+      measuring={{
+        droppable: { strategy: MeasuringStrategy.Always },
+      }}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={(event) => void handleDragEnd(event)}
+      onDragCancel={() => {
+        setActiveDragId(null);
+        setDragOverDelete(false);
+      }}
+    >
+      {colaSidePanelMode
+        ? renderColaPanelShell("flex min-h-0 flex-1 flex-col")
+        : null}
+
+      <DragOverlay dropAnimation={null} style={{ zIndex: COLA_MODAL_LAYER_Z + 2 }}>
+        {activeDragItem ? (
+          <div className="opacity-80 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
+            <ColaJuntadaItem
+              item={activeDragItem}
+              variant={getIndividualVariant(activeDragItem, items)}
+              premium={isColaItemPremium(activeDragItem, premiumIds)}
+              showAgregadoAvatar={false}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+
+  const colaSheetLayer =
+    !colaSidePanelMode && sheetVisible && portalMounted
       ? createPortal(
           <>
             <button
@@ -399,157 +559,37 @@ export default function ColaIndividualSheet({
                 setDragOverDelete(false);
               }}
             >
-              <div
-                className={`fixed flex flex-col overflow-hidden rounded-2xl border-[3px] border-bg-cola-sheet bg-bg-dark shadow-[0_0_0_1px_rgba(0,0,0,0.65),0_20px_56px_rgba(0,0,0,0.62)] ${
+              {renderColaPanelShell(
+                `sala-cola-panel fixed flex flex-col overflow-hidden rounded-2xl border-[3px] border-bg-cola-sheet bg-bg-dark shadow-[0_0_0_1px_rgba(0,0,0,0.65),0_20px_56px_rgba(0,0,0,0.62)] ${
                   sheetExiting ? "sala-cola-sheet-panel--exit" : ""
-                }`}
-                style={{
+                }`,
+                {
                   zIndex: COLA_MODAL_LAYER_Z + 1,
                   top: `calc(${COLA_MODAL_TOP_INSET_PX}px + env(safe-area-inset-top, 0px))`,
                   bottom: modalBottom,
                   left: COLA_MODAL_HORIZONTAL_INSET_PX,
                   right: COLA_MODAL_HORIZONTAL_INSET_PX,
-                }}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Cola individual"
+                },
+                { role: "dialog", "aria-modal": true },
+                closeCola,
+              )}
+
+              <DragOverlay
+                dropAnimation={null}
+                style={{ zIndex: COLA_MODAL_LAYER_Z + 2 }}
               >
-                <header className="relative shrink-0 border-b border-border bg-bg-cola-sheet px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <TapButton
-                      type="button"
-                      aria-label="Borrar toda la lista"
-                      onClick={() => setShowDeleteAllDialog(true)}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-muted/50 active:text-text-secondary"
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </TapButton>
-
-                    <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-                      <h2 className="text-lg font-bold text-text-primary">
-                        Cola individual
-                      </h2>
-                      <TapButton
-                        type="button"
-                        aria-label="Siguiente canción"
-                        disabled={pendientesCount === 0}
-                        onClick={() => void handleSiguiente()}
-                        className={`flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary ${
-                          pendientesCount === 0
-                            ? "pointer-events-none opacity-40"
-                            : ""
-                        }`}
-                      >
-                        <SkipForward className="size-4" aria-hidden="true" />
-                      </TapButton>
-                    </div>
-
-                    <AddButton
-                      ariaLabel="Agregar canción"
-                      size={COLA_ADD_BUTTON_SIZE}
-                      onClick={handleOpenBuscador}
-                    />
-                  </div>
-                </header>
-
-                <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
-                  <div
-                    className="min-h-0 flex-1 touch-pan-y select-none overflow-y-auto overscroll-none px-3 py-3"
-                    style={{
-                      paddingBottom: activeDragId
-                        ? "max(4.5rem, env(safe-area-inset-bottom, 0px))"
-                        : "max(1rem, env(safe-area-inset-bottom, 0px))",
-                    }}
-                  >
-                    {listaVacia ? (
-                      <p className="py-8 text-center text-sm text-text-muted">
-                        Cola vacía · buscá una canción para agregarla
-                      </p>
-                    ) : (
-                      <>
-                        {tocadas.length > 0 ? (
-                          <div className="mb-2 space-y-0.5">
-                            {tocadas.map((item) => (
-                              <ColaJuntadaItem
-                                key={item.id}
-                                item={item}
-                                variant="tocada"
-                                showAgregadoAvatar={false}
-                                onVolverAPendiente={(id) =>
-                                  void onVolverAPendiente(id)
-                                }
-                              />
-                            ))}
-                            <div
-                              className="mx-1 my-2 border-b border-border/40"
-                              aria-hidden="true"
-                            />
-                          </div>
-                        ) : null}
-
-                        {activaItem ? (
-                          <div className="mb-2">
-                            <ColaJuntadaItem
-                              item={activaItem}
-                              variant="activa"
-                              showAgregadoAvatar={false}
-                            />
-                          </div>
-                        ) : null}
-
-                        {pendientes.length > 0 ? (
-                          <SortableContext
-                            items={pendientesIds}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            <div className="space-y-2">
-                              {pendientes.map((item, index) => (
-                                <SortableColaIndividualRow
-                                  key={item.id}
-                                  item={item}
-                                  items={items}
-                                  listIndex={index}
-                                  nombreRevealGeneration={nombreRevealGeneration}
-                                />
-                              ))}
-                            </div>
-                          </SortableContext>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-
-                  <ColaDragDeleteZone
-                    visible={activeDragId !== null}
-                    highlighted={dragOverDelete}
-                  />
-                </div>
-              </div>
-
-              <DragOverlay dropAnimation={null} style={{ zIndex: COLA_MODAL_LAYER_Z + 2 }}>
                 {activeDragItem ? (
                   <div className="opacity-80 shadow-[0_8px_24px_rgba(0,0,0,0.35)]">
                     <ColaJuntadaItem
                       item={activeDragItem}
                       variant={getIndividualVariant(activeDragItem, items)}
+                      premium={isColaItemPremium(activeDragItem, premiumIds)}
                       showAgregadoAvatar={false}
                     />
                   </div>
                 ) : null}
               </DragOverlay>
             </DndContext>
-
-            <DoubleConfirmDialog
-              open={showDeleteAllDialog}
-              step1Message="¿Querés borrar TODA la cola individual?"
-              step2Message="¿Estás seguro? Esta acción no se puede deshacer."
-              zIndex={COLA_MODAL_LAYER_Z + 10}
-              onCancel={() => setShowDeleteAllDialog(false)}
-              onConfirm={() => {
-                setShowDeleteAllDialog(false);
-                void onDeleteAll();
-              }}
-            />
           </>,
           document.body,
         )
@@ -557,7 +597,11 @@ export default function ColaIndividualSheet({
 
   return (
     <>
-      {!presentacionOculta ? (
+      {colaSidePanelMode ? (
+        <aside className={COLA_SIDE_PANEL_CLASS}>{colaDndLayer}</aside>
+      ) : null}
+
+      {!presentacionOculta && !colaSidePanelMode ? (
         <div
           className="pointer-events-none fixed inset-x-0 z-30"
           style={{ bottom: floatingBottom, height: 0, overflow: "visible" }}
@@ -599,7 +643,19 @@ export default function ColaIndividualSheet({
         </div>
       ) : null}
 
-      {colaModalLayer}
+      {colaSheetLayer}
+
+      <DoubleConfirmDialog
+        open={showDeleteAllDialog}
+        step1Message={COLA_DELETE_ALL_STEP1}
+        step2Message={COLA_DELETE_ALL_STEP2}
+        zIndex={COLA_MODAL_LAYER_Z + 10}
+        onCancel={() => setShowDeleteAllDialog(false)}
+        onConfirm={() => {
+          setShowDeleteAllDialog(false);
+          void onDeleteAll();
+        }}
+      />
     </>
   );
 }

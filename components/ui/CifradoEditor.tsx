@@ -1,0 +1,2813 @@
+"use client";
+
+import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
+import {
+  CIFRADO_CONTROLS_INPUT_CLASS,
+  CIFRADO_CONTROLS_PANEL_BOX_CLASS,
+  CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
+  CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
+  CIFRADO_CONTROLS_SEGMENTED_CLASS,
+  CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
+  CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
+  cifradoEditorToolbarSegmentedButtonClass,
+  cifradoSegmentedIconButtonClass,
+} from "@/components/cifrado/cifrado-controls-ui";
+import { TapButton } from "@/components/ui/TapFeedback";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
+import {
+  MODIFICADORES,
+  computeTapBpm,
+  applyLineCopyAcordes,
+  applyLineCopyCompas,
+  charOffsetToPx,
+  computeLineCompasMarkersPx,
+  clampCompasCharOffset,
+  createDefaultCompasConfig,
+  createEmptyCifrado,
+  DEFAULT_BPM,
+  DEFAULT_TONALIDAD,
+  deleteCifradoLine,
+  deleteCompasLine,
+  findAcordeAt,
+  formatAcorde,
+  findNearestCharOffset,
+  getBeatCountForCompas,
+  insertCifradoLineBelow,
+  insertCompasLineBelow,
+  moveBarraCompas,
+  moveAcorde,
+  removeAcordeAt,
+  removeBarraCompasAt,
+  renumberLineBarrasCompas,
+  resolveCharOffsetPx,
+  upsertAcorde,
+  upsertBarraCompas,
+  type AcordePos,
+  type BarraCompas,
+  type CifradoData,
+  type CompasConfig,
+  type CompasMarker,
+  type LineCopyKind,
+  type Modificador,
+  type NotaIndex,
+  type TipoCompas,
+} from "@/lib/cifrado";
+import { isNotaEnEscala, getModificadorPorDefecto } from "@/lib/cifrado-escala";
+import {
+  getNotaLabel,
+  readNotacionAcordesPreferida,
+  writeNotacionAcordesPreferida,
+  type NotacionAcordes,
+} from "@/lib/notacion-acordes";
+import { createClient } from "@/lib/supabase/client";
+import type { CifradoEditorSession, CifradoSaveResult } from "@/lib/cifrado-editor-session";
+import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
+import {
+  buildDisplayedPreviewPlaybackBeats,
+  playCifradoClick,
+  type PreviewPlaybackAnchor,
+} from "@/lib/cifrado-preview-play";
+import { Copy, Lock, LockOpen, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { createPortal } from "react-dom";
+
+type CifradoEditorProps = {
+  open: boolean;
+  isLoggedIn: boolean;
+  session?: CifradoEditorSession | null;
+  onClose: () => void;
+  onSaved: (result?: CifradoSaveResult) => void;
+};
+
+type EditorPhase = "ingreso" | "cifrado";
+
+type PickerState = {
+  lineIndex: number;
+  charOffset: number;
+  x: number;
+  y: number;
+};
+
+type ModoInsercion = "acordes" | "compas" | "letra";
+
+type VistaArmado = "pc" | "celular";
+
+type ActivePreviewBeat = {
+  kind: CompasMarker["kind"];
+  anchors: PreviewPlaybackAnchor[];
+} | null;
+
+type CharPosition = {
+  left: number;
+  center: number;
+  bottom: number;
+};
+
+type LineCopyBuffer = {
+  kind: LineCopyKind;
+  sourceTextLength: number;
+  acordes: AcordePos[];
+  barras: BarraCompas[];
+};
+
+const labelClassName =
+  "mb-1.5 block text-sm font-medium text-text-secondary";
+
+const inputClassName = CIFRADO_CONTROLS_INPUT_CLASS;
+
+const textareaClassName =
+  "min-h-[200px] w-full resize-y rounded-[10px] border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-gray-500 outline-none focus:border-accent";
+
+const COMPAS_LABELS: Record<TipoCompas, string> = {
+  "4-4": "4/4",
+  "3-4": "3/4",
+  "6-8": "6/8",
+};
+
+/** Casillas clicables a la derecha de la letra para marcar compases instrumentales. */
+const COMPAS_EXTENSION_SLOTS = 24;
+
+const NOTA_INDICES = Array.from({ length: 12 }, (_, index) => index as NotaIndex);
+
+function getCompasExtensionStart(textLength: number): number {
+  return textLength === 0 ? 1 : textLength;
+}
+
+function splitLyricsLines(text: string): string[] {
+  return text.replace(/\r\n/g, "\n").split("\n");
+}
+
+function removeLockedLineIndex(
+  locked: Set<number>,
+  lineIndex: number,
+): Set<number> {
+  const next = new Set<number>();
+
+  for (const index of locked) {
+    if (index === lineIndex) {
+      continue;
+    }
+
+    next.add(index > lineIndex ? index - 1 : index);
+  }
+
+  return next;
+}
+
+function insertLockedLineBelow(
+  locked: Set<number>,
+  lineIndex: number,
+): Set<number> {
+  const next = new Set<number>();
+
+  for (const index of locked) {
+    next.add(index > lineIndex ? index + 1 : index);
+  }
+
+  return next;
+}
+
+type ChordPickerProps = {
+  state: PickerState;
+  existing?: AcordePos;
+  tonalidadIndex: NotaIndex;
+  notacion: NotacionAcordes;
+  onApply: (noteIndex: NotaIndex, modifier: Modificador) => void;
+  onRemove: () => void;
+  onClose: () => void;
+};
+
+function ChordPicker({
+  state,
+  existing,
+  tonalidadIndex,
+  notacion,
+  onApply,
+  onRemove,
+  onClose,
+}: ChordPickerProps) {
+  const [noteIndex, setNoteIndex] = useState<NotaIndex | null>(
+    existing ? existing.noteIndex : null,
+  );
+  const [modifier, setModifier] = useState<Modificador | null>(
+    existing ? existing.modifier : null,
+  );
+  const panelRef = useRef<HTMLDivElement>(null);
+  const canApply = noteIndex !== null && modifier !== null;
+
+  useEffect(() => {
+    setNoteIndex(existing ? existing.noteIndex : null);
+    setModifier(existing ? existing.modifier : null);
+  }, [
+    existing?.charOffset,
+    existing?.lineIndex,
+    existing?.modifier,
+    existing?.noteIndex,
+    state.charOffset,
+    state.lineIndex,
+  ]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(event.target as Node)
+      ) {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousedown", handlePointerDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [onClose]);
+
+  function handleSelectNote(index: NotaIndex) {
+    setNoteIndex(index);
+    setModifier(getModificadorPorDefecto(index, tonalidadIndex));
+  }
+
+  return (
+    <div
+      ref={panelRef}
+      className="fixed z-[70] w-72 rounded-[12px] border border-border bg-bg-card p-3 shadow-xl"
+      style={{ left: state.x, top: state.y }}
+      role="dialog"
+      aria-label="Selector de acorde"
+    >
+      <p className="mb-2 text-xs font-medium text-text-muted">Nota</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {NOTA_INDICES.map((index) => {
+          const enEscala = isNotaEnEscala(index, tonalidadIndex);
+          const isSelected = noteIndex !== null && noteIndex === index;
+
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleSelectNote(index)}
+              className={`rounded-lg px-2 py-1.5 text-xs ${
+                isSelected
+                  ? "bg-accent font-semibold text-white"
+                  : enEscala
+                    ? "bg-bg-dark font-semibold text-text-primary"
+                    : "bg-bg-dark/50 font-normal text-text-muted opacity-60"
+              }`}
+            >
+              {getNotaLabel(index, notacion)}
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mb-2 mt-3 text-xs font-medium text-text-muted">
+        Modificador
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {MODIFICADORES.map((item) => (
+          <button
+            key={item.id || "mayor"}
+            type="button"
+            onClick={() => setModifier(item.id)}
+            className={`rounded-full px-2.5 py-1 text-xs ${
+              modifier !== null && modifier === item.id
+                ? "bg-accent text-white"
+                : "bg-bg-dark text-text-secondary"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex gap-2">
+        <TapButton
+          type="button"
+          onClick={() => {
+            if (noteIndex !== null && modifier !== null) {
+              onApply(noteIndex, modifier);
+            }
+          }}
+          disabled={!canApply}
+          className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
+        >
+          Aplicar
+        </TapButton>
+        {existing && (
+          <TapButton
+            type="button"
+            onClick={onRemove}
+            className="rounded-lg border border-border px-3 py-2 text-sm text-text-secondary"
+          >
+            Quitar
+          </TapButton>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type CifradoLineEditorProps = {
+  lineIndex: number;
+  text: string;
+  acordes: AcordePos[];
+  barras: BarraCompas[];
+  modoAvanzado: boolean;
+  modoInsercion: ModoInsercion;
+  tipoCompas: TipoCompas;
+  activeBeatAnchors?: PreviewPlaybackAnchor[];
+  onOpenPicker: (lineIndex: number, charOffset: number, rect: DOMRect) => void;
+  onInsertBarra: (lineIndex: number, charOffset: number) => void;
+  onMoveAcorde: (
+    lineIndex: number,
+    fromOffset: number,
+    toOffset: number,
+  ) => void;
+  onMoveBarra: (
+    lineIndex: number,
+    fromOffset: number,
+    toOffset: number,
+  ) => void;
+  onLineTextChange?: (lineIndex: number, newText: string) => void;
+  onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
+  isLineEditing?: boolean;
+  isDimmed?: boolean;
+  isLineLocked?: boolean;
+  onToggleLineEdit?: () => void;
+  onToggleLineLock?: () => void;
+  hasLineCopyPending?: boolean;
+  notacion?: NotacionAcordes;
+};
+
+type LineEditFabBarProps = {
+  hasLineCopyPending: boolean;
+  onDelete: () => void;
+  onInsertBelow: () => void;
+  onCopy: (kind: LineCopyKind) => void;
+};
+
+function LineEditFabBar({
+  hasLineCopyPending,
+  onDelete,
+  onInsertBelow,
+  onCopy,
+}: LineEditFabBarProps) {
+  return (
+    <div
+      data-line-edit-fab=""
+      className="mt-1.5 rounded-lg border border-gray-200/90 bg-white/95 px-2 py-2 shadow-sm"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {hasLineCopyPending && (
+        <p className="mb-2 text-center text-xs text-gray-500">
+          Listo para pegar — tocá otro renglón
+        </p>
+      )}
+      <div className="flex flex-wrap justify-center gap-1.5">
+        <TapButton
+          type="button"
+          onClick={onDelete}
+          className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm"
+        >
+          <Trash2 className="size-3.5" aria-hidden="true" />
+          Eliminar
+        </TapButton>
+        <TapButton
+          type="button"
+          onClick={onInsertBelow}
+          className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          Línea abajo
+        </TapButton>
+        <TapButton
+          type="button"
+          onClick={() => onCopy("acordes")}
+          className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm"
+        >
+          <Copy className="size-3.5" aria-hidden="true" />
+          Copiar acordes
+        </TapButton>
+        <TapButton
+          type="button"
+          onClick={() => onCopy("compas")}
+          className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm"
+        >
+          <Copy className="size-3.5" aria-hidden="true" />
+          Copiar compás
+        </TapButton>
+        <TapButton
+          type="button"
+          onClick={() => onCopy("both")}
+          className="flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm"
+        >
+          <Copy className="size-3.5" aria-hidden="true" />
+          Copiar ambos
+        </TapButton>
+      </div>
+    </div>
+  );
+}
+
+function getCharOffsetFromClick(
+  event: ReactMouseEvent<HTMLDivElement>,
+): number | null {
+  const target = event.target as HTMLElement;
+  const span = target.closest("[data-char-index]");
+
+  if (!span) {
+    return null;
+  }
+
+  const charOffset = Number(span.getAttribute("data-char-index"));
+
+  if (Number.isNaN(charOffset)) {
+    return null;
+  }
+
+  return charOffset;
+}
+
+const COMPAS_DRAG_THRESHOLD_PX = 6;
+
+type BarDragState = {
+  fromOffset: number;
+  pointerId: number;
+  startX: number;
+  hasMoved: boolean;
+};
+
+type ChordDragState = {
+  fromOffset: number;
+  pointerId: number;
+  startX: number;
+  hasMoved: boolean;
+};
+
+function CifradoLineEditor({
+  lineIndex,
+  text,
+  acordes,
+  barras,
+  modoAvanzado,
+  modoInsercion,
+  tipoCompas,
+  activeBeatAnchors = [],
+  onOpenPicker,
+  onInsertBarra,
+  onMoveAcorde,
+  onMoveBarra,
+  onLineTextChange,
+  onMarkersReady,
+  isLineEditing = false,
+  isDimmed = false,
+  isLineLocked = false,
+  onToggleLineEdit,
+  onToggleLineLock,
+  hasLineCopyPending = false,
+  notacion = "es",
+}: CifradoLineEditorProps) {
+  const lineRef = useRef<HTMLDivElement>(null);
+  const textLaneRef = useRef<HTMLDivElement>(null);
+  const textRowRef = useRef<HTMLDivElement>(null);
+  const barDragRef = useRef<BarDragState | null>(null);
+  const chordDragRef = useRef<ChordDragState | null>(null);
+  const suppressNextClickRef = useRef(false);
+  const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
+  const [dragPreviewOffset, setDragPreviewOffset] = useState<number | null>(
+    null,
+  );
+  const [chordDragPreviewOffset, setChordDragPreviewOffset] = useState<
+    number | null
+  >(null);
+
+  const measurePositions = useCallback(() => {
+    const container = textRowRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const spans = container.querySelectorAll("[data-char-index]");
+    const positions: CharPosition[] = [];
+
+    spans.forEach((span) => {
+      const index = Number(span.getAttribute("data-char-index"));
+
+      if (Number.isNaN(index)) {
+        return;
+      }
+
+      const rect = span.getBoundingClientRect();
+      const left = rect.left - containerRect.left;
+
+      positions[index] = {
+        left,
+        center: left + rect.width / 2,
+        bottom: rect.bottom - containerRect.top,
+      };
+    });
+
+    setCharPositions(positions);
+  }, []);
+
+  useLayoutEffect(() => {
+    measurePositions();
+  }, [measurePositions, text, modoAvanzado]);
+
+  useEffect(() => {
+    const container = textRowRef.current;
+
+    if (!container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      measurePositions();
+    });
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [measurePositions]);
+
+  function resolveNearestOffset(clientX: number): number {
+    const container = textRowRef.current;
+
+    if (!container) {
+      return 0;
+    }
+
+    return clampCompasCharOffset(
+      findNearestCharOffset(
+        charPositions,
+        clientX,
+        container.getBoundingClientRect().left,
+      ),
+    );
+  }
+
+  function handleBarPointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    barra: BarraCompas,
+  ) {
+    if (modoInsercion !== "compas" || isLineLocked) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    barDragRef.current = {
+      fromOffset: barra.charOffset,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      hasMoved: false,
+    };
+    setDragPreviewOffset(barra.charOffset);
+  }
+
+  function handleBarPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = barDragRef.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (
+      !drag.hasMoved &&
+      Math.abs(event.clientX - drag.startX) >= COMPAS_DRAG_THRESHOLD_PX
+    ) {
+      drag.hasMoved = true;
+    }
+
+    if (drag.hasMoved) {
+      setDragPreviewOffset(resolveNearestOffset(event.clientX));
+    }
+  }
+
+  function handleBarPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = barDragRef.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (drag.hasMoved) {
+      const targetOffset = resolveNearestOffset(event.clientX);
+
+      if (targetOffset !== drag.fromOffset) {
+        onMoveBarra(lineIndex, drag.fromOffset, targetOffset);
+      }
+
+      suppressNextClickRef.current = true;
+    } else {
+      onInsertBarra(lineIndex, drag.fromOffset);
+    }
+
+    barDragRef.current = null;
+    setDragPreviewOffset(null);
+  }
+
+  function handleBarPointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    barDragRef.current = null;
+    setDragPreviewOffset(null);
+  }
+
+  function handleChordPointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    acorde: AcordePos,
+  ) {
+    if (modoInsercion !== "acordes" || isLineLocked) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    chordDragRef.current = {
+      fromOffset: acorde.charOffset,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      hasMoved: false,
+    };
+    setChordDragPreviewOffset(acorde.charOffset);
+  }
+
+  function handleChordPointerMove(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const drag = chordDragRef.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (
+      !drag.hasMoved &&
+      Math.abs(event.clientX - drag.startX) >= COMPAS_DRAG_THRESHOLD_PX
+    ) {
+      drag.hasMoved = true;
+    }
+
+    if (drag.hasMoved) {
+      setChordDragPreviewOffset(resolveNearestOffset(event.clientX));
+    }
+  }
+
+  function handleChordPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = chordDragRef.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const fromOffset = drag.fromOffset;
+
+    if (drag.hasMoved) {
+      const targetOffset = resolveNearestOffset(event.clientX);
+
+      if (targetOffset !== fromOffset) {
+        onMoveAcorde(lineIndex, fromOffset, targetOffset);
+      }
+
+      suppressNextClickRef.current = true;
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      onOpenPicker(lineIndex, fromOffset, rect);
+    }
+
+    chordDragRef.current = null;
+    setChordDragPreviewOffset(null);
+  }
+
+  function handleChordPointerCancel(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    chordDragRef.current = null;
+    setChordDragPreviewOffset(null);
+  }
+
+  function handleLineClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (
+      modoInsercion === "letra" ||
+      isLineEditing ||
+      isLineLocked ||
+      isDimmed
+    ) {
+      return;
+    }
+
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
+
+    const charOffset =
+      getCharOffsetFromClick(event) ?? resolveNearestOffset(event.clientX);
+
+    const container = textRowRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const span = container.querySelector(
+      `[data-char-index="${charOffset}"]`,
+    );
+    const pickerRect =
+      span?.getBoundingClientRect() ??
+      new DOMRect(
+        container.getBoundingClientRect().left +
+          (charPositions[charOffset]?.center ?? 0),
+        container.getBoundingClientRect().top + 24,
+        0,
+        0,
+      );
+
+    if (modoInsercion === "acordes") {
+      onOpenPicker(lineIndex, charOffset, pickerRect);
+      return;
+    }
+
+    onInsertBarra(lineIndex, clampCompasCharOffset(charOffset));
+  }
+
+  const characters = [...text];
+  const extensionStart = getCompasExtensionStart(characters.length);
+  const letraDirectEdit =
+    modoInsercion === "letra" && !isLineLocked && !isDimmed && !isLineEditing;
+  const textEditable = letraDirectEdit || (isLineEditing && !isLineLocked);
+  const lineCursorClass = isLineLocked
+    ? "cursor-default"
+    : textEditable || modoInsercion === "letra"
+      ? "cursor-text select-text"
+      : "cursor-pointer";
+
+  function getAcordeDisplayOffset(acorde: AcordePos): number {
+    if (
+      chordDragPreviewOffset !== null &&
+      chordDragRef.current?.fromOffset === acorde.charOffset
+    ) {
+      return chordDragPreviewOffset;
+    }
+
+    return acorde.charOffset;
+  }
+
+  const barrasParaRender = useMemo(() => {
+    if (dragPreviewOffset === null) {
+      return barras;
+    }
+
+    return barras.map((barra) => {
+      if (barra.charOffset !== barDragRef.current?.fromOffset) {
+        return barra;
+      }
+
+      return { ...barra, charOffset: dragPreviewOffset };
+    });
+  }, [barras, dragPreviewOffset]);
+  const compasMarkers = useMemo(
+    () =>
+      barrasParaRender.length > 0
+        ? computeLineCompasMarkersPx(
+            barrasParaRender,
+            getBeatCountForCompas(tipoCompas),
+            (offset) => resolveCharOffsetPx(offset, charPositions),
+          )
+        : [],
+    [barrasParaRender, charPositions, tipoCompas],
+  );
+  const draggingMeasureLeftPx =
+    dragPreviewOffset !== null && barDragRef.current?.hasMoved
+      ? (resolveCharOffsetPx(dragPreviewOffset, charPositions) ?? null)
+      : null;
+  const activeBeatLeftPx =
+    activeBeatAnchors.find((anchor) => anchor.lineIndex === lineIndex)?.leftPx ??
+    null;
+  const extensionClickable =
+    modoInsercion === "compas" && !isLineEditing && !isLineLocked && !isDimmed;
+  const chordDragEnabled =
+    modoInsercion === "acordes" && !isLineEditing && !isLineLocked && !isDimmed;
+  const overlayLocked =
+    isLineLocked || modoInsercion === "letra" || isLineEditing;
+  const laneBgClass = isLineLocked ? "bg-transparent" : "bg-accent/[0.10]";
+  const extensionBgClass = isLineLocked
+    ? "border-transparent bg-transparent opacity-50"
+    : "border-accent/40 bg-accent/[0.06]";
+
+  useEffect(() => {
+    onMarkersReady?.(lineIndex, compasMarkers);
+  }, [compasMarkers, lineIndex, onMarkersReady]);
+
+  return (
+    <div
+      ref={lineRef}
+      className={`relative mb-2 overflow-hidden rounded-md border px-2 pb-8 pt-7 transition-opacity ${
+        isLineEditing
+          ? "border-gray-400/70 bg-white/70"
+          : "border-gray-300/80"
+      } ${isDimmed ? "opacity-40" : ""}`}
+    >
+      {!isLineLocked && onToggleLineEdit && (
+        <TapButton
+          type="button"
+          data-line-pencil=""
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleLineEdit();
+          }}
+          className={`absolute right-1.5 top-1.5 z-40 flex size-6 items-center justify-center rounded-md transition-colors ${
+            isLineEditing
+              ? "bg-gray-200/90 text-gray-600"
+              : hasLineCopyPending
+                ? "bg-gray-100 text-gray-500 ring-1 ring-gray-300"
+                : "text-gray-400 hover:bg-gray-100/80 hover:text-gray-500"
+          }`}
+          aria-label={isLineEditing ? "Dejar de editar línea" : "Editar línea"}
+          aria-pressed={isLineEditing}
+        >
+          <Pencil className="size-3.5" aria-hidden="true" />
+        </TapButton>
+      )}
+
+      {onToggleLineLock && (
+        <TapButton
+          type="button"
+          data-line-lock=""
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleLineLock();
+          }}
+          className={`absolute bottom-1.5 right-1.5 z-40 flex size-6 items-center justify-center rounded-md transition-colors ${
+            isLineLocked
+              ? "bg-gray-200/90 text-gray-600"
+              : "text-gray-400 hover:bg-gray-100/80 hover:text-gray-500"
+          }`}
+          aria-label={
+            isLineLocked ? "Desbloquear renglón" : "Bloquear renglón"
+          }
+          aria-pressed={isLineLocked}
+        >
+          {isLineLocked ? (
+            <Lock className="size-3.5" aria-hidden="true" />
+          ) : (
+            <LockOpen className="size-3.5" aria-hidden="true" />
+          )}
+        </TapButton>
+      )}
+
+      <div
+        className={
+          isDimmed || isLineLocked ? "pointer-events-none" : undefined
+        }
+      >
+      <div
+        ref={textLaneRef}
+        className={`relative min-h-[3.25rem] rounded px-1.5 py-1.5 ${laneBgClass} ${lineCursorClass}`}
+        onClick={
+          textEditable || isLineLocked || isDimmed ? undefined : handleLineClick
+        }
+      >
+        <div ref={textRowRef} className="relative">
+        <div
+          className={`flex w-full items-baseline pt-5 font-mono text-sm text-letra-text ${
+            textEditable ? "select-text" : ""
+          }`}
+        >
+          {textEditable ? (
+            <div
+              contentEditable
+              suppressContentEditableWarning
+              className="inline min-w-[1ch] flex-1 whitespace-pre-wrap break-words outline-none focus:ring-1 focus:ring-accent/40"
+              onBlur={(event) =>
+                onLineTextChange?.(
+                  lineIndex,
+                  event.currentTarget.textContent ?? "",
+                )
+              }
+            >
+              {text || " "}
+            </div>
+          ) : (
+            <span className="inline shrink-0">
+              {characters.length === 0 ? (
+                <span data-char-index={0} className="text-gray-400">
+                  {" "}
+                </span>
+              ) : (
+                characters.map((char, charIndex) => (
+                  <span key={charIndex} data-char-index={charIndex}>
+                    {char}
+                  </span>
+                ))
+              )}
+            </span>
+          )}
+
+          <span
+            className={`ml-1 inline-flex min-h-[1.25rem] min-w-[10ch] flex-1 border-l border-dashed pl-0.5 ${extensionBgClass} ${
+              extensionClickable ? "" : "opacity-70"
+            } ${overlayLocked ? "pointer-events-none" : ""}`}
+            aria-label="Espacio instrumental"
+          >
+            {Array.from({ length: COMPAS_EXTENSION_SLOTS }).map((_, slot) => (
+              <span
+                key={`ext-${slot}`}
+                data-char-index={extensionStart + slot}
+                className={`inline-block min-w-[1ch] flex-1 ${
+                  extensionClickable ? "hover:bg-accent/10" : ""
+                }`}
+              >
+                {" "}
+              </span>
+            ))}
+          </span>
+        </div>
+
+        <div className={overlayLocked ? "pointer-events-none" : undefined}>
+        {acordes.map((acorde) => {
+          const displayOffset = getAcordeDisplayOffset(acorde);
+          const position = charPositions[displayOffset];
+
+          if (!position) {
+            return null;
+          }
+
+          const isDragging =
+            chordDragPreviewOffset !== null &&
+            chordDragRef.current?.hasMoved &&
+            chordDragRef.current.fromOffset === acorde.charOffset;
+          const dotTop = position.bottom + 2;
+          const stemTop = 18;
+          const stemHeight = Math.max(4, dotTop - stemTop);
+
+          return (
+            <div
+              key={`acorde-col-${acorde.lineIndex}-${acorde.charOffset}`}
+              className="pointer-events-none absolute top-0"
+              style={{ left: position.center }}
+            >
+              <span
+                className="absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 text-xs font-bold text-accent"
+                style={{ top: 6, left: 0 }}
+              >
+                {formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}
+              </span>
+              <span
+                className={`absolute w-px -translate-x-1/2 ${
+                  isDragging ? "bg-accent" : "bg-accent/50"
+                }`}
+                style={{
+                  top: stemTop,
+                  left: 0,
+                  height: stemHeight,
+                }}
+                aria-hidden="true"
+              />
+              <span
+                className="absolute size-1 -translate-x-1/2 rounded-full bg-accent"
+                style={{ top: dotTop, left: 0 }}
+                aria-hidden="true"
+              />
+            </div>
+          );
+        })}
+
+        {chordDragEnabled &&
+          acordes.map((acorde) => {
+            const displayOffset = getAcordeDisplayOffset(acorde);
+            const position = charPositions[displayOffset];
+
+            if (!position) {
+              return null;
+            }
+
+            return (
+              <button
+                key={`chord-handle-${acorde.lineIndex}-${acorde.charOffset}`}
+                type="button"
+                aria-label={`${formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}. Arrastrá para mover o tocá para editar.`}
+                className="absolute z-20 h-5 w-6 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent p-0"
+                style={{ left: position.center, top: 4 }}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  handleChordPointerDown(event, acorde);
+                }}
+                onPointerMove={handleChordPointerMove}
+                onPointerUp={handleChordPointerUp}
+                onPointerCancel={handleChordPointerCancel}
+              />
+            );
+          })}
+
+        {(compasMarkers.length > 0 ||
+          (modoInsercion === "compas" && barras.length > 0)) && (
+          <div className="relative mt-1.5 min-h-3">
+            {compasMarkers.length > 0 && (
+              <CompasMarkersRow
+                markers={compasMarkers}
+                highlightMeasureLeftPx={draggingMeasureLeftPx}
+                activeBeatLeftPx={activeBeatLeftPx}
+                playbackHighlight={activeBeatLeftPx !== null}
+                showMeasureStem
+              />
+            )}
+
+            {modoInsercion === "compas" &&
+              !isLineEditing &&
+              barras.map((barra) => {
+                const isDraggingThis =
+                  dragPreviewOffset !== null &&
+                  barDragRef.current?.fromOffset === barra.charOffset;
+                const displayOffset = isDraggingThis
+                  ? dragPreviewOffset
+                  : barra.charOffset;
+                const left =
+                  resolveCharOffsetPx(displayOffset, charPositions) ?? 0;
+
+                return (
+                  <button
+                    key={`bar-handle-${barra.lineIndex}-${barra.charOffset}`}
+                    type="button"
+                    aria-label={`Compás ${barra.compasNumero}. Arrastrá para mover o tocá para quitar.`}
+                    className="absolute bottom-0 z-30 h-3 w-4 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent p-0"
+                    style={{ left }}
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                      handleBarPointerDown(event, barra);
+                    }}
+                    onPointerMove={handleBarPointerMove}
+                    onPointerUp={handleBarPointerUp}
+                    onPointerCancel={handleBarPointerCancel}
+                  />
+                );
+              })}
+          </div>
+        )}
+        </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+type CompasMarkersRowProps = {
+  markers: CompasMarker[];
+  highlightMeasureLeftPx?: number | null;
+  activeBeatLeftPx?: number | null;
+  playbackHighlight?: boolean;
+  showMeasureStem?: boolean;
+};
+
+function CompasMarkersRow({
+  markers,
+  highlightMeasureLeftPx = null,
+  activeBeatLeftPx = null,
+  playbackHighlight = false,
+  showMeasureStem = false,
+}: CompasMarkersRowProps) {
+  if (markers.length === 0) {
+    return null;
+  }
+
+  const activeMeasureClass = playbackHighlight
+    ? "bg-blue-900 shadow-[0_0_0_2px_rgba(30,58,138,0.35)]"
+    : "bg-accent";
+  const activeBeatClass = playbackHighlight
+    ? "bg-blue-800 shadow-[0_0_0_2px_rgba(30,64,175,0.4)]"
+    : "bg-accent/70";
+
+  return (
+    <div
+      className={`relative ${showMeasureStem ? "mt-1 min-h-4" : "h-4"}`}
+      aria-hidden="true"
+    >
+      {markers.map((marker, index) => {
+        const isDraggingMeasure =
+          marker.kind === "measure" &&
+          highlightMeasureLeftPx !== null &&
+          Math.abs(marker.leftPx - highlightMeasureLeftPx) < 1.5;
+        const isActiveBeat =
+          activeBeatLeftPx !== null &&
+          Math.abs(marker.leftPx - activeBeatLeftPx) < 2;
+
+        if (marker.kind === "measure") {
+          return (
+            <span
+              key={`compas-measure-${index}`}
+              className="absolute bottom-0"
+              style={{ left: marker.leftPx }}
+            >
+              {showMeasureStem && (
+                <span
+                  className="absolute bottom-full left-0 w-px bg-text-muted/75"
+                  style={{ height: "2.75rem" }}
+                />
+              )}
+              <span
+                className={`absolute bottom-0 left-0 rounded-full transition-all duration-75 ${
+                  isDraggingMeasure || isActiveBeat
+                    ? activeMeasureClass
+                    : "bg-text-muted/90"
+                } ${isActiveBeat && playbackHighlight ? "z-10 w-2" : "w-1.5"}`}
+                style={{
+                  height: isActiveBeat && playbackHighlight ? "1rem" : "0.75rem",
+                }}
+              />
+            </span>
+          );
+        }
+
+        return (
+          <span
+            key={`compas-beat-${index}`}
+            className={`absolute bottom-0 -translate-x-1/2 rounded-full transition-all duration-75 ${
+              isActiveBeat ? activeBeatClass : "bg-text-muted/35"
+            } ${isActiveBeat && playbackHighlight ? "z-10" : ""}`}
+            style={{
+              left: marker.leftPx,
+              width: isActiveBeat && playbackHighlight ? "0.75rem" : "0.625rem",
+              height: isActiveBeat && playbackHighlight ? "0.625rem" : "0.25rem",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+type CifradoPreviewLineProps = {
+  lineIndex: number;
+  text: string;
+  acordes: AcordePos[];
+  barras: BarraCompas[];
+  beatCount: number;
+  showCompas: boolean;
+  activeBeatAnchors?: PreviewPlaybackAnchor[];
+  onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
+  onCharPositionsReady?: (lineIndex: number, positions: CharPosition[]) => void;
+  notacion?: NotacionAcordes;
+};
+
+function CifradoPreviewLine({
+  lineIndex,
+  text,
+  acordes,
+  barras,
+  beatCount,
+  showCompas,
+  activeBeatAnchors = [],
+  onMarkersReady,
+  onCharPositionsReady,
+  notacion = "es",
+}: CifradoPreviewLineProps) {
+  const textLaneRef = useRef<HTMLDivElement>(null);
+  const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
+  const characters = [...text];
+  const extensionStart = getCompasExtensionStart(characters.length);
+  const activeBeatLeftPx =
+    activeBeatAnchors.find((anchor) => anchor.lineIndex === lineIndex)?.leftPx ??
+    null;
+
+  const measurePositions = useCallback(() => {
+    const container = textLaneRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const spans = container.querySelectorAll("[data-char-index]");
+    const positions: CharPosition[] = [];
+
+    spans.forEach((span) => {
+      const index = Number(span.getAttribute("data-char-index"));
+
+      if (Number.isNaN(index)) {
+        return;
+      }
+
+      const rect = span.getBoundingClientRect();
+      const left = rect.left - containerRect.left;
+
+      positions[index] = {
+        left,
+        center: left + rect.width / 2,
+        bottom: rect.bottom - containerRect.top,
+      };
+    });
+
+    setCharPositions(positions);
+  }, []);
+
+  useLayoutEffect(() => {
+    measurePositions();
+  }, [measurePositions, text, showCompas]);
+
+  useEffect(() => {
+    const container = textLaneRef.current;
+
+    if (!container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      measurePositions();
+    });
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [measurePositions]);
+
+  const compasMarkers = useMemo(
+    () =>
+      showCompas && barras.length > 0
+        ? computeLineCompasMarkersPx(
+            barras,
+            beatCount,
+            (offset) => resolveCharOffsetPx(offset, charPositions),
+          )
+        : [],
+    [barras, beatCount, charPositions, showCompas],
+  );
+
+  useEffect(() => {
+    onMarkersReady?.(lineIndex, compasMarkers);
+  }, [compasMarkers, lineIndex, onMarkersReady]);
+
+  useEffect(() => {
+    onCharPositionsReady?.(lineIndex, charPositions);
+  }, [charPositions, lineIndex, onCharPositionsReady]);
+
+  return (
+    <div ref={textLaneRef} className="relative mb-4 overflow-hidden font-mono text-sm text-letra-text">
+      <div className="pointer-events-none relative flex w-full items-baseline pt-5">
+        <span className="inline shrink-0">
+          {characters.length === 0 ? (
+            <span data-char-index={0}> </span>
+          ) : (
+            characters.map((char, charIndex) => (
+              <span key={charIndex} data-char-index={charIndex}>
+                {char}
+              </span>
+            ))
+          )}
+        </span>
+
+        {showCompas && (
+          <span
+            className="ml-1 inline-flex min-h-[1.25rem] min-w-[10ch] flex-1 border-l border-dashed border-accent/30 bg-accent/[0.04] pl-0.5 opacity-70"
+            aria-hidden="true"
+          >
+            {Array.from({ length: COMPAS_EXTENSION_SLOTS }).map((_, slot) => (
+              <span
+                key={`preview-ext-${slot}`}
+                data-char-index={extensionStart + slot}
+                className="inline-block min-w-[1ch] flex-1"
+              >
+                {" "}
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
+
+      {acordes.map((acorde) => {
+        const position = charPositions[acorde.charOffset];
+
+        if (!position) {
+          return null;
+        }
+
+        const dotTop = position.bottom + 2;
+        const stemTop = 18;
+        const stemHeight = Math.max(4, dotTop - stemTop);
+
+        return (
+          <div
+            key={`preview-acorde-${lineIndex}-${acorde.charOffset}`}
+            className="pointer-events-none absolute top-0"
+            style={{ left: position.center }}
+          >
+            <span
+              className="absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 text-xs font-bold text-accent"
+              style={{ top: 6, left: 0 }}
+            >
+              {formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}
+            </span>
+            <span
+              className="absolute w-px -translate-x-1/2 bg-accent/50"
+              style={{ top: stemTop, left: 0, height: stemHeight }}
+              aria-hidden="true"
+            />
+            <span
+              className="absolute size-1 -translate-x-1/2 rounded-full bg-accent"
+              style={{ top: dotTop, left: 0 }}
+              aria-hidden="true"
+            />
+          </div>
+        );
+      })}
+
+      {compasMarkers.length > 0 && (
+        <div className="mt-1.5">
+          <CompasMarkersRow
+            markers={compasMarkers}
+            activeBeatLeftPx={activeBeatLeftPx}
+            playbackHighlight={activeBeatLeftPx !== null}
+            showMeasureStem={false}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+type CifradoPreviewOverlayProps = {
+  lines: string[];
+  cifrado: CifradoData;
+  barras: BarraCompas[];
+  tipoCompas: TipoCompas;
+  showCompas: boolean;
+  vistaArmado: VistaArmado;
+  activeBeat: ActivePreviewBeat;
+  onClose: () => void;
+  notacion?: NotacionAcordes;
+};
+
+function CifradoPreviewOverlay({
+  lines,
+  cifrado,
+  barras,
+  tipoCompas,
+  showCompas,
+  vistaArmado,
+  activeBeat,
+  onClose,
+  notacion = "es",
+}: CifradoPreviewOverlayProps) {
+  const beatCount = getBeatCountForCompas(tipoCompas);
+  const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const previewWidthClass =
+    vistaArmado === "celular"
+      ? "mx-auto w-full max-w-[390px]"
+      : "mx-auto w-full max-w-3xl";
+
+  useEffect(() => {
+    if (!activeBeat) {
+      return;
+    }
+
+    for (const anchor of activeBeat.anchors) {
+      lineRefs.current[anchor.lineIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [activeBeat]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-letra-bg">
+      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-dark px-4 py-3">
+        <TapButton
+          type="button"
+          onClick={onClose}
+          className="flex size-10 items-center justify-center rounded-full bg-bg-card text-text-primary"
+          aria-label="Cerrar preview"
+        >
+          <X className="size-5" aria-hidden="true" />
+        </TapButton>
+
+        <h2 className="min-w-0 flex-1 text-center text-lg font-extrabold text-accent">
+          Preview
+        </h2>
+
+        <div className="size-10" aria-hidden="true" />
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+        <div className={`${previewWidthClass} rounded-[12px] bg-letra-bg`}>
+          {lines.map((line, lineIndex) => (
+            <div
+              key={lineIndex}
+              ref={(element) => {
+                lineRefs.current[lineIndex] = element;
+              }}
+            >
+              <CifradoPreviewLine
+                lineIndex={lineIndex}
+                text={line}
+                acordes={cifrado.acordes.filter(
+                  (acorde) => acorde.lineIndex === lineIndex,
+                )}
+                barras={barras.filter((barra) => barra.lineIndex === lineIndex)}
+                beatCount={beatCount}
+                showCompas={showCompas}
+                activeBeatAnchors={activeBeat?.anchors}
+                notacion={notacion}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditorSidebarHeader({
+  onClose,
+  loading,
+}: {
+  onClose: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <h1 className="min-w-0 flex-1 truncate text-left text-base font-extrabold text-accent">
+        Edición de canción
+      </h1>
+      <TapButton
+        type="button"
+        aria-label="Cerrar editor"
+        onClick={onClose}
+        disabled={loading}
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-dark"
+      >
+        <X className="size-4 text-text-primary" aria-hidden="true" />
+      </TapButton>
+    </div>
+  );
+}
+
+export default function CifradoEditor({
+  open,
+  isLoggedIn,
+  session = null,
+  onClose,
+  onSaved,
+}: CifradoEditorProps) {
+  const [phase, setPhase] = useState<EditorPhase>("ingreso");
+  const [modoInsercion, setModoInsercion] = useState<ModoInsercion>("acordes");
+  const [vistaArmado, setVistaArmado] = useState<VistaArmado>("pc");
+  const [draftLyrics, setDraftLyrics] = useState("");
+  const [lyricsText, setLyricsText] = useState("");
+  const [cifrado, setCifrado] = useState<CifradoData>(createEmptyCifrado());
+  const [compasConfig, setCompasConfig] = useState<CompasConfig>(
+    createDefaultCompasConfig(),
+  );
+  const [nombre, setNombre] = useState("");
+  const [artista, setArtista] = useState("");
+  const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
+  const [notacion, setNotacion] = useState<NotacionAcordes>("es");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [picker, setPicker] = useState<PickerState | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveValidation, setSaveValidation] = useState<string | null>(null);
+  const nombreInputRef = useRef<HTMLInputElement>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const tapTimestampsRef = useRef<number[]>([]);
+  const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tapCount, setTapCount] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
+  const [lockedLines, setLockedLines] = useState<Set<number>>(new Set());
+  const [lineCopyBuffer, setLineCopyBuffer] = useState<LineCopyBuffer | null>(
+    null,
+  );
+  const [activeBeat, setActiveBeat] = useState<ActivePreviewBeat>(null);
+  const [markersByLine, setMarkersByLine] = useState<
+    Record<number, CompasMarker[]>
+  >({});
+  const playbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackIndexRef = useRef(0);
+  const playbackBeatsRef = useRef<
+    ReturnType<typeof buildDisplayedPreviewPlaybackBeats>
+  >([]);
+  const bpmRef = useRef(compasConfig.bpm);
+  const editingCancionIdRef = useRef<number | undefined>(undefined);
+
+  const lines = useMemo(() => splitLyricsLines(lyricsText), [lyricsText]);
+  const draftStats = useMemo(() => {
+    const draftLines = splitLyricsLines(draftLyrics);
+
+    return {
+      total: draftLines.length,
+      verses: draftLines.filter((line) => line.trim().length > 0).length,
+    };
+  }, [draftLyrics]);
+  const hasCompas = compasConfig.barras.length > 0;
+
+  const playbackBeats = useMemo(
+    () => buildDisplayedPreviewPlaybackBeats(markersByLine, lines.length),
+    [lines.length, markersByLine],
+  );
+
+  useEffect(() => {
+    playbackBeatsRef.current = playbackBeats;
+  }, [playbackBeats]);
+
+  useEffect(() => {
+    bpmRef.current = compasConfig.bpm;
+  }, [compasConfig.bpm]);
+
+  const exitLineEditMode = useCallback(() => {
+    setEditingLineIndex(null);
+    setLineCopyBuffer(null);
+    setPicker(null);
+  }, []);
+
+  useEffect(() => {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as HTMLElement;
+
+      if (target.closest("[data-line-edit-surface]")) {
+        return;
+      }
+
+      if (target.closest("[data-line-edit-fab]")) {
+        return;
+      }
+
+      if (target.closest("[data-line-pencil]")) {
+        return;
+      }
+
+      if (target.closest("[data-line-lock]")) {
+        return;
+      }
+
+      const destRow = target.closest("[data-cifrado-line]");
+
+      if (lineCopyBuffer && destRow && editingLineIndex !== null) {
+        const destIndex = Number(destRow.getAttribute("data-cifrado-line"));
+
+        if (
+          !Number.isNaN(destIndex) &&
+          destIndex !== editingLineIndex &&
+          !lockedLines.has(destIndex)
+        ) {
+          return;
+        }
+      }
+
+      exitLineEditMode();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [editingLineIndex, exitLineEditMode, lineCopyBuffer, lockedLines]);
+
+  useBodyScrollLock(open);
+
+  useEffect(() => {
+    if (open) {
+      setNotacion(readNotacionAcordesPreferida());
+    }
+  }, [open]);
+
+  function handleNotacionChange(next: NotacionAcordes) {
+    setNotacion(next);
+    writeNotacionAcordesPreferida(next);
+  }
+
+  useHardwareBack(open, () => {
+    if (previewOpen) {
+      setPreviewOpen(false);
+      return;
+    }
+
+    onClose();
+  });
+
+  useEffect(() => {
+    if (!open) {
+      editingCancionIdRef.current = undefined;
+      setPhase("ingreso");
+      setModoInsercion("acordes");
+      setVistaArmado("pc");
+      setDraftLyrics("");
+      setLyricsText("");
+      setCifrado(createEmptyCifrado());
+      setCompasConfig(createDefaultCompasConfig());
+      setNombre("");
+      setArtista("");
+      setTonalidadIndex(7);
+      setPreviewOpen(false);
+      setPicker(null);
+      setLoading(false);
+      setError(null);
+      setSaveValidation(null);
+      setToast(null);
+      setTapCount(0);
+      tapTimestampsRef.current = [];
+      setPlaying(false);
+      setEditingLineIndex(null);
+      setLockedLines(new Set());
+      setLineCopyBuffer(null);
+      setActiveBeat(null);
+      setMarkersByLine({});
+      return;
+    }
+
+    if (session) {
+      editingCancionIdRef.current = session.cancionId;
+      setNombre(session.nombre);
+      setArtista(session.artista);
+      setLyricsText(session.letra);
+      setDraftLyrics(session.letra);
+      setCifrado(session.cifrado ?? createEmptyCifrado());
+      setCompasConfig({
+        ...(session.compas_config ?? createDefaultCompasConfig()),
+        bpm: session.bpm_default ?? session.compas_config?.bpm ?? DEFAULT_BPM,
+      });
+      setTonalidadIndex(session.tonalidad_default ?? DEFAULT_TONALIDAD);
+      setPhase(session.skipIngreso ? "cifrado" : "ingreso");
+      setModoInsercion("acordes");
+      setError(null);
+      setSaveValidation(null);
+
+      if (session.importWarnings?.length) {
+        setToast(
+          `Propuesta importada (${session.importWarnings.length} aviso${session.importWarnings.length === 1 ? "" : "s"}). Revisá los acordes.`,
+        );
+      }
+
+      return;
+    }
+
+    editingCancionIdRef.current = undefined;
+    setPhase("ingreso");
+    setModoInsercion("acordes");
+    setVistaArmado("pc");
+    setDraftLyrics("");
+    setLyricsText("");
+    setCifrado(createEmptyCifrado());
+    setCompasConfig(createDefaultCompasConfig());
+    setNombre("");
+    setArtista("");
+    setTonalidadIndex(DEFAULT_TONALIDAD);
+    setPreviewOpen(false);
+    setPicker(null);
+    setLoading(false);
+    setError(null);
+    setSaveValidation(null);
+    setToast(null);
+    setEditingLineIndex(null);
+    setLockedLines(new Set());
+    setLineCopyBuffer(null);
+    setActiveBeat(null);
+    setMarkersByLine({});
+  }, [open, session]);
+
+  const stopPlayback = useCallback(() => {
+    if (playbackTimerRef.current !== null) {
+      clearTimeout(playbackTimerRef.current);
+      playbackTimerRef.current = null;
+    }
+
+    setPlaying(false);
+    setActiveBeat(null);
+    playbackIndexRef.current = 0;
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      stopPlayback();
+    }
+  }, [open, stopPlayback]);
+
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
+
+  useEffect(() => {
+    if (!playing) {
+      if (playbackTimerRef.current !== null) {
+        clearTimeout(playbackTimerRef.current);
+        playbackTimerRef.current = null;
+      }
+
+      return;
+    }
+
+    let cancelled = false;
+
+    function scheduleNextBeat() {
+      if (cancelled) {
+        return;
+      }
+
+      const beats = playbackBeatsRef.current;
+
+      if (beats.length === 0) {
+        setPlaying(false);
+        setActiveBeat(null);
+        return;
+      }
+
+      const beat = beats[playbackIndexRef.current % beats.length];
+
+      setActiveBeat({
+        kind: beat.kind,
+        anchors: beat.anchors,
+      });
+      void playCifradoClick(beat.kind);
+
+      playbackIndexRef.current += 1;
+
+      const clampedBpm = Math.max(40, Math.min(240, bpmRef.current));
+      const beatDurationMs = 60000 / clampedBpm;
+
+      playbackTimerRef.current = setTimeout(scheduleNextBeat, beatDurationMs);
+    }
+
+    scheduleNextBeat();
+
+    return () => {
+      cancelled = true;
+
+      if (playbackTimerRef.current !== null) {
+        clearTimeout(playbackTimerRef.current);
+        playbackTimerRef.current = null;
+      }
+    };
+  }, [playing]);
+
+  const handleMarkersReady = useCallback(
+    (lineIndex: number, markers: CompasMarker[]) => {
+      setMarkersByLine((current) => {
+        const previous = current[lineIndex];
+
+        if (
+          previous &&
+          previous.length === markers.length &&
+          previous.every(
+            (marker, index) =>
+              marker.leftPx === markers[index]?.leftPx &&
+              marker.kind === markers[index]?.kind,
+          )
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [lineIndex]: markers,
+        };
+      });
+    },
+    [],
+  );
+
+  function handleTogglePlayback() {
+    if (playing) {
+      stopPlayback();
+      return;
+    }
+
+    if (playbackBeatsRef.current.length === 0) {
+      return;
+    }
+
+    playbackIndexRef.current = 0;
+    setActiveBeat(null);
+    setPlaying(true);
+  }
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setToast(null);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [toast]);
+
+  const existingPickerAcorde = picker
+    ? findAcordeAt(cifrado.acordes, picker.lineIndex, picker.charOffset)
+    : undefined;
+
+  function handleApplyLyrics() {
+    const trimmed = draftLyrics.trim();
+
+    if (!trimmed) {
+      setError("Pegá la letra antes de continuar.");
+      return;
+    }
+
+    setLyricsText(trimmed);
+    setCifrado(createEmptyCifrado());
+    setCompasConfig(createDefaultCompasConfig());
+    setModoInsercion("acordes");
+    setPhase("cifrado");
+    setError(null);
+  }
+
+  function handleLineTextChange(lineIndex: number, newText: string) {
+    setLyricsText((current) => {
+      const lineArray = splitLyricsLines(current);
+      lineArray[lineIndex] = newText;
+      return lineArray.join("\n");
+    });
+  }
+
+  function handleApplyLineCopy(targetLineIndex: number) {
+    if (!lineCopyBuffer) {
+      return;
+    }
+
+    const targetTextLength = lines[targetLineIndex]?.length ?? 0;
+    const { sourceTextLength, kind, acordes, barras } = lineCopyBuffer;
+
+    if (kind === "acordes" || kind === "both") {
+      setCifrado((current) =>
+        applyLineCopyAcordes(
+          current,
+          targetLineIndex,
+          acordes,
+          sourceTextLength,
+          targetTextLength,
+        ),
+      );
+    }
+
+    if (kind === "compas" || kind === "both") {
+      setCompasConfig((current) =>
+        applyLineCopyCompas(
+          current,
+          targetLineIndex,
+          barras,
+          sourceTextLength,
+          targetTextLength,
+        ),
+      );
+    }
+
+    setToast("Copiado al renglón");
+    setLineCopyBuffer(null);
+  }
+
+  function handlePasteToLine(targetLineIndex: number) {
+    if (lockedLines.has(targetLineIndex)) {
+      return;
+    }
+
+    handleApplyLineCopy(targetLineIndex);
+    setEditingLineIndex(null);
+    setPicker(null);
+  }
+
+  function handleToggleLineEdit(lineIndex: number) {
+    if (lockedLines.has(lineIndex)) {
+      return;
+    }
+
+    if (
+      lineCopyBuffer &&
+      editingLineIndex !== null &&
+      lineIndex !== editingLineIndex
+    ) {
+      handlePasteToLine(lineIndex);
+      return;
+    }
+
+    setEditingLineIndex((current) =>
+      current === lineIndex ? null : lineIndex,
+    );
+    setPicker(null);
+  }
+
+  function handleToggleLineLock(lineIndex: number) {
+    setLockedLines((current) => {
+      const next = new Set(current);
+
+      if (next.has(lineIndex)) {
+        next.delete(lineIndex);
+      } else {
+        next.add(lineIndex);
+      }
+
+      return next;
+    });
+
+    if (editingLineIndex === lineIndex) {
+      setEditingLineIndex(null);
+      setLineCopyBuffer(null);
+      setPicker(null);
+    }
+  }
+
+  function handleCopyLine(kind: LineCopyKind) {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const acordes = cifrado.acordes.filter(
+      (acorde) => acorde.lineIndex === editingLineIndex,
+    );
+    const barras = compasConfig.barras.filter(
+      (barra) => barra.lineIndex === editingLineIndex,
+    );
+
+    if (kind === "acordes" && acordes.length === 0) {
+      setToast("Este renglón no tiene acordes");
+      return;
+    }
+
+    if (kind === "compas" && barras.length === 0) {
+      setToast("Este renglón no tiene compás");
+      return;
+    }
+
+    if (kind === "both" && acordes.length === 0 && barras.length === 0) {
+      setToast("Este renglón no tiene acordes ni compás");
+      return;
+    }
+
+    setLineCopyBuffer({
+      kind,
+      sourceTextLength: lines[editingLineIndex]?.length ?? 0,
+      acordes,
+      barras,
+    });
+    setToast("Tocá otro renglón para pegar");
+  }
+
+  function handleDeleteLine() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const lineArray = splitLyricsLines(lyricsText);
+
+    if (lineArray.length <= 1) {
+      setError("La canción debe tener al menos un renglón.");
+      return;
+    }
+
+    const lineIndex = editingLineIndex;
+
+    setLyricsText(lineArray.filter((_, index) => index !== lineIndex).join("\n"));
+    setCifrado((current) => deleteCifradoLine(current, lineIndex));
+    setCompasConfig((current) => deleteCompasLine(current, lineIndex));
+    setLockedLines((current) => removeLockedLineIndex(current, lineIndex));
+    setEditingLineIndex(null);
+    setLineCopyBuffer(null);
+    setError(null);
+  }
+
+  function handleInsertLineBelow() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const lineIndex = editingLineIndex;
+
+    setLyricsText((current) => {
+      const lineArray = splitLyricsLines(current);
+      lineArray.splice(lineIndex + 1, 0, "");
+      return lineArray.join("\n");
+    });
+    setCifrado((current) => insertCifradoLineBelow(current, lineIndex));
+    setCompasConfig((current) => insertCompasLineBelow(current, lineIndex));
+    setLockedLines((current) => insertLockedLineBelow(current, lineIndex));
+    setEditingLineIndex(lineIndex + 1);
+    setError(null);
+  }
+
+  function handleSetModoInsercion(modo: ModoInsercion) {
+    setModoInsercion(modo);
+    exitLineEditMode();
+  }
+
+  function handleOpenPicker(
+    lineIndex: number,
+    charOffset: number,
+    rect: DOMRect,
+  ) {
+    const x = Math.min(rect.left, window.innerWidth - 300);
+    const y = Math.min(rect.bottom + 8, window.innerHeight - 280);
+
+    setPicker({ lineIndex, charOffset, x, y });
+  }
+
+  function handleApplyAcorde(noteIndex: NotaIndex, modifier: Modificador) {
+    if (!picker) {
+      return;
+    }
+
+    setCifrado((current) =>
+      upsertAcorde(current, {
+        lineIndex: picker.lineIndex,
+        charOffset: picker.charOffset,
+        noteIndex,
+        modifier,
+      }),
+    );
+    setPicker(null);
+  }
+
+  function handleRemoveAcorde() {
+    if (!picker) {
+      return;
+    }
+
+    setCifrado((current) =>
+      removeAcordeAt(current, picker.lineIndex, picker.charOffset),
+    );
+    setPicker(null);
+  }
+
+  function handleInsertBarra(lineIndex: number, charOffset: number) {
+    const clampedOffset = clampCompasCharOffset(charOffset);
+
+    setCompasConfig((current) => {
+      const existing = current.barras.find(
+        (barra) =>
+          barra.lineIndex === lineIndex &&
+          barra.charOffset === clampedOffset,
+      );
+
+      const next = existing
+        ? removeBarraCompasAt(current, lineIndex, clampedOffset)
+        : upsertBarraCompas(current, {
+            lineIndex,
+            charOffset: clampedOffset,
+            compasNumero: 1,
+          });
+
+      return renumberLineBarrasCompas(next, lineIndex);
+    });
+  }
+
+  function handleMoveBarra(
+    lineIndex: number,
+    fromOffset: number,
+    toOffset: number,
+  ) {
+    setCompasConfig((current) =>
+      renumberLineBarrasCompas(
+        moveBarraCompas(current, lineIndex, fromOffset, toOffset),
+        lineIndex,
+      ),
+    );
+  }
+
+  function handleMoveAcorde(
+    lineIndex: number,
+    fromOffset: number,
+    toOffset: number,
+  ) {
+    setCifrado((current) =>
+      moveAcorde(current, lineIndex, fromOffset, toOffset),
+    );
+  }
+
+  function handleTapTempo() {
+    const now = performance.now();
+    const recentTaps = tapTimestampsRef.current.filter(
+      (timestamp) => now - timestamp < 3000,
+    );
+
+    recentTaps.push(now);
+    tapTimestampsRef.current = recentTaps;
+    setTapCount(recentTaps.length);
+
+    if (tapResetTimerRef.current !== null) {
+      clearTimeout(tapResetTimerRef.current);
+    }
+
+    tapResetTimerRef.current = setTimeout(() => {
+      tapTimestampsRef.current = [];
+      setTapCount(0);
+      tapResetTimerRef.current = null;
+    }, 3000);
+
+    const nextBpm = computeTapBpm(recentTaps, now);
+
+    if (nextBpm !== null) {
+      setCompasConfig((current) => ({ ...current, bpm: nextBpm }));
+    }
+  }
+
+  async function handleSave() {
+    if (!isLoggedIn) {
+      setSaveValidation("Iniciá sesión para guardar en el cancionero.");
+      return;
+    }
+
+    if (phase !== "cifrado") {
+      setSaveValidation("Aplicá la letra y empezá a cifrar antes de guardar.");
+      return;
+    }
+
+    if (!nombre.trim()) {
+      setSaveValidation("Completá el nombre de la canción.");
+      nombreInputRef.current?.focus();
+      nombreInputRef.current?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+
+    if (!lyricsText.trim()) {
+      setSaveValidation("La letra no puede estar vacía.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSaveValidation(null);
+
+    const supabase = createClient();
+    const cancionIdToSave = editingCancionIdRef.current ?? session?.cancionId;
+
+    try {
+      const {
+        data: { session: authSession },
+      } = await supabase.auth.getSession();
+
+      if (!authSession) {
+        setSaveValidation("Iniciá sesión para guardar en el cancionero.");
+        return;
+      }
+
+      const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
+      const payload = {
+        nombre: nombre.trim(),
+        artista: artista.trim() || null,
+        letra: lyricsText,
+        cifrado,
+        compas_config: {
+          ...compasConfig,
+          bpm: clampedBpm,
+          barrasVersion: 2 as const,
+        },
+        tonalidad_default: tonalidadIndex,
+        bpm_default: clampedBpm,
+        tiene_cifrado_avanzado: true as const,
+      };
+
+      const editingId = cancionIdToSave;
+
+      let savedId = editingId;
+
+      if (editingId != null) {
+        await updateCancionCifradoAvanzado(supabase, editingId, {
+          nombre: payload.nombre,
+          artista: payload.artista,
+          letra: payload.letra,
+          cifrado: payload.cifrado,
+          compas_config: payload.compas_config,
+          tonalidad_default: payload.tonalidad_default,
+          bpm_default: payload.bpm_default,
+        });
+      } else {
+        const { data: inserted, error: saveError } = await supabase
+          .from("canciones_guardadas")
+          .insert({
+            sala_id: null,
+            url_letra: null,
+            ...payload,
+          })
+          .select("id")
+          .single();
+
+        if (saveError) {
+          throw saveError;
+        }
+
+        savedId = inserted?.id;
+      }
+
+      setToast(editingId != null ? "Canción actualizada" : "Canción guardada");
+
+      if (savedId == null) {
+        throw new Error("No se pudo guardar la canción.");
+      }
+
+      onSaved({
+        id: savedId,
+        nombre: payload.nombre,
+        artista: payload.artista,
+        letra: payload.letra,
+        tiene_cifrado_avanzado: true,
+      });
+      onClose();
+    } catch (saveError) {
+      const message =
+        saveError instanceof Error
+          ? saveError.message
+          : "No se pudo guardar la canción";
+      setSaveValidation(message);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!open) {
+    return null;
+  }
+
+  const armadoWidthClass =
+    vistaArmado === "celular"
+      ? "mx-auto w-full max-w-[390px]"
+      : "w-full";
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg-app">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            className={`min-h-0 flex-1 p-4 ${
+              phase === "ingreso"
+                ? "flex flex-col overflow-hidden lg:overflow-hidden"
+                : "flex flex-col overflow-y-auto lg:overflow-hidden"
+            }`}
+          >
+            {phase === "ingreso" ? (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <label className={labelClassName} htmlFor="cifrado-letra-ingreso">
+                  Letra (sin acordes)
+                </label>
+                <textarea
+                  id="cifrado-letra-ingreso"
+                  value={draftLyrics}
+                  onChange={(event) => {
+                    setDraftLyrics(event.target.value);
+                    if (error) {
+                      setError(null);
+                    }
+                  }}
+                  className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
+                  placeholder="Pegá aquí la letra de la canción…"
+                />
+                <TapButton
+                  type="button"
+                  onClick={handleApplyLyrics}
+                  disabled={!draftLyrics.trim()}
+                  className="mt-3 rounded-lg bg-accent px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 lg:hidden"
+                >
+                  Aplicar y empezar a cifrar
+                </TapButton>
+              </div>
+            ) : (
+              <div className="relative flex min-h-0 w-full flex-1 flex-col">
+                <div className="mb-2 shrink-0">
+                  <div className="flex w-fit max-w-full flex-wrap items-end gap-x-4 gap-y-2">
+                    <div className="shrink-0">
+                      <p className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>
+                        Modo edición
+                      </p>
+                      <div
+                        className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
+                        role="tablist"
+                        aria-label="Modo edición"
+                      >
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={modoInsercion === "acordes"}
+                          onClick={() => handleSetModoInsercion("acordes")}
+                          className={cifradoEditorToolbarSegmentedButtonClass(
+                            modoInsercion === "acordes",
+                          )}
+                        >
+                          Acordes
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={modoInsercion === "compas"}
+                          onClick={() => handleSetModoInsercion("compas")}
+                          className={cifradoEditorToolbarSegmentedButtonClass(
+                            modoInsercion === "compas",
+                          )}
+                        >
+                          Compás
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={modoInsercion === "letra"}
+                          onClick={() => handleSetModoInsercion("letra")}
+                          className={cifradoEditorToolbarSegmentedButtonClass(
+                            modoInsercion === "letra",
+                          )}
+                        >
+                          Letra
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      <p className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>
+                        Compás
+                      </p>
+                      <div
+                        className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
+                        role="tablist"
+                        aria-label="Compás"
+                      >
+                        {(Object.keys(COMPAS_LABELS) as TipoCompas[]).map(
+                          (tipo) => (
+                            <button
+                              key={tipo}
+                              type="button"
+                              role="tab"
+                              aria-selected={compasConfig.tipoCompas === tipo}
+                              onClick={() =>
+                                setCompasConfig((current) => ({
+                                  ...current,
+                                  tipoCompas: tipo,
+                                }))
+                              }
+                              className={cifradoEditorToolbarSegmentedButtonClass(
+                                compasConfig.tipoCompas === tipo,
+                              )}
+                            >
+                              {COMPAS_LABELS[tipo]}
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-xs leading-relaxed text-text-muted">
+                    {modoInsercion === "acordes"
+                      ? "Clic en la letra para colocar acordes · arrastrá para mover · tocá para editar"
+                      : modoInsercion === "compas"
+                        ? "Clic donde cae el compás · arrastrá para mover · tocá para quitar · el tope izquierdo es el inicio del renglón"
+                        : "Editá la letra directamente · lápiz = opciones del renglón · candado = bloquear cambios"}
+                  </p>
+                </div>
+
+                <div className="min-h-0 flex-1 lg:overflow-y-auto">
+                <div className={`relative w-full ${armadoWidthClass}`}>
+                {hasCompas && (
+                  <TapButton
+                    type="button"
+                    onClick={handleTogglePlayback}
+                    className="absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-accent text-white shadow-lg"
+                    aria-label={playing ? "Pausar compás" : "Reproducir compás"}
+                  >
+                    {playing ? (
+                      <Pause className="size-5" aria-hidden="true" />
+                    ) : (
+                      <Play className="size-5" aria-hidden="true" />
+                    )}
+                  </TapButton>
+                )}
+
+                <div className="overflow-hidden rounded-[12px] bg-letra-bg px-2 py-3">
+                  {lines.map((line, lineIndex) => {
+                    const isEditing = editingLineIndex === lineIndex;
+
+                    return (
+                      <div
+                        key={lineIndex}
+                        data-cifrado-line={lineIndex}
+                        {...(isEditing ? { "data-line-edit-surface": "" } : {})}
+                        onClick={(event) => {
+                          if (
+                            !lineCopyBuffer ||
+                            editingLineIndex === null ||
+                            lineIndex === editingLineIndex ||
+                            lockedLines.has(lineIndex)
+                          ) {
+                            return;
+                          }
+
+                          const target = event.target as HTMLElement;
+
+                          if (
+                            target.closest("[data-line-edit-fab]") ||
+                            target.closest("[data-line-pencil]") ||
+                            target.closest("[data-line-lock]")
+                          ) {
+                            return;
+                          }
+
+                          handlePasteToLine(lineIndex);
+                        }}
+                      >
+                        <CifradoLineEditor
+                          lineIndex={lineIndex}
+                          text={line}
+                          acordes={cifrado.acordes.filter(
+                            (acorde) => acorde.lineIndex === lineIndex,
+                          )}
+                          barras={compasConfig.barras.filter(
+                            (barra) => barra.lineIndex === lineIndex,
+                          )}
+                          modoAvanzado
+                          modoInsercion={modoInsercion}
+                          tipoCompas={compasConfig.tipoCompas}
+                          activeBeatAnchors={activeBeat?.anchors}
+                          isLineEditing={isEditing}
+                          isLineLocked={lockedLines.has(lineIndex)}
+                          isDimmed={
+                            editingLineIndex !== null &&
+                            editingLineIndex !== lineIndex
+                          }
+                          hasLineCopyPending={
+                            lineCopyBuffer !== null &&
+                            editingLineIndex !== null &&
+                            editingLineIndex !== lineIndex
+                          }
+                          onToggleLineEdit={() =>
+                            handleToggleLineEdit(lineIndex)
+                          }
+                          onToggleLineLock={() =>
+                            handleToggleLineLock(lineIndex)
+                          }
+                          onOpenPicker={handleOpenPicker}
+                          onInsertBarra={handleInsertBarra}
+                          onMoveAcorde={handleMoveAcorde}
+                          onMoveBarra={handleMoveBarra}
+                          onLineTextChange={handleLineTextChange}
+                          onMarkersReady={handleMarkersReady}
+                          notacion={notacion}
+                        />
+
+                        {isEditing && (
+                          <LineEditFabBar
+                            hasLineCopyPending={lineCopyBuffer !== null}
+                            onDelete={handleDeleteLine}
+                            onInsertBelow={handleInsertLineBelow}
+                            onCopy={handleCopyLine}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              </div>
+              </div>
+            )}
+
+            {error && phase !== "ingreso" && (
+              <p className="mx-auto mt-3 max-w-3xl shrink-0 text-sm text-[var(--tuner-lejos)]">
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {phase === "cifrado" && (
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0">
+            <EditorSidebarHeader onClose={onClose} loading={loading} />
+
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <div className="space-y-4 p-4">
+                <div>
+                  <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Vista previa</p>
+                  <div className={CIFRADO_CONTROLS_SEGMENTED_CLASS}>
+                    <button
+                      type="button"
+                      onClick={() => setVistaArmado("pc")}
+                      className={cifradoSegmentedIconButtonClass(vistaArmado === "pc")}
+                    >
+                      <Monitor className="size-3.5" aria-hidden="true" />
+                      PC
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVistaArmado("celular")}
+                      className={cifradoSegmentedIconButtonClass(vistaArmado === "celular")}
+                    >
+                      <Smartphone className="size-3.5" aria-hidden="true" />
+                      Cel.
+                    </button>
+                  </div>
+                </div>
+
+                <TapButton
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className={CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS}
+                >
+                  Preview
+                </TapButton>
+              </div>
+
+              <div className="border-t border-border" aria-hidden="true" />
+
+              <div className="space-y-4 bg-bg-sala p-4">
+                <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                  <label
+                    className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                    htmlFor="cifrado-nombre"
+                  >
+                    Nombre *
+                  </label>
+                  <input
+                    id="cifrado-nombre"
+                    ref={nombreInputRef}
+                    value={nombre}
+                    onChange={(event) => {
+                      setNombre(event.target.value);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
+                    className={inputClassName}
+                    placeholder="Nombre de la canción"
+                  />
+                  <label
+                    className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
+                    htmlFor="cifrado-artista"
+                  >
+                    Artista
+                  </label>
+                  <input
+                    id="cifrado-artista"
+                    value={artista}
+                    onChange={(event) => setArtista(event.target.value)}
+                    className={inputClassName}
+                    placeholder="Artista"
+                  />
+                </div>
+
+                {notacion !== "numero" && (
+                  <div>
+                    <label
+                      className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                      htmlFor="cifrado-tonalidad-sidebar"
+                    >
+                      Tonalidad
+                    </label>
+                    <select
+                      id="cifrado-tonalidad-sidebar"
+                      value={tonalidadIndex}
+                      onChange={(event) =>
+                        setTonalidadIndex(Number(event.target.value) as NotaIndex)
+                      }
+                      className={`${inputClassName} !w-1/2`}
+                    >
+                      {NOTA_INDICES.map((index) => (
+                        <option key={index} value={index}>
+                          {getNotaLabel(index, notacion)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                  <label
+                    className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                    htmlFor="cifrado-bpm-sidebar"
+                  >
+                    BPM
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="cifrado-bpm-sidebar"
+                      type="number"
+                      min={40}
+                      max={240}
+                      value={compasConfig.bpm}
+                      onChange={(event) =>
+                        setCompasConfig((current) => ({
+                          ...current,
+                          bpm: Number(event.target.value) || current.bpm,
+                        }))
+                      }
+                      className={`${inputClassName} min-w-0 flex-1 text-center`}
+                    />
+                    <TapButton
+                      type="button"
+                      onClick={handleTapTempo}
+                      className="min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                    >
+                      Tap{tapCount > 0 ? ` (${tapCount})` : ""}
+                    </TapButton>
+                  </div>
+                  <CifradoNotacionToggle
+                    notacion={notacion}
+                    onChange={handleNotacionChange}
+                    embedded
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-border p-4">
+              {saveValidation && (
+                <p
+                  className="mb-3 rounded-lg border border-[var(--tuner-lejos)]/40 bg-[var(--tuner-lejos)]/10 px-3 py-2 text-sm text-[var(--tuner-lejos)]"
+                  role="alert"
+                >
+                  {saveValidation}
+                </p>
+              )}
+              <TapButton
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={loading || phase !== "cifrado"}
+                className="w-full rounded-lg bg-accent py-3 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {loading ? "Guardando…" : "Guardar"}
+              </TapButton>
+            </div>
+          </aside>
+        )}
+
+        {phase === "ingreso" && (
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0">
+            <EditorSidebarHeader onClose={onClose} loading={loading} />
+
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                  Datos de la canción
+                </p>
+                <label
+                  className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                  htmlFor="cifrado-nombre-ingreso"
+                >
+                  Nombre
+                </label>
+                <input
+                  id="cifrado-nombre-ingreso"
+                  ref={nombreInputRef}
+                  value={nombre}
+                  onChange={(event) => {
+                    setNombre(event.target.value);
+                    if (saveValidation) {
+                      setSaveValidation(null);
+                    }
+                  }}
+                  className={inputClassName}
+                  placeholder="Nombre de la canción"
+                />
+                <label
+                  className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
+                  htmlFor="cifrado-artista-ingreso"
+                >
+                  Artista
+                </label>
+                <input
+                  id="cifrado-artista-ingreso"
+                  value={artista}
+                  onChange={(event) => setArtista(event.target.value)}
+                  className={inputClassName}
+                  placeholder="Artista"
+                />
+              </div>
+
+              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                  Vista previa
+                </p>
+                {draftLyrics.trim() ? (
+                  <>
+                    <p className="mt-2 text-sm font-medium text-text-primary">
+                      {draftStats.verses} versos · {draftStats.total} renglones
+                    </p>
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
+                      {draftLyrics.trim()}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-text-muted">
+                    Pegá la letra a la izquierda para ver un resumen acá.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Consejos</p>
+                <ul className="space-y-2 text-xs leading-relaxed text-text-muted">
+                  <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
+                  <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
+                  <li>· Podés completar nombre y artista ahora o al guardar.</li>
+                </ul>
+              </div>
+
+              {error && (
+                <p
+                  className="rounded-lg border border-[var(--tuner-lejos)]/40 bg-[var(--tuner-lejos)]/10 px-3 py-2 text-sm text-[var(--tuner-lejos)]"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+            </div>
+
+            <div className="hidden shrink-0 border-t border-border p-4 lg:block">
+              <TapButton
+                type="button"
+                onClick={handleApplyLyrics}
+                disabled={!draftLyrics.trim()}
+                className="w-full rounded-lg bg-accent py-3 text-sm font-bold text-white disabled:opacity-50"
+              >
+                Aplicar y empezar a cifrar
+              </TapButton>
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {previewOpen && (
+        <CifradoPreviewOverlay
+          lines={lines}
+          cifrado={cifrado}
+          barras={compasConfig.barras}
+          tipoCompas={compasConfig.tipoCompas}
+          showCompas={hasCompas}
+          vistaArmado={vistaArmado}
+          activeBeat={activeBeat}
+          onClose={() => setPreviewOpen(false)}
+          notacion={notacion}
+        />
+      )}
+
+      {picker && (
+        <ChordPicker
+          state={picker}
+          existing={existingPickerAcorde}
+          tonalidadIndex={tonalidadIndex}
+          notacion={notacion}
+          onApply={handleApplyAcorde}
+          onRemove={handleRemoveAcorde}
+          onClose={() => setPicker(null)}
+        />
+      )}
+
+      {toast && (
+        <div
+          className="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-lg bg-bg-card px-4 py-2.5 text-sm text-text-primary shadow-lg"
+          role="status"
+        >
+          {toast}
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+}

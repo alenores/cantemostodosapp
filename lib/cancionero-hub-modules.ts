@@ -5,6 +5,7 @@ import {
   Gauge,
   MicVocal,
   Music2,
+  Pencil,
   Timer,
 } from "lucide-react";
 
@@ -13,7 +14,8 @@ export type HubModuleKind =
   | "afinador"
   | "metronomo"
   | "voz"
-  | "compositor";
+  | "compositor"
+  | "editor-canciones";
 
 export type HubModuleSection = "canciones" | "herramientas" | "practica";
 
@@ -29,6 +31,7 @@ export type HubModuleDef = {
   ctaVariant?: "neutral" | "accent";
   iconColor?: string;
   comingSoon?: boolean;
+  desktopOnly?: boolean;
 };
 
 export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
@@ -54,6 +57,17 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     requiresAuth: true,
     ctaLabel: "Ver",
     ctaVariant: "neutral",
+  },
+  {
+    id: "editor-canciones",
+    label: "Editor de canciones",
+    icon: Pencil,
+    iconColor: "var(--tuner-cerca)",
+    kind: "editor-canciones",
+    section: "canciones",
+    requiresAuth: true,
+    ctaLabel: "Abrir",
+    ctaVariant: "accent",
   },
   {
     id: "afinador",

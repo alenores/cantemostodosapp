@@ -2,14 +2,15 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import AutoScrollControl from "@/components/home/AutoScrollControl";
+import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
-import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
 import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
 import { TapButton } from "@/components/ui/TapFeedback";
+import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import {
   deriveCancionActivaFromCola,
   fetchColaCompleta,
@@ -20,16 +21,16 @@ import {
 import {
   COLA_AVISO_EXIT_MS,
   COLA_AVISO_SHOW_DELAY_MS,
-  getLetraModoLecturaHorizontalPadding,
   getLecturaColaAvisoTopCss,
   getLecturaFabMenuTopCss,
+  getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
   getSalaMainFooterPaddingCss,
-  LECTURA_TOP_CHROME_SIDE_PX,
 } from "@/lib/sala-layout";
 import { triggerHaptic } from "@/lib/haptic";
 import { flushColaLocalToSupabase } from "@/lib/offline/cola-local-sync";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
 import { parsePresenceState } from "@/lib/presence";
@@ -39,6 +40,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { LucideIcon } from "lucide-react";
 import {
   ListMusic,
+  ArrowLeft,
   Minimize2,
   Music2,
   SkipForward,
@@ -119,6 +121,8 @@ type SalaModoLecturaOverlayProps = {
   abierto: boolean;
   pendientesCount: number;
   collaborationDisabled?: boolean;
+  fixedRightCss: string;
+  menuCompacto?: boolean;
   onCerrar: () => void;
   onContraer: () => void;
   onSiguiente: () => void;
@@ -130,6 +134,8 @@ function SalaModoLecturaOverlay({
   abierto,
   pendientesCount,
   collaborationDisabled = false,
+  fixedRightCss,
+  menuCompacto = false,
   onCerrar,
   onContraer,
   onSiguiente,
@@ -155,7 +161,7 @@ function SalaModoLecturaOverlay({
         className="pointer-events-none fixed z-40 flex flex-col items-end gap-2"
         style={{
           top: menuTop,
-          right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+          right: fixedRightCss,
         }}
         role="menu"
         aria-label="Controles de modo lectura"
@@ -168,30 +174,34 @@ function SalaModoLecturaOverlay({
         />
         {!collaborationDisabled ? (
           <>
-            <SalaModoLecturaFabOption
-              icon={SkipForward}
-              label="Siguiente"
-              iconAfter
-              cascadeIndex={1}
-              disabled={pendientesCount === 0}
-              onClick={() => {
-                onCerrar();
-                onSiguiente();
-              }}
-            />
-            <SalaModoLecturaFabOption
-              icon={ListMusic}
-              label={`Fila · ${pendientesCount}`}
-              cascadeIndex={2}
-              onClick={() => {
-                onCerrar();
-                onCola();
-              }}
-            />
+            {!menuCompacto ? (
+              <>
+                <SalaModoLecturaFabOption
+                  icon={SkipForward}
+                  label="Siguiente"
+                  iconAfter
+                  cascadeIndex={1}
+                  disabled={pendientesCount === 0}
+                  onClick={() => {
+                    onCerrar();
+                    onSiguiente();
+                  }}
+                />
+                <SalaModoLecturaFabOption
+                  icon={ListMusic}
+                  label={`Fila · ${pendientesCount}`}
+                  cascadeIndex={2}
+                  onClick={() => {
+                    onCerrar();
+                    onCola();
+                  }}
+                />
+              </>
+            ) : null}
             <SalaModoLecturaFabOption
               icon={Music2}
               label="Afinador"
-              cascadeIndex={3}
+              cascadeIndex={menuCompacto ? 1 : 3}
               onClick={() => {
                 onCerrar();
                 onAfinador();
@@ -209,6 +219,7 @@ export default function SalaPageShell({
   salaNombre,
 }: SalaPageShellProps) {
   const navigateWithProgress = useNavigateWithProgress();
+  const colaSidePanel = useColaSidePanel();
   const online = useOnlineStatus();
   const disconnected = !online;
   const [hadOnlineSession, setHadOnlineSession] = useState(false);
@@ -223,6 +234,9 @@ export default function SalaPageShell({
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
+  const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
+  const lecturaConColaLateral = modoLectura && colaSidePanel;
+  const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -265,6 +279,7 @@ export default function SalaPageShell({
   }, []);
 
   const [buscadorOpen, setBuscadorOpen] = useState(false);
+  const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
   );
@@ -302,7 +317,7 @@ export default function SalaPageShell({
     navigateWithProgress("/salas");
   }, [navigateWithProgress]);
 
-  useHardwareBack(disconnected && !modoLectura, handleLeaveSala);
+  useHardwareBack(!modoLectura, handleLeaveSala);
 
   useEffect(() => {
     if (disconnected) {
@@ -335,9 +350,21 @@ export default function SalaPageShell({
 
   const salirModoLectura = useCallback(() => {
     setOverlayAbierto(false);
+    setAfinadorOpen(false);
     setModoLectura(false);
     document.body.removeAttribute("data-modo-lectura");
   }, []);
+
+  const handleModoLecturaBack = useCallback(() => {
+    if (overlayAbierto) {
+      setOverlayAbierto(false);
+      return;
+    }
+
+    salirModoLectura();
+  }, [overlayAbierto, salirModoLectura]);
+
+  useHardwareBack(modoLectura, handleModoLecturaBack);
 
   useEffect(() => {
     if (modoLectura) {
@@ -593,6 +620,26 @@ export default function SalaPageShell({
     };
   }, [online, salaId, loadColaCompleta, handleSesionChange, finishInitialColaLoad]);
 
+  const headerLeading = !modoLectura ? (
+    <TapButton
+      type="button"
+      aria-label="Volver a salas"
+      onClick={handleLeaveSala}
+      className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-dark/80 text-text-primary lg:hidden"
+    >
+      <ArrowLeft className="size-4" aria-hidden="true" />
+    </TapButton>
+  ) : null;
+
+  const headerActions =
+    !modoLectura && !disconnected && !colaSidePanel ? (
+      <CantarControlHeaderActions onSearch={handleOpenBuscador} />
+    ) : null;
+
+  const handleExpand = useCallback(() => {
+    setModoLectura(true);
+  }, []);
+
   return (
     <div
       className="flex flex-col overflow-hidden bg-bg-sala"
@@ -630,18 +677,20 @@ export default function SalaPageShell({
       ) : null}
 
       <main
-        className={`relative flex min-h-0 flex-col ${
-          modoLectura ? "overflow-hidden" : "flex-1 overflow-hidden"
+        className={`sala-cantar-main relative flex min-h-0 flex-col ${
+          lecturaPantallaCompleta
+            ? "overflow-hidden"
+            : "flex-1 overflow-hidden lg:flex-row"
         }`}
         style={
-          modoLectura
+          lecturaPantallaCompleta
             ? { height: "100dvh" }
             : {
                 paddingBottom: getSalaMainFooterPaddingCss(),
               }
         }
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {colaBootstrapping && !modoLectura ? (
             <SalaColaBootstrapSkeleton />
           ) : (
@@ -654,13 +703,20 @@ export default function SalaPageShell({
               letraScrollRef={letraScrollRef}
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
+              headerLeading={headerLeading}
+              headerAction={headerActions}
+              onExpand={
+                !modoLectura && cancionActiva && !disconnected
+                  ? handleExpand
+                  : undefined
+              }
             />
           )}
-        </div>
 
-        {presenceBarVisible ? (
-          <SalaPresenceBar usuarios={presenceUsuarios} />
-        ) : null}
+          {presenceBarVisible ? (
+            <SalaPresenceBar usuarios={presenceUsuarios} />
+          ) : null}
+        </div>
 
         <ColaJuntadaSheet
           items={colaItems}
@@ -670,7 +726,7 @@ export default function SalaPageShell({
           onColaChange={loadColaCompleta}
           onItemsReordered={handleColaItemsReordered}
           onOpenBuscador={handleOpenBuscador}
-          presentacionOculta={modoLectura}
+          presentacionOculta={lecturaPantallaCompleta}
           onExpand={
             !modoLectura && cancionActiva && !disconnected
               ? () => setModoLectura(true)
@@ -690,43 +746,6 @@ export default function SalaPageShell({
 
       {modoLectura ? (
         <>
-          {cancionActiva?.nombre ? (
-            <div
-              className={`pointer-events-none fixed z-[45] max-w-[min(75vw,calc(100%-3.25rem))] px-2.5 py-1.5 ${LECTURA_TOP_CHIP}`}
-              style={{
-                top: getLecturaTopChromeTopCss(),
-                left: getLetraModoLecturaHorizontalPadding(),
-              }}
-            >
-              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                <span
-                  key={
-                    cancionNombreRevealGen > 0
-                      ? `reveal-${cancionNombreRevealGen}`
-                      : "initial"
-                  }
-                  className={`min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-accent ${
-                    cancionNombreRevealGen > 0 ? "cola-nombre-reveal block" : ""
-                  }`}
-                >
-                  {cancionActiva.nombre}
-                </span>
-                {cancionActiva.artista ? (
-                  <>
-                    <span
-                      className="shrink-0 text-[10px] leading-snug text-text-muted/70"
-                      aria-hidden="true"
-                    >
-                      ·
-                    </span>
-                    <span className="max-w-[38%] shrink-0 truncate text-[10px] leading-snug text-text-muted">
-                      {cancionActiva.artista}
-                    </span>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
 
           <TapButton
             type="button"
@@ -741,7 +760,7 @@ export default function SalaPageShell({
             }`}
             style={{
               top: getLecturaTopChromeTopCss(),
-              right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+              right: lecturaFixedRightCss,
             }}
           >
             {overlayAbierto ? (
@@ -758,16 +777,19 @@ export default function SalaPageShell({
             abierto={overlayAbierto}
             pendientesCount={pendientesCount}
             collaborationDisabled={disconnected}
+            fixedRightCss={lecturaFixedRightCss}
+            menuCompacto={lecturaConColaLateral}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
-            onAfinador={() => navigateWithProgress("/")}
+            onAfinador={() => setAfinadorOpen(true)}
           />
 
           <AutoScrollControl
             level={autoScrollLevel}
             enabled={Boolean(cancionActiva)}
+            fixedRightCss={lecturaFixedRightCss}
             onAccelerate={accelerateAutoScroll}
             onDecelerate={decelerateAutoScroll}
           />
@@ -781,10 +803,12 @@ export default function SalaPageShell({
           className="fixed z-[48]"
           style={{
             top: getLecturaColaAvisoTopCss(),
-            right: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`,
+            right: lecturaFixedRightCss,
           }}
         />
       ) : null}
+
+      <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />
 
       {buscadorOpen && (
         <BuscadorModal

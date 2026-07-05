@@ -1,8 +1,11 @@
 "use client";
 
-import { HelpCircle, X } from "lucide-react";
+import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { HelpCircle, Music2, Timer, Volume2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+const HELP_ICON_CLASS = "size-4 shrink-0 text-[var(--voz-config)]";
 
 type DinamicaLevel = "fuerte" | "medio" | "suave" | "silencio";
 type ResultKey = "en-tono" | "cerca" | "lejos";
@@ -104,6 +107,51 @@ function RitmoNotaIcon() {
   );
 }
 
+function GolpesConceptIcon() {
+  return (
+    <svg
+      viewBox="0 0 28 10"
+      className="h-2.5 w-7 shrink-0 text-[var(--voz-config)]"
+      aria-hidden="true"
+    >
+      {[5, 11, 17, 23].map((cx) => (
+        <circle key={cx} cx={cx} cy="5" r="2.5" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+function FiguraConceptIcon() {
+  return (
+    <svg
+      viewBox="0 0 32 40"
+      className="h-4 w-3 shrink-0 text-[var(--voz-config)]"
+      aria-hidden="true"
+    >
+      <ellipse cx="12" cy="30" rx="9" ry="6.5" fill="currentColor" />
+      <line
+        x1="21"
+        y1="30"
+        x2="21"
+        y2="4"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DinamicaConceptIcon() {
+  return (
+    <Volume2
+      className={HELP_ICON_CLASS}
+      strokeWidth={2.25}
+      aria-hidden="true"
+    />
+  );
+}
+
 function noisyY(elapsed: number, amp: number): number {
   return (
     TARGET_Y +
@@ -164,15 +212,6 @@ function buildPathFromPoints(pts: Array<[number, number] | null>): string {
   return segments
     .map((seg) => `M ${seg.map((p) => `${p[0]},${p[1]}`).join(" L ")}`)
     .join(" ");
-}
-
-function RitmoNotaConfigCard({ label, text }: { label: string; text: string }) {
-  return (
-    <div className="space-y-1 rounded-[12px] border border-border bg-bg-dark p-3">
-      <p className="text-[13px] font-bold text-text-primary">{label}</p>
-      <p className="text-[12px] leading-relaxed text-text-secondary">{text}</p>
-    </div>
-  );
 }
 
 function RitmoNotaHelpDemo() {
@@ -645,29 +684,53 @@ export function RitmoNotaHelpModal({ open, onClose }: RitmoNotaHelpModalProps) {
                 Qué configurar
               </h3>
               <div className="mt-2 space-y-2">
-                <RitmoNotaConfigCard
+                <HelpInfoCard
+                  icon={<RitmoNotaIcon />}
                   label="¿Para qué sirve?"
                   text="Combinás ritmo, afinación y volumen. La app marca cuándo cantar y en qué volumen. Cuando toca cantar, tenés que hacerlo en la nota correcta."
+                  shimmerDelayMs={0}
                 />
-                <RitmoNotaConfigCard
+                <HelpInfoCard
+                  icon={
+                    <Music2
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Nota objetivo"
                   text="La nota que tenés que cantar cuando el patrón lo indica."
+                  shimmerDelayMs={220}
                 />
-                <RitmoNotaConfigCard
+                <HelpInfoCard
+                  icon={<GolpesConceptIcon />}
                   label="Golpes"
                   text="Cuántos tiempos tiene el ciclo."
+                  shimmerDelayMs={440}
                 />
-                <RitmoNotaConfigCard
+                <HelpInfoCard
+                  icon={<FiguraConceptIcon />}
                   label="Figura"
                   text="Cuánto dura cada golpe: negra es el estándar, corchea más rápido, blanca más lento."
+                  shimmerDelayMs={660}
                 />
-                <RitmoNotaConfigCard
+                <HelpInfoCard
+                  icon={<DinamicaConceptIcon />}
                   label="Dinámica"
                   text="Para cada golpe elegís el volumen: silencio, suave, medio o fuerte."
+                  shimmerDelayMs={880}
                 />
-                <RitmoNotaConfigCard
+                <HelpInfoCard
+                  icon={
+                    <Timer
+                      className={HELP_ICON_CLASS}
+                      strokeWidth={2.25}
+                      aria-hidden="true"
+                    />
+                  }
                   label="Tempo"
                   text="La velocidad del ciclo."
+                  shimmerDelayMs={1100}
                 />
               </div>
             </section>

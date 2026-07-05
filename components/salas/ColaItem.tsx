@@ -1,3 +1,5 @@
+"use client";
+
 import UserAvatar from "@/components/perfil/UserAvatar";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import {
@@ -20,6 +22,7 @@ type ColaItemProps = {
   item: ColaItem;
   items: ColaItem[];
   index: number;
+  premium?: boolean;
   centerDistance?: ColaCenterDistance;
   isFocalRow?: boolean;
   useViewportScaleOnly?: boolean;
@@ -84,6 +87,7 @@ export default function ColaItemCard({
   item,
   items,
   index,
+  premium = false,
   centerDistance,
   isFocalRow = false,
   useViewportScaleOnly = false,
@@ -143,7 +147,7 @@ export default function ColaItemCard({
       className="flex size-5 shrink-0 items-center justify-center self-center"
       aria-hidden="true"
     >
-      <LetraFuenteIcon tipo={iconoTipo} uniform />
+      <LetraFuenteIcon tipo={iconoTipo} uniform premium={premium} />
     </div>
   );
 

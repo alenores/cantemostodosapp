@@ -23,12 +23,13 @@ const APP_SHELL_PATHS =
 const SHELL_CACHE = "app-shell-offline-v1";
 const SHELL_URLS = [
   "/pwa-boot.html",
+  "/",
   "/salas",
   "/~offline",
   "/auth/login",
 ] as const;
 
-const SHELL_FALLBACK_ORDER = ["/salas", "/pwa-boot.html", "/~offline"] as const;
+const SHELL_FALLBACK_ORDER = ["/", "/pwa-boot.html", "/~offline", "/salas"] as const;
 
 async function matchShellInCaches(
   requestUrl: string,
@@ -158,7 +159,7 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: false,
   precacheOptions: {
-    navigateFallback: "/salas",
+    navigateFallback: "/",
     navigateFallbackAllowlist: [APP_SHELL_PATHS],
     navigateFallbackDenylist: [/^\/api\//, /^\/serwist\//],
   },
@@ -197,7 +198,7 @@ const serwist = new Serwist({
   fallbacks: {
     entries: [
       {
-        url: "/salas",
+        url: "/",
         matcher({ request }) {
           return (
             request.mode === "navigate" || request.destination === "document"

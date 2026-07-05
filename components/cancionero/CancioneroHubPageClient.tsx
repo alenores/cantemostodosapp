@@ -10,150 +10,63 @@ import {
 import HomeHubDestinations from "@/components/home/HomeHubDestinations";
 import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
 import HubModuleCard from "@/components/ui/HubModuleCard";
-import AfinadorModal from "@/components/ui/AfinadorModal";
-import CompositorModal from "@/components/ui/CompositorModal";
-import EntrenadorVocalModal from "@/components/ui/EntrenadorVocalModal";
-import MetronomoModal from "@/components/ui/MetronomoModal";
-import { useAfinador } from "@/hooks/useAfinador";
-import { useCompositor } from "@/hooks/useCompositor";
-import { useMetronomo } from "@/hooks/useMetronomo";
-import { useVoz } from "@/hooks/useVoz";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
-import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
-import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { getPerfilAvisoMensaje } from "@/lib/perfil-avisos";
 import { CANCIONERO_HUB_MODULES } from "@/lib/cancionero-hub-modules";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
 import type { UsuarioActivo } from "@/types";
 import { WifiOff } from "lucide-react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+
+const CancioneroHubToolsLayer = dynamic(
+  () => import("@/components/cancionero/CancioneroHubToolsLayer"),
+  { ssr: false },
+);
 
 type CancioneroHubPageClientProps = {
   usuario: UsuarioActivo;
   globalCountInicial: number;
+  favoritasCountInicial: number;
+  avisoInicial?: string | null;
 };
+
+function scheduleIdle(callback: () => void): () => void {
+  if (typeof window.requestIdleCallback === "function") {
+    const id = window.requestIdleCallback(callback, { timeout: 1500 });
+    return () => window.cancelIdleCallback(id);
+  }
+
+  const id = window.setTimeout(callback, 400);
+  return () => window.clearTimeout(id);
+}
 
 export default function CancioneroHubPageClient({
   usuario,
   globalCountInicial,
+  favoritasCountInicial,
+  avisoInicial = null,
 }: CancioneroHubPageClientProps) {
   const pathname = usePathname();
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const isDesktop = useIsDesktop();
   const [globalCount, setGlobalCount] = useState(globalCountInicial);
+  const [favoritasCount, setFavoritasCount] = useState(favoritasCountInicial);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [metronomoOpen, setMetronomoOpen] = useState(false);
   const [vozOpen, setVozOpen] = useState(false);
   const [compositorOpen, setCompositorOpen] = useState(false);
-  const compositor = useCompositor();
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [toolsLayerMounted, setToolsLayerMounted] = useState(false);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
-  const {
-    detection: afinadorDetection,
-    micError: afinadorMicError,
-    micPermissionGranted: afinadorMicPermissionGranted,
-    micReady: afinadorMicReady,
-    micStarting: afinadorMicStarting,
-    start: startAfinador,
-    stop: stopAfinador,
-  } = useAfinador();
-  const {
-    bpm: metronomoBpm,
-    isPlaying: metronomoIsPlaying,
-    beatPattern: metronomoBeatPattern,
-    patternLength: metronomoPatternLength,
-    beatDurations: metronomoBeatDurations,
-    currentBeat: metronomoCurrentBeat,
-    micActivo: metronomoMicActivo,
-    micPermissionGranted: metronomoMicPermissionGranted,
-    micError: metronomoMicError,
-    micReady: metronomoMicReady,
-    micStarting: metronomoMicStarting,
-    hits: metronomoHits,
-    beatMarkers: metronomoBeatMarkers,
-    start: startMetronomo,
-    stop: stopMetronomo,
-    setBpm: setMetronomoBpm,
-    setPatternLength: setMetronomoPatternLength,
-    setBeatDurationAtSlot: setMetronomoBeatDurationAtSlot,
-    setBeatLevelAtSlot: setMetronomoBeatLevelAtSlot,
-    tapTempo: tapMetronomoTempo,
-    tapTempoTapCount: metronomoTapTempoTapCount,
-    toggleMic: toggleMetronomoMic,
-    requestMic: requestMetronomoMic,
-  } = useMetronomo();
-  const {
-    detection: vozDetection,
-    micError: vozMicError,
-    micPermissionGranted: vozMicPermissionGranted,
-    micStarting: vozMicStarting,
-    target: vozTarget,
-    setTarget: setVozTarget,
-    targetFrequency: vozTargetFrequency,
-    referenceLabel: vozReferenceLabel,
-    centsFromTarget: vozCentsFromTarget,
-    accuracy: vozAccuracy,
-    feedbackLabel: vozFeedbackLabel,
-    historySamples: vozHistorySamples,
-    instantAttempts: vozInstantAttempts,
-    clearInstantAttempts: clearVozInstantAttempts,
-    holdTargetSeconds: vozHoldTargetSeconds,
-    setHoldTargetSeconds: setVozHoldTargetSeconds,
-    holdCalibre: vozHoldCalibre,
-    setHoldCalibre: setVozHoldCalibre,
-    octavasNoteDurationSeconds: vozOctavasNoteDurationSeconds,
-    setOctavasNoteDurationSeconds: setVozOctavasNoteDurationSeconds,
-    octavasPitchMode: vozOctavasPitchMode,
-    setOctavasPitchMode: setVozOctavasPitchMode,
-    octavasScaleRepetitions: vozOctavasScaleRepetitions,
-    setOctavasScaleRepetitions: setVozOctavasScaleRepetitions,
-    celebrationKey: vozCelebrationKey,
-    ritmoPlaying: vozRitmoPlaying,
-    toggleRitmoPlaying: toggleVozRitmoPlaying,
-    ritmoMicActive: vozRitmoMicActive,
-    toggleRitmoMic: toggleVozRitmoMic,
-    stopRitmo: stopVozRitmo,
-    ritmoBpm: vozRitmoBpm,
-    setRitmoBpm: setVozRitmoBpm,
-    ritmoBeatPattern: vozRitmoBeatPattern,
-    ritmoPatternLength: vozRitmoPatternLength,
-    ritmoBeatDurations: vozRitmoBeatDurations,
-    setRitmoPatternLength: setVozRitmoPatternLength,
-    setRitmoBeatDurationAtSlot: setVozRitmoBeatDurationAtSlot,
-    setRitmoBeatLevelAtSlot: setVozRitmoBeatLevelAtSlot,
-    ritmoTapTempoTapCount: vozRitmoTapTempoTapCount,
-    tapRitmoTempo: tapVozRitmoTempo,
-    beatMarkers: vozBeatMarkers,
-    ritmoVoiceSamples: vozRitmoVoiceSamples,
-    dinamicaVoiceSamples: vozDinamicaVoiceSamples,
-    voiceRms: vozVoiceRms,
-    effectiveTarget: vozEffectiveTarget,
-    setRitmoToneEvaluation: setVozRitmoToneEvaluation,
-    setDynamicsEvaluation: setVozDynamicsEvaluation,
-    melodiaPlaying: vozMelodiaPlaying,
-    toggleMelodiaPlaying: toggleVozMelodiaPlaying,
-    melodiaMicActive: vozMelodiaMicActive,
-    toggleMelodiaMic: toggleVozMelodiaMic,
-    melodiaBpm: vozMelodiaBpm,
-    setMelodiaBpm: setVozMelodiaBpm,
-    melodiaPatternLength: vozMelodiaPatternLength,
-    setMelodiaPatternLength: setVozMelodiaPatternLength,
-    melodiaBeatDuration: vozMelodiaBeatDuration,
-    setMelodiaBeatDuration: setVozMelodiaBeatDuration,
-    melodiaNotePattern: vozMelodiaNotePattern,
-    setMelodiaNoteAtSlot: setVozMelodiaNoteAtSlot,
-    melodiaTapTempoTapCount: vozMelodiaTapTempoTapCount,
-    tapMelodiaTempo: tapVozMelodiaTempo,
-    comboNotePattern: vozComboNotePattern,
-    setComboNoteAtSlot: setVozComboNoteAtSlot,
-    requestPermission: requestVozMicPermission,
-    tonePracticeActive: vozTonePracticeActive,
-    toggleTonePractice: toggleVozTonePractice,
-    stopTonePractice: stopVozTonePractice,
-    stop: stopVoz,
-  } = useVoz();
+
+  const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
 
   const refreshGlobalCount = useCallback(async () => {
     const canciones = await getCancioneroLocalAsCancionero();
@@ -170,6 +83,10 @@ export default function CancioneroHubPageClient({
   }, [globalCountInicial, online, refreshGlobalCount]);
 
   useEffect(() => {
+    setFavoritasCount(favoritasCountInicial);
+  }, [favoritasCountInicial]);
+
+  useEffect(() => {
     function handleSyncFinished() {
       void refreshGlobalCount();
     }
@@ -181,31 +98,21 @@ export default function CancioneroHubPageClient({
     };
   }, [refreshGlobalCount]);
 
-  useHardwareBack(afinadorOpen, () => {
-    stopAfinador();
-    setAfinadorOpen(false);
-  });
-
-  useHardwareBack(metronomoOpen, () => {
-    stopMetronomo();
-    setMetronomoOpen(false);
-  });
-
-  useHardwareBack(vozOpen, () => {
-    stopVoz();
-    setVozOpen(false);
-  });
-
-  useHardwareBack(compositorOpen, () => {
-    compositor.stop();
-    setCompositorOpen(false);
-  });
+  useEffect(() => {
+    return scheduleIdle(() => {
+      setToolsLayerMounted(true);
+    });
+  }, []);
 
   useEffect(() => {
     setPendingModuleId(null);
   }, [pathname]);
 
-  const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
+  const mountToolsLayer = useCallback(() => {
+    setToolsLayerMounted(true);
+  }, []);
+
+  const avisoMensaje = getPerfilAvisoMensaje(avisoInicial);
 
   function handleModuleClick(moduleId: string, href?: string) {
     const moduleDef = CANCIONERO_HUB_MODULES.find((item) => item.id === moduleId);
@@ -219,25 +126,32 @@ export default function CancioneroHubPageClient({
     }
 
     if (moduleDef.kind === "afinador") {
+      mountToolsLayer();
       setAfinadorOpen(true);
-      if (afinadorMicPermissionGranted) {
-        void startAfinador();
-      }
       return;
     }
 
     if (moduleDef.kind === "metronomo") {
+      mountToolsLayer();
       setMetronomoOpen(true);
       return;
     }
 
     if (moduleDef.kind === "voz") {
+      mountToolsLayer();
       setVozOpen(true);
       return;
     }
 
     if (moduleDef.kind === "compositor") {
+      mountToolsLayer();
       setCompositorOpen(true);
+      return;
+    }
+
+    if (moduleDef.kind === "editor-canciones") {
+      mountToolsLayer();
+      setEditorOpen(true);
       return;
     }
 
@@ -248,7 +162,9 @@ export default function CancioneroHubPageClient({
   }
 
   const visibleModules = CANCIONERO_HUB_MODULES.filter(
-    (module) => !module.requiresAuth || isLoggedIn,
+    (module) =>
+      (!module.requiresAuth || isLoggedIn) &&
+      (!module.desktopOnly || isDesktop),
   );
   const cancionesModules = visibleModules.filter(
     (module) => module.section === "canciones",
@@ -259,11 +175,6 @@ export default function CancioneroHubPageClient({
   const practicaModules = visibleModules.filter(
     (module) => module.section === "practica",
   );
-
-  const toolModalOpen =
-    afinadorOpen || metronomoOpen || vozOpen || compositorOpen;
-
-  useBodyScrollLock(toolModalOpen);
 
   function getModuleAriaLabel(
     kind: (typeof CANCIONERO_HUB_MODULES)[number]["kind"],
@@ -278,6 +189,8 @@ export default function CancioneroHubPageClient({
         return "Abrir entrenador vocal";
       case "compositor":
         return "Abrir compositor";
+      case "editor-canciones":
+        return "Abrir editor de canciones";
       default:
         return `Abrir ${label}`;
     }
@@ -296,6 +209,11 @@ export default function CancioneroHubPageClient({
         <div className={ctaClassName}>
           <span className="font-bold">{module.ctaLabel} </span>
           <span className="font-normal opacity-70">({globalCount})</span>
+        </div>
+      ) : module.id === "mis-canciones" ? (
+        <div className={ctaClassName}>
+          <span className="font-bold">{module.ctaLabel} </span>
+          <span className="font-normal opacity-70">({favoritasCount})</span>
         </div>
       ) : (
         <span className={ctaClassName}>{module.ctaLabel}</span>
@@ -320,8 +238,18 @@ export default function CancioneroHubPageClient({
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
       <AppReadyMarker />
 
-      <main className="flex flex-col gap-3 px-4 py-6 pb-24">
+      <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-col gap-3 lg:gap-4">
         <PwaInstallBanners />
+
+        {avisoMensaje && (
+          <p
+            className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
+            role="status"
+          >
+            {avisoMensaje}
+          </p>
+        )}
 
         {!online && (
           <p
@@ -337,19 +265,19 @@ export default function CancioneroHubPageClient({
 
         <HerramientasHubSectionLabel label={HUB_SECTION_CANCIONES_LABEL} />
 
-        <div className="grid grid-cols-2 gap-[10px]">
+        <div className="app-hub-grid">
           {cancionesModules.map((module) => renderModuleCard(module))}
         </div>
 
         <HerramientasHubSectionLabel label={HUB_SECTION_HERRAMIENTAS_LABEL} />
 
-        <div className="grid grid-cols-2 gap-[10px]">
+        <div className="app-hub-grid">
           {herramientasModules.map((module) => renderModuleCard(module))}
         </div>
 
         <HerramientasHubSectionLabel label={HUB_SECTION_PRACTICA_LABEL} />
 
-        <div className="grid grid-cols-2 gap-[10px]">
+        <div className="app-hub-grid">
           {practicaModules.map((module) => renderModuleCard(module))}
         </div>
 
@@ -358,133 +286,26 @@ export default function CancioneroHubPageClient({
             Iniciá sesión para acceder a Favoritas.
           </p>
         )}
+        </div>
       </main>
 
-      <AfinadorModal
-        open={afinadorOpen}
-        detection={afinadorDetection}
-        micError={afinadorMicError}
-        micPermissionGranted={afinadorMicPermissionGranted}
-        micReady={afinadorMicReady}
-        micStarting={afinadorMicStarting}
-        onRequestMic={() => void startAfinador()}
-        onClose={() => {
-          stopAfinador();
-          setAfinadorOpen(false);
-        }}
-      />
-
-      <EntrenadorVocalModal
-        open={vozOpen}
-        detection={vozDetection}
-        micError={vozMicError}
-        micPermissionGranted={vozMicPermissionGranted}
-        micStarting={vozMicStarting}
-        target={vozTarget}
-        onSetTarget={setVozTarget}
-        targetFrequency={vozTargetFrequency}
-        referenceLabel={vozReferenceLabel}
-        centsFromTarget={vozCentsFromTarget}
-        accuracy={vozAccuracy}
-        feedbackLabel={vozFeedbackLabel}
-        historySamples={vozHistorySamples}
-        instantAttempts={vozInstantAttempts}
-        onClearInstantAttempts={clearVozInstantAttempts}
-        holdTargetSeconds={vozHoldTargetSeconds}
-        onSetHoldTargetSeconds={setVozHoldTargetSeconds}
-        holdCalibre={vozHoldCalibre}
-        onSetHoldCalibre={setVozHoldCalibre}
-        octavasNoteDurationSeconds={vozOctavasNoteDurationSeconds}
-        onSetOctavasNoteDurationSeconds={setVozOctavasNoteDurationSeconds}
-        octavasPitchMode={vozOctavasPitchMode}
-        onSetOctavasPitchMode={setVozOctavasPitchMode}
-        octavasScaleRepetitions={vozOctavasScaleRepetitions}
-        onSetOctavasScaleRepetitions={setVozOctavasScaleRepetitions}
-        celebrationKey={vozCelebrationKey}
-        effectiveTarget={vozEffectiveTarget}
-        onSetRitmoToneEvaluation={setVozRitmoToneEvaluation}
-        onSetDynamicsEvaluation={setVozDynamicsEvaluation}
-        ritmoPlaying={vozRitmoPlaying}
-        onToggleRitmoPlaying={toggleVozRitmoPlaying}
-        ritmoMicActive={vozRitmoMicActive}
-        onToggleRitmoMic={toggleVozRitmoMic}
-        onStopRhythm={stopVozRitmo}
-        ritmoBpm={vozRitmoBpm}
-        onSetRitmoBpm={setVozRitmoBpm}
-        ritmoBeatPattern={vozRitmoBeatPattern}
-        ritmoPatternLength={vozRitmoPatternLength}
-        ritmoBeatDurations={vozRitmoBeatDurations}
-        onSetRitmoPatternLength={setVozRitmoPatternLength}
-        onSetRitmoBeatDurationAtSlot={setVozRitmoBeatDurationAtSlot}
-        onSetRitmoBeatLevelAtSlot={setVozRitmoBeatLevelAtSlot}
-        ritmoTapTempoTapCount={vozRitmoTapTempoTapCount}
-        onTapRitmoTempo={tapVozRitmoTempo}
-        beatMarkers={vozBeatMarkers}
-        ritmoVoiceSamples={vozRitmoVoiceSamples}
-        dinamicaVoiceSamples={vozDinamicaVoiceSamples}
-        voiceRms={vozVoiceRms}
-        melodiaPlaying={vozMelodiaPlaying}
-        onToggleMelodiaPlaying={toggleVozMelodiaPlaying}
-        melodiaMicActive={vozMelodiaMicActive}
-        onToggleMelodiaMic={toggleVozMelodiaMic}
-        melodiaBpm={vozMelodiaBpm}
-        onSetMelodiaBpm={setVozMelodiaBpm}
-        melodiaPatternLength={vozMelodiaPatternLength}
-        onSetMelodiaPatternLength={setVozMelodiaPatternLength}
-        melodiaBeatDuration={vozMelodiaBeatDuration}
-        onSetMelodiaBeatDuration={setVozMelodiaBeatDuration}
-        melodiaNotePattern={vozMelodiaNotePattern}
-        onSetMelodiaNoteAtSlot={setVozMelodiaNoteAtSlot}
-        melodiaTapTempoTapCount={vozMelodiaTapTempoTapCount}
-        onTapMelodiaTempo={tapVozMelodiaTempo}
-        comboNotePattern={vozComboNotePattern}
-        onSetComboNoteAtSlot={setVozComboNoteAtSlot}
-        onRequestMic={() => void requestVozMicPermission()}
-        tonePracticeActive={vozTonePracticeActive}
-        onToggleTonePractice={toggleVozTonePractice}
-        onStopTonePractice={stopVozTonePractice}
-        onClose={() => {
-          stopVoz();
-          setVozOpen(false);
-        }}
-      />
-
-      <MetronomoModal
-        open={metronomoOpen}
-        bpm={metronomoBpm}
-        isPlaying={metronomoIsPlaying}
-        beatPattern={metronomoBeatPattern}
-        patternLength={metronomoPatternLength}
-        beatDurations={metronomoBeatDurations}
-        currentBeat={metronomoCurrentBeat}
-        micActivo={metronomoMicActivo}
-        micPermissionGranted={metronomoMicPermissionGranted}
-        micError={metronomoMicError}
-        micReady={metronomoMicReady}
-        micStarting={metronomoMicStarting}
-        hits={metronomoHits}
-        beatMarkers={metronomoBeatMarkers}
-        onStart={startMetronomo}
-        onStop={stopMetronomo}
-        onSetBpm={setMetronomoBpm}
-        onSetPatternLength={setMetronomoPatternLength}
-        onSetBeatDurationAtSlot={setMetronomoBeatDurationAtSlot}
-        onSetBeatLevelAtSlot={setMetronomoBeatLevelAtSlot}
-        onTapTempo={tapMetronomoTempo}
-        tapTempoTapCount={metronomoTapTempoTapCount}
-        onToggleMic={toggleMetronomoMic}
-        onRequestMic={() => void requestMetronomoMic()}
-        onClose={() => {
-          stopMetronomo();
-          setMetronomoOpen(false);
-        }}
-      />
-
-      <CompositorModal
-        open={compositorOpen}
-        onClose={() => setCompositorOpen(false)}
-        {...compositor}
-      />
+      {toolsLayerMounted ? (
+        <CancioneroHubToolsLayer
+          isLoggedIn={isLoggedIn}
+          online={online}
+          afinadorOpen={afinadorOpen}
+          metronomoOpen={metronomoOpen}
+          vozOpen={vozOpen}
+          compositorOpen={compositorOpen}
+          editorOpen={editorOpen}
+          onAfinadorOpenChange={setAfinadorOpen}
+          onMetronomoOpenChange={setMetronomoOpen}
+          onVozOpenChange={setVozOpen}
+          onCompositorOpenChange={setCompositorOpen}
+          onEditorOpenChange={setEditorOpen}
+          onGlobalCountRefresh={refreshGlobalCount}
+        />
+      ) : null}
     </div>
   );
 }

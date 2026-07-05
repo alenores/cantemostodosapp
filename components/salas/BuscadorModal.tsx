@@ -7,6 +7,7 @@ import {
   CASCADE_STAGGER_MS,
 } from "@/components/cancionero/CancioneroListSkeleton";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
+import { SitioLetraBadge } from "@/components/salas/LetraFuenteSitioBadge";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer from "@/components/salas/LetraViewer";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
@@ -15,6 +16,7 @@ import {
   esAcordesDeCanciones,
   esCifraClub,
   getResultadoIconoTipo,
+  isResultadoPremium,
   mapCancionLocalAResultado,
   resolverNombreArtistaDisplay,
   resultadoKey,
@@ -26,6 +28,7 @@ import {
 } from "@/lib/letra-display";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import { type CancionInput } from "@/lib/cola-logic";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { formatDatabaseError } from "@/lib/supabase/errors";
@@ -126,6 +129,7 @@ function filterMisCanciones(
 
 function mapMisCancionAResultado(
   cancion: UsuarioCancion,
+  premiumIds: ReadonlySet<number>,
 ): ResultadoBusquedaBuscador {
   if (cancion.cancion_guardada_id !== null) {
     return {
@@ -135,6 +139,7 @@ function mapMisCancionAResultado(
       sitio: "Favoritas",
       fuente: "cancionero",
       id: cancion.cancion_guardada_id,
+      tiene_cifrado_avanzado: premiumIds.has(cancion.cancion_guardada_id),
     };
   }
 
@@ -199,13 +204,16 @@ function scheduleCascade(
 function ResultadoItem({
   resultado,
   onSelect,
+  premiumIds,
 }: {
   resultado: ResultadoBusquedaBuscador;
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
+  premiumIds: ReadonlySet<number>;
 }) {
   const esCancionero = resultado.fuente === "cancionero";
   const esLinkGuardado = resultado.fuente === "link-guardado";
   const iconoTipo = getResultadoIconoTipo(resultado);
+  const premium = isResultadoPremium(resultado, premiumIds);
   const { nombre, artista } = resolverNombreArtistaDisplay(
     resultado.titulo,
     resultado.artista,
@@ -233,7 +241,7 @@ function ResultadoItem({
           />
         </>
       )}
-      <LetraFuenteIcon tipo={iconoTipo} />
+      <LetraFuenteIcon tipo={iconoTipo} premium={premium} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[17px] font-semibold text-text-primary">
           {nombre}
@@ -248,9 +256,7 @@ function ResultadoItem({
               <span className="min-w-0 flex-1" aria-hidden="true" />
             )}
             {!esCancionero && (
-              <span className="shrink-0 rounded-full bg-accent-dim px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
-                {resultado.sitio}
-              </span>
+              <SitioLetraBadge sitio={resultado.sitio} url={resultado.url} />
             )}
           </div>
         )}
@@ -270,6 +276,7 @@ function SeccionResultados({
   icon,
   resultados,
   onSelect,
+  premiumIds,
   cascadeActive = false,
   cascadeStartIndex = 0,
   trailing,
@@ -278,6 +285,7 @@ function SeccionResultados({
   icon?: ReactNode;
   resultados: ResultadoBusquedaBuscador[];
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
+  premiumIds: ReadonlySet<number>;
   cascadeActive?: boolean;
   cascadeStartIndex?: number;
   trailing?: ReactNode;
@@ -306,7 +314,11 @@ function SeccionResultados({
                   : undefined
               }
             >
-              <ResultadoItem resultado={resultado} onSelect={onSelect} />
+              <ResultadoItem
+                resultado={resultado}
+                onSelect={onSelect}
+                premiumIds={premiumIds}
+              />
             </li>
           ))}
         </ul>
@@ -330,6 +342,7 @@ export default function BuscadorModal({
 }: BuscadorModalProps) {
   const isHome = variant === "home";
   const online = useOnlineStatus();
+  const premiumIds = usePremiumCancioneroIds();
   const inputRef = useRef<HTMLInputElement>(null);
   const pantallaRef = useRef<Pantalla>("busqueda");
   const confirmacionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -435,6 +448,7 @@ export default function BuscadorModal({
         nombre: c.nombre,
         artista: c.artista,
         letra: c.letra,
+        tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
       })),
     );
   }, [online]);
@@ -442,7 +456,7 @@ export default function BuscadorModal({
   const syncMisCancionesResultados = useCallback(
     (searchQuery: string, animate = false) => {
       const filtradas = filterMisCanciones(misCanciones, searchQuery).map(
-        mapMisCancionAResultado,
+        (cancion) => mapMisCancionAResultado(cancion, premiumIds),
       );
 
       setResultados({
@@ -464,7 +478,7 @@ export default function BuscadorModal({
         );
       }
     },
-    [misCanciones],
+    [misCanciones, premiumIds],
   );
 
   const handleClose = useCallback(() => {
@@ -612,6 +626,7 @@ export default function BuscadorModal({
           nombre: c.nombre,
           artista: c.artista,
           letra: c.letra,
+          tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
         })),
       );
 
@@ -1047,8 +1062,8 @@ export default function BuscadorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg-darker">
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg-darker lg:bg-black/55 lg:p-6 lg:backdrop-blur-sm">
+      <div className="relative min-h-0 flex-1 overflow-hidden lg:mx-auto lg:max-h-[min(92vh,820px)] lg:w-full lg:max-w-3xl lg:rounded-2xl lg:border lg:border-border lg:bg-bg-darker lg:shadow-2xl">
         <section
           className="absolute inset-0 flex flex-col transition-transform duration-350"
           style={{
@@ -1203,6 +1218,7 @@ export default function BuscadorModal({
                     }
                     resultados={resultados.cancionero}
                     onSelect={handleSelectResultado}
+                    premiumIds={premiumIds}
                     cascadeActive={localCascadeActive}
                   />
                 ) : null}
@@ -1219,6 +1235,7 @@ export default function BuscadorModal({
                     }
                     resultados={resultados.linksGuardados}
                     onSelect={handleSelectResultado}
+                    premiumIds={premiumIds}
                     cascadeActive={localCascadeActive}
                     cascadeStartIndex={resultados.cancionero.length}
                     trailing={
@@ -1242,6 +1259,7 @@ export default function BuscadorModal({
                                 <ResultadoItem
                                   resultado={resultado}
                                   onSelect={handleSelectResultado}
+                                  premiumIds={premiumIds}
                                 />
                               </li>
                             ))}

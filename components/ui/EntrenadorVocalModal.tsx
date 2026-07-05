@@ -285,7 +285,7 @@ export default function EntrenadorVocalModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="entrenador-vocal-titulo"
-        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-lg flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <ToolModalHeader
           titleId="entrenador-vocal-titulo"

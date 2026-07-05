@@ -19,8 +19,8 @@ export default function CancioneroSubpageShell({
 }: CancioneroSubpageShellProps) {
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
-      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
-        <div className="flex items-center gap-3">
+      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3 lg:px-8">
+        <div className="app-page-container flex items-center gap-3">
           <TapLink
             href="/"
             ariaLabel="Volver al inicio"
@@ -35,7 +35,9 @@ export default function CancioneroSubpageShell({
         </div>
       </header>
 
-      <main className="flex flex-col gap-3 px-4 py-4 pb-24">{children}</main>
+      <main className="app-page-main flex flex-col gap-3 px-4 py-4 pb-24 lg:px-8 lg:py-6">
+        <div className="app-page-container flex flex-col gap-3 lg:gap-4">{children}</div>
+      </main>
     </div>
   );
 }

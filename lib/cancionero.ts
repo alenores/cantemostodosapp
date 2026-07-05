@@ -1,5 +1,14 @@
-import type { CancionCancionero } from "@/types";
+import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import { agregarACola } from "@/lib/cola-logic";
+import {
+  DEFAULT_BPM,
+  DEFAULT_TONALIDAD,
+  createEmptyCifrado,
+  normalizeNotaIndex,
+  type CifradoData,
+  type CompasConfig,
+  type NotaIndex,
+} from "@/lib/cifrado";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CancioneroFormData = {
@@ -93,7 +102,7 @@ export async function fetchCancionesCancionero(
 ): Promise<CancionCancionero[]> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, nombre, artista, letra")
+    .select("id, nombre, artista, letra, tiene_cifrado_avanzado")
     .is("sala_id", null)
     .order("nombre", { ascending: true });
 
@@ -101,7 +110,76 @@ export async function fetchCancionesCancionero(
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    nombre: row.nombre,
+    artista: row.artista,
+    letra: row.letra,
+    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+  }));
+}
+
+function parseCifradoData(value: unknown): CifradoData | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("version" in value) ||
+    !("acordes" in value) ||
+    !Array.isArray((value as CifradoData).acordes)
+  ) {
+    return null;
+  }
+
+  return value as CifradoData;
+}
+
+function parseCompasConfig(value: unknown): CompasConfig | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  return value as CompasConfig;
+}
+
+export async function fetchCancionCifradoDetalle(
+  supabase: SupabaseClient,
+  id: number,
+): Promise<CancionCifradoDetalle | null> {
+  const { data, error } = await supabase
+    .from("canciones_guardadas")
+    .select(
+      "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, bpm_default, tiene_cifrado_avanzado",
+    )
+    .eq("id", id)
+    .is("sala_id", null)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.tiene_cifrado_avanzado) {
+    return null;
+  }
+
+  const cifrado = parseCifradoData(data.cifrado) ?? createEmptyCifrado();
+
+  return {
+    id: data.id,
+    nombre: data.nombre,
+    artista: data.artista,
+    letra: data.letra,
+    cifrado,
+    compas_config: parseCompasConfig(data.compas_config),
+    tonalidad_default: normalizeNotaIndex(
+      data.tonalidad_default ?? DEFAULT_TONALIDAD,
+    ),
+    bpm_default: Math.max(
+      40,
+      Math.min(240, data.bpm_default ?? DEFAULT_BPM),
+    ),
+    tiene_cifrado_avanzado: true,
+  };
 }
 
 export async function insertCancionCancionero(
@@ -115,6 +193,87 @@ export async function insertCancionCancionero(
     letra: form.letra.trim(),
     url_letra: "",
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateCancionCifradoAvanzado(
+  supabase: SupabaseClient,
+  id: number,
+  payload: {
+    nombre: string;
+    artista: string | null;
+    letra: string;
+    cifrado: CifradoData;
+    compas_config: CompasConfig | null;
+    tonalidad_default: NotaIndex;
+    bpm_default: number;
+  },
+): Promise<void> {
+  const clampedBpm = Math.max(40, Math.min(240, payload.bpm_default));
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("canciones_guardadas")
+    .select("id")
+    .eq("id", id)
+    .is("sala_id", null)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  if (!existing) {
+    throw new Error("No se encontró la canción para actualizar.");
+  }
+
+  const { error, count } = await supabase
+    .from("canciones_guardadas")
+    .update(
+      {
+        nombre: payload.nombre.trim(),
+        artista: payload.artista?.trim() || null,
+        letra: payload.letra.trim(),
+        cifrado: payload.cifrado,
+        compas_config: payload.compas_config,
+        tonalidad_default: payload.tonalidad_default,
+        bpm_default: clampedBpm,
+        tiene_cifrado_avanzado: true,
+      },
+      { count: "exact" },
+    )
+    .eq("id", id)
+    .is("sala_id", null);
+
+  if (error) {
+    throw error;
+  }
+
+  if (count === 0) {
+    throw new Error(
+      "No se pudo actualizar la canción: faltan permisos UPDATE en Supabase. Ejecutá supabase/cifrado-avanzado.sql en el SQL Editor del proyecto.",
+    );
+  }
+}
+
+export async function updateCancionCancioneroMetadatos(
+  supabase: SupabaseClient,
+  id: number,
+  data: {
+    nombre: string;
+    artista: string;
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from("canciones_guardadas")
+    .update({
+      nombre: data.nombre.trim(),
+      artista: data.artista.trim(),
+    })
+    .eq("id", id)
+    .is("sala_id", null);
 
   if (error) {
     throw error;

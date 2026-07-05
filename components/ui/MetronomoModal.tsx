@@ -514,7 +514,7 @@ export default function MetronomoModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="metronomo-titulo"
-        className="relative z-10 flex h-[min(92vh,780px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <ToolModalHeader
           titleId="metronomo-titulo"

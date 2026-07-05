@@ -46,7 +46,10 @@ export const COLA_MODAL_BOTTOM_INSET_PX = 12;
 /** Reserva al final del scroll de letra para los botones flotantes (Sig., Cola, Expandir). */
 export const SALA_LETRA_FLOAT_RESERVE_PX = 144;
 /** Aire entre el borde inferior del contenedor de letra y la fila de avatares (modo control). */
-export const SALA_LETRA_PRESENCE_GAP_PX = 1;
+export const SALA_LETRA_PRESENCE_GAP_PX = 10;
+/** Contorno del contenedor de letra en modo control (Individual y Salas). */
+export const CONTROL_LETRA_SHELL_CLASS =
+  "overflow-hidden rounded-[12px] border-2 border-accent";
 /** Solape de la letra en texto sobre la barra de cola (recupera altura visible). */
 export const LETRA_TEXT_COLA_OVERLAP_PX = 28;
 
@@ -60,7 +63,7 @@ export function getColaModalBottomCss(): string {
 }
 
 export function getSalaMainFooterPaddingCss(): string {
-  return `calc(${APP_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))`;
+  return "var(--app-main-bottom-padding, calc(56px + env(safe-area-inset-bottom, 0px)))";
 }
 
 function letraFloatScrollEndPx(): number {
@@ -101,8 +104,51 @@ export function getLetraModoLecturaHorizontalPaddingRight(): string {
   return `max(${LETRA_MODO_LECTURA_HORIZONTAL_PADDING_PX}px, env(safe-area-inset-right, 0px))`;
 }
 
-/** Aire entre el borde superior y el contenedor de letra en Home (lupa centrada). */
-export const HOME_SEARCH_CHROME_HEIGHT_PX = 52;
+/** Insets compartidos del encabezado en modo control (Individual y Salas). */
+export const CONTROL_HEADER_HORIZONTAL_INSET_PX = 12;
+export const CONTROL_HEADER_TOP_INSET_PX = 10;
+export const CONTROL_HEADER_BOTTOM_INSET_PX = 8;
+export const CONTROL_HEADER_ACTION_SIZE_PX = 36;
+
+export function getControlCantarHorizontalPaddingStyle(): {
+  paddingLeft: string;
+  paddingRight: string;
+} {
+  return {
+    paddingLeft: `max(${CONTROL_HEADER_HORIZONTAL_INSET_PX}px, env(safe-area-inset-left, 0px))`,
+    paddingRight: `max(${CONTROL_HEADER_HORIZONTAL_INSET_PX}px, env(safe-area-inset-right, 0px))`,
+  };
+}
+
+export function getControlHeaderPaddingStyle(): {
+  paddingLeft: string;
+  paddingRight: string;
+  paddingTop: string;
+  paddingBottom: string;
+} {
+  return {
+    ...getControlCantarHorizontalPaddingStyle(),
+    paddingTop: `calc(${CONTROL_HEADER_TOP_INSET_PX}px + env(safe-area-inset-top, 0px))`,
+    paddingBottom: `${CONTROL_HEADER_BOTTOM_INSET_PX}px`,
+  };
+}
+
+/** Encabezado dentro de una section que ya aplica getControlCantarHorizontalPaddingStyle. */
+export function getControlHeaderVerticalPaddingStyle(): {
+  paddingTop: string;
+  paddingBottom: string;
+} {
+  return {
+    paddingTop: `calc(${CONTROL_HEADER_TOP_INSET_PX}px + env(safe-area-inset-top, 0px))`,
+    paddingBottom: `${CONTROL_HEADER_BOTTOM_INSET_PX}px`,
+  };
+}
+
+/** Aire entre el borde superior y el contenedor de letra en Home (solo lupa). */
+export const HOME_SEARCH_CHROME_HEIGHT_PX =
+  CONTROL_HEADER_TOP_INSET_PX +
+  CONTROL_HEADER_ACTION_SIZE_PX +
+  CONTROL_HEADER_BOTTOM_INSET_PX;
 
 export function getHomeSearchChromeHeightCss(): string {
   return `calc(${HOME_SEARCH_CHROME_HEIGHT_PX}px + env(safe-area-inset-top, 0px))`;
@@ -128,14 +174,28 @@ export function getLecturaTopChromeTopCss(): string {
 }
 
 /** Ancho máximo del chip: un poco más que antes, sin ocupar todo el ancho hasta el botón. */
-export function getLecturaTopChipMaxWidthCss(): string {
+export function getLecturaTopChipMaxWidthCss(
+  reservarColaLateral = false,
+): string {
+  const colaReservePx = reservarColaLateral
+    ? "var(--cola-desktop-width, 340px)"
+    : "0px";
   const reservedPx =
     LECTURA_TOP_CHROME_BUTTON_SIZE_PX +
     LECTURA_FAB_MENU_GAP_PX +
     LECTURA_TOP_CHROME_SIDE_PX +
     LETRA_MODO_LECTURA_HORIZONTAL_PADDING_PX +
     4;
-  return `min(80vw, calc(100vw - ${reservedPx}px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))`;
+  return `min(80vw, calc(100vw - ${reservedPx}px - ${colaReservePx} - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))`;
+}
+
+/** Inset derecho de controles fijos en modo lectura (evita tapar la fila lateral en escritorio). */
+export function getLecturaFixedRightCss(reservarColaLateral = false): string {
+  if (reservarColaLateral) {
+    return `max(${LECTURA_TOP_CHROME_SIDE_PX}px, calc(var(--cola-desktop-width, 340px) + ${LECTURA_TOP_CHROME_SIDE_PX}px), env(safe-area-inset-right, 0px))`;
+  }
+
+  return `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-right, 0px))`;
 }
 
 export function getLecturaFabMenuTopCss(): string {
@@ -159,6 +219,9 @@ export const LETRA_TEXT_SCROLL_END_PADDING = `calc(${COLA_BAR_HEIGHT_PX - LETRA_
 
 /** Reserva espacio para la barra; el overlap deja que tape sutilmente el borde del iframe */
 export const LETRA_EMBED_BOTTOM_PADDING = `calc(${COLA_BAR_HEIGHT_PX - COLA_BAR_WEBVIEW_OVERLAP_PX}px + env(safe-area-inset-bottom, 0px))`;
+
+/** Escala horizontal del iframe Cifra Club (tapar márgenes blancos del sitio). */
+export const CIFRACLUB_EMBED_FILL_SCALE_X = 1.04;
 
 /** Recorte superior del iframe embebido por sitio (calibrar en móvil). */
 export const CIFRACLUB_EMBED_TOP_CLIP_PX = 450;

@@ -409,6 +409,80 @@ export function getTunerStatus(cents: number, hasSignal: boolean): TunerStatus {
   return cents < 0 ? "flat" : "sharp";
 }
 
+/** Zoom del afinador: ±3 semitonos (7 etiquetas). */
+export const AFINADOR_LADDER_SEMITONE_SPAN = 3;
+
+export type AfinadorLadderSlot = {
+  note: string;
+  semitoneOffset: number;
+};
+
+function noteAtSemitoneOffset(targetNote: string, semitoneOffset: number): string {
+  const targetIndex = NOTE_NAMES.indexOf(
+    targetNote as (typeof NOTE_NAMES)[number],
+  );
+
+  if (targetIndex === -1) {
+    return targetNote;
+  }
+
+  const nextIndex =
+    ((targetIndex + semitoneOffset) % NOTE_NAMES.length + NOTE_NAMES.length) %
+    NOTE_NAMES.length;
+
+  return NOTE_NAMES[nextIndex]!;
+}
+
+export function getAfinadorLadderSlots(
+  targetNote: string,
+): AfinadorLadderSlot[] {
+  const span = AFINADOR_LADDER_SEMITONE_SPAN;
+
+  return Array.from({ length: span * 2 + 1 }, (_, index) => {
+    const semitoneOffset = index - span;
+
+    return {
+      note: noteAtSemitoneOffset(targetNote, semitoneOffset),
+      semitoneOffset,
+    };
+  });
+}
+
+export function afinadorSemitoneOffsetToLadderPercent(
+  semitoneOffset: number,
+): number {
+  const span = AFINADOR_LADDER_SEMITONE_SPAN;
+  const clamped = Math.max(-span, Math.min(span, semitoneOffset));
+
+  return 50 + (clamped / span) * 50;
+}
+
+export function afinadorCentsToLadderPercent(cents: number): number {
+  const maxCents = AFINADOR_LADDER_SEMITONE_SPAN * 100;
+  const clamped = Math.max(-maxCents, Math.min(maxCents, cents));
+
+  return 50 + (clamped / maxCents) * 50;
+}
+
+/** Verde / amarillo / rojo según distancia a la nota central. */
+export function getTunerMarkerColor(cents: number, hasSignal: boolean): string {
+  if (!hasSignal) {
+    return "var(--text-muted)";
+  }
+
+  const absCents = Math.abs(cents);
+
+  if (absCents <= IN_TUNE_THRESHOLD_CENTS) {
+    return "var(--tuner-in-tune)";
+  }
+
+  if (absCents <= FLAT_SHARP_THRESHOLD_CENTS) {
+    return "var(--tuner-cerca)";
+  }
+
+  return "var(--tuner-flat-sharp)";
+}
+
 export function getStatusLabel(status: TunerStatus): string {
   switch (status) {
     case "in-tune":

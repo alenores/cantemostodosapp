@@ -113,6 +113,9 @@ import {
   semitoneOffsetToLadderPercent,
   splitHistorySegments,
   smoothChartCents,
+  trimHistorySamples,
+  VOZ_HOLD_CHART_SEMITONE_SPAN,
+  VOZ_HOLD_CHART_MAX_CENTS,
   targetToFrequency,
   VOZ_CALIBRE_OPTIONS,
   VOZ_CERCA_CENTS,
@@ -1351,7 +1354,7 @@ function buildMelodiaTargetSegments(
   });
 }
 
-function PitchHistoryChart({
+export function PitchHistoryChart({
   samples,
   active,
   mode = "ritmo",
@@ -1395,9 +1398,15 @@ function PitchHistoryChart({
 }) {
   const isMelodia = mode === "melodia";
   const isSostener = mode === "sostener";
+  const isHoldChart = isSostener && !isMelodia;
   const isSostenerLayout = isSostener || isMelodia;
   const chartHeight = isSostenerLayout ? CHART_HEIGHT_SOSTENER : CHART_HEIGHT_WIDE;
-  const maxCents = VOZ_HISTORY_CHART_WIDE_MAX_CENTS;
+  const maxCents = isHoldChart
+    ? VOZ_HOLD_CHART_MAX_CENTS
+    : VOZ_HISTORY_CHART_WIDE_MAX_CENTS;
+  const chartSemitoneSpan = isHoldChart
+    ? VOZ_HOLD_CHART_SEMITONE_SPAN
+    : VOZ_LADDER_SEMITONE_SPAN;
   const chartPlotLeft = isMelodia ? CHART_MELODIA_PADDING : CHART_WIDE_PADDING_LEFT;
   const chartPlotRight = isMelodia ? CHART_MELODIA_PADDING : 8;
   const plotLeft = chartPlotLeft;
@@ -1582,17 +1591,25 @@ function PitchHistoryChart({
     !isMelodia && hasAudibleVoice && markerCents !== null
       ? historyCentsToChartY(markerCents, chartHeight, maxCents)
       : null;
-  const semitoneGuides = [-VOZ_LADDER_SEMITONE_SPAN, -3, 0, 3, VOZ_LADDER_SEMITONE_SPAN];
+  const semitoneGuides = isHoldChart
+    ? [
+        -chartSemitoneSpan,
+        -Math.round(chartSemitoneSpan / 2),
+        0,
+        Math.round(chartSemitoneSpan / 2),
+        chartSemitoneSpan,
+      ]
+    : [-VOZ_LADDER_SEMITONE_SPAN, -3, 0, 3, VOZ_LADDER_SEMITONE_SPAN];
   const yAxisLabels = useMemo(() => {
     const target: VozTarget = { note: axisNote, octave: axisOctave };
 
     return [
       {
-        semitones: VOZ_LADDER_SEMITONE_SPAN,
+        semitones: chartSemitoneSpan,
         label: getNoteLabelAtSemitoneOffset(
           axisNote,
           axisOctave,
-          VOZ_LADDER_SEMITONE_SPAN,
+          chartSemitoneSpan,
         ),
         emphasis: false,
       },
@@ -1602,16 +1619,16 @@ function PitchHistoryChart({
         emphasis: true,
       },
       {
-        semitones: -VOZ_LADDER_SEMITONE_SPAN,
+        semitones: -chartSemitoneSpan,
         label: getNoteLabelAtSemitoneOffset(
           axisNote,
           axisOctave,
-          -VOZ_LADDER_SEMITONE_SPAN,
+          -chartSemitoneSpan,
         ),
         emphasis: false,
       },
     ];
-  }, [axisNote, axisOctave]);
+  }, [axisNote, axisOctave, chartSemitoneSpan]);
   const wideRangeLabel = `${yAxisLabels[0]!.label} – ${yAxisLabels[1]!.label} – ${yAxisLabels[2]!.label}`;
 
   return (
@@ -2332,14 +2349,20 @@ function VozRitmoPractice({
           <PitchHistoryChart
             samples={historySamples}
             active={ritmoPlaying}
-            mode="ritmo"
+            mode="sostener"
             targetNote={targetNote}
             targetOctave={targetOctave}
             detection={detection}
             accuracy={accuracy}
             cents={cents}
+            liveChartCents={
+              accuracy !== "silencio" && hasAudiblePitchVolume(voiceRms)
+                ? cents
+                : null
+            }
             calibre={holdCalibre}
             voiceRms={voiceRms}
+            showLiveNoteRail
           />
         </>
       ) : null}
@@ -3253,7 +3276,6 @@ export type VozModeSlidesProps = {
   instantAttempts: VozInstantAttempt[];
   historySamples: VozHistorySample[];
   holdHistorySamples: VozHistorySample[];
-  holdChartCents: number | null;
   holdTargetSeconds: number;
   onSetHoldTargetSeconds: (value: number) => void;
   holdCalibre: VozCalibre;
@@ -3327,7 +3349,6 @@ export function VozModeSlides({
   instantAttempts,
   historySamples,
   holdHistorySamples,
-  holdChartCents,
   holdTargetSeconds,
   onSetHoldTargetSeconds,
   holdCalibre,
@@ -3405,14 +3426,10 @@ export function VozModeSlides({
 
   const hasVoiceSignal =
     detection !== null && hasAudiblePitchVolume(voiceRms);
+  const rawLiveCents = hasVoiceSignal ? centsFromTarget : null;
   const holdAccuracy = useMemo(
-    () =>
-      getVozAccuracy(
-        holdChartCents ?? centsFromTarget,
-        hasVoiceSignal && holdChartCents !== null,
-        holdCalibre,
-      ),
-    [holdChartCents, centsFromTarget, hasVoiceSignal, holdCalibre],
+    () => getVozAccuracy(centsFromTarget, hasVoiceSignal, holdCalibre),
+    [centsFromTarget, hasVoiceSignal, holdCalibre],
   );
   const holdCalibreLabel =
     VOZ_CALIBRE_OPTIONS.find((option) => option.id === holdCalibre)?.label ??
@@ -3475,7 +3492,7 @@ export function VozModeSlides({
     }
   }
 
-  function renderSlideContent(slideId: VozModeSlideId) {
+  function renderSlideContent(slideId: VozModeSlideId, isFocusedSlide = true) {
     switch (slideId) {
       case "encajar":
         return (
@@ -3570,17 +3587,18 @@ export function VozModeSlides({
                 targetOctave={targetPicker.target.octave}
                 detection={detection}
                 accuracy={holdAccuracy}
-                cents={holdChartCents ?? centsFromTarget}
-                liveChartCents={holdChartCents}
+                cents={rawLiveCents ?? 0}
+                liveChartCents={rawLiveCents}
                 calibre={holdCalibre}
                 voiceRms={voiceRms}
+                showLiveNoteRail
               />
               <HoldTimerPanel
                 samples={holdHistorySamples}
                 holdTargetSeconds={holdTargetSeconds}
                 celebrationKey={celebrationKey}
                 accuracy={holdAccuracy}
-                cents={holdChartCents ?? centsFromTarget}
+                cents={rawLiveCents ?? 0}
                 calibre={holdCalibre}
               />
               <InstantAttemptsStrip attempts={instantAttempts} />
@@ -3910,7 +3928,10 @@ export function VozModeSlides({
           VOZ_MODE_SLIDES[activeIndex]?.id ?? "encajar",
         )}
         renderSlide={(index) =>
-          renderSlideContent(VOZ_MODE_SLIDES[index]!.id)
+          renderSlideContent(
+            VOZ_MODE_SLIDES[index]!.id,
+            index === activeIndex,
+          )
         }
       />
       <EncajarHelpModal

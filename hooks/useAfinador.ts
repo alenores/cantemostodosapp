@@ -106,7 +106,7 @@ type UseAfinadorResult = {
 export function useAfinador(
   options: UseAfinadorOptions = {},
 ): UseAfinadorResult {
-  const isVocalProfile = options.profile === "vocal";
+  const profileRef = useRef<"tuner" | "vocal">(options.profile ?? "tuner");
   const [detection, setDetection] = useState<NoteDetection | null>(null);
   const [voiceRms, setVoiceRms] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
@@ -132,6 +132,24 @@ export function useAfinador(
   const hadSignalRef = useRef(false);
   const attackIgnoreUntilRef = useRef(0);
   const silenceStartedAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const next = options.profile ?? "tuner";
+
+    if (profileRef.current === next) {
+      return;
+    }
+
+    profileRef.current = next;
+    noteFrequencyRef.current = null;
+    smoothedCentsRef.current = null;
+    lockedMidiRef.current = null;
+    lastNoteRef.current = null;
+    hadSignalRef.current = false;
+    attackIgnoreUntilRef.current = 0;
+    silenceStartedAtRef.current = null;
+    setDetection(null);
+  }, [options.profile]);
 
   useEffect(() => {
     micStartingRef.current = micStarting;
@@ -354,6 +372,7 @@ export function useAfinador(
         currentAnalyser.getFloatTimeDomainData(buffer);
         const rms = computeBufferRms(buffer);
         setVoiceRms(rms);
+        const isVocalProfile = profileRef.current === "vocal";
         const frequency = isVocalProfile
           ? detectVocalPitch(buffer, context.sampleRate)
           : autoCorrelate(buffer, context.sampleRate);
@@ -478,7 +497,7 @@ export function useAfinador(
         setMicError(getMicErrorMessage(error));
       }
     }
-  }, [isVocalProfile, stopAudio]);
+  }, [stopAudio]);
 
   useEffect(() => {
     return () => {

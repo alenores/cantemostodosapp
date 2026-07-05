@@ -20,11 +20,8 @@ import {
   getVozAccuracy,
   getVozFeedbackLabel,
   playHoldCelebration,
-  resolveTargetComparisonWithOctaveFold,
+  resolveTargetComparison,
   trimHistorySamples,
-  smoothChartCents,
-  createSostenerRollingCentsBuffer,
-  updateSostenerRollingChartCents,
   VOZ_DEFAULT_TARGET,
   VOZ_HISTORY_SAMPLE_INTERVAL_MS,
   VOZ_HOLD_TARGET_DEFAULT,
@@ -59,7 +56,7 @@ const VOZ_ATTEMPTS_ARM_DELAY_MS = 450;
 export type RitmoToneEvaluation = "none" | "fixed" | "perBeat";
 
 export function useVoz() {
-  const afinador = useAfinador({ profile: "vocal" });
+  const afinador = useAfinador({ profile: "tuner" });
   const ritmo = useVozRitmo();
   const [target, setTarget] = useState<VozTarget>(VOZ_DEFAULT_TARGET);
   const [holdTargetSeconds, setHoldTargetSecondsState] = useState(
@@ -86,7 +83,6 @@ export function useVoz() {
   const [holdHistorySamples, setHoldHistorySamples] = useState<VozHistorySample[]>(
     [],
   );
-  const [holdChartCents, setHoldChartCents] = useState<number | null>(null);
   const [instantAttempts, setInstantAttempts] = useState<VozInstantAttempt[]>(
     [],
   );
@@ -103,9 +99,7 @@ export function useVoz() {
 
   const historyRef = useRef<VozHistorySample[]>([]);
   const holdHistoryRef = useRef<VozHistorySample[]>([]);
-  const holdRollingBufferRef = useRef(createSostenerRollingCentsBuffer());
   const lastSampleAtRef = useRef(0);
-  const smoothedHistoryCentsRef = useRef<number | null>(null);
   const lastRitmoVoiceSampleAtRef = useRef(0);
   const detectionRef = useRef(afinador.detection);
   const beatMarkersRef = useRef(ritmo.beatMarkers);
@@ -315,12 +309,9 @@ export function useVoz() {
   const clearHistory = useCallback(() => {
     historyRef.current = [];
     holdHistoryRef.current = [];
-    holdRollingBufferRef.current = createSostenerRollingCentsBuffer();
     lastSampleAtRef.current = 0;
-    smoothedHistoryCentsRef.current = null;
     setHistorySamples([]);
     setHoldHistorySamples([]);
-    setHoldChartCents(null);
     celebratedHoldRef.current = false;
   }, []);
 
@@ -417,7 +408,7 @@ export function useVoz() {
       return null;
     }
 
-    return resolveTargetComparisonWithOctaveFold(
+    return resolveTargetComparison(
       afinador.detection.frequency,
       effectiveTarget,
       true,
@@ -505,9 +496,6 @@ export function useVoz() {
     }
 
     if (!hasAudiblePitchVolume(afinador.voiceRms)) {
-      smoothedHistoryCentsRef.current = null;
-      holdRollingBufferRef.current = createSostenerRollingCentsBuffer();
-      setHoldChartCents(null);
       return;
     }
 
@@ -517,16 +505,10 @@ export function useVoz() {
 
     lastSampleAtRef.current = now;
 
-    const chartCents = smoothChartCents(
-      smoothedHistoryCentsRef.current,
-      centsFromTarget,
-    );
-    smoothedHistoryCentsRef.current = chartCents;
-
     const nextSample: VozHistorySample = {
       timestamp: now,
-      cents: chartCents,
-      accuracy: getVozAccuracy(chartCents, true, holdCalibre),
+      cents: centsFromTarget,
+      accuracy: getVozAccuracy(centsFromTarget, true, holdCalibre),
     };
 
     historyRef.current = trimHistorySamples(
@@ -535,27 +517,11 @@ export function useVoz() {
     );
     setHistorySamples([...historyRef.current]);
 
-    const holdUpdate = updateSostenerRollingChartCents(
-      holdRollingBufferRef.current,
+    holdHistoryRef.current = trimHistorySamples(
+      [...holdHistoryRef.current, nextSample],
       now,
-      centsFromTarget,
     );
-    holdRollingBufferRef.current = holdUpdate.buffer;
-    setHoldChartCents(holdUpdate.chartCents);
-
-    if (holdUpdate.shouldRecord && holdUpdate.chartCents !== null) {
-      const holdSample: VozHistorySample = {
-        timestamp: now,
-        cents: holdUpdate.chartCents,
-        accuracy: getVozAccuracy(holdUpdate.chartCents, true, holdCalibre),
-      };
-
-      holdHistoryRef.current = trimHistorySamples(
-        [...holdHistoryRef.current, holdSample],
-        now,
-      );
-      setHoldHistorySamples([...holdHistoryRef.current]);
-    }
+    setHoldHistorySamples([...holdHistoryRef.current]);
   }, [
     afinador.detection,
     afinador.micReady,
@@ -859,7 +825,6 @@ export function useVoz() {
     feedbackLabel,
     historySamples,
     holdHistorySamples,
-    holdChartCents,
     instantAttempts,
     clearInstantAttempts,
     celebrationKey,

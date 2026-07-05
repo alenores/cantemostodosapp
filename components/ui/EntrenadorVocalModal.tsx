@@ -50,7 +50,6 @@ type EntrenadorVocalModalProps = {
   feedbackLabel: string;
   historySamples: VozHistorySample[];
   holdHistorySamples: VozHistorySample[];
-  holdChartCents: number | null;
   instantAttempts: VozInstantAttempt[];
   onClearInstantAttempts: () => void;
   holdTargetSeconds: number;
@@ -183,7 +182,6 @@ export default function EntrenadorVocalModal({
   feedbackLabel,
   historySamples,
   holdHistorySamples,
-  holdChartCents,
   instantAttempts,
   onClearInstantAttempts,
   holdTargetSeconds,
@@ -333,7 +331,6 @@ export default function EntrenadorVocalModal({
                 instantAttempts={instantAttempts}
                 historySamples={historySamples}
                 holdHistorySamples={holdHistorySamples}
-                holdChartCents={holdChartCents}
                 holdTargetSeconds={holdTargetSeconds}
                 onSetHoldTargetSeconds={onSetHoldTargetSeconds}
                 holdCalibre={holdCalibre}

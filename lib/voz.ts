@@ -91,6 +91,9 @@ export const VOZ_HOLD_SUSTAINED_PITCH_MS = 280;
 export const VOZ_HOLD_SUSTAINED_MIN_SAMPLES = 3;
 /** Las muestras candidatas deben ser parecidas entre sí (cents). */
 export const VOZ_HOLD_CANDIDATE_DRIFT_CENTS = 42;
+/** Sostener/Prueba: rango vertical ±1 octava (centro = objetivo). */
+export const VOZ_HOLD_CHART_SEMITONE_SPAN = 12;
+export const VOZ_HOLD_CHART_MAX_CENTS = VOZ_HOLD_CHART_SEMITONE_SPAN * 100;
 
 export const VOZ_HISTORY_CHART_MAX_CENTS = VOZ_CERCA_CENTS;
 /** Rango vertical del gráfico de tono en ritmo/combo (±6 semitonos). */

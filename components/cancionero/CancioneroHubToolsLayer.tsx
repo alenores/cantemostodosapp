@@ -91,7 +91,6 @@ export default function CancioneroHubToolsLayer({
     feedbackLabel: vozFeedbackLabel,
     historySamples: vozHistorySamples,
     holdHistorySamples: vozHoldHistorySamples,
-    holdChartCents: vozHoldChartCents,
     instantAttempts: vozInstantAttempts,
     clearInstantAttempts: clearVozInstantAttempts,
     holdTargetSeconds: vozHoldTargetSeconds,
@@ -215,7 +214,6 @@ export default function CancioneroHubToolsLayer({
         feedbackLabel={vozFeedbackLabel}
         historySamples={vozHistorySamples}
         holdHistorySamples={vozHoldHistorySamples}
-        holdChartCents={vozHoldChartCents}
         instantAttempts={vozInstantAttempts}
         onClearInstantAttempts={clearVozInstantAttempts}
         holdTargetSeconds={vozHoldTargetSeconds}

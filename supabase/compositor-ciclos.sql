@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.compositor_ciclos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
   nombre text NOT NULL CHECK (char_length(trim(nombre)) >= 1),
+  es_publico boolean NOT NULL DEFAULT false,
   piece jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -12,6 +13,10 @@ CREATE TABLE IF NOT EXISTS public.compositor_ciclos (
 
 CREATE INDEX IF NOT EXISTS compositor_ciclos_user_updated_idx
   ON public.compositor_ciclos (user_id, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS compositor_ciclos_public_updated_idx
+  ON public.compositor_ciclos (updated_at DESC)
+  WHERE es_publico = true;
 
 ALTER TABLE public.compositor_ciclos ENABLE ROW LEVEL SECURITY;
 
@@ -21,6 +26,13 @@ CREATE POLICY "auth lee compositor ciclos"
   FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "auth lee compositor ciclos publicos" ON public.compositor_ciclos;
+CREATE POLICY "auth lee compositor ciclos publicos"
+  ON public.compositor_ciclos
+  FOR SELECT
+  TO authenticated
+  USING (es_publico = true);
 
 DROP POLICY IF EXISTS "auth inserta compositor ciclos" ON public.compositor_ciclos;
 CREATE POLICY "auth inserta compositor ciclos"

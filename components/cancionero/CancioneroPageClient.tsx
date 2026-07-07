@@ -221,7 +221,7 @@ export default function CancioneroPageClient({
         showSnackbar("Sumada a Favoritas");
 
         if (modoSeleccionMisCanciones) {
-          navigateWithProgress("/cancionero/mis-canciones");
+          navigateWithProgress("/canciones/favoritas");
         }
       } catch (error) {
         setActionError(
@@ -478,7 +478,7 @@ export default function CancioneroPageClient({
   }
 
   function cancelarModoSeleccion() {
-    navigateWithProgress("/cancionero/mis-canciones");
+    navigateWithProgress("/canciones/favoritas");
   }
 
   useHardwareBack(cifradoViewerOpen, () => {

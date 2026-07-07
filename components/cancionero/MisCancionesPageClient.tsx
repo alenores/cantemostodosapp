@@ -546,7 +546,7 @@ export default function MisCancionesPageClient() {
           <AddButton
             ariaLabel="Agregar canción desde el cancionero"
             onClick={() =>
-              navigateWithProgress("/cancionero/global?seleccionar=1")
+              navigateWithProgress("/canciones/cancionero?seleccionar=1")
             }
           />
         }

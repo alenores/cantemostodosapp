@@ -31,6 +31,9 @@ import {
   type MetronomeHit,
 } from "@/lib/metronomo";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import { ToolPresentationRoot } from "@/components/ui/ToolPresentationRoot";
+import type { ToolPresentation } from "@/lib/tool-presentation";
+import { isToolPagePresentation } from "@/lib/tool-presentation";
 import {
   MetronomoConfigHelpButton,
   MetronomoConfigHelpModal,
@@ -41,7 +44,6 @@ import {
 } from "@/lib/ritmo-terminologia";
 import { Mic } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 
 type MetronomoModalProps = {
   open: boolean;
@@ -75,6 +77,7 @@ type MetronomoModalProps = {
   onTapTempo: () => void;
   onToggleMic: () => void;
   onRequestMic: () => void;
+  presentation?: ToolPresentation;
 };
 
 function PracticePlaybackSummary({
@@ -488,12 +491,10 @@ export default function MetronomoModal({
   onTapTempo,
   onToggleMic,
   onRequestMic,
+  presentation = "modal",
 }: MetronomoModalProps) {
   const [configHelpOpen, setConfigHelpOpen] = useState(false);
-
-  if (!open) {
-    return null;
-  }
+  const isPage = isToolPagePresentation(presentation);
 
   const configSummary = formatRitmoConfigSummary(
     patternLength,
@@ -501,54 +502,58 @@ export default function MetronomoModal({
     bpm,
   );
 
-  return createPortal(
-    <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
-      <button
-        type="button"
-        aria-label="Cerrar metrónomo"
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="metronomo-titulo"
-        className="relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
-      >
-        <ToolModalHeader
-          titleId="metronomo-titulo"
-          title="Metrónomo"
-          closeAriaLabel="Cerrar metrónomo"
-          onClose={onClose}
+  return (
+    <ToolPresentationRoot
+      presentation={presentation}
+      open={open}
+      onClose={onClose}
+      closeAriaLabel="Cerrar metrónomo"
+      panelClassName={
+        isPage
+          ? ""
+          : "relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+      }
+      trailing={
+        <MetronomoConfigHelpModal
+          open={configHelpOpen}
+          onClose={() => setConfigHelpOpen(false)}
         />
+      }
+    >
+      <ToolModalHeader
+        titleId="metronomo-titulo"
+        title="Metrónomo"
+        closeAriaLabel="Cerrar metrónomo"
+        onClose={onClose}
+        showClose={!isPage}
+      />
 
-        <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
-          <div className="space-y-3">
-            <RitmoConfigSection
-              compasLayout="flat"
-              collapsedSummary={configSummary}
-              hideCompasHelp
-              configHeaderAction={
-                <MetronomoConfigHelpButton
-                  onClick={() => setConfigHelpOpen(true)}
-                />
-              }
-              beatPattern={beatPattern}
-              patternLength={patternLength}
-              beatDurations={beatDurations}
-              bpm={bpm}
-              isPlaying={isPlaying}
-              tapTempoTapCount={tapTempoTapCount}
-              patternLengthInputId="metronomo-pattern-length"
-              onSetPatternLength={onSetPatternLength}
-              onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
-              onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
-              onSetBpm={onSetBpm}
-              onTapTempo={onTapTempo}
-            />
+      <div className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4">
+        <div className="space-y-3">
+          <RitmoConfigSection
+            compasLayout="flat"
+            collapsedSummary={configSummary}
+            hideCompasHelp
+            configHeaderAction={
+              <MetronomoConfigHelpButton
+                onClick={() => setConfigHelpOpen(true)}
+              />
+            }
+            beatPattern={beatPattern}
+            patternLength={patternLength}
+            beatDurations={beatDurations}
+            bpm={bpm}
+            isPlaying={isPlaying}
+            tapTempoTapCount={tapTempoTapCount}
+            patternLengthInputId="metronomo-pattern-length"
+            onSetPatternLength={onSetPatternLength}
+            onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
+            onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
+            onSetBpm={onSetBpm}
+            onTapTempo={onTapTempo}
+          />
 
-            <ToolPracticeSection>
+          <ToolPracticeSection>
             {isPlaying ? (
               <div className="flex items-center justify-end">
                 <PlayingEqIndicator
@@ -626,15 +631,8 @@ export default function MetronomoModal({
               ) : null}
             </div>
           </ToolPracticeSection>
-          </div>
         </div>
       </div>
-    </div>
-    <MetronomoConfigHelpModal
-      open={configHelpOpen}
-      onClose={() => setConfigHelpOpen(false)}
-    />
-    </>,
-    document.body,
+    </ToolPresentationRoot>
   );
 }

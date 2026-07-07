@@ -4,8 +4,10 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { TunerListenerPanel } from "@/components/ui/TunerListenerPanel";
 import type { NoteDetection } from "@/lib/afinador";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import { ToolPresentationRoot } from "@/components/ui/ToolPresentationRoot";
+import type { ToolPresentation } from "@/lib/tool-presentation";
+import { isToolPagePresentation } from "@/lib/tool-presentation";
 import { Mic } from "lucide-react";
-import { createPortal } from "react-dom";
 
 type AfinadorModalProps = {
   open: boolean;
@@ -16,6 +18,7 @@ type AfinadorModalProps = {
   micPermissionGranted: boolean;
   micReady: boolean;
   micStarting: boolean;
+  presentation?: ToolPresentation;
 };
 
 function MicConnectingPanel() {
@@ -82,49 +85,45 @@ export default function AfinadorModal({
   micPermissionGranted,
   micReady,
   micStarting,
+  presentation = "modal",
 }: AfinadorModalProps) {
-  if (!open) {
-    return null;
-  }
+  const isPage = isToolPagePresentation(presentation);
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
-      <button
-        type="button"
-        aria-label="Cerrar afinador"
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
+  return (
+    <ToolPresentationRoot
+      presentation={presentation}
+      open={open}
+      onClose={onClose}
+      closeAriaLabel="Cerrar afinador"
+      panelClassName={
+        isPage
+          ? ""
+          : "relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+      }
+    >
+      <ToolModalHeader
+        titleId="afinador-titulo"
+        title="Afinador"
+        closeAriaLabel="Cerrar afinador"
+        onClose={onClose}
+        showClose={!isPage}
       />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="afinador-titulo"
-        className="relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
-      >
-        <ToolModalHeader
-          titleId="afinador-titulo"
-          title="Afinador"
-          closeAriaLabel="Cerrar afinador"
-          onClose={onClose}
-        />
 
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-6">
-          {!micReady ? (
-            !micPermissionGranted || micError ? (
-              <MicPermissionPanel
-                micError={micError}
-                micStarting={micStarting}
-                onRequestMic={onRequestMic}
-              />
-            ) : (
-              <MicConnectingPanel />
-            )
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-6">
+        {!micReady ? (
+          !micPermissionGranted || micError ? (
+            <MicPermissionPanel
+              micError={micError}
+              micStarting={micStarting}
+              onRequestMic={onRequestMic}
+            />
           ) : (
-            <TunerListenerPanel detection={detection} />
-          )}
-        </div>
+            <MicConnectingPanel />
+          )
+        ) : (
+          <TunerListenerPanel detection={detection} />
+        )}
       </div>
-    </div>,
-    document.body,
+    </ToolPresentationRoot>
   );
 }

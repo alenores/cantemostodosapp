@@ -1,12 +1,16 @@
-import type {
-  CompositorDrumSound,
-  CompositorGuitarArticulation,
-  CompositorInstrumentId,
-  CompositorPiece,
-  CompositorSlotNote,
-  CompositorTrackEvent,
+import {
+  isGuitarChordArticulation,
+  type CompositorDrumSound,
+  type CompositorGuitarArticulation,
+  type CompositorInstrumentId,
+  type CompositorPiece,
+  type CompositorSlotNote,
+  type CompositorTrackEvent,
 } from "@/lib/compositor";
 import { resolveEventMelodicNote } from "@/lib/compositor-melodic-pitch";
+import { buildChordNotesFromRoot, getDefaultChordModifierForRoot } from "@/lib/compositor-chords";
+import type { Modificador } from "@/lib/cifrado";
+import { gradoToNotaIndex } from "@/lib/compositor-melodic-pitch";
 import {
   getActiveBeatDurationSlice,
   getSecondsPerBeat,
@@ -21,10 +25,42 @@ export type CompositorScheduledSound = {
   cycleOffsetSeconds: number;
   durationSeconds: number;
   level: MetronomeBeatLevel;
-  note: CompositorSlotNote;
+  notes: CompositorSlotNote[];
   drumSound: CompositorDrumSound;
   guitarArticulation: CompositorGuitarArticulation;
 };
+
+function resolveEventNotes(
+  piece: CompositorPiece,
+  instrumentId: CompositorInstrumentId,
+  event: CompositorTrackEvent,
+): CompositorSlotNote[] {
+  const root = resolveEventMelodicNote(event, piece.tonalidadComposicion, instrumentId);
+
+  if (instrumentId === "viento") {
+    return [root];
+  }
+
+  if (instrumentId === "guitarra") {
+    if (!isGuitarChordArticulation(event.guitarArticulation)) {
+      return [root];
+    }
+
+    const rootIndex = gradoToNotaIndex(event.gradoCromatico, piece.tonalidadComposicion);
+    const modifier: Modificador =
+      (event.chordModifier ?? getDefaultChordModifierForRoot(rootIndex, piece.tonalidadComposicion)) as Modificador;
+    return buildChordNotesFromRoot(root, modifier, instrumentId);
+  }
+
+  if (instrumentId === "piano" && event.pianoHarmonyMode === "acorde") {
+    const rootIndex = gradoToNotaIndex(event.gradoCromatico, piece.tonalidadComposicion);
+    const modifier: Modificador =
+      (event.chordModifier ?? getDefaultChordModifierForRoot(rootIndex, piece.tonalidadComposicion)) as Modificador;
+    return buildChordNotesFromRoot(root, modifier, instrumentId);
+  }
+
+  return [root];
+}
 
 export function getCompositorGridSteps(piece: CompositorPiece): number {
   return piece.cycleGolpes * piece.subdivisionsPerGolpe;
@@ -105,6 +141,33 @@ export function eventOverlapsStep(
   return step >= event.startStep && step < event.startStep + event.durationSteps;
 }
 
+export function isDrumCellOccupied(
+  events: CompositorTrackEvent[],
+  drumSound: CompositorDrumSound,
+  step: number,
+): boolean {
+  return events.some(
+    (event) => event.drumSound === drumSound && event.startStep === step,
+  );
+}
+
+export function isMelodicCellOccupied(
+  events: CompositorTrackEvent[],
+  rowId: string,
+  step: number,
+  rowIdForEvent: (
+    event: CompositorTrackEvent,
+  ) => string,
+): boolean {
+  return events.some((event) => {
+    if (rowIdForEvent(event) !== rowId) {
+      return false;
+    }
+
+    return eventOverlapsStep(event, step);
+  });
+}
+
 export function buildCompositorScheduledSounds(
   piece: CompositorPiece,
   options?: {
@@ -143,11 +206,7 @@ export function buildCompositorScheduledSounds(
         cycleOffsetSeconds: stepToCycleOffsetSeconds(piece, event.startStep),
         durationSeconds: durationStepsToSeconds(piece, event.durationSteps),
         level: event.level,
-        note: resolveEventMelodicNote(
-          event,
-          piece.tonalidadComposicion,
-          track.instrumentId,
-        ),
+        notes: resolveEventNotes(piece, track.instrumentId, event),
         drumSound: event.drumSound,
         guitarArticulation: event.guitarArticulation,
       });

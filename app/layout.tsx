@@ -36,6 +36,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: APP_SHELL_BG,
 };
 
@@ -116,7 +119,7 @@ export default function RootLayout({
                 <AuthSessionListener />
                 <SplashScreen />
                 <AppSidebar />
-                <div className="app-shell-main flex min-h-dvh min-w-0 flex-1 flex-col">
+                <div className="app-shell-main flex min-h-dvh w-full min-w-0 flex-1 flex-col overflow-x-clip">
                   {children}
                 </div>
                 <AppFooter />

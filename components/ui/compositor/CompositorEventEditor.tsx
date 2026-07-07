@@ -11,12 +11,13 @@ import {
   BeatVolumeCarousel,
   CompasNumericCarousel,
 } from "@/components/ui/ToolRitmoConfig";
-import type {
-  CompositorDrumSound,
-  CompositorGuitarArticulation,
-  CompositorInstrumentId,
-  CompositorPiece,
-  CompositorTrackEvent,
+import {
+  isGuitarChordArticulation,
+  type CompositorDrumSound,
+  type CompositorGuitarArticulation,
+  type CompositorInstrumentId,
+  type CompositorPiece,
+  type CompositorTrackEvent,
 } from "@/lib/compositor";
 import {
   clampEventDurationSteps,
@@ -32,10 +33,12 @@ import {
 import { COMPAS_SLOT_CONTROLS_CLASS } from "@/lib/ritmo-compas-ui";
 import {
   COMPOSITOR_HELP_EVENTO_POSICION,
+  COMPOSITOR_LABEL_BLOQUE_SELECCIONADO,
   COMPOSITOR_LABEL_SONIDO_SELECCIONADO,
   getRitmoHelpNota,
   getRitmoHelpIntensidad,
   getRitmoHelpTimbre,
+  RITMO_LABEL_ACORDE,
   RITMO_LABEL_NOTA,
   RITMO_LABEL_INTENSIDAD,
   RITMO_LABEL_POSICION,
@@ -44,12 +47,14 @@ import {
 } from "@/lib/ritmo-terminologia";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import { useEffect, useMemo, useState } from "react";
+import { MODIFICADORES, type Modificador } from "@/lib/cifrado";
 
 type EventEditorTab =
   | "posicion"
   | "sustento"
   | "intensidad"
   | "contenido"
+  | "acorde"
   | "timbre";
 
 type CompositorEventEditorProps = {
@@ -57,6 +62,8 @@ type CompositorEventEditorProps = {
   instrumentId: CompositorInstrumentId;
   event: CompositorTrackEvent;
   disabled?: boolean;
+  embedded?: boolean;
+  editorMode?: "default" | "palette";
   onUpdateEvent: (patch: Partial<CompositorTrackEvent>) => void;
 };
 
@@ -65,6 +72,8 @@ export function CompositorEventEditor({
   instrumentId,
   event,
   disabled = false,
+  embedded = false,
+  editorMode = "default",
   onUpdateEvent,
 }: CompositorEventEditorProps) {
   const gridSteps = getCompositorGridSteps(piece);
@@ -75,17 +84,27 @@ export function CompositorEventEditor({
     gridSteps,
     piece.subdivisionsPerGolpe,
   );
-  const showSustento = isSustentoEditable(instrumentId, event);
+  const showSustento =
+    editorMode !== "palette" && isSustentoEditable(instrumentId, event);
   const startSeconds = stepToCycleOffsetSeconds(piece, event.startStep);
   const durationSeconds = durationStepsToSeconds(piece, event.durationSteps);
 
-  const showContenido = compositorHasContenidoTab(instrumentId);
+  const showContenido =
+    editorMode !== "palette" && compositorHasContenidoTab(instrumentId);
   const showTimbre = compositorHasTimbreTab(instrumentId);
+  const showPosicion = editorMode !== "palette";
+  const showAcorde =
+    editorMode === "palette" &&
+    (instrumentId === "piano" ||
+      (instrumentId === "guitarra" &&
+        isGuitarChordArticulation(event.guitarArticulation)));
 
   const tabs = useMemo(() => {
-    const options: { id: EventEditorTab; label: string }[] = [
-      { id: "posicion", label: RITMO_LABEL_POSICION },
-    ];
+    const options: { id: EventEditorTab; label: string }[] = [];
+
+    if (showPosicion) {
+      options.push({ id: "posicion", label: RITMO_LABEL_POSICION });
+    }
     if (showSustento) {
       options.push({ id: "sustento", label: RITMO_LABEL_SUSTENTO });
     }
@@ -93,25 +112,29 @@ export function CompositorEventEditor({
     if (showContenido) {
       options.push({ id: "contenido", label: RITMO_LABEL_NOTA });
     }
+    if (showAcorde) {
+      options.push({ id: "acorde", label: RITMO_LABEL_ACORDE });
+    }
     if (showTimbre) {
       options.push({ id: "timbre", label: RITMO_LABEL_TIMBRE });
     }
     return options;
-  }, [showContenido, showSustento, showTimbre]);
+  }, [showAcorde, showContenido, showPosicion, showSustento, showTimbre]);
 
-  const [tab, setTab] = useState<EventEditorTab>("posicion");
+  const defaultTab = tabs[0]?.id ?? "intensidad";
+  const [tab, setTab] = useState<EventEditorTab>(defaultTab);
 
   useEffect(() => {
     if (disabled) {
-      setTab("posicion");
+      setTab(defaultTab);
     }
-  }, [disabled]);
+  }, [defaultTab, disabled]);
 
   useEffect(() => {
     if (!tabs.some((option) => option.id === tab)) {
-      setTab("posicion");
+      setTab(defaultTab);
     }
-  }, [tab, tabs]);
+  }, [defaultTab, tab, tabs]);
 
   const helpText =
     tab === "posicion"
@@ -122,17 +145,29 @@ export function CompositorEventEditor({
           ? getRitmoHelpIntensidad("compositor")
           : tab === "contenido"
             ? getRitmoHelpNota()
+            : tab === "acorde"
+              ? "Elegí el tipo de acorde (mayor, menor, 7, etc.)."
             : showTimbre
               ? getRitmoHelpTimbre(
                   instrumentId === "bateria" ? "bateria" : "guitarra",
                 )
               : "";
 
+  const titleLabel = embedded
+    ? COMPOSITOR_LABEL_BLOQUE_SELECCIONADO
+    : COMPOSITOR_LABEL_SONIDO_SELECCIONADO;
+
   return (
-    <div className="rounded-[10px] border border-border/70 bg-bg-card/90 px-3 py-3">
+    <div
+      className={
+        embedded
+          ? "pt-3"
+          : "rounded-[10px] border border-border/70 bg-bg-card/90 px-3 py-3"
+      }
+    >
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-compositor-config">
-          {COMPOSITOR_LABEL_SONIDO_SELECCIONADO}
+          {titleLabel}
         </p>
         <p className="mt-1 text-[11px] leading-snug text-text-muted">
           Empieza a los {startSeconds.toFixed(1)} s y dura ~{durationSeconds.toFixed(1)} s
@@ -140,14 +175,14 @@ export function CompositorEventEditor({
         </p>
       </div>
 
-      <div className="mt-3 flex gap-1 rounded-full border border-border bg-bg-darker p-0.5">
+      <div className="tool-segmented-control tool-segmented-control--inline mt-3 flex gap-1">
         {tabs.map((option) => (
           <button
             key={option.id}
             type="button"
             disabled={disabled}
             onClick={() => setTab(option.id)}
-            className={`min-w-0 flex-1 rounded-full px-1.5 py-1.5 text-[10px] font-bold disabled:opacity-50 ${
+            className={`min-w-0 flex-1 shrink-0 rounded-full px-2.5 py-1.5 text-[10px] font-bold disabled:opacity-50 lg:flex-none ${
               tab === option.id
                 ? "bg-compositor-config text-white"
                 : "text-text-muted"
@@ -242,6 +277,68 @@ export function CompositorEventEditor({
               })
             }
           />
+        ) : null}
+
+        {tab === "acorde" && showAcorde ? (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                if (instrumentId === "piano") {
+                  onUpdateEvent({ pianoHarmonyMode: "nota" });
+                }
+              }}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${
+                instrumentId === "piano" && event.pianoHarmonyMode !== "acorde"
+                  ? "bg-compositor-config text-white"
+                  : "bg-bg-dark text-text-secondary"
+              }`}
+            >
+              Nota
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                if (instrumentId === "piano") {
+                  onUpdateEvent({ pianoHarmonyMode: "acorde" });
+                }
+              }}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${
+                instrumentId === "piano" && event.pianoHarmonyMode === "acorde"
+                  ? "bg-compositor-config text-white"
+                  : "bg-bg-dark text-text-secondary"
+              }`}
+            >
+              Acorde
+            </button>
+
+            {(instrumentId !== "piano" || event.pianoHarmonyMode === "acorde") ? (
+              <div className="mt-2 flex w-full flex-wrap gap-1.5">
+                {MODIFICADORES.map((mod) => {
+                  const isActive = (event.chordModifier ?? "") === mod.id;
+                  return (
+                    <button
+                      key={mod.id || "maj"}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() =>
+                        onUpdateEvent({ chordModifier: mod.id as Modificador })
+                      }
+                      className={`rounded-full px-2.5 py-1 text-xs disabled:opacity-50 ${
+                        isActive
+                          ? "bg-compositor-config text-white font-bold"
+                          : "bg-bg-dark text-text-secondary"
+                      }`}
+                    >
+                      {mod.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {tab === "timbre" && showTimbre ? (

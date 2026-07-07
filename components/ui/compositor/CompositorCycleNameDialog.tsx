@@ -6,6 +6,8 @@ type CompositorCycleNameDialogProps = {
   confirmLabel: string;
   inputLabel?: string;
   value: string;
+  busy?: boolean;
+  error?: string | null;
   onChange: (value: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -17,6 +19,8 @@ export function CompositorCycleNameDialog({
   confirmLabel,
   inputLabel = "Nombre del ciclo",
   value,
+  busy = false,
+  error = null,
   onChange,
   onConfirm,
   onCancel,
@@ -46,24 +50,36 @@ export function CompositorCycleNameDialog({
             value={value}
             maxLength={80}
             autoFocus
+            disabled={busy}
             onChange={(event) => onChange(event.target.value)}
-            className="mt-2 w-full rounded-[10px] border border-border bg-bg-darker px-3 py-2 text-sm text-text-primary outline-none focus:border-compositor-config"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !busy) {
+                event.preventDefault();
+                onConfirm();
+              }
+            }}
+            className="mt-2 w-full rounded-[10px] border border-border bg-bg-darker px-3 py-2 text-sm text-text-primary outline-none focus:border-compositor-config disabled:opacity-60"
           />
         </label>
+        {error ? (
+          <p className="mt-3 text-[11px] leading-snug text-[var(--tuner-lejos)]">{error}</p>
+        ) : null}
         <div className="mt-5 flex gap-3">
           <button
             type="button"
+            disabled={busy}
             onClick={onCancel}
-            className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary"
+            className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary disabled:opacity-60"
           >
             Cancelar
           </button>
           <button
             type="button"
+            disabled={busy}
             onClick={onConfirm}
-            className="min-h-11 flex-1 rounded-[10px] bg-accent text-sm font-semibold text-white"
+            className="min-h-11 flex-1 rounded-[10px] bg-accent text-sm font-semibold text-white disabled:opacity-60"
           >
-            {confirmLabel}
+            {busy ? "Guardando..." : confirmLabel}
           </button>
         </div>
       </div>

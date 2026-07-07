@@ -21,6 +21,7 @@ import {
 import type { VozTarget } from "@/lib/voz";
 import { clampTargetOctave, createVozTarget } from "@/lib/voz";
 import { clampEventDurationSteps } from "@/lib/compositor-timeline-layout";
+import type { Modificador } from "@/lib/cifrado";
 import {
   clampGradoCromatico,
   clampMelodicOctaveForInstrument,
@@ -45,7 +46,18 @@ export type CompositorDrumSound =
   | "ride"
   | "silencio";
 
-export type CompositorGuitarArticulation = "pua" | "rasguido" | "dedo" | "silencio";
+export type CompositorGuitarArticulation =
+  | "pua"
+  | "rasguido"
+  | "bloque"
+  | "dedo"
+  | "silencio";
+
+export function isGuitarChordArticulation(
+  articulation: CompositorGuitarArticulation,
+): boolean {
+  return articulation === "rasguido" || articulation === "bloque";
+}
 
 export type CompositorSlotNote = VozTarget;
 
@@ -58,6 +70,15 @@ export type CompositorTrackEvent = {
   gradoCromatico: number;
   /** Octava del evento (2–5 según capa). */
   octavaRelativa: number;
+  /**
+   * Modificador para reproducir/interpretar este evento como acorde.
+   * - Guitarra: aplica cuando `guitarArticulation` es rasguido o bloque.
+   * - Piano: aplica cuando `pianoHarmonyMode === "acorde"`.
+   * - Viento: se ignora (solo notas).
+   */
+  chordModifier: Modificador;
+  /** Solo piano: "nota" (default) o "acorde". */
+  pianoHarmonyMode: "nota" | "acorde";
   /** Legacy / caché; no usar como fuente de verdad en melodías. */
   note: CompositorSlotNote;
   drumSound: CompositorDrumSound;
@@ -121,6 +142,7 @@ export const COMPOSITOR_DRUM_SOUND_OPTIONS = [
 export const COMPOSITOR_GUITAR_ARTICULATION_OPTIONS = [
   { id: "pua" as const, label: "Púa" },
   { id: "rasguido" as const, label: "Rasguido" },
+  { id: "bloque" as const, label: "Bloque" },
   { id: "dedo" as const, label: "Dedo" },
   { id: "silencio" as const, label: "Silencio" },
 ] as const;
@@ -161,6 +183,8 @@ export function createCompositorEvent(
     level: partial.level ?? "medio",
     gradoCromatico: partial.gradoCromatico ?? 1,
     octavaRelativa: partial.octavaRelativa ?? note.octave,
+    chordModifier: partial.chordModifier ?? "",
+    pianoHarmonyMode: partial.pianoHarmonyMode ?? "nota",
     note,
     drumSound: partial.drumSound ?? "kick",
     guitarArticulation: partial.guitarArticulation ?? "pua",
@@ -189,6 +213,8 @@ function normalizeEvent(
     },
     gradoCromatico: event.gradoCromatico ?? 1,
     octavaRelativa: event.octavaRelativa ?? noteOctave,
+    chordModifier: (event.chordModifier ?? "") as Modificador,
+    pianoHarmonyMode: event.pianoHarmonyMode === "acorde" ? "acorde" : "nota",
     drumSound: event.drumSound ?? "kick",
     guitarArticulation: event.guitarArticulation ?? "pua",
   };
@@ -250,7 +276,6 @@ function normalizeTrackEvents(
   tonalidadComposicion: NotaIndex,
 ): CompositorTrackEvent[] {
   const normalized = events
-    .slice(0, COMPOSITOR_MAX_EVENTS_PER_TRACK)
     .map((event) =>
       normalizeEvent(
         event,
@@ -365,7 +390,7 @@ export function createDefaultTrack(
 }
 
 export function createDefaultCompositorPiece(): CompositorPiece {
-  const cycleGolpes = 10;
+  const cycleGolpes = 4;
   const subdivisionsPerGolpe = COMPOSITOR_SUBDIVISIONS_PER_GOLPE;
   const gridSteps = cycleGolpes * subdivisionsPerGolpe;
 
@@ -473,6 +498,57 @@ export function getInstrumentLabel(
     COMPOSITOR_INSTRUMENT_OPTIONS.find((option) => option.id === instrumentId)
       ?.label ?? instrumentId
   );
+}
+
+export type CompositorTrackCapacityReport = {
+  instrumentId: CompositorInstrumentId;
+  count: number;
+  max: number;
+  overflow: number;
+};
+
+export function getTrackCapacityReports(
+  piece: CompositorPiece,
+  max = COMPOSITOR_MAX_EVENTS_PER_TRACK,
+): CompositorTrackCapacityReport[] {
+  return piece.tracks
+    .map((track) => ({
+      instrumentId: track.instrumentId,
+      count: track.events.length,
+      max,
+      overflow: Math.max(0, track.events.length - max),
+    }))
+    .filter((report) => report.overflow > 0);
+}
+
+export function pieceHasTrackOverflow(
+  piece: CompositorPiece,
+  max = COMPOSITOR_MAX_EVENTS_PER_TRACK,
+): boolean {
+  return getTrackCapacityReports(piece, max).length > 0;
+}
+
+export function isTrackAtCapacity(
+  track: CompositorTrack,
+  max = COMPOSITOR_MAX_EVENTS_PER_TRACK,
+): boolean {
+  return track.events.length >= max;
+}
+
+export function formatTrackCapacityLabel(
+  count: number,
+  max = COMPOSITOR_MAX_EVENTS_PER_TRACK,
+): string {
+  return `${count}/${max} bloque${count === 1 ? "" : "s"}`;
+}
+
+export function formatTrackOverflowDetails(piece: CompositorPiece): string {
+  return getTrackCapacityReports(piece)
+    .map(
+      (report) =>
+        `${getInstrumentLabel(report.instrumentId)} tiene ${report.count} bloques (máximo ${report.max})`,
+    )
+    .join("; ");
 }
 
 export function setCompositorCycleGolpes(

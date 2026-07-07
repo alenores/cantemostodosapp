@@ -18,7 +18,7 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 const APP_SHELL_PATHS =
-  /^\/($|salas(\/.*)?|cancionero(\/.*)?|auth\/login|~offline|pwa-boot\.html)$/;
+  /^\/($|salas(\/.*)?|cancionero(\/.*)?|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
 
 const SHELL_CACHE = "app-shell-offline-v1";
 const SHELL_URLS = [
@@ -173,7 +173,10 @@ const serwist = new Serwist({
           pathname === "/pwa-boot.html" ||
           pathname === "/~offline" ||
           pathname === "/auth/login" ||
-          pathname === "/"),
+          pathname === "/" ||
+          pathname.startsWith("/canciones/") ||
+          pathname.startsWith("/herramientas/") ||
+          pathname.startsWith("/practica/")),
       handler: shellCacheFirst,
     },
     {

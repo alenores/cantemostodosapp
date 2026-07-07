@@ -127,7 +127,7 @@ export async function playCifradoPreviewBeat(
         cycleOffsetSeconds: 0,
         durationSeconds: 0.1,
         level: beat.intensidad,
-        note: silentNote,
+        notes: [silentNote],
         drumSound: hit.drumSound,
         guitarArticulation: "silencio",
       },

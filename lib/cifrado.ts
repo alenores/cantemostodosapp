@@ -98,6 +98,107 @@ export function getCompasExtensionStart(textLength: number): number {
   return textLength === 0 ? 1 : textLength;
 }
 
+/** Máximo de ciclos al colocar compases de una vez en un renglón. */
+export const MAX_COMPAS_PLACEMENT_CYCLE_COUNT = COMPAS_EXTENSION_SLOT_COUNT;
+
+/** Última posición horizontal con letra, acorde o compás en un renglón. */
+export function getLineContentEndOffset(
+  textLength: number,
+  acordes: ReadonlyArray<{ charOffset: number }>,
+  barras: ReadonlyArray<{ charOffset: number }>,
+): number {
+  let end = textLength > 0 ? textLength - 1 : 0;
+
+  for (const acorde of acordes) {
+    end = Math.max(end, acorde.charOffset);
+  }
+
+  for (const barra of barras) {
+    end = Math.max(end, barra.charOffset);
+  }
+
+  return end;
+}
+
+/** Posición donde empieza el contenido al pegar otro renglón a la derecha. */
+export function getLineMergeAttachOffset(
+  textLength: number,
+  acordes: ReadonlyArray<{ charOffset: number }>,
+  barras: ReadonlyArray<{ charOffset: number }>,
+): number {
+  return getLineContentEndOffset(textLength, acordes, barras) + 1;
+}
+
+/** Reparte offsets de compás de forma uniforme sobre el contenido útil del renglón. */
+export function computeEvenCompasPlacementOffsets(
+  cycleCount: number,
+  startOffset: number,
+  contentEndOffset: number,
+): number[] {
+  const count = Math.min(
+    MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
+    Math.max(1, Math.floor(cycleCount)),
+  );
+  const normalizedStart = clampCompasCharOffset(startOffset);
+  const rangeEnd = Math.max(normalizedStart, contentEndOffset);
+
+  if (count === 1) {
+    return [normalizedStart];
+  }
+
+  const offsets: number[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const offset = Math.round(
+      normalizedStart + (index * (rangeEnd - normalizedStart)) / (count - 1),
+    );
+    offsets.push(clampCompasCharOffset(offset));
+  }
+
+  const unique: number[] = [];
+
+  for (const offset of offsets) {
+    if (unique.length === 0 || unique[unique.length - 1] !== offset) {
+      unique.push(offset);
+    }
+  }
+
+  return unique;
+}
+
+export type PlaceCompasBarrasOnLineOptions = {
+  replaceExisting?: boolean;
+};
+
+/** Coloca varias barras de compás en un renglón y renumerá los compases de esa línea. */
+export function placeCompasBarrasOnLine(
+  config: CompasConfig,
+  lineIndex: number,
+  offsets: number[],
+  barraTemplate: Omit<BarraCompas, "lineIndex" | "charOffset" | "compasNumero">,
+  options: PlaceCompasBarrasOnLineOptions = {},
+): CompasConfig {
+  let next = config;
+
+  if (options.replaceExisting) {
+    next = {
+      ...next,
+      barras: next.barras.filter((barra) => barra.lineIndex !== lineIndex),
+    };
+  }
+
+  for (const charOffset of offsets) {
+    next = upsertBarraCompas(next, {
+      ...barraTemplate,
+      lineIndex,
+      charOffset,
+      compasNumero: 1,
+    });
+  }
+
+  return renumberLineBarrasCompas(next, lineIndex);
+}
+
 /** Remapea charOffset al pegar acordes en un renglón con distinta longitud de letra. */
 export function remapCharOffsetForLineCopy(
   charOffset: number,
@@ -764,6 +865,127 @@ export function insertCompasLineBelow(
         : barra,
     ),
   };
+}
+
+export function mergeLyricsLineInto(
+  lines: string[],
+  sourceLineIndex: number,
+  destLineIndex: number,
+): string[] {
+  if (
+    sourceLineIndex === destLineIndex ||
+    sourceLineIndex < 0 ||
+    destLineIndex < 0 ||
+    sourceLineIndex >= lines.length ||
+    destLineIndex >= lines.length
+  ) {
+    return lines;
+  }
+
+  const next = [...lines];
+  next[destLineIndex] = (next[destLineIndex] ?? "") + (next[sourceLineIndex] ?? "");
+  next.splice(sourceLineIndex, 1);
+
+  return next;
+}
+
+export function mergeCifradoLineInto(
+  cifrado: CifradoData,
+  sourceLineIndex: number,
+  destLineIndex: number,
+  attachOffset: number,
+): CifradoData {
+  if (sourceLineIndex === destLineIndex) {
+    return cifrado;
+  }
+
+  const acordes: AcordePos[] = [];
+
+  for (const acorde of cifrado.acordes) {
+    if (acorde.lineIndex === sourceLineIndex) {
+      acordes.push({
+        ...acorde,
+        lineIndex: destLineIndex,
+        charOffset: clampCompasCharOffset(acorde.charOffset + attachOffset),
+      });
+      continue;
+    }
+
+    let lineIndex = acorde.lineIndex;
+
+    if (lineIndex === destLineIndex) {
+      acordes.push(acorde);
+      continue;
+    }
+
+    if (sourceLineIndex < lineIndex) {
+      lineIndex -= 1;
+    }
+
+    acordes.push({ ...acorde, lineIndex });
+  }
+
+  return {
+    ...cifrado,
+    acordes: acordes.sort((a, b) => {
+      if (a.lineIndex !== b.lineIndex) {
+        return a.lineIndex - b.lineIndex;
+      }
+
+      return a.charOffset - b.charOffset;
+    }),
+  };
+}
+
+export function mergeCompasLineInto(
+  config: CompasConfig,
+  sourceLineIndex: number,
+  destLineIndex: number,
+  attachOffset: number,
+): CompasConfig {
+  if (sourceLineIndex === destLineIndex) {
+    return config;
+  }
+
+  const barras: BarraCompas[] = [];
+
+  for (const barra of config.barras) {
+    if (barra.lineIndex === sourceLineIndex) {
+      barras.push({
+        ...barra,
+        lineIndex: destLineIndex,
+        charOffset: clampCompasCharOffset(barra.charOffset + attachOffset),
+      });
+      continue;
+    }
+
+    let lineIndex = barra.lineIndex;
+
+    if (lineIndex === destLineIndex) {
+      barras.push(barra);
+      continue;
+    }
+
+    if (sourceLineIndex < lineIndex) {
+      lineIndex -= 1;
+    }
+
+    barras.push({ ...barra, lineIndex });
+  }
+
+  return renumberLineBarrasCompas(
+    {
+      ...config,
+      barras: barras.sort((a, b) => {
+        if (a.lineIndex !== b.lineIndex) {
+          return a.lineIndex - b.lineIndex;
+        }
+
+        return a.charOffset - b.charOffset;
+      }),
+    },
+    destLineIndex,
+  );
 }
 
 export type LineCopyKind = "acordes" | "compas" | "both";

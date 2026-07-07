@@ -88,6 +88,12 @@
   --compositor-config-border: var(--voz-config-border);
   --compositor-config-bg: var(--voz-config-bg);
 
+  /* Compositor — modo edición de bloque (alerta amarilla vs. creación celeste) */
+  --compositor-block-edit: #e0c040;
+  --compositor-block-edit-dim: rgba(224, 192, 64, 0.14);
+  --compositor-block-edit-border: rgba(224, 192, 64, 0.55);
+  --compositor-block-edit-bg: rgba(224, 192, 64, 0.1);
+
   /* Compositor — bloques de timeline (solo instrumentos; no UI del módulo) */
   --compositor-block-piano: #4a9fd4;
   --compositor-block-guitarra: #c4a05a;
@@ -134,6 +140,9 @@
   --color-cola-proxima-border: var(--cola-proxima-border);
   --color-voz-config: var(--voz-config);
   --color-compositor-config: var(--compositor-config);
+  --color-compositor-block-edit: var(--compositor-block-edit);
+  --color-compositor-block-edit-border: var(--compositor-block-edit-border);
+  --color-compositor-block-edit-bg: var(--compositor-block-edit-bg);
   --color-compositor-block-piano: var(--compositor-block-piano);
   --color-compositor-block-guitarra: var(--compositor-block-guitarra);
   --color-compositor-block-bateria: var(--compositor-block-bateria);
@@ -144,7 +153,11 @@
 
 html,
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -1202,6 +1215,31 @@ html.splash-active body {
   pointer-events: none;
 }
 
+.compositor-timeline-block--guitar-bloque {
+  border-bottom: 3px solid rgba(255, 255, 255, 0.5);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.08) 0,
+      rgba(0, 0, 0, 0.08) 2px,
+      transparent 2px,
+      transparent 33%,
+      rgba(0, 0, 0, 0.08) 33%,
+      rgba(0, 0, 0, 0.08) calc(33% + 2px),
+      transparent calc(33% + 2px),
+      transparent 66%,
+      rgba(0, 0, 0, 0.08) 66%,
+      rgba(0, 0, 0, 0.08) calc(66% + 2px),
+      transparent calc(66% + 2px)
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--compositor-block-guitarra) 86%, white) 0%,
+      var(--compositor-block-guitarra) 100%
+    );
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.1);
+}
+
 .compositor-timeline-block--guitar-silencio,
 .compositor-timeline-block--drum-silencio {
   border-style: dashed;
@@ -1273,6 +1311,14 @@ html.splash-active body {
   letter-spacing: -0.04em;
 }
 
+.compositor-guitar-timbre-badge--bloque {
+  min-width: 0.95rem;
+  border: 1px solid rgba(26, 20, 8, 0.35);
+  background: rgba(255, 255, 255, 0.68);
+  color: #1a1408;
+  font-size: 8px;
+}
+
 .compositor-guitar-timbre-badge--dedo {
   min-width: 0.95rem;
   border: 1px solid rgba(26, 20, 8, 0.35);
@@ -1324,6 +1370,15 @@ html.splash-active body {
 
 /* ── Layout responsive (escritorio lg+) ─────────────────────────────── */
 
+.app-shell-main {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-left: 0;
+  overflow-x: clip;
+}
+
 @media (min-width: 1024px) {
   :root {
     --app-main-bottom-padding: env(safe-area-inset-bottom, 0px);
@@ -1331,10 +1386,14 @@ html.splash-active body {
 
   .app-shell-main {
     margin-left: var(--app-sidebar-width);
+    width: calc(100% - var(--app-sidebar-width));
+    max-width: calc(100% - var(--app-sidebar-width));
   }
 
   body[data-modo-lectura="true"] .app-shell-main {
     margin-left: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .sala-cantar-main:not(.overflow-hidden) {
@@ -1360,6 +1419,20 @@ html.splash-active body {
 @media (min-width: 1024px) {
   .app-page-main {
     padding-bottom: 1.5rem;
+  }
+
+  /* Pantallas de herramientas en PC: altura fija al viewport para que el scroll
+     vertical quede dentro del panel y responda a la rueda del mouse. */
+  .app-shell-main:has(.tool-page-layout) {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .tool-page-layout {
+    min-height: 0;
+    overflow: hidden;
   }
 }
 
@@ -1436,12 +1509,133 @@ html.splash-active body {
 
 .tool-modal-panel-wide {
   width: 100%;
-  max-width: 32rem;
+  max-width: 36rem;
 }
 
 @media (min-width: 1024px) {
   .tool-modal-panel-wide {
-    max-width: 52rem;
+    max-width: 60rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .tool-modal-panel-wide {
+    max-width: 68rem;
+  }
+}
+
+/* Herramientas — controles segmentados: ancho natural en escritorio */
+.tool-segmented-control {
+  display: flex;
+  gap: 0.125rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--bg-darker);
+  padding: 0.125rem;
+}
+
+.tool-segmented-control--inline {
+  width: fit-content;
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .tool-segmented-control > button,
+  .tool-segmented-control > [role="tab"] {
+    flex: 0 0 auto !important;
+    min-width: auto !important;
+  }
+}
+
+.tool-control-center {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+@media (min-width: 1024px) {
+  .tool-control-center {
+    flex: 0 0 auto;
+    width: 8rem;
+  }
+}
+
+.tool-beat-slot-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+@media (min-width: 1024px) {
+  .tool-beat-slot-row {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .tool-beat-slot-row > * {
+    flex: 0 0 auto;
+    width: 2.75rem;
+  }
+}
+
+/* Entrenador vocal — config + práctica en dos columnas en escritorio */
+.voz-mode-slide-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .voz-mode-slide-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 22rem) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .voz-mode-slide-layout > .voz-mode-practice-panel {
+    max-width: 34rem;
+    justify-self: center;
+    width: 100%;
+  }
+}
+
+/* Compositor — shell del editor (tabs + panel unificado) */
+.compositor-editor-shell {
+  isolation: isolate;
+}
+
+/* Compositor — controles compactos dentro de los tabs del editor (escritorio) */
+@media (min-width: 1024px) {
+  .compositor-tab-content .compas-cycle-preview {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .compositor-tab-content .compas-cycle-preview > button {
+    flex: 0 0 auto !important;
+    width: calc(2.75rem * var(--beat-flex-weight, 1)) !important;
+  }
+
+  .compositor-tab-content .compas-slot-controls,
+  .compositor-tab-content .compas-slot-controls.compas-slot-controls {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .compositor-tab-content .tool-segmented-control {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .compositor-tab-content .bpm-setup-panel {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .compositor-tab-content .bpm-setup-controls {
+    width: fit-content;
   }
 }
 

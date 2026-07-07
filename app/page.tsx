@@ -1,4 +1,5 @@
 import CancioneroHubPageClient from "@/components/cancionero/CancioneroHubPageClient";
+import DesktopHomeRedirect from "@/components/home/DesktopHomeRedirect";
 import AppTopHeader from "@/components/ui/AppTopHeader";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { countCancionesCancionero } from "@/lib/cancionero";
@@ -30,6 +31,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+      <DesktopHomeRedirect />
       <AppTopHeader usuario={usuario} />
       <CancioneroHubPageClient
         usuario={usuario}

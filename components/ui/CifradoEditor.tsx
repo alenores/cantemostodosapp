@@ -39,6 +39,7 @@ import {
   charOffsetToPx,
   computeLineCompasMarkersPx,
   clampCompasCharOffset,
+  computeEvenCompasPlacementOffsets,
   createDefaultCompasConfig,
   createEmptyCifrado,
   DEFAULT_BPM,
@@ -49,16 +50,21 @@ import {
   formatAcorde,
   findNearestCharOffset,
   getBeatCountForCompas,
+  getLineContentEndOffset,
+  getLineMergeAttachOffset,
   insertCifradoLineBelow,
   insertCompasLineBelow,
+  mergeCifradoLineInto,
+  mergeCompasLineInto,
+  mergeLyricsLineInto,
   moveBarraCompas,
   moveAcorde,
+  placeCompasBarrasOnLine,
   removeAcordeAt,
   removeBarraCompasAt,
   renumberLineBarrasCompas,
   resolveCharOffsetPx,
   upsertAcorde,
-  upsertBarraCompas,
   type AcordePos,
   type BarraCompas,
   type CifradoData,
@@ -97,7 +103,14 @@ import {
   type PreviewPlaybackAnchor,
 } from "@/lib/cifrado-preview-play";
 import { playCifradoPreviewBeat } from "@/lib/cifrado-cycle-playback";
-import { Copy, Lock, LockOpen, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
+import {
+  CIFRADO_LABEL_CANCELAR_UNION,
+  CIFRADO_LABEL_CONFIRMAR_UNION,
+  CIFRADO_HELP_PEGAR_EN_RENGLON,
+  CIFRADO_LABEL_PEGAR_EN_RENGLON,
+  CIFRADO_LABEL_RENGLON_DESTINO,
+} from "@/lib/ritmo-terminologia";
+import { Copy, CornerDownRight, Lock, LockOpen, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -109,6 +122,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import type { ToolPresentation } from "@/lib/tool-presentation";
+import { isToolPagePresentation } from "@/lib/tool-presentation";
 
 type CifradoEditorProps = {
   open: boolean;
@@ -116,6 +131,7 @@ type CifradoEditorProps = {
   session?: CifradoEditorSession | null;
   onClose: () => void;
   onSaved: (result?: CifradoSaveResult) => void;
+  presentation?: ToolPresentation;
 };
 
 type EditorPhase = "ingreso" | "cifrado";
@@ -387,12 +403,22 @@ type CifradoLineEditorProps = {
   onToggleLineEdit?: () => void;
   onToggleLineLock?: () => void;
   hasLineCopyPending?: boolean;
+  lineNumber?: number;
+  isMergeDestination?: boolean;
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>;
 };
 
 type LineEditFabBarProps = {
   hasLineCopyPending: boolean;
+  lineMergePicking: boolean;
+  lineMergeDestNumber: number | null;
+  sourceLineNumber: number;
+  totalLines: number;
+  onLineMergeDestNumberChange: (value: number | null) => void;
+  onStartLineMerge: () => void;
+  onConfirmLineMerge: () => void;
+  onCancelLineMerge: () => void;
   onDelete: () => void;
   onInsertBelow: () => void;
   onCopy: (kind: LineCopyKind) => void;
@@ -400,63 +426,139 @@ type LineEditFabBarProps = {
 
 function LineEditFabBar({
   hasLineCopyPending,
+  lineMergePicking,
+  lineMergeDestNumber,
+  sourceLineNumber,
+  totalLines,
+  onLineMergeDestNumberChange,
+  onStartLineMerge,
+  onConfirmLineMerge,
+  onCancelLineMerge,
   onDelete,
   onInsertBelow,
   onCopy,
 }: LineEditFabBarProps) {
+  const mergeDestValid =
+    lineMergeDestNumber !== null &&
+    lineMergeDestNumber >= 1 &&
+    lineMergeDestNumber <= totalLines &&
+    lineMergeDestNumber !== sourceLineNumber;
+
   return (
     <div
       data-line-edit-fab=""
       className={CIFRADO_EDITOR_LINE_FAB_CLASS}
       onClick={(event) => event.stopPropagation()}
     >
-      {hasLineCopyPending && (
+      {hasLineCopyPending && !lineMergePicking && (
         <p className="mb-2 text-center text-xs text-text-muted">
           Listo para pegar — tocá otro renglón
         </p>
       )}
-      <div className="flex flex-wrap justify-center gap-1.5">
-        <TapButton
-          type="button"
-          onClick={onDelete}
-          className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-        >
-          <Trash2 className="size-3.5" aria-hidden="true" />
-          Eliminar
-        </TapButton>
-        <TapButton
-          type="button"
-          onClick={onInsertBelow}
-          className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-        >
-          <Plus className="size-3.5" aria-hidden="true" />
-          Línea abajo
-        </TapButton>
-        <TapButton
-          type="button"
-          onClick={() => onCopy("acordes")}
-          className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-        >
-          <Copy className="size-3.5" aria-hidden="true" />
-          Copiar acordes
-        </TapButton>
-        <TapButton
-          type="button"
-          onClick={() => onCopy("compas")}
-          className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-        >
-          <Copy className="size-3.5" aria-hidden="true" />
-          Copiar compás
-        </TapButton>
-        <TapButton
-          type="button"
-          onClick={() => onCopy("both")}
-          className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-        >
-          <Copy className="size-3.5" aria-hidden="true" />
-          Copiar ambos
-        </TapButton>
-      </div>
+
+      {lineMergePicking ? (
+        <div className="space-y-2">
+          <p className="text-center text-xs font-semibold text-text-primary">
+            {CIFRADO_LABEL_RENGLON_DESTINO}
+          </p>
+          <p className="text-center text-[11px] leading-snug text-text-muted">
+            {CIFRADO_HELP_PEGAR_EN_RENGLON}
+          </p>
+          <input
+            type="number"
+            min={1}
+            max={totalLines}
+            value={lineMergeDestNumber ?? ""}
+            onChange={(event) => {
+              const parsed = Number.parseInt(event.target.value, 10);
+
+              if (!Number.isFinite(parsed)) {
+                onLineMergeDestNumberChange(null);
+                return;
+              }
+
+              onLineMergeDestNumberChange(
+                Math.min(totalLines, Math.max(1, parsed)),
+              );
+            }}
+            className={`${CIFRADO_CONTROLS_INPUT_CLASS} text-center text-xs font-semibold`}
+            aria-label={CIFRADO_LABEL_RENGLON_DESTINO}
+          />
+          <div className="flex flex-wrap justify-center gap-1.5">
+            <TapButton
+              type="button"
+              disabled={!mergeDestValid}
+              onClick={onConfirmLineMerge}
+              className={`${CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS} ${
+                mergeDestValid
+                  ? "bg-compositor-config text-white"
+                  : "opacity-50"
+              }`}
+            >
+              {CIFRADO_LABEL_CONFIRMAR_UNION}
+            </TapButton>
+            <TapButton
+              type="button"
+              onClick={onCancelLineMerge}
+              className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+            >
+              {CIFRADO_LABEL_CANCELAR_UNION}
+            </TapButton>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap justify-center gap-1.5">
+          <TapButton
+            type="button"
+            onClick={onDelete}
+            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+          >
+            <Trash2 className="size-3.5" aria-hidden="true" />
+            Eliminar
+          </TapButton>
+          <TapButton
+            type="button"
+            onClick={onInsertBelow}
+            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
+            Línea abajo
+          </TapButton>
+          <TapButton
+            type="button"
+            onClick={onStartLineMerge}
+            disabled={totalLines < 2}
+            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+          >
+            <CornerDownRight className="size-3.5" aria-hidden="true" />
+            {CIFRADO_LABEL_PEGAR_EN_RENGLON}
+          </TapButton>
+          <TapButton
+            type="button"
+            onClick={() => onCopy("acordes")}
+            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+          >
+            <Copy className="size-3.5" aria-hidden="true" />
+            Copiar acordes
+          </TapButton>
+          <TapButton
+            type="button"
+            onClick={() => onCopy("compas")}
+            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+          >
+            <Copy className="size-3.5" aria-hidden="true" />
+            Copiar compás
+          </TapButton>
+          <TapButton
+            type="button"
+            onClick={() => onCopy("both")}
+            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+          >
+            <Copy className="size-3.5" aria-hidden="true" />
+            Copiar ambos
+          </TapButton>
+        </div>
+      )}
     </div>
   );
 }
@@ -520,6 +622,8 @@ function CifradoLineEditor({
   onToggleLineEdit,
   onToggleLineLock,
   hasLineCopyPending = false,
+  lineNumber,
+  isMergeDestination = false,
   notacion = "es",
   cyclePiecesById,
 }: CifradoLineEditorProps) {
@@ -902,11 +1006,22 @@ function CifradoLineEditor({
     <div
       ref={lineRef}
       className={`relative mb-2 overflow-hidden rounded-md border px-2 pb-8 pt-7 transition-opacity ${
-        isLineEditing
-          ? "border-compositor-config-border bg-compositor-config-bg/60"
-          : "border-border/80"
+        isMergeDestination
+          ? "border-compositor-config bg-compositor-config-bg/80 ring-2 ring-compositor-config/40"
+          : isLineEditing
+            ? "border-compositor-config-border bg-compositor-config-bg/60"
+            : "border-border/80"
       } ${isDimmed ? "opacity-40" : ""}`}
     >
+      {lineNumber !== undefined && (
+        <span
+          className="pointer-events-none absolute left-1.5 top-1.5 z-30 text-[10px] font-bold tabular-nums text-text-muted/80"
+          aria-hidden="true"
+        >
+          {lineNumber}
+        </span>
+      )}
+
       {!isLineLocked && onToggleLineEdit && (
         <TapButton
           type="button"
@@ -1562,24 +1677,28 @@ function CifradoPreviewOverlay({
 function EditorSidebarHeader({
   onClose,
   loading,
+  showClose = true,
 }: {
   onClose: () => void;
   loading: boolean;
+  showClose?: boolean;
 }) {
   return (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
       <h1 className={`min-w-0 flex-1 truncate text-left text-base font-extrabold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS}`}>
         Edición de canción
       </h1>
-      <TapButton
-        type="button"
-        aria-label="Cerrar editor"
-        onClick={onClose}
-        disabled={loading}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-dark"
-      >
-        <X className="size-4 text-text-primary" aria-hidden="true" />
-      </TapButton>
+      {showClose ? (
+        <TapButton
+          type="button"
+          aria-label="Cerrar editor"
+          onClick={onClose}
+          disabled={loading}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-dark"
+        >
+          <X className="size-4 text-text-primary" aria-hidden="true" />
+        </TapButton>
+      ) : null}
     </div>
   );
 }
@@ -1590,7 +1709,9 @@ export default function CifradoEditor({
   session = null,
   onClose,
   onSaved,
+  presentation = "modal",
 }: CifradoEditorProps) {
+  const isPage = isToolPagePresentation(presentation);
   const [phase, setPhase] = useState<EditorPhase>("ingreso");
   const [modoInsercion, setModoInsercion] = useState<ModoInsercion>("acordes");
   const [vistaArmado, setVistaArmado] = useState<VistaArmado>("pc");
@@ -1632,6 +1753,11 @@ export default function CifradoEditor({
   const [activePlacementCycleId, setActivePlacementCycleId] = useState<
     string | null
   >(null);
+  const [placementCycleCount, setPlacementCycleCount] = useState(1);
+  const [lineMergePicking, setLineMergePicking] = useState(false);
+  const [lineMergeDestNumber, setLineMergeDestNumber] = useState<number | null>(
+    null,
+  );
   const playbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playbackIndexRef = useRef(0);
   const playbackBeatsRef = useRef<
@@ -1702,6 +1828,8 @@ export default function CifradoEditor({
     setEditingLineIndex(null);
     setLineCopyBuffer(null);
     setPicker(null);
+    setLineMergePicking(false);
+    setLineMergeDestNumber(null);
   }, []);
 
   useEffect(() => {
@@ -2079,9 +2207,17 @@ export default function CifradoEditor({
       return;
     }
 
-    setEditingLineIndex((current) =>
-      current === lineIndex ? null : lineIndex,
-    );
+    setEditingLineIndex((current) => {
+      if (current === lineIndex) {
+        setLineMergePicking(false);
+        setLineMergeDestNumber(null);
+        return null;
+      }
+
+      setLineMergePicking(false);
+      setLineMergeDestNumber(null);
+      return lineIndex;
+    });
     setPicker(null);
   }
 
@@ -2258,33 +2394,232 @@ export default function CifradoEditor({
       return;
     }
 
+    const textLength = lines[lineIndex]?.length ?? 0;
+    const lineAcordes = cifrado.acordes.filter(
+      (acorde) => acorde.lineIndex === lineIndex,
+    );
+    const lineBarras = compasConfig.barras.filter(
+      (barra) => barra.lineIndex === lineIndex,
+    );
+    const contentEnd = getLineContentEndOffset(
+      textLength,
+      lineAcordes,
+      lineBarras,
+    );
+    const offsets = computeEvenCompasPlacementOffsets(
+      placementCycleCount,
+      clampedOffset,
+      contentEnd,
+    );
+
+    setCompasConfig((current) => {
+      const template = resolvePlacementBarraTemplate(current);
+
+      if (!template) {
+        return current;
+      }
+
+      const next = placeCompasBarrasOnLine(
+        current,
+        lineIndex,
+        offsets,
+        template,
+      );
+
+      if (offsets.length < placementCycleCount) {
+        setToast(
+          `Se colocaron ${offsets.length} compases en este renglón (el espacio no alcanza para ${placementCycleCount}).`,
+        );
+      }
+
+      return next;
+    });
+  }
+
+  function resolvePlacementBarraTemplate(
+    config: CompasConfig,
+  ): Omit<BarraCompas, "lineIndex" | "charOffset" | "compasNumero"> | null {
+    if (compasToolTab === "guardado" && !activePlacementCycleId) {
+      return null;
+    }
+
     const activeCycle =
       compasToolTab === "guardado" && activePlacementCycleId
         ? savedCycles.find((cycle) => cycle.id === activePlacementCycleId)
         : null;
-
     const golpes = activeCycle
       ? activeCycle.piece.cycleGolpes
-      : getBeatCountForCompas(compasConfig.tipoCompas);
-
+      : getBeatCountForCompas(config.tipoCompas);
     const intensidad = buildIntensidadForGolpes(
       golpes,
-      getIntensidadPlantilla(compasConfig),
+      getIntensidadPlantilla(config),
     );
 
-    setCompasConfig((current) =>
-      renumberLineBarrasCompas(
-        upsertBarraCompas(current, {
-          lineIndex,
-          charOffset: clampedOffset,
-          compasNumero: 1,
-          tipoCompas: current.tipoCompas,
-          intensidad,
-          cycleId: activeCycle?.id ?? null,
-        }),
-        lineIndex,
+    return {
+      tipoCompas: config.tipoCompas,
+      intensidad,
+      cycleId: activeCycle?.id ?? null,
+    };
+  }
+
+  function handleApplyCyclesToAllLines() {
+    if (compasToolTab === "guardado" && !activePlacementCycleId) {
+      setToast("Elegí un ciclo guardado en la lista.");
+      return;
+    }
+
+    if (lines.length === 0) {
+      setToast("No hay renglones para aplicar compases.");
+      return;
+    }
+
+    setSelectedBarra(null);
+    setCompasConfig((current) => {
+      const template = resolvePlacementBarraTemplate(current);
+
+      if (!template) {
+        return current;
+      }
+
+      let next = current;
+      let shortenedLines = 0;
+
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const textLength = lines[lineIndex]?.length ?? 0;
+        const lineAcordes = cifrado.acordes.filter(
+          (acorde) => acorde.lineIndex === lineIndex,
+        );
+        const contentEnd = getLineContentEndOffset(textLength, lineAcordes, []);
+        const offsets = computeEvenCompasPlacementOffsets(
+          placementCycleCount,
+          0,
+          contentEnd,
+        );
+
+        next = placeCompasBarrasOnLine(next, lineIndex, offsets, template, {
+          replaceExisting: true,
+        });
+
+        if (offsets.length < placementCycleCount) {
+          shortenedLines += 1;
+        }
+      }
+
+      if (shortenedLines > 0) {
+        setToast(
+          `Se aplicaron compases en ${lines.length} renglones. ${shortenedLines} renglón${shortenedLines === 1 ? "" : "es"} no alcanzó para ${placementCycleCount}.`,
+        );
+      } else {
+        setToast(
+          `Se aplicaron ${placementCycleCount} compases en ${lines.length} renglones.`,
+        );
+      }
+
+      return next;
+    });
+  }
+
+  function handleStartLineMerge() {
+    if (editingLineIndex === null || lines.length < 2) {
+      return;
+    }
+
+    setLineCopyBuffer(null);
+    setLineMergePicking(true);
+    setLineMergeDestNumber(null);
+  }
+
+  function handleCancelLineMerge() {
+    setLineMergePicking(false);
+    setLineMergeDestNumber(null);
+  }
+
+  function handleConfirmLineMerge() {
+    if (editingLineIndex === null || lineMergeDestNumber === null) {
+      return;
+    }
+
+    const sourceLineIndex = editingLineIndex;
+    const destLineIndex = lineMergeDestNumber - 1;
+
+    if (destLineIndex < 0 || destLineIndex >= lines.length) {
+      setToast("Elegí un número de renglón válido.");
+      return;
+    }
+
+    if (destLineIndex === sourceLineIndex) {
+      setToast("Elegí un renglón distinto al actual.");
+      return;
+    }
+
+    if (lockedLines.has(destLineIndex)) {
+      setToast("Ese renglón está bloqueado.");
+      return;
+    }
+
+    const destText = lines[destLineIndex] ?? "";
+    const destAcordes = cifrado.acordes.filter(
+      (acorde) => acorde.lineIndex === destLineIndex,
+    );
+    const destBarras = compasConfig.barras.filter(
+      (barra) => barra.lineIndex === destLineIndex,
+    );
+    const attachOffset = getLineMergeAttachOffset(
+      destText.length,
+      destAcordes,
+      destBarras,
+    );
+
+    const mergedLines = mergeLyricsLineInto(
+      lines,
+      sourceLineIndex,
+      destLineIndex,
+    );
+
+    setLyricsText(mergedLines.join("\n"));
+    setCifrado((current) =>
+      mergeCifradoLineInto(
+        current,
+        sourceLineIndex,
+        destLineIndex,
+        attachOffset,
       ),
     );
+    setCompasConfig((current) =>
+      mergeCompasLineInto(
+        current,
+        sourceLineIndex,
+        destLineIndex,
+        attachOffset,
+      ),
+    );
+    setLockedLines((current) => {
+      const next = new Set<number>();
+
+      for (const index of current) {
+        if (index === sourceLineIndex) {
+          continue;
+        }
+
+        let adjusted = index;
+
+        if (sourceLineIndex < index) {
+          adjusted -= 1;
+        }
+
+        next.add(adjusted);
+      }
+
+      return next;
+    });
+
+    setLineMergePicking(false);
+    setLineMergeDestNumber(null);
+    setEditingLineIndex(null);
+    setLineCopyBuffer(null);
+    setPicker(null);
+    setSelectedBarra(null);
+    setToast(`Renglón ${sourceLineIndex + 1} unido al ${destLineIndex + 1}.`);
   }
 
   function handleSelectBarra(barra: BarraCompas) {
@@ -2500,7 +2835,7 @@ export default function CifradoEditor({
     }
   }
 
-  if (!open) {
+  if (!open && !isPage) {
     return null;
   }
 
@@ -2509,8 +2844,14 @@ export default function CifradoEditor({
       ? "mx-auto w-full max-w-[390px]"
       : "w-full";
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg-app">
+  const editorTree = (
+    <div
+      className={
+        isPage
+          ? "flex min-h-0 flex-1 flex-col bg-bg-app"
+          : "fixed inset-0 z-50 flex flex-col bg-bg-app"
+      }
+    >
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div
@@ -2549,75 +2890,95 @@ export default function CifradoEditor({
             ) : (
               <div className="relative flex min-h-0 w-full flex-1 flex-col">
                 <div className="mb-2 shrink-0">
-                  <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
-                    <div className="shrink-0">
-                      <p className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>
-                        Modo edición
-                      </p>
-                      <div
-                        className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
-                        role="tablist"
-                        aria-label="Modo edición"
-                      >
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={modoInsercion === "acordes"}
-                          onClick={() => handleSetModoInsercion("acordes")}
-                          className={cifradoEditorToolbarSegmentedButtonClass(
-                            modoInsercion === "acordes",
-                          )}
+                  <div className="flex items-start justify-between gap-x-3 gap-y-2">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
+                      <div className="shrink-0">
+                        <p className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>
+                          Modo edición
+                        </p>
+                        <div
+                          className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
+                          role="tablist"
+                          aria-label="Modo edición"
                         >
-                          Acordes
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={modoInsercion === "compas"}
-                          onClick={() => handleSetModoInsercion("compas")}
-                          className={cifradoEditorToolbarSegmentedButtonClass(
-                            modoInsercion === "compas",
-                          )}
-                        >
-                          Compás
-                        </button>
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={modoInsercion === "letra"}
-                          onClick={() => handleSetModoInsercion("letra")}
-                          className={cifradoEditorToolbarSegmentedButtonClass(
-                            modoInsercion === "letra",
-                          )}
-                        >
-                          Letra
-                        </button>
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={modoInsercion === "acordes"}
+                            onClick={() => handleSetModoInsercion("acordes")}
+                            className={cifradoEditorToolbarSegmentedButtonClass(
+                              modoInsercion === "acordes",
+                            )}
+                          >
+                            Acordes
+                          </button>
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={modoInsercion === "compas"}
+                            onClick={() => handleSetModoInsercion("compas")}
+                            className={cifradoEditorToolbarSegmentedButtonClass(
+                              modoInsercion === "compas",
+                            )}
+                          >
+                            Compás
+                          </button>
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={modoInsercion === "letra"}
+                            onClick={() => handleSetModoInsercion("letra")}
+                            className={cifradoEditorToolbarSegmentedButtonClass(
+                              modoInsercion === "letra",
+                            )}
+                          >
+                            Letra
+                          </button>
+                        </div>
                       </div>
+
+                      {modoInsercion === "compas" ? (
+                        <div className={CIFRADO_EDITOR_COMPAS_PANEL_CLASS}>
+                          <CifradoCompasToolPanel
+                            tab={compasToolTab}
+                            onTabChange={setCompasToolTab}
+                            tipoCompas={compasConfig.tipoCompas}
+                            onTipoCompasChange={(tipo) =>
+                              setCompasConfig((current) =>
+                                resizeCompasConfigIntensidad(current, tipo),
+                              )
+                            }
+                            intensidadPattern={intensidadEditPattern}
+                            onCycleIntensidadSlot={handleCycleIntensidadSlot}
+                            showClearIntensidadSelection={Boolean(selectedBarra)}
+                            onClearIntensidadSelection={() => setSelectedBarra(null)}
+                            activeCycleId={activePlacementCycleId}
+                            savedCycles={savedCycles}
+                            cyclesLoading={cyclesLoading}
+                            cyclesError={cyclesError}
+                            onRefreshCycles={refreshCycles}
+                            onSelectSavedCycle={handleSelectSavedPlacementCycle}
+                            placementCycleCount={placementCycleCount}
+                            onPlacementCycleCountChange={setPlacementCycleCount}
+                            onApplyCyclesToAllLines={handleApplyCyclesToAllLines}
+                          />
+                        </div>
+                      ) : null}
                     </div>
 
-                    {modoInsercion === "compas" ? (
-                      <div className={CIFRADO_EDITOR_COMPAS_PANEL_CLASS}>
-                        <CifradoCompasToolPanel
-                          tab={compasToolTab}
-                          onTabChange={setCompasToolTab}
-                          tipoCompas={compasConfig.tipoCompas}
-                          onTipoCompasChange={(tipo) =>
-                            setCompasConfig((current) =>
-                              resizeCompasConfigIntensidad(current, tipo),
-                            )
-                          }
-                          intensidadPattern={intensidadEditPattern}
-                          onCycleIntensidadSlot={handleCycleIntensidadSlot}
-                          showClearIntensidadSelection={Boolean(selectedBarra)}
-                          onClearIntensidadSelection={() => setSelectedBarra(null)}
-                          activeCycleId={activePlacementCycleId}
-                          savedCycles={savedCycles}
-                          cyclesLoading={cyclesLoading}
-                          cyclesError={cyclesError}
-                          onRefreshCycles={refreshCycles}
-                          onSelectSavedCycle={handleSelectSavedPlacementCycle}
-                        />
-                      </div>
+                    {hasCompas ? (
+                      <TapButton
+                        type="button"
+                        onClick={handleTogglePlayback}
+                        className={`shrink-0 ${CIFRADO_EDITOR_PLAY_BUTTON_CLASS}`}
+                        aria-label={playing ? "Pausar compás" : "Reproducir compás"}
+                      >
+                        {playing ? (
+                          <Pause className="size-5" aria-hidden="true" />
+                        ) : (
+                          <Play className="size-5" aria-hidden="true" />
+                        )}
+                      </TapButton>
                     ) : null}
                   </div>
 
@@ -2632,24 +2993,14 @@ export default function CifradoEditor({
 
                 <div className={`relative flex min-h-0 flex-1 flex-col ${armadoWidthClass}`}>
                 <div className="relative min-h-0 flex-1 overflow-hidden rounded-[12px] bg-letra-bg">
-                {hasCompas && (
-                  <TapButton
-                    type="button"
-                    onClick={handleTogglePlayback}
-                    className={`absolute right-3 top-3 z-20 ${CIFRADO_EDITOR_PLAY_BUTTON_CLASS}`}
-                    aria-label={playing ? "Pausar compás" : "Reproducir compás"}
-                  >
-                    {playing ? (
-                      <Pause className="size-5" aria-hidden="true" />
-                    ) : (
-                      <Play className="size-5" aria-hidden="true" />
-                    )}
-                  </TapButton>
-                )}
-
                 <div className="px-2 py-3 lg:h-full lg:min-h-0 lg:overflow-y-auto">
                   {lines.map((line, lineIndex) => {
                     const isEditing = editingLineIndex === lineIndex;
+                    const isMergeDestination =
+                      lineMergePicking &&
+                      lineMergeDestNumber !== null &&
+                      lineMergeDestNumber === lineIndex + 1 &&
+                      lineIndex !== editingLineIndex;
 
                     return (
                       <div
@@ -2695,6 +3046,8 @@ export default function CifradoEditor({
                           selectedBarraKey={selectedBarraKey}
                           activeBeatAnchors={activeBeat?.anchors}
                           isLineEditing={isEditing}
+                          lineNumber={lineIndex + 1}
+                          isMergeDestination={isMergeDestination}
                           isLineLocked={lockedLines.has(lineIndex)}
                           isDimmed={
                             editingLineIndex !== null &&
@@ -2725,6 +3078,14 @@ export default function CifradoEditor({
                         {isEditing && (
                           <LineEditFabBar
                             hasLineCopyPending={lineCopyBuffer !== null}
+                            lineMergePicking={lineMergePicking}
+                            lineMergeDestNumber={lineMergeDestNumber}
+                            sourceLineNumber={lineIndex + 1}
+                            totalLines={lines.length}
+                            onLineMergeDestNumberChange={setLineMergeDestNumber}
+                            onStartLineMerge={handleStartLineMerge}
+                            onConfirmLineMerge={handleConfirmLineMerge}
+                            onCancelLineMerge={handleCancelLineMerge}
                             onDelete={handleDeleteLine}
                             onInsertBelow={handleInsertLineBelow}
                             onCopy={handleCopyLine}
@@ -2749,7 +3110,11 @@ export default function CifradoEditor({
 
         {phase === "cifrado" && (
           <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0">
-            <EditorSidebarHeader onClose={onClose} loading={loading} />
+            <EditorSidebarHeader
+              onClose={onClose}
+              loading={loading}
+              showClose={!isPage}
+            />
 
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
               <div className="space-y-4 p-4">
@@ -2909,7 +3274,11 @@ export default function CifradoEditor({
 
         {phase === "ingreso" && (
           <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0">
-            <EditorSidebarHeader onClose={onClose} loading={loading} />
+            <EditorSidebarHeader
+              onClose={onClose}
+              loading={loading}
+              showClose={!isPage}
+            />
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
               <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
@@ -3039,7 +3408,12 @@ export default function CifradoEditor({
           {toast}
         </div>
       )}
-    </div>,
-    document.body,
+    </div>
   );
+
+  if (isPage) {
+    return editorTree;
+  }
+
+  return createPortal(editorTree, document.body);
 }

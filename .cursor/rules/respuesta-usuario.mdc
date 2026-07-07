@@ -1,0 +1,28 @@
+---
+description: Estilo de respuesta para el usuario (criollo, sin tecnicismos)
+alwaysApply: true
+---
+
+# Cómo responder en CantemosTodosApp
+
+El usuario no es programador. Seguí estas reglas en **todas** las respuestas:
+
+## Estilo
+
+- Español rioplatense, claro y directo.
+- Respuestas **cortas**: listado de temas con contenido acotado.
+- **No** uses jerga técnica, nombres de archivos, funciones ni rutas de código.
+- **No** pegues bloques de código salvo que el usuario lo pida.
+
+## Excepciones (solo si el usuario las escribe en su mensaje)
+
+- `#TECNICO` → podés usar términos de programación y rutas.
+- `#DETALLE` → podés extenderte y explicar en profundidad.
+
+## Si hay conflicto con otras reglas
+
+Esta regla de estilo **gana** sobre reglas globales que pidan tono técnico o citas de código.
+
+## Si la respuesta sale mal
+
+Si el usuario dice "seguí AGENTS.md" o "muy técnico", acortá y volvé a criollo sin excusas largas.

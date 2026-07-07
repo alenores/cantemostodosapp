@@ -255,6 +255,61 @@ function useTimelineNow(active: boolean, playbackSynced = false): number {
   return playbackSynced ? getPlaybackNow() : performance.now();
 }
 
+const VOZ_MODE_GROUPS = [
+  { label: "Tono", startIndex: 0, endIndex: 3 },
+  { label: "Ritmo + voz", startIndex: 4, endIndex: 7 },
+] as const;
+
+function VozModeDesktopNav({
+  activeIndex,
+  onChangeIndex,
+  animating,
+}: {
+  activeIndex: number;
+  onChangeIndex: (index: number) => void;
+  animating: boolean;
+}) {
+  return (
+    <nav
+      className="hidden w-[11.5rem] shrink-0 flex-col gap-3 self-stretch border-r border-border pr-3 lg:flex"
+      aria-label="Modos del entrenador vocal"
+    >
+      {VOZ_MODE_GROUPS.map((group) => (
+        <div key={group.label}>
+          <p className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-text-muted">
+            {group.label}
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {VOZ_MODE_SLIDES.slice(group.startIndex, group.endIndex + 1).map(
+              (slide, offset) => {
+                const index = group.startIndex + offset;
+                const isActive = activeIndex === index;
+
+                return (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    aria-current={isActive ? "page" : undefined}
+                    disabled={animating}
+                    onClick={() => onChangeIndex(index)}
+                    className={`rounded-[8px] px-2.5 py-2 text-left text-[11px] font-bold leading-tight transition-colors disabled:opacity-60 ${
+                      isActive
+                        ? "bg-voz-config/15 text-voz-config"
+                        : "text-text-muted hover:bg-bg-card hover:text-text-primary"
+                    }`}
+                  >
+                    {slide.label}
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 function ModeCarouselShell({
   activeIndex,
   onChangeIndex,
@@ -520,88 +575,114 @@ function ModeCarouselShell({
   }
 
   return (
-    <div className="w-full">
-      <div className="mb-3 flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Modo anterior"
-          disabled={!canGoPrev || animating}
-          onClick={() => navigateByDirection(-1)}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
-        >
-          <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
-        </button>
+    <div className="w-full lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden">
+      <VozModeDesktopNav
+        activeIndex={activeIndex}
+        onChangeIndex={onChangeIndex}
+        animating={animating}
+      />
 
-        <div className="min-w-0 flex-1 text-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <p className="truncate text-sm font-bold uppercase tracking-wide text-text-primary">
-              {activeSlide.label}
-            </p>
+      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
+        <div className="mb-3 hidden shrink-0 items-center justify-between gap-2 lg:flex">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-text-primary">
+                {activeSlide.label}
+              </p>
+              <p className="mt-0.5 text-[10px] font-semibold text-text-muted">
+                Modo {activeIndex + 1} de {slideCount}
+              </p>
+            </div>
             {titleAction}
           </div>
-          <p className="mt-0.5 text-[10px] font-semibold text-text-muted">
-            {activeIndex + 1} de {slideCount}
-          </p>
-        </div>
 
-        <button
-          type="button"
-          aria-label="Modo siguiente"
-          disabled={!canGoNext || animating}
-          onClick={() => navigateByDirection(1)}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
-        >
-          <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
-        </button>
-      </div>
-
-      <div
-        className="overflow-hidden rounded-[14px] border-2 border-border-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_5%,transparent)]"
-        style={{ backgroundColor: "var(--tool-practice-section-bg)" }}
-      >
-        <div
-          ref={viewportRef}
-          className="touch-pan-y overflow-hidden transition-[height] duration-200 ease-out"
-          style={viewportHeight !== null ? { height: viewportHeight } : undefined}
-          aria-label={`Modo ${activeSlide.label}. Deslizá horizontalmente para cambiar.`}
-        >
-          <div
-            className="flex items-start will-change-transform"
-            style={{
-              width: "300%",
-              transform: `translateX(calc(-33.333333% + ${offsetX}px))`,
-              transition: animating
-                ? `transform ${MODE_CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.25, 0.82, 0.35, 1)`
-                : "none",
-            }}
-          >
-            {renderPanelColumn(prevIndex)}
-            {renderPanelColumn(activeIndex, true)}
-            {renderPanelColumn(nextIndex)}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-center gap-1.5 border-t border-border px-3 py-2">
-          {VOZ_MODE_SLIDES.map((slide, index) => (
+          <div className="mb-3 flex items-center gap-2 lg:hidden">
             <button
-              key={slide.id}
               type="button"
-              aria-label={slide.label}
-              aria-current={activeIndex === index}
-              disabled={animating}
-              onClick={() => onChangeIndex(index)}
-              className="rounded-full p-1 disabled:opacity-60"
+              aria-label="Modo anterior"
+              disabled={!canGoPrev || animating}
+              onClick={() => navigateByDirection(-1)}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
             >
-              <span
-                className={`block rounded-full transition-all ${
-                  activeIndex === index
-                    ? "h-1.5 w-4 bg-voz-config"
-                    : "size-1.5 bg-border"
-                }`}
-                aria-hidden="true"
-              />
+              <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
             </button>
-          ))}
+
+            <div className="min-w-0 flex-1 text-center">
+              <div className="flex items-center justify-center gap-1.5">
+                <p className="truncate text-sm font-bold uppercase tracking-wide text-text-primary">
+                  {activeSlide.label}
+                </p>
+                {titleAction}
+              </div>
+              <p className="mt-0.5 text-[10px] font-semibold text-text-muted">
+                {activeIndex + 1} de {slideCount}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Modo siguiente"
+              disabled={!canGoNext || animating}
+              onClick={() => navigateByDirection(1)}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card disabled:opacity-40"
+            >
+              <ChevronRight className="size-4 text-text-primary" aria-hidden="true" />
+            </button>
+          </div>
+
+        <div className="min-h-0 flex-1 lg:overflow-y-auto lg:overscroll-y-contain">
+          <div
+            className="overflow-hidden rounded-[14px] border-2 border-border-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_5%,transparent)]"
+            style={{ backgroundColor: "var(--tool-practice-section-bg)" }}
+          >
+            <div
+              ref={viewportRef}
+              className="touch-pan-y overflow-hidden transition-[height] duration-200 ease-out lg:!h-auto"
+              style={viewportHeight !== null ? { height: viewportHeight } : undefined}
+              aria-label={`Modo ${activeSlide.label}. Deslizá horizontalmente para cambiar.`}
+            >
+              <div
+                className="flex items-start will-change-transform lg:hidden"
+                style={{
+                  width: "300%",
+                  transform: `translateX(calc(-33.333333% + ${offsetX}px))`,
+                  transition: animating
+                    ? `transform ${MODE_CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.25, 0.82, 0.35, 1)`
+                    : "none",
+                }}
+              >
+                {renderPanelColumn(prevIndex)}
+                {renderPanelColumn(activeIndex, true)}
+                {renderPanelColumn(nextIndex)}
+              </div>
+
+              <div className="hidden lg:block lg:px-4 lg:py-3">
+                {renderSlide(activeIndex)}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-1.5 border-t border-border px-3 py-2 lg:hidden">
+              {VOZ_MODE_SLIDES.map((slide, index) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  aria-label={slide.label}
+                  aria-current={activeIndex === index}
+                  disabled={animating}
+                  onClick={() => onChangeIndex(index)}
+                  className="rounded-full p-1 disabled:opacity-60"
+                >
+                  <span
+                    className={`block rounded-full transition-all ${
+                      activeIndex === index
+                        ? "h-1.5 w-4 bg-voz-config"
+                        : "size-1.5 bg-border"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -781,7 +862,7 @@ function InstantAttemptsStrip({
         {slots.map((attempt, index) => (
           <span
             key={attempt?.id ?? `slot-${index}`}
-            className="aspect-square min-w-0 flex-1 rounded-full border"
+            className="aspect-square min-w-0 flex-1 rounded-full border lg:size-5 lg:flex-none"
             style={
               attempt
                 ? {
@@ -3496,7 +3577,7 @@ export function VozModeSlides({
     switch (slideId) {
       case "encajar":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <VozConfigSection
               collapsible
               collapsedSummary={encajarConfigSummary}
@@ -3523,7 +3604,7 @@ export function VozModeSlides({
         );
       case "sostener":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <VozConfigSection
               collapsible
               collapsedSummary={sostenerConfigSummary}
@@ -3607,7 +3688,7 @@ export function VozModeSlides({
         );
       case "octavas":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <VozConfigSection
               collapsible
               collapsedSummary={octavasConfigSummary}
@@ -3688,7 +3769,7 @@ export function VozModeSlides({
         );
       case "melodia":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <MelodiaConfigSection
               collapsedSummary={melodiaConfigSummary}
               patternLength={melodiaPatternLength}
@@ -3729,7 +3810,7 @@ export function VozModeSlides({
         );
       case "ritmo":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
@@ -3779,7 +3860,7 @@ export function VozModeSlides({
         );
       case "ritmo-intensidad":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
@@ -3818,7 +3899,7 @@ export function VozModeSlides({
         );
       case "ritmo-nota":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={ritmoNotaConfigSummary}
@@ -3868,7 +3949,7 @@ export function VozModeSlides({
         );
       case "combo":
         return (
-          <div className="space-y-3">
+          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={comboConfigSummary}

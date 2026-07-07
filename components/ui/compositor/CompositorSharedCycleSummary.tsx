@@ -15,8 +15,8 @@ export function CompositorSharedCycleSummary({
   const golpeLabel = piece.cycleGolpes === 1 ? "golpe" : "golpes";
 
   return (
-    <div className="pt-2" aria-live="polite" aria-atomic="true">
-      <p className="text-[11px] leading-snug text-text-secondary">
+    <div aria-live="polite" aria-atomic="true">
+      <p className="mt-0.5 text-[11px] leading-snug text-text-secondary">
         <span className="font-bold text-text-primary">
           {piece.cycleGolpes} {golpeLabel}
         </span>

@@ -80,7 +80,7 @@ export function VozPracticeDivider() {
 
 export function VozPracticeArea({ children }: { children: ReactNode }) {
   return (
-    <div className="-mx-3 space-y-3 px-3 pb-1 pt-3">
+    <div className="voz-mode-practice-panel -mx-3 space-y-3 px-3 pb-1 pt-3 lg:mx-0 lg:rounded-[10px] lg:border lg:border-border/50 lg:bg-bg-card/30 lg:px-3 lg:py-3">
       <VozPracticeDivider />
       {children}
     </div>
@@ -147,7 +147,7 @@ function NoteCarousel({
   );
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex w-full items-center gap-1 lg:mx-auto lg:max-w-sm">
       <TapButton
         type="button"
         aria-label="Nota anterior"
@@ -158,7 +158,7 @@ function NoteCarousel({
         <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
       </TapButton>
 
-      <div className="relative min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1 lg:w-40 lg:flex-none">
         <div
           className="pointer-events-none absolute inset-y-0.5 left-0 z-10 w-4 rounded-l-[6px] bg-gradient-to-r from-bg-dark via-bg-dark/80 to-transparent"
           aria-hidden="true"

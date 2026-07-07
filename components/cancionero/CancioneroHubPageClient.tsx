@@ -238,58 +238,60 @@ export default function CancioneroHubPageClient({
     <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
       <AppReadyMarker />
 
-      <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
-        <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-        <PwaInstallBanners />
+      {!isDesktop ? (
+        <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+          <div className="app-page-container flex flex-col gap-3 lg:gap-4">
+            <PwaInstallBanners />
 
-        {avisoMensaje && (
-          <p
-            className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
-            role="status"
-          >
-            {avisoMensaje}
-          </p>
-        )}
+            {avisoMensaje && (
+              <p
+                className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
+                role="status"
+              >
+                {avisoMensaje}
+              </p>
+            )}
 
-        {!online && (
-          <p
-            className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
-            role="status"
-          >
-            <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-            Sin conexión · mostrando copia local cuando aplique
-          </p>
-        )}
+            {!online && (
+              <p
+                className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
+                role="status"
+              >
+                <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+                Sin conexión · mostrando copia local cuando aplique
+              </p>
+            )}
 
-        <HomeHubDestinations />
+            <HomeHubDestinations />
 
-        <HerramientasHubSectionLabel label={HUB_SECTION_CANCIONES_LABEL} />
+            <HerramientasHubSectionLabel label={HUB_SECTION_CANCIONES_LABEL} />
 
-        <div className="app-hub-grid">
-          {cancionesModules.map((module) => renderModuleCard(module))}
-        </div>
+            <div className="app-hub-grid">
+              {cancionesModules.map((module) => renderModuleCard(module))}
+            </div>
 
-        <HerramientasHubSectionLabel label={HUB_SECTION_HERRAMIENTAS_LABEL} />
+            <HerramientasHubSectionLabel label={HUB_SECTION_HERRAMIENTAS_LABEL} />
 
-        <div className="app-hub-grid">
-          {herramientasModules.map((module) => renderModuleCard(module))}
-        </div>
+            <div className="app-hub-grid">
+              {herramientasModules.map((module) => renderModuleCard(module))}
+            </div>
 
-        <HerramientasHubSectionLabel label={HUB_SECTION_PRACTICA_LABEL} />
+            <HerramientasHubSectionLabel label={HUB_SECTION_PRACTICA_LABEL} />
 
-        <div className="app-hub-grid">
-          {practicaModules.map((module) => renderModuleCard(module))}
-        </div>
+            <div className="app-hub-grid">
+              {practicaModules.map((module) => renderModuleCard(module))}
+            </div>
 
-        {!isLoggedIn && (
-          <p className="text-center text-sm text-text-muted">
-            Iniciá sesión para acceder a Favoritas.
-          </p>
-        )}
-        </div>
-      </main>
+            {!isLoggedIn && (
+              <p className="text-center text-sm text-text-muted">
+                Iniciá sesión para acceder a Favoritas.
+              </p>
+            )}
+          </div>
+        </main>
+      ) : null}
 
-      {toolsLayerMounted ? (
+      {!isDesktop && toolsLayerMounted ? (
         <CancioneroHubToolsLayer
           isLoggedIn={isLoggedIn}
           online={online}

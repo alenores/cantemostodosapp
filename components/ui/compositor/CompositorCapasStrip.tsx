@@ -1,11 +1,13 @@
 "use client";
 
+import { CompositorMelodicInstrumentIcon } from "@/components/ui/compositor/CompositorMelodicInstrumentIcon";
 import {
   COMPOSITOR_CAPA_TAB_ACTIVE_CLASS,
 } from "@/lib/compositor-instrument-colors";
 import {
   COMPOSITOR_INSTRUMENT_OPTIONS,
   type CompositorInstrumentId,
+  type CompositorMelodicInstrumentId,
 } from "@/lib/compositor";
 import {
   COMPOSITOR_HELP_CAPA_EDITAR,
@@ -17,6 +19,15 @@ export type CompositorEditCapasConfig = {
 };
 
 const CAPA_TAB_ACTIVE_CLASS = COMPOSITOR_CAPA_TAB_ACTIVE_CLASS;
+
+const MELODIC_CAPA_ACTIVE_RING: Record<CompositorMelodicInstrumentId, string> = {
+  piano:
+    "shadow-[0_0_0_2px_color-mix(in_srgb,var(--compositor-block-piano)_45%,transparent)]",
+  guitarra:
+    "shadow-[0_0_0_2px_color-mix(in_srgb,var(--compositor-block-guitarra)_55%,transparent)]",
+  viento:
+    "shadow-[0_0_0_2px_color-mix(in_srgb,var(--compositor-block-viento)_45%,transparent)]",
+};
 
 export function CompositorMelodicCapasTabs({
   activeTrackId,
@@ -31,12 +42,14 @@ export function CompositorMelodicCapasTabs({
 
   return (
     <div
-      className="flex min-w-0 flex-1 gap-1 rounded-full border border-border bg-bg-darker p-0.5"
+      data-compositor-edit-surface=""
+      className="grid w-fit max-w-full grid-cols-3 gap-2.5 sm:max-w-[18rem] lg:max-w-[19rem] lg:gap-3"
       role="tablist"
       aria-label={`${RITMO_LABEL_CAPAS} · melodías`}
     >
       {melodicOptions.map((option) => {
         const isActive = activeTrackId === option.id;
+        const melodicId = option.id as CompositorMelodicInstrumentId;
 
         return (
           <button
@@ -46,13 +59,19 @@ export function CompositorMelodicCapasTabs({
             aria-selected={isActive}
             disabled={disabled}
             onClick={() => onSelectTrack(option.id)}
-            className={`min-w-0 flex-1 rounded-full px-1.5 py-1.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 transition-[color,background-color,box-shadow,transform] disabled:opacity-50 lg:gap-1.5 lg:px-2 lg:py-3 ${
               isActive
-                ? CAPA_TAB_ACTIVE_CLASS[option.id]
-                : "text-text-muted"
+                ? `${CAPA_TAB_ACTIVE_CLASS[option.id]} border-transparent ${MELODIC_CAPA_ACTIVE_RING[melodicId]} scale-[1.02]`
+                : "border-border/70 bg-bg-card/55 text-text-muted hover:border-border hover:bg-bg-card hover:text-text-primary"
             }`}
           >
-            <span className="block truncate">{option.label}</span>
+            <CompositorMelodicInstrumentIcon
+              instrumentId={melodicId}
+              className={`size-5 lg:size-7 ${isActive ? "" : "opacity-75"}`}
+            />
+            <span className="block w-full truncate text-center text-[9px] font-bold leading-tight lg:text-[10px]">
+              {option.label}
+            </span>
           </button>
         );
       })}
@@ -67,7 +86,8 @@ export function CompositorCapasTabs({
 }: CompositorEditCapasConfig & { disabled?: boolean }) {
   return (
     <div
-      className="flex min-w-0 flex-1 gap-1 rounded-full border border-border bg-bg-darker p-0.5"
+      data-compositor-edit-surface=""
+      className="tool-segmented-control tool-segmented-control--inline flex min-w-0 gap-1"
       role="tablist"
       aria-label={`${RITMO_LABEL_CAPAS} · editar`}
     >
@@ -82,7 +102,7 @@ export function CompositorCapasTabs({
             aria-selected={isActive}
             disabled={disabled}
             onClick={() => onSelectTrack(option.id)}
-            className={`min-w-0 flex-1 rounded-full px-1.5 py-1.5 text-[10px] font-bold transition-colors disabled:opacity-50 ${
+            className={`min-w-0 flex-1 shrink-0 rounded-full px-2.5 py-1.5 text-[10px] font-bold transition-colors disabled:opacity-50 lg:flex-none ${
               isActive
                 ? CAPA_TAB_ACTIVE_CLASS[option.id]
                 : "text-text-muted"

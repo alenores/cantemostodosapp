@@ -4,7 +4,8 @@ import {
   normalizeCompositorPiece,
   type CompositorPiece,
 } from "@/lib/compositor";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { isMissingColumnError } from "@/lib/supabase/errors";
 
 export const COMPOSITOR_CYCLES_STORAGE_KEY = "compositor-cycles-v1";
 export const COMPOSITOR_CYCLE_NAME_MAX_LENGTH = 80;
@@ -18,6 +19,11 @@ export type CompositorCycle = {
   createdAt: string;
   updatedAt: string;
   storage: CompositorCycleStorage;
+  esPublico?: boolean;
+};
+
+export type CompositorCommunityCycle = CompositorCycle & {
+  authorId: string;
 };
 
 type CompositorCyclesFile = {
@@ -31,6 +37,8 @@ type CompositorCycleRow = {
   piece: CompositorPiece;
   created_at: string;
   updated_at: string;
+  es_publico?: boolean;
+  user_id?: string;
 };
 
 function createCycleId(): string {
@@ -58,7 +66,10 @@ function parseCycle(raw: unknown, storage: CompositorCycleStorage): CompositorCy
     return null;
   }
 
-  const record = raw as Partial<CompositorCycle> & { piece?: CompositorPiece };
+  const record = raw as Partial<CompositorCycle> & {
+    piece?: CompositorPiece;
+    esPublico?: boolean;
+  };
 
   if (
     typeof record.id !== "string" ||
@@ -86,6 +97,7 @@ function parseCycle(raw: unknown, storage: CompositorCycleStorage): CompositorCy
     updatedAt:
       typeof record.updatedAt === "string" ? record.updatedAt : timestamp,
     storage,
+    esPublico: record.esPublico === true,
   };
 }
 
@@ -184,21 +196,76 @@ function rowToCycle(row: CompositorCycleRow): CompositorCycle | null {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       storage: "remote",
+      esPublico: row.es_publico === true,
     },
     "remote",
   );
 }
 
+function rowToCommunityCycle(row: CompositorCycleRow): CompositorCommunityCycle | null {
+  const cycle = rowToCycle(row);
+
+  if (!cycle || typeof row.user_id !== "string") {
+    return null;
+  }
+
+  return {
+    ...cycle,
+    authorId: row.user_id,
+  };
+}
+
+function throwCompositorCycleError(error: PostgrestError, action: string): never {
+  const hint =
+    error.code === "42501"
+      ? " Ejecutá supabase/compositor-ciclos.sql en el SQL Editor de Supabase (permisos RLS)."
+      : error.code === "42P01" || error.code === "PGRST205"
+        ? " Falta la tabla: ejecutá supabase/compositor-ciclos.sql en Supabase."
+        : isMissingColumnError(error)
+          ? " Falta una columna: ejecutá supabase/compositor-ciclos-publicos.sql en Supabase."
+          : "";
+  throw new Error(`${action}: ${error.message}${hint}`);
+}
+
+const COMPOSITOR_CYCLE_SELECT_WITH_PUBLIC =
+  "id, nombre, piece, created_at, updated_at, es_publico";
+const COMPOSITOR_CYCLE_SELECT_BASE =
+  "id, nombre, piece, created_at, updated_at";
+
+async function getCompositorCycleUserId(supabase: SupabaseClient): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error("Iniciá sesión para guardar ciclos en la nube.");
+  }
+
+  return userId;
+}
+
 export async function fetchRemoteCompositorCycles(
   supabase: SupabaseClient,
 ): Promise<CompositorCycle[]> {
-  const { data, error } = await supabase
+  const primary = await supabase
     .from("compositor_ciclos")
-    .select("id, nombre, piece, created_at, updated_at")
+    .select(COMPOSITOR_CYCLE_SELECT_WITH_PUBLIC)
     .order("updated_at", { ascending: false });
 
+  const fallback =
+    primary.error && isMissingColumnError(primary.error)
+      ? await supabase
+          .from("compositor_ciclos")
+          .select(COMPOSITOR_CYCLE_SELECT_BASE)
+          .order("updated_at", { ascending: false })
+      : null;
+
+  const { data, error } = fallback ?? primary;
+
   if (error) {
-    throw error;
+    throwCompositorCycleError(error, "No se pudieron cargar los ciclos");
   }
 
   return sortCycles(
@@ -212,26 +279,21 @@ export async function insertRemoteCompositorCycle(
   supabase: SupabaseClient,
   cycle: CompositorCycle,
 ): Promise<CompositorCycle> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("Iniciá sesión para guardar ciclos en la nube.");
-  }
+  const userId = await getCompositorCycleUserId(supabase);
 
   const { data, error } = await supabase
     .from("compositor_ciclos")
     .insert({
       nombre: cycle.nombre,
       piece: cycle.piece,
-      user_id: user.id,
+      user_id: userId,
+      es_publico: cycle.esPublico === true,
     })
-    .select("id, nombre, piece, created_at, updated_at")
+    .select("id, nombre, piece, created_at, updated_at, es_publico")
     .single();
 
   if (error) {
-    throw error;
+    throwCompositorCycleError(error, "No se pudo guardar el ciclo");
   }
 
   const saved = rowToCycle(data as CompositorCycleRow);
@@ -252,13 +314,14 @@ export async function updateRemoteCompositorCycle(
     .update({
       nombre: cycle.nombre,
       piece: cycle.piece,
+      es_publico: cycle.esPublico === true,
     })
     .eq("id", cycle.id)
-    .select("id, nombre, piece, created_at, updated_at")
+    .select("id, nombre, piece, created_at, updated_at, es_publico")
     .single();
 
   if (error) {
-    throw error;
+    throwCompositorCycleError(error, "No se pudo actualizar el ciclo");
   }
 
   const saved = rowToCycle(data as CompositorCycleRow);
@@ -268,6 +331,86 @@ export async function updateRemoteCompositorCycle(
   }
 
   return saved;
+}
+
+export async function fetchPublicCompositorCycles(
+  supabase: SupabaseClient,
+): Promise<CompositorCommunityCycle[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let query = supabase
+    .from("compositor_ciclos")
+    .select("id, nombre, piece, created_at, updated_at, es_publico, user_id")
+    .eq("es_publico", true)
+    .order("updated_at", { ascending: false });
+
+  if (user) {
+    query = query.neq("user_id", user.id);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throwCompositorCycleError(error, "No se pudieron cargar los ciclos públicos");
+  }
+
+  return sortCycles(
+    (data ?? [])
+      .map((row) => rowToCommunityCycle(row as CompositorCycleRow))
+      .filter((cycle): cycle is CompositorCommunityCycle => cycle !== null),
+  ) as CompositorCommunityCycle[];
+}
+
+export async function setRemoteCompositorCyclePublic(
+  supabase: SupabaseClient,
+  cycle: CompositorCycle,
+  esPublico: boolean,
+): Promise<CompositorCycle> {
+  const { data, error } = await supabase
+    .from("compositor_ciclos")
+    .update({ es_publico: esPublico })
+    .eq("id", cycle.id)
+    .select("id, nombre, piece, created_at, updated_at, es_publico")
+    .single();
+
+  if (error) {
+    throwCompositorCycleError(error, "No se pudo actualizar la visibilidad del ciclo");
+  }
+
+  const saved = rowToCycle(data as CompositorCycleRow);
+
+  if (!saved) {
+    throw new Error("No se pudo actualizar la visibilidad del ciclo.");
+  }
+
+  return saved;
+}
+
+export function createCompositorCycleFromCommunityCycle(
+  communityCycle: CompositorCommunityCycle,
+  existingCycles: CompositorCycle[],
+): CompositorCycle {
+  const baseName = normalizeCycleName(communityCycle.nombre);
+  const used = new Set(existingCycles.map((cycle) => cycle.nombre.toLowerCase()));
+  let nombre = baseName;
+
+  if (used.has(nombre.toLowerCase())) {
+    let index = 2;
+
+    while (used.has(`${baseName} (${index})`.toLowerCase())) {
+      index += 1;
+    }
+
+    nombre = `${baseName} (${index})`;
+  }
+
+  return createCompositorCycleFromPiece(
+    nombre,
+    communityCycle.piece,
+    "remote",
+  );
 }
 
 export async function deleteRemoteCompositorCycle(
@@ -280,7 +423,7 @@ export async function deleteRemoteCompositorCycle(
     .eq("id", cycleId);
 
   if (error) {
-    throw error;
+    throwCompositorCycleError(error, "No se pudo eliminar el ciclo");
   }
 }
 

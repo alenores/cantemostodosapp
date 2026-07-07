@@ -271,7 +271,7 @@ function BeatDurationCarousel({
       </TapButton>
 
       <div
-        className="min-w-0 flex-1 px-1 text-center"
+        className="tool-control-center px-1 text-center"
         aria-live="polite"
         aria-label={`Figura ${option.label}`}
       >
@@ -338,7 +338,7 @@ export function BeatVolumeCarousel({
         </TapButton>
 
         <div
-          className="min-w-0 flex-1 px-1 text-center"
+          className="tool-control-center px-1 text-center"
           aria-live="polite"
           aria-label={`Intensidad ${getBeatLevelLabel(level)}`}
         >
@@ -450,7 +450,7 @@ export function CompasNumericCarousel({
       </TapButton>
 
       <div
-        className="min-w-0 flex-1 px-1 text-center"
+        className="tool-control-center px-1 text-center"
         aria-live="polite"
         aria-label={valueAriaLabel}
       >
@@ -506,7 +506,7 @@ function PatternLengthCarousel({
       </TapButton>
 
       <div
-        className="min-w-0 flex-1 px-1 text-center"
+        className="tool-control-center px-1 text-center"
         aria-live="polite"
         aria-label={`${patternLength} en el ciclo`}
       >
@@ -586,7 +586,7 @@ function CompasCyclePreview({
   const accent = getRitmoAccentClasses(variant);
 
   return (
-    <div className="flex items-end gap-1 overflow-visible px-0.5 pt-1">
+    <div className="compas-cycle-preview flex items-end gap-1 overflow-visible px-0.5 pt-1">
       {levels.map((level, index) => {
         const flexWeight = getBeatDurationMultiplier(durations[index]!);
         const barAppearance =
@@ -613,6 +613,7 @@ function CompasCyclePreview({
             }}
             style={{
               flex: `${flexWeight} 1 0`,
+              ["--beat-flex-weight" as string]: String(flexWeight),
               height: `${COMPAS_CYCLE_COLUMN_HEIGHT_PX}px`,
               ["--ritmo-beat-accent" as string]: accent.accentVar,
               ["--ritmo-cycle-bar-row" as string]: `${MAX_VOLUME_BAR_CYCLE_PX}px`,
@@ -780,9 +781,9 @@ export function BpmSetupPanel({
 
   return (
     <div
-      className={`space-y-2 ${demoMode ? "pointer-events-none select-none" : ""}`}
+      className={`space-y-2 bpm-setup-panel ${demoMode ? "pointer-events-none select-none" : ""}`}
     >
-      <div className="flex gap-1 rounded-full border border-border bg-bg-darker p-0.5">
+      <div className="tool-segmented-control tool-segmented-control--inline flex gap-1">
         {(
           [
             { id: "botones" as const, label: "Botones" },
@@ -794,7 +795,7 @@ export function BpmSetupPanel({
             type="button"
             disabled={isPlaying || demoMode}
             onClick={() => setMode(tab.id)}
-            className={`flex-1 rounded-full px-2 py-1.5 text-[11px] font-bold disabled:opacity-50 ${
+            className={`flex-1 rounded-full px-3 py-1.5 text-[11px] font-bold disabled:opacity-50 lg:flex-none lg:px-4 ${
               activeMode === tab.id
                 ? "bg-voz-config text-white"
                 : "text-text-muted"
@@ -805,7 +806,7 @@ export function BpmSetupPanel({
         ))}
       </div>
 
-      <div className="flex items-stretch gap-2">
+      <div className="bpm-setup-controls flex w-full items-stretch gap-2 lg:w-fit lg:max-w-full">
         <div
           className="flex shrink-0 items-baseline gap-1 rounded-[8px] border border-border bg-bg-card px-2 py-1.5"
           aria-live="polite"
@@ -818,7 +819,7 @@ export function BpmSetupPanel({
 
         {activeMode === "botones" ? (
           <div
-            className={`${BPM_MODE_CONTAINER_CLASS} ml-auto flex min-w-0 flex-1 items-center justify-end`}
+            className={`${BPM_MODE_CONTAINER_CLASS} ml-auto flex min-w-0 flex-1 items-center justify-end lg:flex-none`}
           >
             <div className="flex items-center gap-1.5">
               <TapButton
@@ -846,7 +847,7 @@ export function BpmSetupPanel({
           </div>
         ) : (
           <div
-            className={`${BPM_MODE_CONTAINER_CLASS} flex min-w-0 flex-1 items-stretch`}
+            className={`${BPM_MODE_CONTAINER_CLASS} flex min-w-0 flex-1 items-stretch lg:flex-none`}
           >
             <TapButton
               type="button"
@@ -1108,7 +1109,7 @@ export function CompasBeatSetupPanel({
       ) : null}
 
       <div
-        className={`${tabsTopMarginClass} flex gap-1 rounded-full border border-border bg-bg-darker p-0.5`}
+        className={`${tabsTopMarginClass} tool-segmented-control tool-segmented-control--inline flex gap-1`}
       >
         {compasTabs.map((option) => (
           <button
@@ -1116,7 +1117,7 @@ export function CompasBeatSetupPanel({
             type="button"
             disabled={disabled || demoMode}
             onClick={() => handleTabChange(option.id)}
-            className={`min-w-0 flex-1 rounded-full px-1.5 py-1.5 font-bold disabled:opacity-50 ${
+            className={`min-w-0 flex-1 rounded-full px-2 py-1.5 font-bold disabled:opacity-50 lg:flex-none lg:px-3 ${
               showCompositorTabs ? "text-[10px]" : "text-[11px]"
             } ${
               activeTab === option.id
@@ -1345,7 +1346,7 @@ export function BeatPatternEditor({
   ];
 
   const bars = (
-    <div className={`flex gap-1 ${variant === "config" ? "mt-3" : ""}`}>
+    <div className={`tool-beat-slot-row ${variant === "config" ? "mt-3" : ""}`}>
       {activePattern.map((level, index) => {
         const heightPercent = Math.max(
           getBeatLevelBarHeightPercent(level),
@@ -1358,7 +1359,7 @@ export function BeatPatternEditor({
           return (
             <span
               key={`beat-slot-${index}`}
-              className="flex min-w-0 flex-1 flex-col items-center justify-end"
+              className="flex min-w-0 flex-1 flex-col items-center justify-end lg:w-11 lg:flex-none"
               title={`Tiempo ${index + 1}: ${getBeatLevelLabel(level)}`}
             >
               <span
@@ -1385,7 +1386,7 @@ export function BeatPatternEditor({
             onClick={() => onCycleSlot?.(index)}
             aria-label={`Tiempo ${index + 1}: ${getBeatLevelLabel(level)}`}
             aria-pressed={level !== "silencio"}
-            className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 disabled:opacity-50"
+            className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 disabled:opacity-50 lg:w-11 lg:flex-none"
           >
             <span
               className="w-full rounded-full"

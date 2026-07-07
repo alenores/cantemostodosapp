@@ -1,102 +1,182 @@
 "use client";
 
+import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import {
   COMPOSITOR_TAB_BATERIA,
   COMPOSITOR_TAB_CICLO,
   COMPOSITOR_TAB_MELODIAS,
-  COMPOSITOR_TAB_TEMPO,
-  COMPOSITOR_TAB_TONALIDAD,
+  COMPOSITOR_TAB_PRACTICAR,
 } from "@/lib/ritmo-terminologia";
+import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
 import type { ReactNode } from "react";
 
+
 export type CompositorEditorTab =
+
   | "ciclo"
-  | "tempo"
+
   | "bateria"
-  | "tonalidad"
-  | "melodias";
+
+  | "melodias"
+
+  | "practicar";
+
+
 
 const COMPOSITOR_EDITOR_TABS: Array<{
+
   id: CompositorEditorTab;
+
   label: string;
+
+  practice?: boolean;
+
 }> = [
+
   { id: "ciclo", label: COMPOSITOR_TAB_CICLO },
-  { id: "tempo", label: COMPOSITOR_TAB_TEMPO },
+
   { id: "bateria", label: COMPOSITOR_TAB_BATERIA },
-  { id: "tonalidad", label: COMPOSITOR_TAB_TONALIDAD },
+
   { id: "melodias", label: COMPOSITOR_TAB_MELODIAS },
 ];
+
+
+function compositorTabButtonClass(isActive: boolean, practiceTab: boolean) {
+
+  if (isActive) {
+
+    return practiceTab
+
+      ? "bg-tool-practice/18 text-tool-practice ring-1 ring-inset ring-tool-practice/25"
+
+      : "bg-compositor-config/18 text-compositor-config ring-1 ring-inset ring-compositor-config/25";
+
+  }
+
+
+
+  return practiceTab
+
+    ? "text-text-muted hover:bg-bg-card/60 hover:text-tool-practice/80"
+
+    : "text-text-muted hover:bg-bg-card/60 hover:text-text-primary";
+
+}
+
+
 
 type CompositorEditorTabShellProps = {
   activeTab: CompositorEditorTab;
   disabled?: boolean;
   summary: string;
   onTabChange: (tab: CompositorEditorTab) => void;
+  onOpenPractice: () => void;
   children: ReactNode;
 };
+
 
 export function CompositorEditorTabShell({
   activeTab,
   disabled = false,
   summary,
   onTabChange,
+  onOpenPractice,
   children,
 }: CompositorEditorTabShellProps) {
-  const activeIndex = COMPOSITOR_EDITOR_TABS.findIndex(
-    (tab) => tab.id === activeTab,
-  );
+  const isPractice = activeTab === "practicar";
 
   return (
-    <div className="min-w-0">
-      <div
-        className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label="Editor del compositor"
-      >
-        <div className="flex min-w-max items-end gap-px">
-          {COMPOSITOR_EDITOR_TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
+    <div className="compositor-editor-shell min-w-0 overflow-hidden rounded-[12px] border border-border bg-bg-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_5%,transparent)]">
+      <div className="border-b border-border/80 bg-bg-darker px-2.5 py-2.5 sm:px-3">
+        <div className="flex items-center gap-2">
+          <div
+            className="min-w-0 flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onWheel={forwardVerticalWheel}
+            role="tablist"
+            aria-label="Editor del compositor"
+          >
+            <div className="inline-flex min-w-max items-center gap-0.5 rounded-full border border-border/80 bg-bg-dark p-0.5">
+              {COMPOSITOR_EDITOR_TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const practiceTab = tab.practice === true;
 
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`compositor-tab-${tab.id}`}
-                aria-selected={isActive}
-                disabled={disabled}
-                onClick={() => onTabChange(tab.id)}
-                className={
-                  isActive
-                    ? "relative z-10 -mb-px shrink-0 rounded-t-[10px] border border-b-0 border-compositor-config-border bg-compositor-config-bg px-3 py-2 text-[11px] font-bold leading-none text-compositor-config disabled:opacity-50"
-                    : "mb-px shrink-0 rounded-t-[8px] border border-border border-b-compositor-config-border bg-bg-darker px-2.5 py-1.5 text-[11px] font-bold leading-none text-text-muted transition-colors hover:text-text-primary disabled:opacity-50"
-                }
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`compositor-tab-${tab.id}`}
+                    aria-selected={isActive}
+                    disabled={disabled}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold leading-none transition-[color,background-color,box-shadow] disabled:opacity-50 sm:px-3.5 ${compositorTabButtonClass(isActive, practiceTab)}`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {!isPractice ? (
+            <PlayCircleButton
+              size="xs"
+              playOnly
+              disabled={disabled}
+              onClick={onOpenPractice}
+              playAriaLabel={COMPOSITOR_TAB_PRACTICAR}
+              className="border-border text-tool-practice"
+            />
+          ) : null}
         </div>
       </div>
 
+
       <div
         role="tabpanel"
-        aria-labelledby={`compositor-tab-${activeTab}`}
-        className={`border border-compositor-config-border bg-compositor-config-bg px-3 py-2.5 ${
-          activeIndex === 0 ? "rounded-tl-none" : "rounded-tl-[12px]"
-        } ${
-          activeIndex === COMPOSITOR_EDITOR_TABS.length - 1
-            ? "rounded-tr-none"
-            : "rounded-tr-[12px]"
-        } rounded-b-[12px]`}
+        aria-labelledby={isPractice ? undefined : `compositor-tab-${activeTab}`}
+        aria-label={isPractice ? COMPOSITOR_TAB_PRACTICAR : undefined}
+        className={`compositor-tab-content px-3 py-3 sm:px-4 sm:py-3.5 ${
+          isPractice
+
+            ? "bg-[var(--tool-practice-section-bg)]"
+
+            : "bg-[color-mix(in_srgb,var(--compositor-config)_7%,var(--bg-card))]"
+
+        }`}
+
       >
-        <p className="mb-2 truncate text-[10px] leading-snug text-text-muted">
-          {summary}
-        </p>
+
+        {summary ? (
+          <div
+            className={`mb-3 flex items-center gap-2 border-b pb-2.5 ${
+              isPractice ? "border-tool-practice/20" : "border-compositor-config/18"
+            }`}
+          >
+            <span
+              className={`size-1.5 shrink-0 rounded-full ${
+                isPractice ? "bg-tool-practice" : "bg-compositor-config"
+              }`}
+              aria-hidden="true"
+            />
+            <p className="min-w-0 truncate text-[11px] font-medium leading-snug text-text-secondary">
+              {summary}
+            </p>
+          </div>
+        ) : null}
+
         {children}
+
       </div>
+
     </div>
+
   );
+
 }
 
+
+
 export { COMPOSITOR_EDITOR_TABS };
+
+

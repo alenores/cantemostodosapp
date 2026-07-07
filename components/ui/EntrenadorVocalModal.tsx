@@ -26,9 +26,11 @@ import type {
 } from "@/lib/voz-ritmo";
 import type { VozIntensidadVoiceSample } from "@/lib/voz-intensidad";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import { ToolPresentationRoot } from "@/components/ui/ToolPresentationRoot";
+import type { ToolPresentation } from "@/lib/tool-presentation";
+import { isToolPagePresentation } from "@/lib/tool-presentation";
 import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 
 type EntrenadorVocalModalProps = {
   open: boolean;
@@ -107,6 +109,7 @@ type EntrenadorVocalModalProps = {
   onTapMelodiaTempo: () => void;
   comboNotePattern: VozNotaPattern;
   onSetComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
+  presentation?: ToolPresentation;
 };
 
 function MicConnectingPanel() {
@@ -233,9 +236,11 @@ export default function EntrenadorVocalModal({
   onTapMelodiaTempo,
   comboNotePattern,
   onSetComboNoteAtSlot,
+  presentation = "modal",
 }: EntrenadorVocalModalProps) {
   const [activeModeIndex, setActiveModeIndex] = useState(0);
   const prevSlideIndexRef = useRef(activeModeIndex);
+  const isPage = isToolPagePresentation(presentation);
 
   useEffect(() => {
     if (!open) {
@@ -273,118 +278,121 @@ export default function EntrenadorVocalModal({
     onClearInstantAttempts,
   ]);
 
-  if (!open) {
+  if (!open && !isPage) {
     return null;
   }
 
   const objectiveLabel =
     referenceLabel ?? formatTargetLabel(target);
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
-      <button
-        type="button"
-        aria-label="Cerrar entrenador vocal"
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
+  return (
+    <ToolPresentationRoot
+      presentation={presentation}
+      open={open}
+      onClose={onClose}
+      closeAriaLabel="Cerrar entrenador vocal"
+      panelClassName={
+        isPage
+          ? ""
+          : "relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+      }
+    >
+      <ToolModalHeader
+        titleId="entrenador-vocal-titulo"
+        title="Entrenador Vocal"
+        closeAriaLabel="Cerrar entrenador vocal"
+        onClose={onClose}
+        showClose={!isPage}
       />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="entrenador-vocal-titulo"
-        className="relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
-      >
-        <ToolModalHeader
-          titleId="entrenador-vocal-titulo"
-          title="Entrenador Vocal"
-          closeAriaLabel="Cerrar entrenador vocal"
-          onClose={onClose}
-        />
 
-        <div className="flex min-h-0 flex-1 flex-col items-stretch touch-pan-y overflow-y-auto overscroll-y-contain px-3 py-4">
-          {!micPermissionGranted || micError ? (
-            <MicPermissionPanel
-              micError={micError}
+      <div
+        className={`flex min-h-0 flex-1 flex-col touch-pan-y overscroll-y-contain ${
+          !micPermissionGranted || micError
+            ? "overflow-y-auto px-3 py-4 lg:px-5 lg:py-5"
+            : "flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden lg:px-5 lg:py-4"
+        }`}
+      >
+        {!micPermissionGranted || micError ? (
+          <MicPermissionPanel
+            micError={micError}
+            micStarting={micStarting}
+            onRequestMic={onRequestMic}
+          />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col px-3 py-4 lg:min-h-0 lg:overflow-hidden lg:px-0 lg:py-0">
+            {micStarting ? <MicConnectingPanel /> : null}
+            <VozModeSlides
+              activeIndex={activeModeIndex}
+              onChangeIndex={setActiveModeIndex}
+              onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
+              onSetIntensidadEvaluation={onSetIntensidadEvaluation}
+              effectiveTarget={effectiveTarget}
+              targetPicker={{
+                target,
+                onSetTarget,
+              }}
+              detection={detection}
+              objectiveLabel={objectiveLabel}
+              targetFrequency={targetFrequency}
+              targetNote={target.note}
+              centsFromTarget={centsFromTarget ?? 0}
+              accuracy={accuracy}
+              feedbackLabel={feedbackLabel}
+              instantAttempts={instantAttempts}
+              historySamples={historySamples}
+              holdHistorySamples={holdHistorySamples}
+              holdTargetSeconds={holdTargetSeconds}
+              onSetHoldTargetSeconds={onSetHoldTargetSeconds}
+              holdCalibre={holdCalibre}
+              onSetHoldCalibre={onSetHoldCalibre}
+              octavasNoteDurationSeconds={octavasNoteDurationSeconds}
+              onSetOctavasNoteDurationSeconds={onSetOctavasNoteDurationSeconds}
+              octavasPitchMode={octavasPitchMode}
+              onSetOctavasPitchMode={onSetOctavasPitchMode}
+              octavasScaleRepetitions={octavasScaleRepetitions}
+              onSetOctavasScaleRepetitions={onSetOctavasScaleRepetitions}
+              celebrationKey={celebrationKey}
+              tonePracticeActive={tonePracticeActive}
+              onToggleTonePractice={onToggleTonePractice}
               micStarting={micStarting}
-              onRequestMic={onRequestMic}
+              ritmoPlaying={ritmoPlaying}
+              onToggleRitmoPlaying={onToggleRitmoPlaying}
+              ritmoMicActive={ritmoMicActive}
+              onToggleRitmoMic={onToggleRitmoMic}
+              ritmoBpm={ritmoBpm}
+              onSetRitmoBpm={onSetRitmoBpm}
+              ritmoBeatPattern={ritmoBeatPattern}
+              ritmoPatternLength={ritmoPatternLength}
+              onSetRitmoPatternLength={onSetRitmoPatternLength}
+              ritmoBeatDurations={ritmoBeatDurations}
+              onSetRitmoBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
+              onSetRitmoBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
+              ritmoTapTempoTapCount={ritmoTapTempoTapCount}
+              onTapRitmoTempo={onTapRitmoTempo}
+              beatMarkers={beatMarkers}
+              ritmoVoiceSamples={ritmoVoiceSamples}
+              intensidadVoiceSamples={intensidadVoiceSamples}
+              voiceRms={voiceRms}
+              melodiaPlaying={melodiaPlaying}
+              onToggleMelodiaPlaying={onToggleMelodiaPlaying}
+              melodiaMicActive={melodiaMicActive}
+              onToggleMelodiaMic={onToggleMelodiaMic}
+              melodiaBpm={melodiaBpm}
+              onSetMelodiaBpm={onSetMelodiaBpm}
+              melodiaPatternLength={melodiaPatternLength}
+              onSetMelodiaPatternLength={onSetMelodiaPatternLength}
+              melodiaBeatDuration={melodiaBeatDuration}
+              onSetMelodiaBeatDuration={onSetMelodiaBeatDuration}
+              melodiaNotePattern={melodiaNotePattern}
+              onSetMelodiaNoteAtSlot={onSetMelodiaNoteAtSlot}
+              melodiaTapTempoTapCount={melodiaTapTempoTapCount}
+              onTapMelodiaTempo={onTapMelodiaTempo}
+              comboNotePattern={comboNotePattern}
+              onSetComboNoteAtSlot={onSetComboNoteAtSlot}
             />
-          ) : (
-            <>
-              {micStarting ? <MicConnectingPanel /> : null}
-              <VozModeSlides
-                activeIndex={activeModeIndex}
-                onChangeIndex={setActiveModeIndex}
-                onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
-                onSetIntensidadEvaluation={onSetIntensidadEvaluation}
-                effectiveTarget={effectiveTarget}
-                targetPicker={{
-                  target,
-                  onSetTarget,
-                }}
-                detection={detection}
-                objectiveLabel={objectiveLabel}
-                targetFrequency={targetFrequency}
-                targetNote={target.note}
-                centsFromTarget={centsFromTarget ?? 0}
-                accuracy={accuracy}
-                feedbackLabel={feedbackLabel}
-                instantAttempts={instantAttempts}
-                historySamples={historySamples}
-                holdHistorySamples={holdHistorySamples}
-                holdTargetSeconds={holdTargetSeconds}
-                onSetHoldTargetSeconds={onSetHoldTargetSeconds}
-                holdCalibre={holdCalibre}
-                onSetHoldCalibre={onSetHoldCalibre}
-                octavasNoteDurationSeconds={octavasNoteDurationSeconds}
-                onSetOctavasNoteDurationSeconds={onSetOctavasNoteDurationSeconds}
-                octavasPitchMode={octavasPitchMode}
-                onSetOctavasPitchMode={onSetOctavasPitchMode}
-                octavasScaleRepetitions={octavasScaleRepetitions}
-                onSetOctavasScaleRepetitions={onSetOctavasScaleRepetitions}
-                celebrationKey={celebrationKey}
-                tonePracticeActive={tonePracticeActive}
-                onToggleTonePractice={onToggleTonePractice}
-                micStarting={micStarting}
-                ritmoPlaying={ritmoPlaying}
-                onToggleRitmoPlaying={onToggleRitmoPlaying}
-                ritmoMicActive={ritmoMicActive}
-                onToggleRitmoMic={onToggleRitmoMic}
-                ritmoBpm={ritmoBpm}
-                onSetRitmoBpm={onSetRitmoBpm}
-                ritmoBeatPattern={ritmoBeatPattern}
-                ritmoPatternLength={ritmoPatternLength}
-                onSetRitmoPatternLength={onSetRitmoPatternLength}
-                ritmoBeatDurations={ritmoBeatDurations}
-                onSetRitmoBeatDurationAtSlot={onSetRitmoBeatDurationAtSlot}
-                onSetRitmoBeatLevelAtSlot={onSetRitmoBeatLevelAtSlot}
-                ritmoTapTempoTapCount={ritmoTapTempoTapCount}
-                onTapRitmoTempo={onTapRitmoTempo}
-                beatMarkers={beatMarkers}
-                ritmoVoiceSamples={ritmoVoiceSamples}
-                intensidadVoiceSamples={intensidadVoiceSamples}
-                voiceRms={voiceRms}
-                melodiaPlaying={melodiaPlaying}
-                onToggleMelodiaPlaying={onToggleMelodiaPlaying}
-                melodiaMicActive={melodiaMicActive}
-                onToggleMelodiaMic={onToggleMelodiaMic}
-                melodiaBpm={melodiaBpm}
-                onSetMelodiaBpm={onSetMelodiaBpm}
-                melodiaPatternLength={melodiaPatternLength}
-                onSetMelodiaPatternLength={onSetMelodiaPatternLength}
-                melodiaBeatDuration={melodiaBeatDuration}
-                onSetMelodiaBeatDuration={onSetMelodiaBeatDuration}
-                melodiaNotePattern={melodiaNotePattern}
-                onSetMelodiaNoteAtSlot={onSetMelodiaNoteAtSlot}
-                melodiaTapTempoTapCount={melodiaTapTempoTapCount}
-                onTapMelodiaTempo={onTapMelodiaTempo}
-                comboNotePattern={comboNotePattern}
-                onSetComboNoteAtSlot={onSetComboNoteAtSlot}
-              />
-            </>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>,
-    document.body,
+    </ToolPresentationRoot>
   );
 }

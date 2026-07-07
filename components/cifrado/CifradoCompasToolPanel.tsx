@@ -3,11 +3,13 @@
 import {
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
+  CIFRADO_CONTROLS_INPUT_CLASS,
+  CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import CifradoIntensidadPatternRow from "@/components/cifrado/CifradoIntensidadPatternRow";
 import { TapButton } from "@/components/ui/TapFeedback";
-import { COMPAS_LABELS, type TipoCompas } from "@/lib/cifrado";
+import { COMPAS_LABELS, MAX_COMPAS_PLACEMENT_CYCLE_COUNT, type TipoCompas } from "@/lib/cifrado";
 import { formatCompositorCycleSummary } from "@/lib/compositor";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import {
@@ -15,6 +17,9 @@ import {
   CIFRADO_LABEL_CICLOS_GUARDADOS,
   CIFRADO_LABEL_COMPONER_CICLO,
   CIFRADO_LABEL_SIN_CICLO,
+  CIFRADO_LABEL_APLICAR_NUMERO_CICLOS,
+  CIFRADO_HELP_APLICAR_NUMERO_CICLOS,
+  CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES,
   RITMO_LABEL_INTENSIDAD,
 } from "@/lib/ritmo-terminologia";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
@@ -37,6 +42,9 @@ type CifradoCompasToolPanelProps = {
   cyclesError: string | null;
   onRefreshCycles: () => Promise<void>;
   onSelectSavedCycle: (cycleId: string | null) => void;
+  placementCycleCount: number;
+  onPlacementCycleCountChange: (count: number) => void;
+  onApplyCyclesToAllLines: () => void;
 };
 
 export function CifradoCompasToolPanel({
@@ -54,6 +62,9 @@ export function CifradoCompasToolPanel({
   cyclesError,
   onRefreshCycles,
   onSelectSavedCycle,
+  placementCycleCount,
+  onPlacementCycleCountChange,
+  onApplyCyclesToAllLines,
 }: CifradoCompasToolPanelProps) {
   return (
     <div className="space-y-2">
@@ -167,6 +178,48 @@ export function CifradoCompasToolPanel({
           No hay ciclos guardados. Creá uno en el Compositor.
         </p>
       ) : null}
+
+      <div className="space-y-2 border-t border-dashed border-border/90 pt-2">
+        <label className="block" htmlFor="cifrado-placement-cycle-count">
+          <span className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>
+            {CIFRADO_LABEL_APLICAR_NUMERO_CICLOS}
+          </span>
+          <input
+            id="cifrado-placement-cycle-count"
+            type="number"
+            min={1}
+            max={MAX_COMPAS_PLACEMENT_CYCLE_COUNT}
+            value={placementCycleCount}
+            onChange={(event) => {
+              const parsed = Number.parseInt(event.target.value, 10);
+
+              if (!Number.isFinite(parsed)) {
+                return;
+              }
+
+              onPlacementCycleCountChange(
+                Math.min(
+                  MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
+                  Math.max(1, parsed),
+                ),
+              );
+            }}
+            className={`${CIFRADO_CONTROLS_INPUT_CLASS} mt-1 w-full text-center text-xs font-semibold`}
+          />
+        </label>
+
+        <p className="text-[11px] leading-snug text-text-muted">
+          {CIFRADO_HELP_APLICAR_NUMERO_CICLOS}
+        </p>
+
+        <TapButton
+          type="button"
+          onClick={onApplyCyclesToAllLines}
+          className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} text-xs`}
+        >
+          {CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES}
+        </TapButton>
+      </div>
     </div>
   );
 }

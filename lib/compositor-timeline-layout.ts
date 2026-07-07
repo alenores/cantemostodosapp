@@ -316,6 +316,10 @@ export function getSustentoHelpText(
     return "Con dedo el bloque puede sostenerse varios pasos del ciclo.";
   }
 
+  if (instrumentId === "guitarra" && event.guitarArticulation === "bloque") {
+    return "Con acorde en bloque el sonido puede sostenerse varios pasos del ciclo.";
+  }
+
   if (instrumentId === "guitarra") {
     return "Con rasguido el bloque puede durar varios pasos del ciclo.";
   }

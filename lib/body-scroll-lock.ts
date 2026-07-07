@@ -8,8 +8,10 @@ type BodyScrollSnapshot = {
 };
 
 let lockCount = 0;
+let savedScrollX = 0;
 let savedScrollY = 0;
 let savedBodyStyles: BodyScrollSnapshot | null = null;
+let savedHtmlOverflow = "";
 
 function captureBodyStyles(): BodyScrollSnapshot {
   const { style } = document.body;
@@ -40,14 +42,17 @@ function lockBodyScroll() {
     return;
   }
 
+  savedScrollX = window.scrollX;
   savedScrollY = window.scrollY;
   savedBodyStyles = captureBodyStyles();
+  savedHtmlOverflow = document.documentElement.style.overflow;
 
   const { style } = document.body;
+  document.documentElement.style.overflow = "hidden";
   style.overflow = "hidden";
   style.position = "fixed";
   style.top = `-${savedScrollY}px`;
-  style.left = "0";
+  style.left = `-${savedScrollX}px`;
   style.right = "0";
   style.width = "100%";
 
@@ -66,8 +71,10 @@ function unlockBodyScroll() {
   }
 
   applyBodyStyles(savedBodyStyles);
+  document.documentElement.style.overflow = savedHtmlOverflow;
   savedBodyStyles = null;
-  window.scrollTo(0, savedScrollY);
+  savedHtmlOverflow = "";
+  window.scrollTo(savedScrollX, savedScrollY);
 }
 
 /** Bloquea el scroll del documento; devuelve una función para liberarlo. */

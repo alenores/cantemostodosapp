@@ -11,8 +11,8 @@ export default function AppTopHeader({ usuario }: AppTopHeaderProps) {
   const displayName = usuario.nombre.trim() || "Mi perfil";
 
   return (
-    <header className="shrink-0 border-b border-accent/40 bg-accent px-4 py-3 lg:hidden">
-      <div className="app-page-container flex items-center gap-2.5">
+    <header className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 py-3 lg:hidden">
+      <div className="app-page-container flex w-full min-w-0 items-center gap-2.5">
         <Image
           src="/logo.svg"
           alt=""

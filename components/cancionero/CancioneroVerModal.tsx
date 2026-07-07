@@ -5,6 +5,7 @@ import {
 } from "@/components/cifrado/CifradoLyricsView";
 import LetraTexto from "@/components/salas/LetraTexto";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getLetraModoLecturaHorizontalPadding,
@@ -147,6 +148,7 @@ function CancionNavBar({
 
 type CancionSlideProps = {
   cancion: CancionCancionero | null;
+  slideWidth: number;
   cifradoDetalle?: CancionCifradoDetalle | null;
   cifradoLoading?: boolean;
   scrollRef?: RefObject<HTMLDivElement | null>;
@@ -160,6 +162,7 @@ type CancionSlideProps = {
 
 function CancionSlide({
   cancion,
+  slideWidth,
   cifradoDetalle = null,
   cifradoLoading = false,
   scrollRef,
@@ -173,8 +176,8 @@ function CancionSlide({
   if (!cancion) {
     return (
       <div
-        className="h-full shrink-0 basis-1/3"
-        style={{ flex: "0 0 33.333333%" }}
+        className="h-full shrink-0"
+        style={{ width: slideWidth }}
         aria-hidden="true"
       />
     );
@@ -210,8 +213,8 @@ function CancionSlide({
 
   return (
     <div
-      className="flex h-full shrink-0 flex-col bg-bg-cola-sheet"
-      style={{ flex: "0 0 33.333333%" }}
+      className="flex h-full min-w-0 shrink-0 flex-col overflow-hidden bg-bg-cola-sheet"
+      style={{ width: slideWidth }}
     >
       <header className={`${HEADER_CLASS} touch-none`} data-cancionero-carousel-zone="">
         <div className="min-w-0">
@@ -239,7 +242,7 @@ function CancionSlide({
         <div
           ref={isCurrent ? scrollRef : undefined}
           data-cancionero-letra-scroll=""
-          className={`h-full touch-pan-y overflow-y-auto overscroll-y-contain ${
+          className={`h-full min-w-0 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-y-contain ${
             cifradoDisplay && cancion.letra ? "bg-letra-bg" : ""
           }`}
         >
@@ -318,6 +321,28 @@ export default function CancioneroVerModal({
 
   const [offsetX, setOffsetX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [slideWidth, setSlideWidth] = useState(0);
+
+  useBodyScrollLock(open);
+
+  useEffect(() => {
+    const node = viewportRef.current;
+
+    if (!node || !open) {
+      return;
+    }
+
+    const updateWidth = () => {
+      setSlideWidth(node.offsetWidth);
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [open, cancion?.id]);
 
   useEffect(() => {
     tieneAnteriorRef.current = tieneAnterior;
@@ -330,22 +355,9 @@ export default function CancioneroVerModal({
     lockedRef.current = animating;
   }, [animating]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
   const getViewportWidth = useCallback(() => {
-    return viewportRef.current?.offsetWidth ?? 0;
-  }, []);
+    return slideWidth || viewportRef.current?.offsetWidth || 0;
+  }, [slideWidth]);
 
   const runTransition = useCallback(
     (targetOffset: number, onDone?: () => void) => {
@@ -654,7 +666,7 @@ export default function CancioneroVerModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[300] flex items-center justify-center px-3 py-4">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center overflow-hidden p-3">
       <button
         type="button"
         aria-label="Cerrar canción"
@@ -666,7 +678,7 @@ export default function CancioneroVerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancionero-ver-titulo"
-        className="relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+        className="relative z-10 tool-modal-panel flex h-[min(calc(100dvh-1.5rem),780px)] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
       >
         <TapButton
           aria-label="Cerrar"
@@ -678,21 +690,25 @@ export default function CancioneroVerModal({
 
         <div
           ref={viewportRef}
-          className="relative min-h-0 flex-1 overflow-hidden"
+          className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
         >
           <div
-            className="flex h-full will-change-transform"
+            className="flex h-full min-w-0 will-change-transform"
             style={{
-              width: "300%",
-              transform: `translateX(calc(-33.333333% + ${offsetX}px))`,
+              width: slideWidth > 0 ? slideWidth * 3 : "100%",
+              transform:
+                slideWidth > 0
+                  ? `translateX(${-slideWidth + offsetX}px)`
+                  : undefined,
               transition: animating
                 ? `transform ${CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.25, 0.82, 0.35, 1)`
                 : "none",
             }}
           >
-            <CancionSlide cancion={cancionAnterior} />
+            <CancionSlide cancion={cancionAnterior} slideWidth={slideWidth} />
             <CancionSlide
               cancion={cancion}
+              slideWidth={slideWidth}
               cifradoDetalle={cifradoDetalle}
               cifradoLoading={cifradoLoading}
               scrollRef={letraScrollRef}
@@ -703,7 +719,7 @@ export default function CancioneroVerModal({
               onSiguiente={() => navigateByDirection(1)}
               onExpand={onExpand}
             />
-            <CancionSlide cancion={cancionSiguiente} />
+            <CancionSlide cancion={cancionSiguiente} slideWidth={slideWidth} />
           </div>
         </div>
       </div>

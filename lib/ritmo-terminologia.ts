@@ -20,6 +20,7 @@ export const RITMO_LABEL_NOTA = "Nota";
 export const RITMO_LABEL_NOTAS = "Notas";
 export const RITMO_LABEL_SONIDO = "Sonido";
 export const RITMO_LABEL_TIMBRE = "Timbre";
+export const RITMO_LABEL_ACORDE = "Acorde";
 export const RITMO_LABEL_SUSTENTO = "Sustento";
 export const RITMO_LABEL_POSICION = "Posición";
 export const RITMO_LABEL_REJILLA = "Rejilla rítmica";
@@ -84,6 +85,14 @@ export const COMPOSITOR_HELP_EVENTO_SUSTENTO =
 
 export const COMPOSITOR_LABEL_SONIDO_SELECCIONADO = "Sonido seleccionado";
 
+export const COMPOSITOR_LABEL_BLOQUE_SELECCIONADO = "Bloque seleccionado";
+
+export const COMPOSITOR_LABEL_CREAR_BLOQUE = "Crear bloque";
+
+export const COMPOSITOR_LABEL_EDITAR_BLOQUE = "Editar bloque";
+
+export const COMPOSITOR_LABEL_ARRASTRAR_GRAFICO = "Arrastrá al gráfico";
+
 export const COMPOSITOR_LABEL_CICLO_COMPARTIDO = "CICLO (Compartido)";
 
 export const COMPOSITOR_LABEL_CAPAS_INSTRUMENTOS = "CAPAS (Instrumentos)";
@@ -96,7 +105,19 @@ export const COMPOSITOR_LABEL_ESCUCHAR_CAPA = "Escuchar capa";
 
 export const COMPOSITOR_LABEL_RESET_ZONA = "Dejar todo en cero";
 
+export const COMPOSITOR_LABEL_RESET_BLOQUE = "Reiniciar bloque";
+
 export const COMPOSITOR_LABEL_PLANTILLAS = "Plantillas";
+
+export const COMPOSITOR_LABEL_RITMOS_BATERIA = "Ritmos de batería";
+
+export const COMPOSITOR_HELP_RITMOS_BATERIA =
+  "Elegí un ritmo para cargarlo en la batería y editarlo en el gráfico.";
+
+export const COMPOSITOR_ARIA_MODAL_RITMOS_BATERIA = "Elegir plantilla de batería";
+
+export const COMPOSITOR_CONFIRM_APLICAR_RITMO_BATERIA = (label: string) =>
+  `¿Cargar el ritmo "${label}"? Se reemplazará la batería actual.`;
 
 export const COMPOSITOR_TAB_CICLO = "Ciclo";
 
@@ -108,17 +129,108 @@ export const COMPOSITOR_TAB_TONALIDAD = "Tonalidad";
 
 export const COMPOSITOR_TAB_MELODIAS = "Melodías";
 
+export const COMPOSITOR_TAB_PRACTICAR = "Escuchar";
+
 export const COMPOSITOR_HELP_TONALIDAD_COMPOSICION =
   "Tónica de referencia para las melodías del ciclo. Al usar el ciclo en una canción, las notas se transponen desde acá.";
 
 export const COMPOSITOR_CONFIRM_CYCLE_STRUCTURE_MESSAGE =
   "Cambiar golpes o figura puede mover o recortar eventos ya colocados en batería y melodías. ¿Continuar?";
 
+export const COMPOSITOR_NOTICE_TRACK_AT_CAPACITY = (instrumentLabel: string) =>
+  `Esta capa ya tiene el máximo de 24 bloques (${instrumentLabel}). Eliminá uno para agregar otro.`;
+
+export const COMPOSITOR_NOTICE_CELL_OCCUPIED =
+  "Esa celda ya tiene un bloque. Elegí otra posición.";
+
+export const COMPOSITOR_ERROR_TRACK_OVERFLOW_SAVE = (details: string) =>
+  `No se puede guardar: ${details}.`;
+
+export const COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD = (details: string) =>
+  `Este ciclo supera el límite de 24 bloques por capa: ${details} Eliminá bloques extras para poder guardar.`;
+
+export const COMPOSITOR_LABEL_REVISION_MIDI = "Revisión de importación MIDI";
+
+export const COMPOSITOR_LABEL_RECORTE_MIDI = "Recorte de importación MIDI";
+
+export const COMPOSITOR_LABEL_CAPAS_CICLO_IMPORT = "Capas del ciclo";
+
+export const COMPOSITOR_LABEL_VENTANA_RECORTE_MIDI = "Ventana en la canción";
+
+export const COMPOSITOR_HELP_RECORTE_MIDI =
+  "Elegí qué capas incluir y qué tramo de la canción convertir en ciclo. Podés crear varios ciclos del mismo archivo.";
+
+export const COMPOSITOR_HELP_CAPAS_SIN_CONTENIDO_RECORTE =
+  "Las capas atenuadas no tienen notas en este tramo de la canción.";
+
+export const COMPOSITOR_HELP_CAPA_AUSENTE_ARCHIVO_MIDI =
+  "No aparece en este archivo";
+
+export const COMPOSITOR_HELP_CAPA_AUSENTE_TRAMO_MIDI =
+  "No hay notas en este tramo";
+
+export const COMPOSITOR_LABEL_CONTINUAR_REVISION_MIDI = "Continuar a revisión";
+
+export const COMPOSITOR_LABEL_VOLVER_RECORTE_MIDI = "Volver al recorte";
+
+export const COMPOSITOR_NOTICE_CICLO_GUARDADO_MIDI =
+  "Ciclo guardado. Podés crear otro recorte del mismo archivo.";
+
+export const COMPOSITOR_ERROR_RECORTE_DEMASIADOS_GOLPES = (maxGolpes: number) =>
+  `El ciclo no puede superar ${maxGolpes} golpes. Ajustá la selección antes de continuar.`;
+
+export const COMPOSITOR_LABEL_GOLPES_SELECCIONADOS = (count: number) =>
+  `${count} golpe${count === 1 ? "" : "s"} seleccionado${count === 1 ? "" : "s"}`;
+
+export const COMPOSITOR_LABEL_GOLPES_RECORTE_CON_LIMITE = (
+  count: number,
+  max: number,
+) =>
+  `${count}/${max} golpe${count === 1 ? "" : "s"} seleccionado${count === 1 ? "" : "s"}`;
+
+export const COMPOSITOR_LABEL_ESCUCHAR_RECORTE_MIDI = "Escuchar selección";
+
+export const COMPOSITOR_LABEL_DETENER_RECORTE_MIDI = "Detener";
+
+export const COMPOSITOR_HELP_ESCUCHAR_RECORTE_MIDI =
+  "Reproduce una vez el tramo y las capas elegidas.";
+
+export const COMPOSITOR_LABEL_PISTAS_ARCHIVO = "Pistas del archivo";
+
+export const COMPOSITOR_LABEL_CONFLICTOS_POR_CAPA = "Conflictos por capa";
+
+export const COMPOSITOR_LABEL_VISTA_PREVIA_IMPORT = "Vista previa por capa";
+
+export const COMPOSITOR_LABEL_DETALLE_BLOQUE_SELECCIONADO =
+  "Bloque seleccionado";
+
+export const COMPOSITOR_LABEL_BLOQUE_SIN_CONFLICTOS =
+  "Este bloque no tiene conflictos. Podés editarlo o dejarlo así.";
+
+export const COMPOSITOR_HELP_SELECCIONAR_BLOQUE_REVISION =
+  "Tocá un bloque en el gráfico o un error de la lista para ver qué pasa y cómo resolverlo.";
+
+export const COMPOSITOR_LABEL_GUARDAR_CICLO_IMPORT = "Guardar ciclo";
+
+export const COMPOSITOR_LABEL_CANCELAR_IMPORT_MIDI = "Cancelar importación";
+
+export const COMPOSITOR_CONFIRM_CANCELAR_IMPORT_MIDI =
+  "Si salís, perdés esta importación. Tenés que volver a subir el archivo MIDI. ¿Continuar?";
+
+export const COMPOSITOR_LABEL_SIN_ASIGNAR = "Sin asignar";
+
+export const COMPOSITOR_HELP_IMPORT_MIDI =
+  "Elegí un archivo .mid o .midi. Se procesa en tu dispositivo; el archivo original no se guarda.";
+
 export const COMPOSITOR_LABEL_MIS_CICLOS = "Mis ciclos";
 
-export const COMPOSITOR_LABEL_EDITOR = "Editor";
+export const COMPOSITOR_LABEL_COMUNIDAD = "Comunidad";
+
+export const COMPOSITOR_LABEL_COMPOSITOR = "Compositor";
 
 export const COMPOSITOR_LABEL_NUEVO_CICLO = "Nuevo ciclo";
+
+export const COMPOSITOR_LABEL_IMPORTAR_MIDI = "Importar MIDI";
 
 export const COMPOSITOR_LABEL_NUEVO_CICLO_SIN_GUARDAR = "Nuevo ciclo (sin guardar)";
 
@@ -135,13 +247,29 @@ export const COMPOSITOR_LABEL_DESCARTAR_CAMBIOS = "Descartar cambios";
 
 export const COMPOSITOR_LABEL_ABRIR_CICLO = "Abrir";
 
+export const COMPOSITOR_LABEL_ESCUCHAR_CICLO = "Escuchar";
+
+export const COMPOSITOR_LABEL_EDITAR_CICLO = "Editar";
+
 export const COMPOSITOR_LABEL_ACTUALIZAR_CICLO = "Actualizar ciclo";
 
 export const COMPOSITOR_HELP_MIS_CICLOS =
   "Tu biblioteca de patrones. Abrí uno para editarlo o creá uno nuevo.";
 
-export const COMPOSITOR_HELP_EDITOR_VACIO =
-  "Elegí un ciclo guardado o creá uno nuevo desde Mis ciclos.";
+export const COMPOSITOR_HELP_COMUNIDAD =
+  "Ciclos que otros usuarios compartieron con la comunidad. Podés agregarlos a tu biblioteca.";
+
+export const COMPOSITOR_HELP_COMUNIDAD_SIN_SESION =
+  "Iniciá sesión con conexión para explorar ciclos compartidos por la comunidad.";
+
+export const COMPOSITOR_HELP_COMUNIDAD_OFFLINE =
+  "Conectate a internet para ver los ciclos compartidos por la comunidad.";
+
+export const COMPOSITOR_LABEL_AGREGAR_A_MIS_CICLOS = "Agregar a mis ciclos";
+
+export const COMPOSITOR_LABEL_COMPARTIR_COMUNIDAD = "Compartir con la comunidad";
+
+export const COMPOSITOR_LABEL_COMPARTIDO_COMUNIDAD = "Compartido con la comunidad";
 
 export const COMPOSITOR_CONFIRM_LEAVE_EDITOR_MESSAGE =
   "Hay cambios sin guardar. ¿Salir del editor sin guardar?";
@@ -173,6 +301,25 @@ export const CIFRADO_LABEL_COLOCANDO = (nombre: string) => `Colocando: ${nombre}
 
 export const CIFRADO_HELP_COLOCAR_CICLO =
   "Elegí o componé un ciclo arriba. Después tocá la letra para colocarlo.";
+
+export const CIFRADO_LABEL_APLICAR_NUMERO_CICLOS = "Aplicar número de ciclos";
+
+export const CIFRADO_HELP_APLICAR_NUMERO_CICLOS =
+  "Al tocar un renglón se reparten sobre la letra y lo que ya tenga (acordes/compás). Después podés arrastrar cada uno.";
+
+export const CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES =
+  "Aplicar a todos los renglones";
+
+export const CIFRADO_LABEL_PEGAR_EN_RENGLON = "Pegar en renglón";
+
+export const CIFRADO_LABEL_RENGLON_DESTINO = "¿En qué renglón querés pegarlo?";
+
+export const CIFRADO_HELP_PEGAR_EN_RENGLON =
+  "Se une a la derecha del renglón elegido. Acordes y compases quedan donde estaban.";
+
+export const CIFRADO_LABEL_CONFIRMAR_UNION = "Unir renglones";
+
+export const CIFRADO_LABEL_CANCELAR_UNION = "Cancelar";
 
 export const COMPOSITOR_CONFIRM_LOAD_CYCLE_MESSAGE = (nombre: string) =>
   `¿Cargar el ciclo "${nombre}"? Se reemplazará la composición actual.`;

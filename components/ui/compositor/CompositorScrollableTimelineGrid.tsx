@@ -5,7 +5,9 @@ import {
   COMPOSITOR_TIMELINE_ROW_LABEL_WIDTH_PX,
   COMPOSITOR_TIMELINE_STEP_MIN_PX,
 } from "@/lib/compositor-timeline-layout";
-import type { ReactNode } from "react";
+import type { CompositorTimelineDropCell } from "@/lib/compositor-timeline-placement";
+import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
+import type { ReactNode, RefObject } from "react";
 
 const ROW_HEIGHT_CLASS = "h-8";
 const RULER_HEIGHT_CLASS = "h-5";
@@ -72,8 +74,15 @@ function TimelineStepRuler({
   );
 }
 
-function Playhead({ playheadStep }: { playheadStep: number }) {
-  const leftPx = (playheadStep + 0.5) * COMPOSITOR_TIMELINE_STEP_MIN_PX;
+function Playhead({
+  playheadProgress,
+  gridSteps,
+}: {
+  playheadProgress: number;
+  gridSteps: number;
+}) {
+  const leftPx =
+    playheadProgress * gridSteps * COMPOSITOR_TIMELINE_STEP_MIN_PX;
 
   return (
     <div
@@ -118,18 +127,24 @@ export function CompositorScrollableTimelineGrid({
   piece,
   gridSteps,
   rows,
-  playheadStep,
+  playheadProgress,
   renderRowEvents,
   disabled = false,
   onClearSelection,
+  scrollContainerRef,
+  placementPreview = null,
+  onPlacementTap,
 }: {
   piece: CompositorPiece;
   gridSteps: number;
   rows: CompositorScrollableTimelineRow[];
-  playheadStep: number | null;
+  playheadProgress: number | null;
   renderRowEvents: (row: CompositorScrollableTimelineRow) => ReactNode;
   disabled?: boolean;
   onClearSelection?: () => void;
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
+  placementPreview?: CompositorTimelineDropCell | null;
+  onPlacementTap?: (clientX: number, clientY: number) => boolean;
 }) {
   const trackWidthPx = gridSteps * COMPOSITOR_TIMELINE_STEP_MIN_PX;
   const contentWidthPx =
@@ -138,7 +153,7 @@ export function CompositorScrollableTimelineGrid({
   const handleBackgroundPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
-    if (disabled || !onClearSelection) {
+    if (disabled) {
       return;
     }
 
@@ -148,13 +163,25 @@ export function CompositorScrollableTimelineGrid({
       return;
     }
 
-    onClearSelection();
+    if (onPlacementTap?.(event.clientX, event.clientY)) {
+      return;
+    }
+
+    onClearSelection?.();
   };
+
+  const previewLeftPercent =
+    placementPreview == null
+      ? null
+      : (placementPreview.step / gridSteps) * 100;
+  const previewWidthPercent = (1 / gridSteps) * 100;
 
   return (
     <div
+      ref={scrollContainerRef}
       className="mt-2 min-w-0 touch-pan-x overflow-x-auto overscroll-x-contain rounded-lg border border-border/80 bg-bg-darker"
       onPointerDown={handleBackgroundPointerDown}
+      onWheel={forwardVerticalWheel}
     >
       <div
         className="relative inline-flex min-w-full align-top"
@@ -165,6 +192,7 @@ export function CompositorScrollableTimelineGrid({
         <div
           className="relative min-w-0 shrink-0"
           style={{ width: `${trackWidthPx}px` }}
+          data-compositor-timeline-track=""
         >
           <TimelineStepRuler
             gridSteps={gridSteps}
@@ -175,6 +203,7 @@ export function CompositorScrollableTimelineGrid({
           {rows.map((row) => (
             <div
               key={row.id}
+              data-compositor-timeline-row={row.id}
               className={`relative border-b border-border/20 last:border-b-0 ${ROW_HEIGHT_CLASS}`}
               style={{ width: `${trackWidthPx}px` }}
             >
@@ -187,8 +216,26 @@ export function CompositorScrollableTimelineGrid({
             </div>
           ))}
 
-          {playheadStep != null ? (
-            <Playhead playheadStep={playheadStep} />
+          {playheadProgress != null ? (
+            <Playhead playheadProgress={playheadProgress} gridSteps={gridSteps} />
+          ) : null}
+
+          {placementPreview &&
+          rows.some((row) => row.id === placementPreview.rowId) ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 z-30 border-2 border-dashed border-compositor-config bg-compositor-config/15"
+              style={{
+                top: `${
+                  rows.findIndex((row) => row.id === placementPreview.rowId) *
+                    32 +
+                  20
+                }px`,
+                height: "32px",
+                left: `${previewLeftPercent}%`,
+                width: `${previewWidthPercent}%`,
+              }}
+              aria-hidden="true"
+            />
           ) : null}
         </div>
       </div>

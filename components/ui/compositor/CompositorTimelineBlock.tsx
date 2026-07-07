@@ -1,7 +1,8 @@
 "use client";
 
-import type { MelodicRowDragContext } from "@/components/ui/compositor/useCompositorTimelineBlockDrag";
+import { CompositorDrumIcon } from "@/components/ui/compositor/CompositorDrumIcon";
 import { useCompositorTimelineBlockDrag } from "@/components/ui/compositor/useCompositorTimelineBlockDrag";
+import type { MelodicRowDragContext } from "@/components/ui/compositor/useCompositorTimelineBlockDrag";
 import type {
   CompositorGuitarArticulation,
   CompositorInstrumentId,
@@ -41,6 +42,17 @@ function GuitarTimbreBadge({
     );
   }
 
+  if (articulation === "bloque") {
+    return (
+      <span
+        className="compositor-guitar-timbre-badge compositor-guitar-timbre-badge--bloque"
+        aria-hidden="true"
+      >
+        ▤
+      </span>
+    );
+  }
+
   if (articulation === "dedo") {
     return (
       <span
@@ -68,6 +80,7 @@ type CompositorTimelineBlockProps = {
   gridSteps: number;
   subdivisionsPerGolpe: number;
   isSelected: boolean;
+  conflictHighlight?: boolean;
   disabled?: boolean;
   title: string;
   leftPercent: number;
@@ -85,6 +98,7 @@ export function CompositorTimelineBlock({
   gridSteps,
   subdivisionsPerGolpe,
   isSelected,
+  conflictHighlight = false,
   disabled = false,
   title,
   leftPercent,
@@ -132,10 +146,11 @@ export function CompositorTimelineBlock({
       aria-label={title}
       title={title}
       data-compositor-timeline-block=""
+      data-event-id={event.id}
       onPointerDown={handlePointerDown("move")}
       className={`absolute inset-y-0.5 touch-none rounded-md text-[9px] font-bold select-none ${blockClassName} ${
-        disabled ? "pointer-events-none opacity-50" : "cursor-grab"
-      }`}
+        conflictHighlight ? "compositor-timeline-block--conflict-focus ring-2 ring-[var(--tuner-lejos)]" : ""
+      } ${disabled ? "pointer-events-none opacity-50" : "cursor-grab"}`}
       style={{
         left: `${leftPercent}%`,
         width: `${Math.max(widthPercent, minWidthPercent)}%`,
@@ -160,11 +175,11 @@ export function CompositorTimelineBlock({
         {instrumentId === "guitarra" ? (
           <GuitarTimbreBadge articulation={event.guitarArticulation} />
         ) : null}
+        {instrumentId === "bateria" ? (
+          <CompositorDrumIcon sound={event.drumSound} size="sm" />
+        ) : null}
         {showNoteLabel && instrumentId !== "bateria" ? (
           <span className="truncate">{noteLabel}</span>
-        ) : null}
-        {instrumentId === "bateria" && event.drumSound === "silencio" ? (
-          <span aria-hidden="true">⊘</span>
         ) : null}
       </span>
     </div>

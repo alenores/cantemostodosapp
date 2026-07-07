@@ -3,11 +3,14 @@
 import {
   addCompositorTrackEvent,
   cloneCompositorPiece,
+  COMPOSITOR_MAX_EVENTS_PER_TRACK,
   compositorPiecesEqualContent,
   createDefaultCompositorPiece,
-  getCompositorPresetById,
+  formatTrackOverflowDetails,
   getCompositorTrack,
+  getInstrumentLabel,
   normalizeCompositorPiece,
+  pieceHasTrackOverflow,
   readStoredCompositorPiece,
   removeCompositorTrackEvent,
   setCompositorCycleBeatDurationAtSlot,
@@ -16,12 +19,24 @@ import {
   toggleCompositorTrack,
   updateCompositorTrackEvent,
   writeStoredCompositorPiece,
+  type CompositorDrumSound,
   type CompositorInstrumentId,
   type CompositorPiece,
-  type CompositorPresetId,
   type CompositorTrackEvent,
 } from "@/lib/compositor";
-import { getCompositorGridSteps } from "@/lib/compositor-timeline";
+import {
+  isMelodicCompositorInstrument,
+  resolveEventMelodicNote,
+} from "@/lib/compositor-melodic-pitch";
+import {
+  buildMelodicTimelineRows,
+  getMelodicEventRowId,
+} from "@/lib/compositor-timeline-layout";
+import {
+  getCompositorGridSteps,
+  isDrumCellOccupied,
+  isMelodicCellOccupied,
+} from "@/lib/compositor-timeline";
 import { createCompositorEngine, type CompositorEngine } from "@/lib/compositor-audio";
 import {
   ensureCompositorSamplesForPiece,
@@ -37,6 +52,18 @@ import {
   type MetronomeBeatDurationPattern,
 } from "@/lib/metronomo";
 import type { NotaIndex } from "@/lib/cifrado";
+import {
+  COMPOSITOR_NOTICE_CELL_OCCUPIED,
+  COMPOSITOR_NOTICE_TRACK_AT_CAPACITY,
+  COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD,
+} from "@/lib/ritmo-terminologia";
+import {
+  applyDrumPatternToPiece,
+  getCompositorDrumPatternById,
+  type CompositorDrumPatternId,
+} from "@/lib/compositor-drum-patterns";
+
+const EDITOR_NOTICE_DISMISS_MS = 5000;
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const TAP_TEMPO_RESET_MS = 2200;
@@ -55,13 +82,14 @@ export type UseCompositorOptions = {
 export type UseCompositorResult = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
-  activePresetId: CompositorPresetId | null;
+  activeDrumPatternId: CompositorDrumPatternId | null;
   selectedEventId: string | null;
   cycleGolpes: number;
   cycleBeatDurations: MetronomeBeatDurationPattern;
   bpm: number;
   isPlaying: boolean;
   isPreviewingTrack: boolean;
+  isPreviewingCrop: boolean;
   cycleProgress: number | null;
   tapTempoTapCount: number;
   samplesLoading: boolean;
@@ -76,6 +104,11 @@ export type UseCompositorResult = {
   tonalidadComposicion: NotaIndex;
   setTonalidadComposicion: (value: NotaIndex) => void;
   addTrackEvent: (instrumentId?: CompositorInstrumentId) => void;
+  placeTrackEvent: (
+    instrumentId: CompositorInstrumentId,
+    partial: Partial<CompositorTrackEvent>,
+    options?: { rowId?: string; octaveExact?: boolean },
+  ) => string | null;
   updateTrackEvent: (
     eventId: string,
     patch: Partial<CompositorTrackEvent>,
@@ -86,11 +119,17 @@ export type UseCompositorResult = {
   tapTempo: () => void;
   start: () => Promise<void>;
   previewActiveTrack: () => Promise<void>;
+  previewPieceOnce: (piece: CompositorPiece) => Promise<void>;
+  previewPieceTrackOnce: (
+    piece: CompositorPiece,
+    instrumentId: CompositorInstrumentId,
+  ) => Promise<void>;
   stop: () => void;
   resetPiece: () => void;
-  applyPreset: (presetId: CompositorPresetId) => void;
+  applyDrumPattern: (patternId: CompositorDrumPatternId) => void;
   isPieceModifiedFromBaseline: boolean;
   discardCycleChanges: () => void;
+  editorNotice: string | null;
 } & UseCompositorCyclesResult;
 
 export function useCompositor({
@@ -103,12 +142,12 @@ export function useCompositor({
   );
   const [activeTrackId, setActiveTrackIdState] =
     useState<CompositorInstrumentId>("bateria");
-  const [activePresetId, setActivePresetId] = useState<CompositorPresetId | null>(
-    null,
-  );
+  const [activeDrumPatternId, setActiveDrumPatternId] =
+    useState<CompositorDrumPatternId | null>(null);
   const [selectedEventId, setSelectedEventIdState] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPreviewingTrack, setIsPreviewingTrack] = useState(false);
+  const [isPreviewingCrop, setIsPreviewingCrop] = useState(false);
   const [cycleProgress, setCycleProgress] = useState<number | null>(null);
   const [tapTempoTapCount, setTapTempoTapCount] = useState(0);
   const [samplesLoading, setSamplesLoading] = useState(false);
@@ -116,12 +155,15 @@ export function useCompositor({
   const [baselinePiece, setBaselinePiece] = useState<CompositorPiece>(
     createDefaultCompositorPiece,
   );
+  const [editorNotice, setEditorNotice] = useState<string | null>(null);
 
   const pieceRef = useRef(piece);
   const isPlayingRef = useRef(false);
   const isPreviewingRef = useRef(false);
+  const isPreviewingCropRef = useRef(false);
   const tapTimestampsRef = useRef<number[]>([]);
   const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const engineRef = useRef<CompositorEngine | null>(null);
   const samplesReadyRef = useRef(false);
@@ -135,6 +177,32 @@ export function useCompositor({
     baselinePiece,
   );
 
+  const showEditorNotice = useCallback((message: string) => {
+    setEditorNotice(message);
+
+    if (editorNoticeTimerRef.current !== null) {
+      clearTimeout(editorNoticeTimerRef.current);
+    }
+
+    editorNoticeTimerRef.current = setTimeout(() => {
+      setEditorNotice(null);
+      editorNoticeTimerRef.current = null;
+    }, EDITOR_NOTICE_DISMISS_MS);
+  }, []);
+
+  const notifyTrackOverflowIfNeeded = useCallback(
+    (nextPiece: CompositorPiece) => {
+      if (!pieceHasTrackOverflow(nextPiece)) {
+        return;
+      }
+
+      showEditorNotice(
+        COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD(formatTrackOverflowDetails(nextPiece)),
+      );
+    },
+    [showEditorNotice],
+  );
+
   useEffect(() => {
     const stored = readStoredCompositorPiece();
     const initial = stored ?? createDefaultCompositorPiece();
@@ -143,7 +211,8 @@ export function useCompositor({
     setBaselinePiece(cloneCompositorPiece(initial));
     setSelectedEventIdState(null);
     setHydrated(true);
-  }, []);
+    notifyTrackOverflowIfNeeded(initial);
+  }, [notifyTrackOverflowIfNeeded]);
 
   useEffect(() => {
     if (!hydrated) {
@@ -164,7 +233,7 @@ export function useCompositor({
 
   const updatePiece = useCallback(
     (updater: (current: CompositorPiece) => CompositorPiece) => {
-      setActivePresetId(null);
+      setActiveDrumPatternId(null);
       setPieceState((current) => normalizeCompositorPiece(updater(current)));
     },
     [],
@@ -174,8 +243,10 @@ export function useCompositor({
     engineRef.current?.stop();
     setIsPlaying(false);
     setIsPreviewingTrack(false);
+    setIsPreviewingCrop(false);
     isPlayingRef.current = false;
     isPreviewingRef.current = false;
+    isPreviewingCropRef.current = false;
     setCycleProgress(null);
   }, []);
 
@@ -246,6 +317,25 @@ export function useCompositor({
     [ensureAudioContext],
   );
 
+  const prepareSamplesForPiece = useCallback(
+    async (targetPiece: CompositorPiece) => {
+      setSamplesLoading(true);
+
+      try {
+        const audioContext = await ensureAudioContext();
+        const samples = await ensureCompositorSamplesForPiece(
+          audioContext,
+          targetPiece,
+        );
+        engineRef.current?.stop();
+        engineRef.current = createCompositorEngine(audioContext, samples);
+      } finally {
+        setSamplesLoading(false);
+      }
+    },
+    [ensureAudioContext],
+  );
+
   const handleProgress = useCallback((progress: number) => {
     setCycleProgress(progress);
   }, []);
@@ -301,6 +391,87 @@ export function useCompositor({
     }
   }, [activeTrackId, handleProgress, prepareSamplesForPlayback, stop]);
 
+  const previewPieceOnce = useCallback(
+    async (previewPiece: CompositorPiece) => {
+      if (isPreviewingCropRef.current) {
+        stop();
+        return;
+      }
+
+      if (isPlayingRef.current || isPreviewingRef.current) {
+        stop();
+      }
+
+      try {
+        await prepareSamplesForPiece(previewPiece);
+        setCycleProgress(0);
+        setIsPreviewingCrop(true);
+        isPreviewingCropRef.current = true;
+
+        engineRef.current?.playOnce(previewPiece, handleProgress, () => {
+          setIsPreviewingCrop(false);
+          isPreviewingCropRef.current = false;
+          setCycleProgress(null);
+        });
+      } catch {
+        stop();
+      }
+    },
+    [handleProgress, prepareSamplesForPiece, stop],
+  );
+
+  const previewPieceTrackOnce = useCallback(
+    async (
+      previewPiece: CompositorPiece,
+      instrumentId: CompositorInstrumentId,
+    ) => {
+      if (isPreviewingRef.current) {
+        stop();
+        return;
+      }
+
+      if (isPreviewingCropRef.current) {
+        stop();
+      }
+
+      if (isPlayingRef.current) {
+        return;
+      }
+
+      try {
+        setSamplesLoading(true);
+
+        const audioContext = await ensureAudioContext();
+        const samples = await ensureCompositorSamplesForPiece(
+          audioContext,
+          previewPiece,
+          { includeInstrumentId: instrumentId },
+        );
+        engineRef.current?.stop();
+        engineRef.current = createCompositorEngine(audioContext, samples);
+        setCycleProgress(0);
+        setIsPreviewingTrack(true);
+        isPreviewingRef.current = true;
+
+        engineRef.current?.playSingleCycle(
+          previewPiece,
+          instrumentId,
+          handleProgress,
+          () => {
+            setIsPreviewingTrack(false);
+            isPreviewingRef.current = false;
+            setCycleProgress(null);
+          },
+        );
+      } catch {
+        stop();
+      } finally {
+        setSamplesLoading(false);
+      }
+    },
+    [ensureAudioContext, handleProgress, stop],
+  );
+
   const restartIfPlaying = useCallback(() => {
     if (!isPlayingRef.current) {
       return;
@@ -348,10 +519,91 @@ export function useCompositor({
     [restartIfPlaying, updatePiece],
   );
 
+  const placeTrackEvent = useCallback(
+    (
+      instrumentId: CompositorInstrumentId,
+      partial: Partial<CompositorTrackEvent>,
+      options?: { rowId?: string; octaveExact?: boolean },
+    ): string | null => {
+      const currentPiece = pieceRef.current;
+      const gridSteps = getCompositorGridSteps(currentPiece);
+      const track = getCompositorTrack(currentPiece, instrumentId);
+      const startStep = partial.startStep ?? 0;
+
+      if (track.events.length >= COMPOSITOR_MAX_EVENTS_PER_TRACK) {
+        showEditorNotice(
+          COMPOSITOR_NOTICE_TRACK_AT_CAPACITY(getInstrumentLabel(instrumentId)),
+        );
+        return null;
+      }
+
+      if (instrumentId === "bateria") {
+        const drumSound = (partial.drumSound ?? "kick") as CompositorDrumSound;
+
+        if (isDrumCellOccupied(track.events, drumSound, startStep)) {
+          showEditorNotice(COMPOSITOR_NOTICE_CELL_OCCUPIED);
+          return null;
+        }
+      } else if (isMelodicCompositorInstrument(instrumentId)) {
+        const octaveExact = options?.octaveExact ?? true;
+        const rowId = options?.rowId;
+
+        if (!rowId) {
+          return null;
+        }
+
+        const resolvedEvents = track.events.map((event) => ({
+          ...event,
+          note: resolveEventMelodicNote(
+            event,
+            currentPiece.tonalidadComposicion,
+            instrumentId,
+          ),
+        }));
+        const rows = buildMelodicTimelineRows(resolvedEvents, octaveExact);
+
+        if (isMelodicCellOccupied(
+          track.events,
+          rowId,
+          startStep,
+          (event) => getMelodicEventRowId(event, rows, octaveExact),
+        )) {
+          showEditorNotice(COMPOSITOR_NOTICE_CELL_OCCUPIED);
+          return null;
+        }
+      }
+
+      let placedEventId: string | null = null;
+
+      updatePiece((current) => {
+        const next = addCompositorTrackEvent(current, instrumentId, partial);
+        const newEvent = getCompositorTrack(next, instrumentId).events.at(-1);
+        placedEventId = newEvent?.id ?? null;
+        return next;
+      });
+
+      if (placedEventId) {
+        setSelectedEventIdState(placedEventId);
+      }
+
+      restartIfPlaying();
+      return placedEventId;
+    },
+    [restartIfPlaying, showEditorNotice, updatePiece],
+  );
+
   const addTrackEvent = useCallback(
     (instrumentId: CompositorInstrumentId = activeTrackId) => {
       const gridSteps = getCompositorGridSteps(pieceRef.current);
       const track = getCompositorTrack(pieceRef.current, instrumentId);
+
+      if (track.events.length >= COMPOSITOR_MAX_EVENTS_PER_TRACK) {
+        showEditorNotice(
+          COMPOSITOR_NOTICE_TRACK_AT_CAPACITY(getInstrumentLabel(instrumentId)),
+        );
+        return;
+      }
+
       const occupied = new Set<number>();
 
       for (const event of track.events) {
@@ -386,7 +638,7 @@ export function useCompositor({
 
       restartIfPlaying();
     },
-    [activeTrackId, restartIfPlaying, updatePiece],
+    [activeTrackId, restartIfPlaying, showEditorNotice, updatePiece],
   );
 
   const updateTrackEvent = useCallback(
@@ -494,11 +746,12 @@ export function useCompositor({
       const normalized = normalizeCompositorPiece(cloneCompositorPiece(nextPiece));
       setPieceState(normalized);
       setBaselinePiece(cloneCompositorPiece(normalized));
-      setActivePresetId(null);
+      setActiveDrumPatternId(null);
       setActiveTrackIdState("bateria");
       setSelectedEventIdState(null);
+      notifyTrackOverflowIfNeeded(normalized);
     },
-    [stop],
+    [notifyTrackOverflowIfNeeded, stop],
   );
 
   const cycles = useCompositorCycles({
@@ -511,13 +764,13 @@ export function useCompositor({
   });
 
   const {
-    clearActiveCycle,
     savedCycles,
     activeCycleId,
     activeCycle,
     cyclesLoading,
     cyclesBusy,
     cyclesError,
+    cyclesNotice,
     refreshCycles,
     saveCurrentCycle,
     updateActiveCycle,
@@ -525,6 +778,9 @@ export function useCompositor({
     renameCycle,
     deleteCycle,
     suggestCycleName,
+    clearActiveCycle,
+    setCyclePublic,
+    importCommunityCycle,
   } = cycles;
 
   const resetPiece = useCallback(() => {
@@ -532,30 +788,29 @@ export function useCompositor({
     const next = createDefaultCompositorPiece();
     setPieceState(next);
     setBaselinePiece(cloneCompositorPiece(next));
-    setActivePresetId(null);
+    setActiveDrumPatternId(null);
     setActiveTrackIdState("bateria");
     setSelectedEventIdState(null);
     clearActiveCycle();
   }, [clearActiveCycle, stop]);
 
-  const applyPreset = useCallback(
-    (presetId: CompositorPresetId) => {
-      const preset = getCompositorPresetById(presetId);
+  const applyDrumPattern = useCallback(
+    (patternId: CompositorDrumPatternId) => {
+      const pattern = getCompositorDrumPatternById(patternId);
 
-      if (!preset) {
+      if (!pattern) {
         return;
       }
 
       stop();
-      const next = cloneCompositorPiece(preset.piece);
+      const next = applyDrumPatternToPiece(pieceRef.current, pattern);
       setPieceState(next);
-      setBaselinePiece(cloneCompositorPiece(next));
-      setActivePresetId(presetId);
+      setActiveDrumPatternId(patternId);
       setActiveTrackIdState("bateria");
       setSelectedEventIdState(null);
-      clearActiveCycle();
+      notifyTrackOverflowIfNeeded(next);
     },
-    [clearActiveCycle, stop],
+    [notifyTrackOverflowIfNeeded, stop],
   );
 
   const discardCycleChanges = useCallback(() => {
@@ -580,19 +835,24 @@ export function useCompositor({
       if (tapResetTimerRef.current !== null) {
         clearTimeout(tapResetTimerRef.current);
       }
+
+      if (editorNoticeTimerRef.current !== null) {
+        clearTimeout(editorNoticeTimerRef.current);
+      }
     };
   }, [stop]);
 
   return {
     piece,
     activeTrackId,
-    activePresetId,
+    activeDrumPatternId,
     selectedEventId,
     cycleGolpes: piece.cycleGolpes,
     cycleBeatDurations: piece.cycleBeatDurations,
     bpm: piece.bpm,
     isPlaying,
     isPreviewingTrack,
+    isPreviewingCrop,
     cycleProgress,
     tapTempoTapCount,
     samplesLoading,
@@ -604,23 +864,28 @@ export function useCompositor({
     tonalidadComposicion: piece.tonalidadComposicion,
     setTonalidadComposicion,
     addTrackEvent,
+    placeTrackEvent,
     updateTrackEvent,
     removeTrackEvent,
     toggleTrack,
     tapTempo,
     start,
     previewActiveTrack,
+    previewPieceOnce,
+    previewPieceTrackOnce,
     stop,
     resetPiece,
-    applyPreset,
+    applyDrumPattern,
     isPieceModifiedFromBaseline,
     discardCycleChanges,
+    editorNotice,
     savedCycles,
     activeCycleId,
     activeCycle,
     cyclesLoading,
     cyclesBusy,
     cyclesError,
+    cyclesNotice,
     refreshCycles,
     saveCurrentCycle,
     updateActiveCycle,
@@ -629,6 +894,8 @@ export function useCompositor({
     deleteCycle,
     suggestCycleName,
     clearActiveCycle,
+    setCyclePublic,
+    importCommunityCycle,
   };
 }
 

@@ -70,7 +70,7 @@ export function CompositorOptionCarousel<T extends string>({
         <ChevronLeft className="size-4 text-text-primary" aria-hidden="true" />
       </TapButton>
 
-      <div className="min-w-0 flex-1 px-1 text-center">
+      <div className="tool-control-center px-1 text-center">
         <div className="relative">
           <div
             className="pointer-events-none absolute inset-y-1 left-0 z-10 w-5 rounded-l-[8px] bg-gradient-to-r from-bg-card via-bg-card/80 to-transparent"

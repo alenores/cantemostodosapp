@@ -18,7 +18,6 @@ import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFie
 import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
 import {
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
-  CIFRADO_COMPOSITOR_ACTIVE_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
   CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
@@ -151,6 +150,10 @@ import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
 import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
 
+/** Acordes del editor (naranja escenario); el resto del panel sigue celeste. */
+const CIFRADO_EDITOR_ACORDE_TEXT_CLASS = "text-accent";
+const CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS = "bg-accent text-white";
+
 type LineDeleteConfirmKind = "line" | "acordes" | "compases";
 
 type CifradoEditorProps = {
@@ -206,10 +209,45 @@ const textareaClassName =
 /** Casillas clicables a la derecha de la letra para marcar compases instrumentales. */
 const COMPAS_EXTENSION_SLOTS = 24;
 
+/** Ancho exterior del armado en vista celular (max-w del contenedor). */
+const CELULAR_ARMADO_OUTER_WIDTH_PX = 390;
+/** px-2 del scroll del armado (8px + 8px). */
+const CELULAR_ARMADO_SCROLL_PADDING_X_PX = 16;
+/** Ancho útil donde termina el renglón en celular (donde overflow-hidden recorta). */
+const CELULAR_ARMADO_CONTENT_WIDTH_PX =
+  CELULAR_ARMADO_OUTER_WIDTH_PX - CELULAR_ARMADO_SCROLL_PADDING_X_PX;
+
 const NOTA_INDICES = Array.from({ length: 12 }, (_, index) => index as NotaIndex);
 
 function getCompasExtensionStart(textLength: number): number {
   return textLength === 0 ? 1 : textLength;
+}
+
+function CifradoCelularLimitGuide() {
+  return (
+    <>
+      <div
+        className="pointer-events-none sticky top-0 z-[2] mb-1"
+        aria-hidden="true"
+      >
+        <div
+          className="relative max-w-full"
+          style={{ width: `${CELULAR_ARMADO_CONTENT_WIDTH_PX}px` }}
+        >
+          <span className="absolute right-0 top-0 z-[1] translate-x-1/2 whitespace-nowrap rounded-md border border-red-300 bg-red-100/90 px-2.5 py-1 text-[10px] font-bold leading-none text-red-500 shadow-sm">
+            Posible límite de celular
+          </span>
+        </div>
+      </div>
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 z-[1] max-w-full"
+        style={{ width: `${CELULAR_ARMADO_CONTENT_WIDTH_PX}px` }}
+        aria-hidden="true"
+      >
+        <div className="absolute bottom-0 right-0 top-0 w-0 border-r-2 border-dashed border-red-300/80" />
+      </div>
+    </>
+  );
 }
 
 function splitLyricsLines(text: string): string[] {
@@ -339,7 +377,7 @@ function ChordPicker({
               onClick={() => handleSelectNote(index)}
               className={`rounded-lg px-2 py-1.5 text-xs ${
                 isSelected
-                  ? `${CIFRADO_COMPOSITOR_ACTIVE_CLASS} font-semibold`
+                  ? `${CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS} font-semibold`
                   : enEscala
                     ? "bg-bg-dark font-semibold text-text-primary"
                     : "bg-bg-dark/50 font-normal text-text-muted opacity-60"
@@ -362,7 +400,7 @@ function ChordPicker({
             onClick={() => setModifier(item.id)}
             className={`rounded-full px-2.5 py-1 text-xs ${
               modifier !== null && modifier === item.id
-                ? CIFRADO_COMPOSITOR_ACTIVE_CLASS
+                ? CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS
                 : "bg-bg-dark text-text-secondary"
             }`}
           >
@@ -380,7 +418,7 @@ function ChordPicker({
             }
           }}
           disabled={!canApply}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold disabled:opacity-40 ${CIFRADO_COMPOSITOR_ACTIVE_CLASS}`}
+          className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold disabled:opacity-40 ${CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS}`}
         >
           Aplicar
         </TapButton>
@@ -1041,12 +1079,6 @@ function CifradoLineEditor({
     : mergePreview
       ? "bg-transparent"
       : "bg-compositor-config-bg";
-  const extensionBgClass = isLineLocked
-    ? "border-transparent bg-transparent opacity-50"
-    : mergePreview
-      ? "border-compositor-config-border/60 bg-transparent"
-      : "border-compositor-config-border bg-compositor-config-bg";
-
   useEffect(() => {
     onMarkersReady?.(lineIndex, compasMarkers);
   }, [compasMarkers, lineIndex, onMarkersReady]);
@@ -1151,7 +1183,7 @@ function CifradoLineEditor({
             <div
               contentEditable
               suppressContentEditableWarning
-              className="inline min-w-[1ch] flex-1 whitespace-pre-wrap break-words outline-none focus:ring-1 focus:ring-compositor-config/40"
+              className="inline-block min-w-[1ch] shrink-0 whitespace-pre outline-none focus:ring-1 focus:ring-compositor-config/40"
               onBlur={(event) =>
                 onLineTextChange?.(
                   lineIndex,
@@ -1178,17 +1210,15 @@ function CifradoLineEditor({
           )}
 
           <span
-            className={`ml-1 inline-flex min-h-[1.25rem] min-w-[10ch] flex-1 border-l border-dashed pl-0.5 ${extensionBgClass} ${
-              extensionClickable ? "" : "opacity-70"
-            } ${overlayLocked ? "pointer-events-none" : ""}`}
-            aria-label="Espacio instrumental"
+            className={`ml-1 inline-flex ${overlayLocked ? "pointer-events-none" : ""}`}
+            aria-hidden="true"
           >
             {Array.from({ length: COMPAS_EXTENSION_SLOTS }).map((_, slot) => (
               <span
                 key={`ext-${slot}`}
                 data-char-index={extensionStart + slot}
-                className={`inline-block min-w-[1ch] flex-1 ${
-                  extensionClickable ? "hover:bg-compositor-config-bg" : ""
+                className={`inline-block min-w-[1ch] ${
+                  extensionClickable ? "hover:bg-compositor-config-bg/60" : ""
                 }`}
               >
                 {" "}
@@ -1221,14 +1251,14 @@ function CifradoLineEditor({
               style={{ left: position.center }}
             >
               <span
-                className={`absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 text-xs font-bold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS}`}
+                className={`absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 text-xs font-bold ${CIFRADO_EDITOR_ACORDE_TEXT_CLASS}`}
                 style={{ top: 6, left: 0 }}
               >
                 {formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}
               </span>
               <span
                 className={`absolute w-px -translate-x-1/2 ${
-                  isDragging ? "bg-compositor-config" : "bg-compositor-config/50"
+                  isDragging ? "bg-accent" : "bg-accent/50"
                 }`}
                 style={{
                   top: stemTop,
@@ -1238,7 +1268,7 @@ function CifradoLineEditor({
                 aria-hidden="true"
               />
               <span
-                className="absolute size-1 -translate-x-1/2 rounded-full bg-compositor-config"
+                className="absolute size-1 -translate-x-1/2 rounded-full bg-accent"
                 style={{ top: dotTop, left: 0 }}
                 aria-hidden="true"
               />
@@ -1624,18 +1654,18 @@ function CifradoPreviewLine({
             style={{ left: position.center }}
           >
             <span
-              className={`absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 text-xs font-bold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS}`}
+              className={`absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 text-xs font-bold ${CIFRADO_EDITOR_ACORDE_TEXT_CLASS}`}
               style={{ top: 6, left: 0 }}
             >
               {formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}
             </span>
             <span
-              className="absolute w-px -translate-x-1/2 bg-compositor-config/50"
+              className="absolute w-px -translate-x-1/2 bg-accent/50"
               style={{ top: stemTop, left: 0, height: stemHeight }}
               aria-hidden="true"
             />
             <span
-              className="absolute size-1 -translate-x-1/2 rounded-full bg-compositor-config"
+              className="absolute size-1 -translate-x-1/2 rounded-full bg-accent"
               style={{ top: dotTop, left: 0 }}
               aria-hidden="true"
             />
@@ -3287,6 +3317,7 @@ export default function CifradoEditor({
     vistaArmado === "celular"
       ? "mx-auto w-full max-w-[390px]"
       : "w-full";
+  const showCelularLimitGuide = vistaArmado === "pc";
 
   const editorTree = (
     <div
@@ -3582,9 +3613,11 @@ export default function CifradoEditor({
                 >
                 <div
                   data-tool-vertical-scroll=""
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-2 touch-pan-y"
+                  className="relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-2 touch-pan-y"
                   onWheel={isDesktop ? forwardVerticalWheel : undefined}
                 >
+                  <div className="relative">
+                    {showCelularLimitGuide ? <CifradoCelularLimitGuide /> : null}
                   {lines.map((line, lineIndex) => {
                     const isEditing = editingLineIndex === lineIndex;
                     const isMergeDestination =
@@ -3703,6 +3736,7 @@ export default function CifradoEditor({
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               </div>
               </div>

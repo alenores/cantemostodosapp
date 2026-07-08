@@ -51,7 +51,7 @@ const MODIFICADOR_POR_NUMERO_CROMATICO_MENOR: (Modificador | null)[] = [
   "m", // 8 — v
   "", // 9 — VI
   null, // 10
-  "7", // 11 — VII
+  "", // 11 — VII (mayor en menor natural)
   null, // 12
 ];
 

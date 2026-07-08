@@ -10,6 +10,7 @@ import {
   type CompositorTrackEvent,
 } from "@/lib/compositor";
 import type { NotaIndex } from "@/lib/cifrado";
+import { DEFAULT_MODO_TONAL, type ModoTonal } from "@/lib/cifrado-escala";
 import {
   buildDefaultAssignments,
   convertMidiToCompositorPiece,
@@ -41,13 +42,16 @@ function rebuildReviewSession(base: {
   crop: MidiImportCropSelection;
   assignments: MidiTrackAssignment[];
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion?: ModoTonal;
 }): MidiImportSession {
   const cycleGolpes = getCropWindowGolpes(base.crop);
+  const modoTonalComposicion = base.modoTonalComposicion ?? DEFAULT_MODO_TONAL;
 
   const { piece, eventSources } = convertMidiToCompositorPiece({
     parsed: base.parsed,
     assignments: base.assignments,
     tonalidadComposicion: base.tonalidadComposicion,
+    modoTonalComposicion,
     cycleGolpes,
     selectedLayers: base.crop.selectedLayers,
   });
@@ -69,6 +73,7 @@ function rebuildReviewSession(base: {
     eventSources,
     conflicts,
     tonalidadComposicion: base.tonalidadComposicion,
+    modoTonalComposicion,
     cycleGolpes,
   };
 }
@@ -141,6 +146,7 @@ export function useCompositorMidiImport() {
         fileName: file.name,
         parsed,
         tonalidadComposicion,
+        modoTonalComposicion: DEFAULT_MODO_TONAL,
         beatsPerBar,
         totalBeats,
         step: "crop",
@@ -223,6 +229,7 @@ export function useCompositorMidiImport() {
       crop: current.crop,
       assignments,
       tonalidadComposicion: current.tonalidadComposicion,
+      modoTonalComposicion: current.modoTonalComposicion,
     });
 
     setFocusTarget(null);
@@ -288,6 +295,7 @@ export function useCompositorMidiImport() {
           crop: current.crop,
           assignments,
           tonalidadComposicion: current.tonalidadComposicion,
+          modoTonalComposicion: current.modoTonalComposicion,
         });
       });
     },
@@ -303,6 +311,23 @@ export function useCompositorMidiImport() {
           crop: current.crop,
           assignments: current.assignments,
           tonalidadComposicion,
+          modoTonalComposicion: current.modoTonalComposicion,
+        }),
+      );
+    },
+    [recomputeReview],
+  );
+
+  const setModoTonal = useCallback(
+    (modoTonalComposicion: ModoTonal) => {
+      recomputeReview((current) =>
+        rebuildReviewSession({
+          fileName: current.fileName,
+          parsed: current.parsed,
+          crop: current.crop,
+          assignments: current.assignments,
+          tonalidadComposicion: current.tonalidadComposicion,
+          modoTonalComposicion,
         }),
       );
     },
@@ -431,6 +456,7 @@ export function useCompositorMidiImport() {
     backToCrop,
     setTrackAssignment,
     setTonalidad,
+    setModoTonal,
     updateDraftEvent,
     removeDraftEvent,
     focusConflict,

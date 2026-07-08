@@ -317,6 +317,7 @@ export function buildDrumPatternPreviewPiece(
       cycleBeatDurations: createFourFourBeatDurations(pattern.cycleGolpes),
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
       tonalidadComposicion: 0,
+      modoTonalComposicion: "mayor",
       tracks: [
         { instrumentId: "bateria", enabled: true, events: [] },
         { instrumentId: "guitarra", enabled: false, events: [] },

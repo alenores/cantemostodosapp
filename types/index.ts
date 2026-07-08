@@ -7,6 +7,7 @@ export type Sala = {
 };
 
 import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 
 export type CancionGuardada = {
   id: number;
@@ -19,6 +20,7 @@ export type CancionGuardada = {
   cifrado?: CifradoData | null;
   compas_config?: CompasConfig | null;
   tonalidad_default?: NotaIndex | null;
+  modo_tonal_default?: ModoTonal | null;
   bpm_default?: number | null;
   tiene_cifrado_avanzado: boolean;
   created_at: string;
@@ -39,11 +41,13 @@ export type CancionCifradoDetalle = Pick<
   | "cifrado"
   | "compas_config"
   | "tonalidad_default"
+  | "modo_tonal_default"
   | "bpm_default"
   | "tiene_cifrado_avanzado"
 > & {
   cifrado: CifradoData;
   tonalidad_default: NotaIndex;
+  modo_tonal_default: ModoTonal;
   bpm_default: number;
 };
 

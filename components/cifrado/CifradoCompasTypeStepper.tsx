@@ -2,53 +2,41 @@
 
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import {
-  cycleTipoCompas,
-  getBeatCountForCompas,
-  tipoCompasFromBeatCount,
-  TIPO_COMPAS_ORDER,
-  type TipoCompas,
-} from "@/lib/cifrado";
-import { RITMO_LABEL_COMPAS } from "@/lib/ritmo-terminologia";
+  BEATS_PER_MEASURE_MAX,
+  BEATS_PER_MEASURE_MIN,
+} from "@/lib/metronomo";
+import { RITMO_LABEL_GOLPES_TAB } from "@/lib/ritmo-terminologia";
 
 type CifradoCompasTypeStepperProps = {
-  tipoCompas: TipoCompas;
-  onTipoCompasChange: (tipo: TipoCompas) => void;
+  cycleGolpes: number;
+  onCycleGolpesChange: (golpes: number) => void;
   labelClass: string;
   density?: "default" | "compact";
 };
 
 export function CifradoCompasTypeStepper({
-  tipoCompas,
-  onTipoCompasChange,
+  cycleGolpes,
+  onCycleGolpesChange,
   labelClass,
   density = "compact",
 }: CifradoCompasTypeStepperProps) {
-  const typeIndex = TIPO_COMPAS_ORDER.indexOf(tipoCompas);
-  const beatCount = getBeatCountForCompas(tipoCompas);
-
   return (
     <div className="min-w-[8.5rem] shrink-0">
-      <p className={labelClass}>{RITMO_LABEL_COMPAS}</p>
+      <p className={labelClass}>{RITMO_LABEL_GOLPES_TAB}</p>
       <div className="mt-1.5">
         <ToolNumericStepper
-          value={beatCount}
+          value={cycleGolpes}
           density={density}
-          decrementDisabled={typeIndex <= 0}
-          incrementDisabled={typeIndex >= TIPO_COMPAS_ORDER.length - 1}
-          decrementAriaLabel="Compás anterior"
-          incrementAriaLabel="Compás siguiente"
-          inputId="cifrado-tipo-compas"
-          min={3}
-          max={6}
-          onDecrement={() => onTipoCompasChange(cycleTipoCompas(tipoCompas, -1))}
-          onIncrement={() => onTipoCompasChange(cycleTipoCompas(tipoCompas, 1))}
-          onSetValue={(value) => {
-            const nextTipo = tipoCompasFromBeatCount(value);
-
-            if (nextTipo) {
-              onTipoCompasChange(nextTipo);
-            }
-          }}
+          decrementDisabled={cycleGolpes <= BEATS_PER_MEASURE_MIN}
+          incrementDisabled={cycleGolpes >= BEATS_PER_MEASURE_MAX}
+          decrementAriaLabel="Reducir golpes"
+          incrementAriaLabel="Aumentar golpes"
+          inputId="cifrado-cycle-golpes"
+          min={BEATS_PER_MEASURE_MIN}
+          max={BEATS_PER_MEASURE_MAX}
+          onDecrement={() => onCycleGolpesChange(cycleGolpes - 1)}
+          onIncrement={() => onCycleGolpesChange(cycleGolpes + 1)}
+          onSetValue={(value) => onCycleGolpesChange(value)}
         />
       </div>
     </div>

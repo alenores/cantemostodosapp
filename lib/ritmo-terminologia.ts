@@ -321,6 +321,29 @@ export const CIFRADO_HELP_APLICAR_NUMERO_CICLOS =
 export const CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES =
   "Aplicar a todos los renglones";
 
+export function getCifradoConfirmAplicarCiclosTodosRenglonesMessage(
+  cycleCount: number,
+  lineCount: number,
+  hasExistingCompases: boolean,
+): string {
+  const base = `¿Aplicar ${cycleCount} compase${cycleCount === 1 ? "" : "s"} en los ${lineCount} renglón${lineCount === 1 ? "" : "es"}?`;
+
+  if (hasExistingCompases) {
+    return `Algunos renglones ya tienen compases. Se reemplazarán en todos los renglones. ${base}`;
+  }
+
+  return base;
+}
+
+export const CIFRADO_CONFIRM_DELETE_LINE_MESSAGE =
+  "¿Eliminar este renglón? Se borrará la letra, los acordes y los compases.";
+
+export const CIFRADO_CONFIRM_DELETE_LINE_ACORDES_MESSAGE =
+  "¿Eliminar todos los acordes de este renglón?";
+
+export const CIFRADO_CONFIRM_DELETE_LINE_COMPASES_MESSAGE =
+  "¿Eliminar todos los compases de este renglón?";
+
 export const CIFRADO_LABEL_PEGAR_EN_RENGLON = "Pegar en renglón";
 
 export const CIFRADO_LABEL_RENGLON_DESTINO = "¿En qué renglón querés pegarlo?";

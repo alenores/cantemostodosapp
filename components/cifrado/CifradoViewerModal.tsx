@@ -19,6 +19,7 @@ import {
   type CompasMarker,
   type NotaIndex,
 } from "@/lib/cifrado";
+import { DEFAULT_MODO_TONAL, type ModoTonal } from "@/lib/cifrado-escala";
 import {
   readNotacionAcordesPreferida,
   writeNotacionAcordesPreferida,
@@ -166,6 +167,7 @@ export default function CifradoViewerModal({
 }: CifradoViewerModalProps) {
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
+  const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [bpm, setBpm] = useState(120);
   const [playing, setPlaying] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -262,6 +264,7 @@ export default function CifradoViewerModal({
     }
 
     setTonalidadIndex(detalle.tonalidad_default);
+    setModoTonal(detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL);
     setBpm(detalle.bpm_default);
     setPlaying(false);
     setActiveBeat(null);
@@ -518,10 +521,12 @@ export default function CifradoViewerModal({
     showCompas,
     notacion,
     tonalidadIndex,
+    modoTonal,
     bpm,
     tapCount,
     onNotacionChange: handleNotacionChange,
     onTonalidadChange: setTonalidadIndex,
+    onModoTonalChange: setModoTonal,
     onBpmChange: setBpm,
     onTapTempo: handleTapTempo,
   };

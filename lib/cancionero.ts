@@ -9,7 +9,13 @@ import {
   type CompasConfig,
   type NotaIndex,
 } from "@/lib/cifrado";
+import {
+  DEFAULT_MODO_TONAL,
+  normalizeModoTonal,
+  type ModoTonal,
+} from "@/lib/cifrado-escala";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isMissingColumnError } from "@/lib/supabase/errors";
 
 export type CancioneroFormData = {
   nombre: string;
@@ -153,14 +159,29 @@ export async function fetchCancionCifradoDetalle(
   supabase: SupabaseClient,
   id: number,
 ): Promise<CancionCifradoDetalle | null> {
-  const { data, error } = await supabase
+  const selectWithModo =
+    "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default, tiene_cifrado_avanzado";
+  const selectBase =
+    "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, bpm_default, tiene_cifrado_avanzado";
+
+  const primary = await supabase
     .from("canciones_guardadas")
-    .select(
-      "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, bpm_default, tiene_cifrado_avanzado",
-    )
+    .select(selectWithModo)
     .eq("id", id)
     .is("sala_id", null)
     .maybeSingle();
+
+  const fallback =
+    primary.error && isMissingColumnError(primary.error)
+      ? await supabase
+          .from("canciones_guardadas")
+          .select(selectBase)
+          .eq("id", id)
+          .is("sala_id", null)
+          .maybeSingle()
+      : null;
+
+  const { data, error } = fallback ?? primary;
 
   if (error) {
     throw error;
@@ -171,6 +192,7 @@ export async function fetchCancionCifradoDetalle(
   }
 
   const cifrado = parseCifradoData(data.cifrado) ?? createEmptyCifrado();
+  const row = data as typeof data & { modo_tonal_default?: string | null };
 
   return {
     id: data.id,
@@ -181,6 +203,9 @@ export async function fetchCancionCifradoDetalle(
     compas_config: parseCompasConfig(data.compas_config),
     tonalidad_default: normalizeNotaIndex(
       data.tonalidad_default ?? DEFAULT_TONALIDAD,
+    ),
+    modo_tonal_default: normalizeModoTonal(
+      row.modo_tonal_default ?? DEFAULT_MODO_TONAL,
     ),
     bpm_default: Math.max(
       40,
@@ -228,6 +253,7 @@ export async function updateCancionCifradoAvanzado(
     cifrado: CifradoData;
     compas_config: CompasConfig | null;
     tonalidad_default: NotaIndex;
+    modo_tonal_default: ModoTonal;
     bpm_default: number;
   },
 ): Promise<void> {
@@ -258,6 +284,7 @@ export async function updateCancionCifradoAvanzado(
         cifrado: payload.cifrado,
         compas_config: payload.compas_config,
         tonalidad_default: payload.tonalidad_default,
+        modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
         bpm_default: clampedBpm,
         tiene_cifrado_avanzado: true,
       },

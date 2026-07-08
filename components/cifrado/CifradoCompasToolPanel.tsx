@@ -4,6 +4,7 @@ import {
   CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
+  CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS,
   cifradoEditorPcTabClass,
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
@@ -11,7 +12,7 @@ import { CifradoCompasTypeStepper } from "@/components/cifrado/CifradoCompasType
 import CifradoIntensidadPatternRow from "@/components/cifrado/CifradoIntensidadPatternRow";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
-import { MAX_COMPAS_PLACEMENT_CYCLE_COUNT, type TipoCompas } from "@/lib/cifrado";
+import { MAX_COMPAS_PLACEMENT_CYCLE_COUNT } from "@/lib/cifrado";
 import { formatCompositorCycleSummary } from "@/lib/compositor";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import { ritmoDesktopSectionTitleClass } from "@/lib/ritmo-compas-ui";
@@ -33,8 +34,8 @@ export type CifradoCompasToolTab = "componer" | "guardado";
 type CifradoCompasToolPanelProps = {
   tab: CifradoCompasToolTab;
   onTabChange: (tab: CifradoCompasToolTab) => void;
-  tipoCompas: TipoCompas;
-  onTipoCompasChange: (tipo: TipoCompas) => void;
+  cycleGolpes: number;
+  onCycleGolpesChange: (golpes: number) => void;
   intensidadPattern: MetronomeBeatLevel[];
   onCycleIntensidadSlot: (slotIndex: number) => void;
   showClearIntensidadSelection: boolean;
@@ -50,6 +51,113 @@ type CifradoCompasToolPanelProps = {
   onApplyCyclesToAllLines: () => void;
   variant?: "mobile" | "desktop";
 };
+
+function ComponerCycleControls({
+  cycleGolpes,
+  onCycleGolpesChange,
+  intensidadPattern,
+  onCycleIntensidadSlot,
+  showClearIntensidadSelection,
+  onClearIntensidadSelection,
+  sectionLabelClass,
+  fluidIntensidad = false,
+  className = "",
+}: Pick<
+  CifradoCompasToolPanelProps,
+  | "cycleGolpes"
+  | "onCycleGolpesChange"
+  | "intensidadPattern"
+  | "onCycleIntensidadSlot"
+  | "showClearIntensidadSelection"
+  | "onClearIntensidadSelection"
+> & { sectionLabelClass: string; fluidIntensidad?: boolean; className?: string }) {
+  return (
+    <div className={`${CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS} ${className}`.trim()}>
+      <div className="flex min-w-0 items-end gap-x-5">
+        <CifradoCompasTypeStepper
+          cycleGolpes={cycleGolpes}
+          onCycleGolpesChange={onCycleGolpesChange}
+          labelClass={sectionLabelClass}
+        />
+
+        <div className={fluidIntensidad ? "min-w-0 flex-1" : "shrink-0"}>
+          <p className={sectionLabelClass}>{RITMO_LABEL_INTENSIDAD}</p>
+          <div className="mt-1.5 min-w-0">
+            <CifradoIntensidadPatternRow
+              pattern={intensidadPattern}
+              onCycleSlot={onCycleIntensidadSlot}
+              showClearSelection={showClearIntensidadSelection}
+              onClearSelection={onClearIntensidadSelection}
+              fluid={fluidIntensidad}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuardadoCycleControls({
+  activeCycleId,
+  savedCycles,
+  cyclesLoading,
+  onRefreshCycles,
+  onSelectSavedCycle,
+  sectionLabelClass,
+  className = "",
+}: Pick<
+  CifradoCompasToolPanelProps,
+  | "activeCycleId"
+  | "savedCycles"
+  | "cyclesLoading"
+  | "onRefreshCycles"
+  | "onSelectSavedCycle"
+> & { sectionLabelClass: string; className?: string }) {
+  return (
+    <div
+      className={`${CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS} min-w-[min(100%,18rem)] ${className}`.trim()}
+    >
+      <div className="flex items-end gap-2">
+        <label className="min-w-0 flex-1">
+          <span className={sectionLabelClass}>{CIFRADO_LABEL_CICLOS_GUARDADOS}</span>
+          <select
+            value={activeCycleId ?? ""}
+            disabled={cyclesLoading}
+            onChange={(event) => {
+              const next = event.target.value;
+              onSelectSavedCycle(next ? next : null);
+            }}
+            className={`mt-1.5 w-full rounded-[10px] border bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-compositor-config disabled:opacity-50 ${
+              activeCycleId
+                ? "border-compositor-config/45 ring-1 ring-compositor-config/25"
+                : "border-border"
+            }`}
+          >
+            <option value="">{CIFRADO_LABEL_SIN_CICLO}</option>
+            {savedCycles.map((cycle) => (
+              <option key={cycle.id} value={cycle.id}>
+                {cycle.nombre} · {formatCompositorCycleSummary(cycle.piece)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <TapButton
+          type="button"
+          aria-label="Actualizar ciclos"
+          disabled={cyclesLoading}
+          onClick={() => void onRefreshCycles()}
+          className="mb-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-darker disabled:opacity-40"
+        >
+          <RefreshCw
+            className={`size-3.5 text-text-muted ${cyclesLoading ? "animate-spin" : ""}`}
+            aria-hidden="true"
+          />
+        </TapButton>
+      </div>
+    </div>
+  );
+}
 
 function CompasToolTabs({
   tab,
@@ -112,45 +220,61 @@ function PlacementCycleControls({
 
   if (variant === "desktop") {
     return (
-      <div className="flex shrink-0 items-end gap-4 border-l border-border/60 pl-5">
-        <div className="min-w-[8.5rem]">
-          <p className={labelClass}>{CIFRADO_LABEL_APLICAR_NUMERO_CICLOS}</p>
-          <ToolNumericStepper
-            value={placementCycleCount}
-            density="compact"
-            decrementDisabled={placementCycleCount <= 1}
-            incrementDisabled={placementCycleCount >= MAX_COMPAS_PLACEMENT_CYCLE_COUNT}
-            decrementAriaLabel="Reducir ciclos"
-            incrementAriaLabel="Aumentar ciclos"
-            inputId="cifrado-placement-cycle-count"
-            min={1}
-            max={MAX_COMPAS_PLACEMENT_CYCLE_COUNT}
-            onDecrement={() =>
-              onPlacementCycleCountChange(Math.max(1, placementCycleCount - 1))
-            }
-            onIncrement={() =>
-              onPlacementCycleCountChange(
-                Math.min(MAX_COMPAS_PLACEMENT_CYCLE_COUNT, placementCycleCount + 1),
-              )
-            }
-            onSetValue={(value) =>
-              onPlacementCycleCountChange(
-                Math.min(
-                  MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
-                  Math.max(1, value),
-                ),
-              )
-            }
-          />
+      <div className="flex shrink-0 items-stretch pl-4">
+        <span className="w-px shrink-0 self-stretch bg-border" aria-hidden="true" />
+
+        <div className="flex items-end pl-4">
+          <div className="min-w-[8.5rem]">
+            <p className={labelClass}>{CIFRADO_LABEL_APLICAR_NUMERO_CICLOS}</p>
+            <ToolNumericStepper
+              value={placementCycleCount}
+              density="compact"
+              decrementDisabled={placementCycleCount <= 1}
+              incrementDisabled={
+                placementCycleCount >= MAX_COMPAS_PLACEMENT_CYCLE_COUNT
+              }
+              decrementAriaLabel="Reducir ciclos"
+              incrementAriaLabel="Aumentar ciclos"
+              inputId="cifrado-placement-cycle-count"
+              min={1}
+              max={MAX_COMPAS_PLACEMENT_CYCLE_COUNT}
+              onDecrement={() =>
+                onPlacementCycleCountChange(Math.max(1, placementCycleCount - 1))
+              }
+              onIncrement={() =>
+                onPlacementCycleCountChange(
+                  Math.min(
+                    MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
+                    placementCycleCount + 1,
+                  ),
+                )
+              }
+              onSetValue={(value) =>
+                onPlacementCycleCountChange(
+                  Math.min(
+                    MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
+                    Math.max(1, value),
+                  ),
+                )
+              }
+            />
+          </div>
         </div>
 
-        <TapButton
-          type="button"
-          onClick={onApplyCyclesToAllLines}
-          className="shrink-0 rounded-[10px] border border-border bg-bg-card px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-bg-dark/60"
-        >
-          {CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES}
-        </TapButton>
+        <span
+          className="mx-4 w-px shrink-0 self-stretch bg-border"
+          aria-hidden="true"
+        />
+
+        <div className="flex items-end">
+          <TapButton
+            type="button"
+            onClick={onApplyCyclesToAllLines}
+            className="shrink-0 rounded-[10px] border border-border bg-bg-card px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-bg-dark/60"
+          >
+            {CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES}
+          </TapButton>
+        </div>
       </div>
     );
   }
@@ -198,8 +322,8 @@ function PlacementCycleControls({
 export function CifradoCompasToolPanel({
   tab,
   onTabChange,
-  tipoCompas,
-  onTipoCompasChange,
+  cycleGolpes,
+  onCycleGolpesChange,
   intensidadPattern,
   onCycleIntensidadSlot,
   showClearIntensidadSelection,
@@ -222,85 +346,48 @@ export function CifradoCompasToolPanel({
 
   if (variant === "desktop") {
     return (
-      <div className="flex min-w-0 flex-nowrap items-end gap-x-5">
-        <div className="shrink-0">
-          <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
+      <div className="flex min-w-0 w-full flex-col items-start gap-2">
+        <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
+
+        <div className="flex min-w-0 w-full items-stretch">
+          {tab === "guardado" ? (
+            <GuardadoCycleControls
+              activeCycleId={activeCycleId}
+              savedCycles={savedCycles}
+              cyclesLoading={cyclesLoading}
+              onRefreshCycles={onRefreshCycles}
+              onSelectSavedCycle={onSelectSavedCycle}
+              sectionLabelClass={sectionLabelClass}
+              className="min-w-0 flex-1"
+            />
+          ) : (
+            <ComponerCycleControls
+              cycleGolpes={cycleGolpes}
+              onCycleGolpesChange={onCycleGolpesChange}
+              intensidadPattern={intensidadPattern}
+              onCycleIntensidadSlot={onCycleIntensidadSlot}
+              showClearIntensidadSelection={showClearIntensidadSelection}
+              onClearIntensidadSelection={onClearIntensidadSelection}
+              sectionLabelClass={sectionLabelClass}
+              fluidIntensidad
+              className="min-w-0 flex-1"
+            />
+          )}
+
+          <PlacementCycleControls
+            placementCycleCount={placementCycleCount}
+            onPlacementCycleCountChange={onPlacementCycleCountChange}
+            onApplyCyclesToAllLines={onApplyCyclesToAllLines}
+            variant={variant}
+          />
         </div>
 
-        {tab === "guardado" ? (
-          <div className="flex min-w-[min(100%,18rem)] flex-1 items-end gap-2">
-            <label className="min-w-0 flex-1">
-              <span className={sectionLabelClass}>{CIFRADO_LABEL_CICLOS_GUARDADOS}</span>
-              <select
-                value={activeCycleId ?? ""}
-                disabled={cyclesLoading}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  onSelectSavedCycle(next ? next : null);
-                }}
-                className={`mt-1.5 w-full rounded-[10px] border bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-compositor-config disabled:opacity-50 ${
-                  activeCycleId
-                    ? "border-compositor-config/45 ring-1 ring-compositor-config/25"
-                    : "border-border"
-                }`}
-              >
-                <option value="">{CIFRADO_LABEL_SIN_CICLO}</option>
-                {savedCycles.map((cycle) => (
-                  <option key={cycle.id} value={cycle.id}>
-                    {cycle.nombre} · {formatCompositorCycleSummary(cycle.piece)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <TapButton
-              type="button"
-              aria-label="Actualizar ciclos"
-              disabled={cyclesLoading}
-              onClick={() => void onRefreshCycles()}
-              className="mb-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-darker disabled:opacity-40"
-            >
-              <RefreshCw
-                className={`size-3.5 text-text-muted ${cyclesLoading ? "animate-spin" : ""}`}
-                aria-hidden="true"
-              />
-            </TapButton>
-          </div>
-        ) : (
-          <div className="flex min-w-0 flex-1 items-end gap-x-5">
-            <CifradoCompasTypeStepper
-              tipoCompas={tipoCompas}
-              onTipoCompasChange={onTipoCompasChange}
-              labelClass={sectionLabelClass}
-            />
-
-            <div className="shrink-0">
-              <p className={sectionLabelClass}>{RITMO_LABEL_INTENSIDAD}</p>
-              <div className="mt-1.5">
-                <CifradoIntensidadPatternRow
-                  pattern={intensidadPattern}
-                  onCycleSlot={onCycleIntensidadSlot}
-                  showClearSelection={showClearIntensidadSelection}
-                  onClearSelection={onClearIntensidadSelection}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <PlacementCycleControls
-          placementCycleCount={placementCycleCount}
-          onPlacementCycleCountChange={onPlacementCycleCountChange}
-          onApplyCyclesToAllLines={onApplyCyclesToAllLines}
-          variant={variant}
-        />
-
         {cyclesError ? (
-          <p className="w-full text-[11px] text-[var(--tuner-lejos)]">{cyclesError}</p>
+          <p className="text-[11px] text-[var(--tuner-lejos)]">{cyclesError}</p>
         ) : null}
 
         {!cyclesLoading && tab === "guardado" && savedCycles.length === 0 ? (
-          <p className="w-full text-[11px] text-text-muted">
+          <p className="text-[11px] text-text-muted">
             No hay ciclos guardados. Creá uno en el Compositor.
           </p>
         ) : null}
@@ -313,64 +400,24 @@ export function CifradoCompasToolPanel({
       <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
 
       {tab === "guardado" ? (
-        <div className="flex items-end gap-2">
-          <label className="min-w-0 flex-1">
-            <span className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>
-              {CIFRADO_LABEL_CICLOS_GUARDADOS}
-            </span>
-            <select
-              value={activeCycleId ?? ""}
-              disabled={cyclesLoading}
-              onChange={(event) => {
-                const next = event.target.value;
-                onSelectSavedCycle(next ? next : null);
-              }}
-              className={`mt-1 w-full rounded-[10px] border bg-bg-darker px-2.5 py-2 text-xs font-semibold text-text-primary outline-none focus:border-compositor-config disabled:opacity-50 ${
-                activeCycleId
-                  ? "border-compositor-config/45 ring-1 ring-compositor-config/25"
-                  : "border-border"
-              }`}
-            >
-              <option value="">{CIFRADO_LABEL_SIN_CICLO}</option>
-              {savedCycles.map((cycle) => (
-                <option key={cycle.id} value={cycle.id}>
-                  {cycle.nombre} · {formatCompositorCycleSummary(cycle.piece)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <TapButton
-            type="button"
-            aria-label="Actualizar ciclos"
-            disabled={cyclesLoading}
-            onClick={() => void onRefreshCycles()}
-            className="mb-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-darker disabled:opacity-40"
-          >
-            <RefreshCw
-              className={`size-3.5 text-text-muted ${cyclesLoading ? "animate-spin" : ""}`}
-              aria-hidden="true"
-            />
-          </TapButton>
-        </div>
+        <GuardadoCycleControls
+          activeCycleId={activeCycleId}
+          savedCycles={savedCycles}
+          cyclesLoading={cyclesLoading}
+          onRefreshCycles={onRefreshCycles}
+          onSelectSavedCycle={onSelectSavedCycle}
+          sectionLabelClass={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}
+        />
       ) : (
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-          <CifradoCompasTypeStepper
-            tipoCompas={tipoCompas}
-            onTipoCompasChange={onTipoCompasChange}
-            labelClass={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}
-          />
-
-          <div className="shrink-0">
-            <p className={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}>{RITMO_LABEL_INTENSIDAD}</p>
-            <CifradoIntensidadPatternRow
-              pattern={intensidadPattern}
-              onCycleSlot={onCycleIntensidadSlot}
-              showClearSelection={showClearIntensidadSelection}
-              onClearSelection={onClearIntensidadSelection}
-            />
-          </div>
-        </div>
+        <ComponerCycleControls
+          cycleGolpes={cycleGolpes}
+          onCycleGolpesChange={onCycleGolpesChange}
+          intensidadPattern={intensidadPattern}
+          onCycleIntensidadSlot={onCycleIntensidadSlot}
+          showClearIntensidadSelection={showClearIntensidadSelection}
+          onClearIntensidadSelection={onClearIntensidadSelection}
+          sectionLabelClass={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}
+        />
       )}
 
       {cyclesError ? (

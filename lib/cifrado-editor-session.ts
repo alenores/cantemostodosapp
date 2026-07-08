@@ -4,6 +4,10 @@ import {
   type CompasConfig,
   type NotaIndex,
 } from "@/lib/cifrado";
+import {
+  DEFAULT_MODO_TONAL,
+  type ModoTonal,
+} from "@/lib/cifrado-escala";
 import { normalizeCompasConfig } from "@/lib/cifrado-intensidad";
 import { parseLetraTradicional } from "@/lib/cifrado-import";
 import type { CancionCifradoDetalle } from "@/types";
@@ -16,6 +20,7 @@ export type CifradoEditorSession = {
   cifrado?: CifradoData;
   compas_config?: CompasConfig | null;
   tonalidad_default?: NotaIndex;
+  modo_tonal_default?: ModoTonal;
   bpm_default?: number;
   importWarnings?: string[];
   skipIngreso?: boolean;
@@ -53,6 +58,7 @@ export function buildCifradoEditorSession(input: {
         bpm: input.detalle.bpm_default,
       },
       tonalidad_default: input.detalle.tonalidad_default,
+      modo_tonal_default: input.detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL,
       bpm_default: input.detalle.bpm_default,
       skipIngreso: true,
     };

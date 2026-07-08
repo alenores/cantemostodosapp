@@ -17,6 +17,7 @@ import {
   setCompositorCycleBeatDurationAtSlot,
   setCompositorCycleGolpes,
   setCompositorTonalidadComposicion,
+  setCompositorModoTonalComposicion,
   toggleCompositorTrack,
   updateCompositorTrackEvent,
   writeStoredCompositorPiece,
@@ -53,6 +54,7 @@ import {
   type MetronomeBeatDurationPattern,
 } from "@/lib/metronomo";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
   COMPOSITOR_NOTICE_CELL_OCCUPIED,
   COMPOSITOR_NOTICE_TRACK_AT_CAPACITY,
@@ -104,6 +106,8 @@ export type UseCompositorResult = {
   ) => void;
   tonalidadComposicion: NotaIndex;
   setTonalidadComposicion: (value: NotaIndex) => void;
+  modoTonalComposicion: ModoTonal;
+  setModoTonalComposicion: (value: ModoTonal) => void;
   addTrackEvent: (instrumentId?: CompositorInstrumentId) => void;
   placeTrackEvent: (
     instrumentId: CompositorInstrumentId,
@@ -549,6 +553,16 @@ export function useCompositor({
     [restartIfPlaying, updatePiece],
   );
 
+  const setModoTonalComposicion = useCallback(
+    (value: ModoTonal) => {
+      updatePiece((current) =>
+        setCompositorModoTonalComposicion(current, value),
+      );
+      restartIfPlaying();
+    },
+    [restartIfPlaying, updatePiece],
+  );
+
   const placeTrackEvent = useCallback(
     (
       instrumentId: CompositorInstrumentId,
@@ -913,6 +927,8 @@ export function useCompositor({
     setCycleBeatDurationAtSlot,
     tonalidadComposicion: piece.tonalidadComposicion,
     setTonalidadComposicion,
+    modoTonalComposicion: piece.modoTonalComposicion,
+    setModoTonalComposicion,
     addTrackEvent,
     placeTrackEvent,
     updateTrackEvent,

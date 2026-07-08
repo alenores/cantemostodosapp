@@ -7,6 +7,7 @@ import type { CompositorInstrumentId, CompositorPiece } from "@/lib/compositor";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import { formatCompositorCycleSummary } from "@/lib/compositor";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
   COMPOSITOR_LABEL_COMPARTIDO_COMUNIDAD,
   COMPOSITOR_LABEL_EDITAR_CICLO,
@@ -27,6 +28,7 @@ type CompositorCycleCardProps = {
   selectedEventId: string | null;
   bpm: number;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   isPlaying: boolean;
   cycleProgress: number | null;
   listenMutedTrackIds: CompositorInstrumentId[];
@@ -34,6 +36,7 @@ type CompositorCycleCardProps = {
   onEdit: () => void;
   onSetBpm: (value: number) => void;
   onSetTonalidadComposicion: (value: NotaIndex) => void;
+  onSetModoTonalComposicion: (value: ModoTonal) => void;
   onToggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   onEnterListen: () => void;
   onStart: () => void;
@@ -50,6 +53,7 @@ export function CompositorCycleCard({
   selectedEventId,
   bpm,
   tonalidadComposicion,
+  modoTonalComposicion,
   isPlaying,
   cycleProgress,
   listenMutedTrackIds,
@@ -57,6 +61,7 @@ export function CompositorCycleCard({
   onEdit,
   onSetBpm,
   onSetTonalidadComposicion,
+  onSetModoTonalComposicion,
   onToggleListenTrack,
   onEnterListen,
   onStart,
@@ -148,11 +153,13 @@ export function CompositorCycleCard({
                 selectedEventId={selectedEventId}
                 bpm={bpm}
                 tonalidadComposicion={tonalidadComposicion}
+                modoTonalComposicion={modoTonalComposicion}
                 isPlaying={isPlaying}
                 cycleProgress={cycleProgress}
                 listenMutedTrackIds={listenMutedTrackIds}
                 onSetBpm={onSetBpm}
                 onSetTonalidadComposicion={onSetTonalidadComposicion}
+                onSetModoTonalComposicion={onSetModoTonalComposicion}
                 onToggleListenTrack={onToggleListenTrack}
                 onEnterListen={onEnterListen}
                 onStart={onStart}

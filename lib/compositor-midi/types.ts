@@ -1,5 +1,6 @@
 import type { CompositorInstrumentId, CompositorPiece } from "@/lib/compositor";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 
 export const MIDI_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -90,6 +91,7 @@ export type MidiImportSession = {
   eventSources: Map<string, number>;
   conflicts: MidiImportConflict[];
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   cycleGolpes: number;
 };
 
@@ -98,6 +100,7 @@ export type MidiImportFileSession = {
   /** Canción completa en memoria. */
   parsed: MidiParsedData;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   beatsPerBar: number;
   totalBeats: number;
   step: "crop" | "review";
@@ -111,6 +114,7 @@ export type MidiConvertOptions = {
   parsed: MidiParsedData;
   assignments: MidiTrackAssignment[];
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion?: ModoTonal;
   cycleGolpes: number;
   selectedLayers: CompositorInstrumentId[];
   subdivisionsPerGolpe?: number;

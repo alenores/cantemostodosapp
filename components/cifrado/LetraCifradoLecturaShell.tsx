@@ -38,11 +38,13 @@ export default function LetraCifradoLecturaShell({
         canPlay={playback.canPlay}
         notacion={playback.notacion}
         tonalidadIndex={playback.tonalidadIndex}
+        modoTonal={playback.modoTonal}
         bpm={playback.bpm}
         tapCount={playback.tapCount}
         onTogglePlayback={playback.handleTogglePlayback}
         onNotacionChange={playback.handleNotacionChange}
         onTonalidadChange={playback.handleTonalidadChange}
+        onModoTonalChange={playback.handleModoTonalChange}
         onBpmChange={playback.handleBpmChange}
         onTapTempo={playback.handleTapTempo}
       />

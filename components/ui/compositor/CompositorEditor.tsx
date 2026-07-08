@@ -40,7 +40,8 @@ import {
   type CompositorDrumPatternId,
 } from "@/lib/compositor-drum-patterns";
 import type { NotaIndex } from "@/lib/cifrado";
-import { NOTAS_ES } from "@/lib/cifrado";
+import { formatCompositorTonalidadLabel } from "@/lib/compositor";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
   COMPOSITOR_CONFIRM_CYCLE_STRUCTURE_MESSAGE,
   COMPOSITOR_CONFIRM_APLICAR_RITMO_BATERIA,
@@ -78,6 +79,7 @@ export type CompositorEditorProps = {
   cycleBeatDurations: MetronomeBeatDurationPattern;
   bpm: number;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   isPlaying: boolean;
   isPreviewingTrack: boolean;
   cycleProgress: number | null;
@@ -96,6 +98,7 @@ export type CompositorEditorProps = {
     duration: MetronomeBeatDuration,
   ) => void;
   onSetTonalidadComposicion: (value: NotaIndex) => void;
+  onSetModoTonalComposicion: (value: ModoTonal) => void;
   onPlaceTrackEvent: (
     instrumentId: CompositorInstrumentId,
     partial: Partial<CompositorTrackEvent>,
@@ -151,6 +154,7 @@ export function CompositorEditor({
   cycleBeatDurations,
   bpm,
   tonalidadComposicion,
+  modoTonalComposicion,
   isPlaying,
   isPreviewingTrack,
   cycleProgress,
@@ -166,6 +170,7 @@ export function CompositorEditor({
   onSetCycleGolpes,
   onSetCycleBeatDurationAtSlot,
   onSetTonalidadComposicion,
+  onSetModoTonalComposicion,
   onPlaceTrackEvent,
   onUpdateTrackEvent,
   onRemoveTrackEvent,
@@ -243,12 +248,12 @@ export function CompositorEditor({
       case "melodias": {
         const capacity = formatTrackCapacityLabel(melodicTrack.events.length);
         const atCapacity = isTrackAtCapacity(melodicTrack);
-        return `${getInstrumentLabel(melodicTrackId)} · ${capacity}${atCapacity ? " · límite alcanzado" : ""} · ${NOTAS_ES[tonalidadComposicion]}`;
+        return `${getInstrumentLabel(melodicTrackId)} · ${capacity}${atCapacity ? " · límite alcanzado" : ""} · ${formatCompositorTonalidadLabel(tonalidadComposicion, modoTonalComposicion)}`;
       }
       case "practicar":
         return "";
     }
-  }, [activeTab, drumTrack, melodicTrack, melodicTrackId, tonalidadComposicion]);
+  }, [activeTab, drumTrack, melodicTrack, melodicTrackId, tonalidadComposicion, modoTonalComposicion]);
 
   function handleTabChange(tab: CompositorEditorTab) {
     setActiveTab(tab);
@@ -476,7 +481,9 @@ export function CompositorEditor({
                 capasMode="melodic"
                 placementMode="melodic"
                 tonalidadComposicion={tonalidadComposicion}
+                modoTonalComposicion={modoTonalComposicion}
                 onSetTonalidadComposicion={onSetTonalidadComposicion}
+                onSetModoTonalComposicion={onSetModoTonalComposicion}
                 onSelectTrack={onSetActiveTrackId}
                 onSelectEvent={onSetSelectedEventId}
                 onUpdateEvent={(eventId, patch) =>
@@ -497,11 +504,13 @@ export function CompositorEditor({
                 selectedEventId={selectedEventId}
                 bpm={bpm}
                 tonalidadComposicion={tonalidadComposicion}
+                modoTonalComposicion={modoTonalComposicion}
                 isPlaying={isPlaying}
                 cycleProgress={cycleProgress}
                 listenMutedTrackIds={listenMutedTrackIds}
                 onSetBpm={onSetBpm}
                 onSetTonalidadComposicion={onSetTonalidadComposicion}
+                onSetModoTonalComposicion={onSetModoTonalComposicion}
                 onToggleListenTrack={onToggleListenTrack}
                 onEnterListen={onEnterListen}
                 onStart={onStart}
@@ -520,6 +529,7 @@ export function CompositorEditor({
           cycleBeatDurations={cycleBeatDurations}
           bpm={bpm}
           tonalidadComposicion={tonalidadComposicion}
+          modoTonalComposicion={modoTonalComposicion}
           isPlaying={isPlaying}
           isPreviewingTrack={isPreviewingTrack}
           cycleProgress={cycleProgress}
@@ -533,6 +543,7 @@ export function CompositorEditor({
           listenMutedTrackIds={listenMutedTrackIds}
           onSetBpm={onSetBpm}
           onSetTonalidadComposicion={onSetTonalidadComposicion}
+          onSetModoTonalComposicion={onSetModoTonalComposicion}
           onPlaceTrackEvent={onPlaceTrackEvent}
           onUpdateTrackEvent={onUpdateTrackEvent}
           onRemoveTrackEvent={onRemoveTrackEvent}

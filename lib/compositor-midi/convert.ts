@@ -9,6 +9,7 @@ import {
 } from "@/lib/compositor";
 import { midiToNoteName } from "@/lib/afinador";
 import { DEFAULT_TONALIDAD, normalizeNotaIndex, type NotaIndex } from "@/lib/cifrado";
+import { DEFAULT_MODO_TONAL, normalizeModoTonal } from "@/lib/cifrado-escala";
 import { melodicPitchFromAbsoluteNote } from "@/lib/compositor-melodic-pitch";
 import { createVozTarget } from "@/lib/voz";
 import {
@@ -156,6 +157,7 @@ export function convertMidiToCompositorPiece(
     parsed,
     assignments,
     tonalidadComposicion,
+    modoTonalComposicion = DEFAULT_MODO_TONAL,
     cycleGolpes,
     selectedLayers,
     subdivisionsPerGolpe = COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
@@ -173,6 +175,7 @@ export function convertMidiToCompositorPiece(
     ),
     subdivisionsPerGolpe,
     tonalidadComposicion,
+    modoTonalComposicion: normalizeModoTonal(modoTonalComposicion),
     tracks: [
       createEmptyCompositorTrack("bateria", true),
       createEmptyCompositorTrack("guitarra", true),

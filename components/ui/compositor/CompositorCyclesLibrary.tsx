@@ -6,6 +6,7 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import type { CompositorInstrumentId, CompositorPiece } from "@/lib/compositor";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
   COMPOSITOR_LABEL_MIS_CICLOS,
   COMPOSITOR_LABEL_NUEVO_CICLO,
@@ -25,6 +26,7 @@ type CompositorCyclesLibraryProps = {
   selectedEventId: string | null;
   bpm: number;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   isPlaying: boolean;
   cycleProgress: number | null;
   listenMutedTrackIds: CompositorInstrumentId[];
@@ -35,6 +37,7 @@ type CompositorCyclesLibraryProps = {
   onEditCycle: (cycleId: string) => void;
   onSetBpm: (value: number) => void;
   onSetTonalidadComposicion: (value: NotaIndex) => void;
+  onSetModoTonalComposicion: (value: ModoTonal) => void;
   onToggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   onEnterListen: () => void;
   onStartPlayback: () => void;
@@ -54,6 +57,7 @@ export function CompositorCyclesLibrary({
   selectedEventId,
   bpm,
   tonalidadComposicion,
+  modoTonalComposicion,
   isPlaying,
   cycleProgress,
   listenMutedTrackIds,
@@ -64,6 +68,7 @@ export function CompositorCyclesLibrary({
   onEditCycle,
   onSetBpm,
   onSetTonalidadComposicion,
+  onSetModoTonalComposicion,
   onToggleListenTrack,
   onEnterListen,
   onStartPlayback,
@@ -152,6 +157,7 @@ export function CompositorCyclesLibrary({
             selectedEventId={selectedEventId}
             bpm={bpm}
             tonalidadComposicion={tonalidadComposicion}
+            modoTonalComposicion={modoTonalComposicion}
             isPlaying={isPlaying}
             cycleProgress={cycleProgress}
             listenMutedTrackIds={listenMutedTrackIds}
@@ -159,6 +165,7 @@ export function CompositorCyclesLibrary({
             onEdit={() => onEditCycle(cycle.id)}
             onSetBpm={onSetBpm}
             onSetTonalidadComposicion={onSetTonalidadComposicion}
+            onSetModoTonalComposicion={onSetModoTonalComposicion}
             onToggleListenTrack={onToggleListenTrack}
             onEnterListen={onEnterListen}
             onStart={onStartPlayback}

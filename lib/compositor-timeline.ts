@@ -48,14 +48,24 @@ function resolveEventNotes(
 
     const rootIndex = gradoToNotaIndex(event.gradoCromatico, piece.tonalidadComposicion);
     const modifier: Modificador =
-      (event.chordModifier ?? getDefaultChordModifierForRoot(rootIndex, piece.tonalidadComposicion)) as Modificador;
+      (event.chordModifier ??
+        getDefaultChordModifierForRoot(
+          rootIndex,
+          piece.tonalidadComposicion,
+          piece.modoTonalComposicion,
+        )) as Modificador;
     return buildChordNotesFromRoot(root, modifier, instrumentId);
   }
 
   if (instrumentId === "piano" && event.pianoHarmonyMode === "acorde") {
     const rootIndex = gradoToNotaIndex(event.gradoCromatico, piece.tonalidadComposicion);
     const modifier: Modificador =
-      (event.chordModifier ?? getDefaultChordModifierForRoot(rootIndex, piece.tonalidadComposicion)) as Modificador;
+      (event.chordModifier ??
+        getDefaultChordModifierForRoot(
+          rootIndex,
+          piece.tonalidadComposicion,
+          piece.modoTonalComposicion,
+        )) as Modificador;
     return buildChordNotesFromRoot(root, modifier, instrumentId);
   }
 

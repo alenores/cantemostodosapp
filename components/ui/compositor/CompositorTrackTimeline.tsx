@@ -41,6 +41,7 @@ import {
   stepToCycleOffsetSeconds,
 } from "@/lib/compositor-timeline";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
   COMPOSITOR_LABEL_ESCUCHAR_CAPA,
 } from "@/lib/ritmo-terminologia";
@@ -85,7 +86,9 @@ type CompositorTrackTimelineProps = {
   capasMode?: "all" | "melodic" | "none";
   placementMode?: "drum" | "melodic" | null;
   tonalidadComposicion?: NotaIndex;
+  modoTonalComposicion?: ModoTonal;
   onSetTonalidadComposicion?: (value: NotaIndex) => void;
+  onSetModoTonalComposicion?: (value: ModoTonal) => void;
   highlightEventId?: string | null;
   layout?: "default" | "desktop";
   capacityLabel?: string;
@@ -380,7 +383,9 @@ export function CompositorTrackTimeline({
   capasMode = "all",
   placementMode = null,
   tonalidadComposicion,
+  modoTonalComposicion,
   onSetTonalidadComposicion,
+  onSetModoTonalComposicion,
   highlightEventId = null,
   layout = "default",
   capacityLabel,
@@ -608,15 +613,19 @@ export function CompositorTrackTimeline({
 
       {placementMode === "melodic" ? (
         <div className="mb-2 space-y-2">
-          {onSetTonalidadComposicion ? (
+          {onSetTonalidadComposicion && onSetModoTonalComposicion ? (
             <div className="flex flex-wrap items-center gap-2">
               <CompositorTonalidadSelect
                 tonalidadComposicion={
                   tonalidadComposicion ?? piece.tonalidadComposicion
                 }
+                modoTonalComposicion={
+                  modoTonalComposicion ?? piece.modoTonalComposicion
+                }
                 disabled={disabled}
                 showLabel
                 onTonalidadChange={onSetTonalidadComposicion}
+                onModoTonalChange={onSetModoTonalComposicion}
               />
               {showCapasTabs && onSelectTrack ? (
                 <CompositorMelodicInstrumentSelect
@@ -637,6 +646,7 @@ export function CompositorTrackTimeline({
           <CompositorMelodicConfigPanel
             instrumentId={instrumentId}
             tonalidadComposicion={piece.tonalidadComposicion}
+            modoTonalComposicion={piece.modoTonalComposicion}
             draft={melodicDraft}
             mode={configMode}
             disabled={disabled || trackAtCapacity}

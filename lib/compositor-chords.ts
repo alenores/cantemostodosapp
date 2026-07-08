@@ -3,7 +3,11 @@ import type { CompositorInstrumentId, CompositorSlotNote } from "@/lib/composito
 import { NOTE_NAMES } from "@/lib/afinador";
 import { clampTargetOctave, getNoteIndex, type VozTarget } from "@/lib/voz";
 import { clampMelodicOctaveForInstrument } from "@/lib/compositor-melodic-pitch";
-import { getModificadorPorDefecto } from "@/lib/cifrado-escala";
+import {
+  DEFAULT_MODO_TONAL,
+  getModificadorPorDefecto,
+  type ModoTonal,
+} from "@/lib/cifrado-escala";
 
 const CHORD_INTERVALS: Record<Modificador, number[]> = {
   "": [0, 4, 7], // mayor
@@ -70,9 +74,11 @@ export function buildChordNotesFromRoot(
 export function getDefaultChordModifierForRoot(
   rootNoteIndex: NotaIndex,
   tonalidadIndex: NotaIndex,
+  modo: ModoTonal = DEFAULT_MODO_TONAL,
 ): Modificador {
   // Reusa la lógica del cifrado: sugiere mayor/menor/etc. por grado en la escala.
   // Para el compositor, si no hay sugerencia, caemos a mayor.
-  return (getModificadorPorDefecto(rootNoteIndex, tonalidadIndex) ?? "") as Modificador;
+  return (getModificadorPorDefecto(rootNoteIndex, tonalidadIndex, modo) ??
+    "") as Modificador;
 }
 

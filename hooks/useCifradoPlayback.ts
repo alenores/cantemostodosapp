@@ -7,6 +7,7 @@ import {
   type CompasMarker,
   type NotaIndex,
 } from "@/lib/cifrado";
+import { DEFAULT_MODO_TONAL, type ModoTonal } from "@/lib/cifrado-escala";
 import {
   buildDisplayedPreviewPlaybackBeats,
 } from "@/lib/cifrado-preview-play";
@@ -49,6 +50,7 @@ export function useCifradoPlayback({
 }: UseCifradoPlaybackOptions) {
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
+  const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [bpm, setBpm] = useState(120);
   const [playing, setPlaying] = useState(false);
   const [activeBeat, setActiveBeat] = useState<ActivePreviewBeat>(null);
@@ -126,6 +128,7 @@ export function useCifradoPlayback({
     }
 
     setTonalidadIndex(detalle.tonalidad_default);
+    setModoTonal(detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL);
     setBpm(detalle.bpm_default);
     setPlaying(false);
     setActiveBeat(null);
@@ -333,6 +336,7 @@ export function useCifradoPlayback({
   return {
     notacion,
     tonalidadIndex,
+    modoTonal,
     bpm,
     tapCount,
     playing,
@@ -342,6 +346,7 @@ export function useCifradoPlayback({
     activePlaybackLineIndex,
     handleNotacionChange,
     handleTonalidadChange: setTonalidadIndex,
+    handleModoTonalChange: setModoTonal,
     handleBpmChange: setBpm,
     handleTapTempo,
     handleTogglePlayback,

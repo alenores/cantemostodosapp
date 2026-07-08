@@ -24,7 +24,7 @@ export function cropSelectionHasPreviewNotes(
 export function buildCropPreviewPiece(
   fileSession: MidiImportFileSession,
 ): CompositorPiece | null {
-  const { parsed, crop, tonalidadComposicion } = fileSession;
+  const { parsed, crop, tonalidadComposicion, modoTonalComposicion } = fileSession;
 
   const sliced = sliceParsedMidiWindow(parsed, {
     startBeat: crop.startBeat,
@@ -42,6 +42,7 @@ export function buildCropPreviewPiece(
     parsed: sliced,
     assignments,
     tonalidadComposicion,
+    modoTonalComposicion,
     cycleGolpes,
     selectedLayers: crop.selectedLayers,
   });

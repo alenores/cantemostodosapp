@@ -6,8 +6,15 @@ import {
 import {
   DEFAULT_TONALIDAD,
   normalizeNotaIndex,
+  NOTAS_ES,
   type NotaIndex,
 } from "@/lib/cifrado";
+import {
+  DEFAULT_MODO_TONAL,
+  MODOS_TONALES,
+  normalizeModoTonal,
+  type ModoTonal,
+} from "@/lib/cifrado-escala";
 import {
   BPM_DEFAULT,
   METRONOME_BEAT_DURATION_PATTERN_DEFAULT,
@@ -98,8 +105,20 @@ export type CompositorPiece = {
   cycleBeatDurations: MetronomeBeatDurationPattern;
   subdivisionsPerGolpe: number;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   tracks: CompositorTrack[];
 };
+
+export function formatCompositorTonalidadLabel(
+  tonalidadComposicion: NotaIndex,
+  modoTonalComposicion: ModoTonal = DEFAULT_MODO_TONAL,
+): string {
+  const modoLabel =
+    MODOS_TONALES.find((item) => item.id === modoTonalComposicion)?.label ??
+    "Mayor";
+
+  return `${NOTAS_ES[tonalidadComposicion]} ${modoLabel.toLowerCase()}`;
+}
 
 export const COMPOSITOR_MELODIC_INSTRUMENT_IDS = [
   "piano",
@@ -411,6 +430,7 @@ export function createDefaultCompositorPiece(): CompositorPiece {
     cycleBeatDurations: Array.from({ length: METRONOME_PATTERN_LENGTH }, () => "negra"),
     subdivisionsPerGolpe,
     tonalidadComposicion: DEFAULT_TONALIDAD,
+    modoTonalComposicion: DEFAULT_MODO_TONAL,
     tracks: [
       createEmptyCompositorTrack("bateria", true),
       createEmptyCompositorTrack("guitarra", true),
@@ -452,6 +472,9 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
     subdivisionsPerGolpe,
     tonalidadComposicion: normalizeNotaIndex(
       piece.tonalidadComposicion ?? DEFAULT_TONALIDAD,
+    ),
+    modoTonalComposicion: normalizeModoTonal(
+      piece.modoTonalComposicion ?? DEFAULT_MODO_TONAL,
     ),
     tracks: sortCompositorTracks(
       ensureAllInstrumentTracks(piece).map((track) => ({
@@ -599,6 +622,16 @@ export function setCompositorTonalidadComposicion(
   return normalizeCompositorPiece({
     ...piece,
     tonalidadComposicion: normalizeNotaIndex(tonalidadComposicion),
+  });
+}
+
+export function setCompositorModoTonalComposicion(
+  piece: CompositorPiece,
+  modoTonalComposicion: ModoTonal,
+): CompositorPiece {
+  return normalizeCompositorPiece({
+    ...piece,
+    modoTonalComposicion: normalizeModoTonal(modoTonalComposicion),
   });
 }
 
@@ -806,6 +839,7 @@ function migrateLegacyPiece(legacy: LegacyCompositorPiece): CompositorPiece {
     cycleBeatDurations: legacy.beatDurations,
     subdivisionsPerGolpe,
     tonalidadComposicion: DEFAULT_TONALIDAD,
+    modoTonalComposicion: DEFAULT_MODO_TONAL,
     tracks,
   });
 }
@@ -928,6 +962,7 @@ export const COMPOSITOR_PRESETS: CompositorPreset[] = [
       ] as MetronomeBeatDurationPattern,
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
       tonalidadComposicion: DEFAULT_TONALIDAD,
+      modoTonalComposicion: DEFAULT_MODO_TONAL,
       tracks: [
         {
           instrumentId: "bateria",
@@ -1003,6 +1038,7 @@ export const COMPOSITOR_PRESETS: CompositorPreset[] = [
       ] as MetronomeBeatDurationPattern,
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
       tonalidadComposicion: DEFAULT_TONALIDAD,
+      modoTonalComposicion: DEFAULT_MODO_TONAL,
       tracks: [
         {
           instrumentId: "bateria",
@@ -1082,6 +1118,7 @@ export const COMPOSITOR_PRESETS: CompositorPreset[] = [
       ] as MetronomeBeatDurationPattern,
       subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
       tonalidadComposicion: DEFAULT_TONALIDAD,
+      modoTonalComposicion: DEFAULT_MODO_TONAL,
       tracks: [
         {
           instrumentId: "bateria",

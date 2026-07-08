@@ -76,6 +76,9 @@ export function cifradoEditorToolbarSegmentedButtonClass(active: boolean): strin
 export const CIFRADO_EDITOR_COMPAS_PANEL_CLASS =
   "shrink-0 rounded-[12px] border border-compositor-config-border bg-compositor-config-bg px-3 py-2";
 
+export const CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS =
+  "rounded-[10px] border border-border/70 bg-bg-card/90 px-3 py-2.5";
+
 /** Toolbar de escritorio (alineado a Compositor / Práctica). */
 export const CIFRADO_EDITOR_PC_TOOLBAR_SHELL_CLASS =
   "shrink-0 border-b border-border/80 bg-bg-darker";
@@ -112,8 +115,20 @@ export const CIFRADO_EDITOR_PLAY_BUTTON_CLASS =
 export const CIFRADO_INTENSIDAD_PATTERN_CLASS =
   "flex min-w-[8.5rem] items-end justify-center gap-1 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-1.5 sm:min-w-[10rem]";
 
+export const CIFRADO_INTENSIDAD_PATTERN_FLUID_CLASS =
+  "flex w-full min-w-0 items-end justify-center gap-0.5 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-1.5";
+
 export const CIFRADO_EDITOR_LINE_FAB_CLASS =
   "mt-2 mb-3 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-2 shadow-sm";
 
 export const CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS =
   "flex items-center gap-1.5 rounded-full border border-border bg-bg-dark px-3 py-1.5 text-xs font-medium text-text-secondary";
+
+export const CIFRADO_EDITOR_LINE_FAB_DELETE_PRIMARY_CLASS =
+  "flex items-center gap-1.5 rounded-full border border-red-500/55 bg-red-500/25 px-3 py-1.5 text-xs font-semibold text-red-400";
+
+export const CIFRADO_EDITOR_LINE_FAB_DELETE_SECONDARY_CLASS =
+  "flex items-center gap-1.5 rounded-full border border-red-500/50 bg-transparent px-3 py-1.5 text-xs font-medium text-red-400";
+
+export const CIFRADO_EDITOR_LINE_FAB_DIVIDER_CLASS =
+  "mx-0.5 h-5 w-px shrink-0 self-center bg-white/20";

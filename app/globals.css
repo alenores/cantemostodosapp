@@ -75,6 +75,7 @@
   --tuner-in-tune: #54c864;
   --tuner-cerca: #e8c547;
   --tuner-flat-sharp: #e05555;
+  --tuner-lejos: var(--tuner-flat-sharp);
 
   /* Herramientas — configuración (metrónomo, entrenador vocal, compositor UI) */
   --voz-config: #7b9ab8;

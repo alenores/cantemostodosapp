@@ -1,6 +1,10 @@
 import { createDefaultIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import { formatAcordeNotacion, type NotacionAcordes } from "@/lib/notacion-acordes";
-import type { MetronomeBeatLevel } from "@/lib/metronomo";
+import {
+  BEATS_PER_MEASURE_MAX,
+  BEATS_PER_MEASURE_MIN,
+  type MetronomeBeatLevel,
+} from "@/lib/metronomo";
 
 export type { NotacionAcordes };
 export const NOTAS_ES = [
@@ -106,6 +110,8 @@ export type CifradoData = {
 // Configuración rítmica (se guarda en columna `compas_config`)
 export type CompasConfig = {
   tipoCompas: TipoCompas;
+  /** Golpes del ciclo al componer (1–10). Si falta, se infiere de tipoCompas. */
+  cycleGolpes?: number;
   bpm: number;
   barras: BarraCompas[];
   /** Modelo de intensidad al colocar compases nuevos. */
@@ -487,6 +493,24 @@ export function getBeatCountForCompas(tipo: TipoCompas): number {
   }
 }
 
+export function clampCompasCycleGolpes(golpes: number): number {
+  return Math.min(
+    BEATS_PER_MEASURE_MAX,
+    Math.max(BEATS_PER_MEASURE_MIN, Math.round(golpes)),
+  );
+}
+
+export function getCompasCycleGolpes(config: CompasConfig): number {
+  if (
+    typeof config.cycleGolpes === "number" &&
+    Number.isFinite(config.cycleGolpes)
+  ) {
+    return clampCompasCycleGolpes(config.cycleGolpes);
+  }
+
+  return getBeatCountForCompas(config.tipoCompas);
+}
+
 export function computeBeatTickCenters(
   segmentStartPx: number,
   segmentEndPx: number,
@@ -793,13 +817,15 @@ export function createEmptyCifrado(): CifradoData {
 
 export function createDefaultCompasConfig(): CompasConfig {
   const tipoCompas: TipoCompas = "4-4";
+  const cycleGolpes = 4;
 
   return {
     tipoCompas,
+    cycleGolpes,
     bpm: DEFAULT_BPM,
     barras: [],
     barrasVersion: 2,
-    intensidadPlantilla: createDefaultIntensidadPlantilla(tipoCompas),
+    intensidadPlantilla: createDefaultIntensidadPlantilla(cycleGolpes),
   };
 }
 
@@ -1062,6 +1088,26 @@ export function deleteCompasLine(
           ? { ...barra, lineIndex: barra.lineIndex - 1 }
           : barra,
       ),
+  };
+}
+
+export function clearAcordesOnLine(
+  cifrado: CifradoData,
+  lineIndex: number,
+): CifradoData {
+  return {
+    ...cifrado,
+    acordes: cifrado.acordes.filter((acorde) => acorde.lineIndex !== lineIndex),
+  };
+}
+
+export function clearBarrasOnLine(
+  config: CompasConfig,
+  lineIndex: number,
+): CompasConfig {
+  return {
+    ...config,
+    barras: config.barras.filter((barra) => barra.lineIndex !== lineIndex),
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
+import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFields";
 import {
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
@@ -8,19 +9,20 @@ import {
 } from "@/components/cifrado/cifrado-controls-ui";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { NotaIndex } from "@/lib/cifrado";
-import { getNotaLabel, type NotacionAcordes } from "@/lib/notacion-acordes";
-
-const NOTA_INDICES = Array.from({ length: 12 }, (_, index) => index as NotaIndex);
+import type { ModoTonal } from "@/lib/cifrado-escala";
+import { type NotacionAcordes } from "@/lib/notacion-acordes";
 
 export type CifradoSettingsFieldsProps = {
   idPrefix?: string;
   showCompas: boolean;
   notacion: NotacionAcordes;
   tonalidadIndex: NotaIndex;
+  modoTonal: ModoTonal;
   bpm: number;
   tapCount: number;
   onNotacionChange: (next: NotacionAcordes) => void;
   onTonalidadChange: (next: NotaIndex) => void;
+  onModoTonalChange: (next: ModoTonal) => void;
   onBpmChange: (next: number) => void;
   onTapTempo: () => void;
 };
@@ -30,10 +32,12 @@ export default function CifradoSettingsFields({
   showCompas,
   notacion,
   tonalidadIndex,
+  modoTonal,
   bpm,
   tapCount,
   onNotacionChange,
   onTonalidadChange,
+  onModoTonalChange,
   onBpmChange,
   onTapTempo,
 }: CifradoSettingsFieldsProps) {
@@ -42,28 +46,14 @@ export default function CifradoSettingsFields({
   return (
     <div className="space-y-4">
       {showTonalidad ? (
-        <div>
-          <label
-            className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
-            htmlFor={`${idPrefix}-tonalidad`}
-          >
-            Tonalidad
-          </label>
-          <select
-            id={`${idPrefix}-tonalidad`}
-            value={tonalidadIndex}
-            onChange={(event) =>
-              onTonalidadChange(Number(event.target.value) as NotaIndex)
-            }
-            className={`${CIFRADO_CONTROLS_INPUT_CLASS} !w-1/2`}
-          >
-            {NOTA_INDICES.map((index) => (
-              <option key={index} value={index}>
-                {getNotaLabel(index, notacion)}
-              </option>
-            ))}
-          </select>
-        </div>
+        <CifradoTonalidadFields
+          idPrefix={idPrefix}
+          notacion={notacion}
+          tonalidadIndex={tonalidadIndex}
+          modoTonal={modoTonal}
+          onTonalidadChange={onTonalidadChange}
+          onModoTonalChange={onModoTonalChange}
+        />
       ) : null}
 
       {showCompas ? (

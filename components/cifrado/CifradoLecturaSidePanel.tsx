@@ -6,6 +6,7 @@ import { APP_SIDEBAR_WIDTH_CSS } from "@/lib/app-layout";
 import { COMPAS_LABELS } from "@/lib/cifrado";
 import type { TipoCompas } from "@/lib/cifrado";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import { Pause, Play } from "lucide-react";
 
@@ -16,11 +17,13 @@ type CifradoLecturaSidePanelProps = {
   canPlay: boolean;
   notacion: NotacionAcordes;
   tonalidadIndex: NotaIndex;
+  modoTonal: ModoTonal;
   bpm: number;
   tapCount: number;
   onTogglePlayback: () => void;
   onNotacionChange: (next: NotacionAcordes) => void;
   onTonalidadChange: (next: NotaIndex) => void;
+  onModoTonalChange: (next: ModoTonal) => void;
   onBpmChange: (next: number) => void;
   onTapTempo: () => void;
 };
@@ -40,11 +43,13 @@ export default function CifradoLecturaSidePanel({
   canPlay,
   notacion,
   tonalidadIndex,
+  modoTonal,
   bpm,
   tapCount,
   onTogglePlayback,
   onNotacionChange,
   onTonalidadChange,
+  onModoTonalChange,
   onBpmChange,
   onTapTempo,
 }: CifradoLecturaSidePanelProps) {
@@ -82,10 +87,12 @@ export default function CifradoLecturaSidePanel({
           showCompas={showCompasMarkers}
           notacion={notacion}
           tonalidadIndex={tonalidadIndex}
+          modoTonal={modoTonal}
           bpm={bpm}
           tapCount={tapCount}
           onNotacionChange={onNotacionChange}
           onTonalidadChange={onTonalidadChange}
+          onModoTonalChange={onModoTonalChange}
           onBpmChange={onBpmChange}
           onTapTempo={onTapTempo}
         />

@@ -10,7 +10,6 @@ import {
   CIFRADO_EDITOR_PC_TOOLBAR_SHELL_CLASS,
   cifradoEditorPcTabClass,
 } from "@/components/cifrado/cifrado-controls-ui";
-import type { TipoCompas } from "@/lib/cifrado";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 
@@ -21,8 +20,8 @@ type CifradoEditorPcToolbarProps = {
   onSetModoInsercion: (modo: ModoInsercion) => void;
   compasToolTab: CifradoCompasToolTab;
   onCompasToolTabChange: (tab: CifradoCompasToolTab) => void;
-  tipoCompas: TipoCompas;
-  onTipoCompasChange: (tipo: TipoCompas) => void;
+  cycleGolpes: number;
+  onCycleGolpesChange: (golpes: number) => void;
   intensidadPattern: MetronomeBeatLevel[];
   onCycleIntensidadSlot: (slotIndex: number) => void;
   showClearIntensidadSelection: boolean;
@@ -44,8 +43,8 @@ export function CifradoEditorPcToolbar({
   onSetModoInsercion,
   compasToolTab,
   onCompasToolTabChange,
-  tipoCompas,
-  onTipoCompasChange,
+  cycleGolpes,
+  onCycleGolpesChange,
   intensidadPattern,
   onCycleIntensidadSlot,
   showClearIntensidadSelection,
@@ -109,8 +108,8 @@ export function CifradoEditorPcToolbar({
             variant="desktop"
             tab={compasToolTab}
             onTabChange={onCompasToolTabChange}
-            tipoCompas={tipoCompas}
-            onTipoCompasChange={onTipoCompasChange}
+            cycleGolpes={cycleGolpes}
+            onCycleGolpesChange={onCycleGolpesChange}
             intensidadPattern={intensidadPattern}
             onCycleIntensidadSlot={onCycleIntensidadSlot}
             showClearIntensidadSelection={showClearIntensidadSelection}

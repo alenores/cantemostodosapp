@@ -11,7 +11,7 @@ import {
   resolveMelodicPitchToNote,
   type CompositorGradoCromatico,
 } from "@/lib/compositor-melodic-pitch";
-import { getModificadorPorDefecto } from "@/lib/cifrado-escala";
+import { getModificadorPorDefecto, type ModoTonal } from "@/lib/cifrado-escala";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 
 export type CompositorMelodicDraft = {
@@ -79,15 +79,17 @@ export function isMelodicAcordeMode(
 export function suggestedChordModifier(
   grado: CompositorGradoCromatico,
   tonalidad: NotaIndex,
+  modo: ModoTonal = "mayor",
 ): Modificador {
   const noteIndex = gradoToNotaIndex(grado, tonalidad);
-  return (getModificadorPorDefecto(noteIndex, tonalidad) ?? "") as Modificador;
+  return (getModificadorPorDefecto(noteIndex, tonalidad, modo) ?? "") as Modificador;
 }
 
 export function applyPianoHarmonyMode(
   draft: CompositorMelodicDraft,
   mode: "nota" | "acorde",
   tonalidad: NotaIndex,
+  modo: ModoTonal = "mayor",
 ): CompositorMelodicDraft {
   const next: CompositorMelodicDraft = {
     ...draft,
@@ -95,7 +97,11 @@ export function applyPianoHarmonyMode(
   };
 
   if (mode === "acorde") {
-    next.chordModifier = suggestedChordModifier(draft.gradoCromatico, tonalidad);
+    next.chordModifier = suggestedChordModifier(
+      draft.gradoCromatico,
+      tonalidad,
+      modo,
+    );
   } else {
     next.chordModifier = "";
   }
@@ -107,12 +113,17 @@ export function applyGuitarHarmonyMode(
   draft: CompositorMelodicDraft,
   mode: "nota" | "acorde",
   tonalidad: NotaIndex,
+  modo: ModoTonal = "mayor",
 ): CompositorMelodicDraft {
   if (mode === "acorde") {
     return {
       ...draft,
       guitarArticulation: "rasguido",
-      chordModifier: suggestedChordModifier(draft.gradoCromatico, tonalidad),
+      chordModifier: suggestedChordModifier(
+        draft.gradoCromatico,
+        tonalidad,
+        modo,
+      ),
     };
   }
 
@@ -132,11 +143,12 @@ export function applyGradoToDraft(
   grado: CompositorGradoCromatico,
   instrumentId: CompositorInstrumentId,
   tonalidad: NotaIndex,
+  modo: ModoTonal = "mayor",
 ): CompositorMelodicDraft {
   const next = { ...draft, gradoCromatico: grado };
 
   if (isMelodicAcordeMode(instrumentId, next)) {
-    next.chordModifier = suggestedChordModifier(grado, tonalidad);
+    next.chordModifier = suggestedChordModifier(grado, tonalidad, modo);
   } else {
     next.chordModifier = "";
   }

@@ -5,6 +5,7 @@ import { CompositorMultiTrackTimeline } from "@/components/ui/compositor/Composi
 import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import type { CompositorInstrumentId, CompositorPiece } from "@/lib/compositor";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 import { BPM_MAX, BPM_MIN } from "@/lib/metronomo";
 import { useEffect } from "react";
 const LISTEN_CONTROL_CONTAINER_CLASS =
@@ -16,12 +17,14 @@ type CompositorListenViewProps = {
   selectedEventId: string | null;
   bpm: number;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   isPlaying: boolean;
   cycleProgress: number | null;
   layout?: "compact" | "desktop";
   listenMutedTrackIds?: CompositorInstrumentId[];
   onSetBpm: (value: number) => void;
   onSetTonalidadComposicion: (value: NotaIndex) => void;
+  onSetModoTonalComposicion: (value: ModoTonal) => void;
   onToggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   onEnterListen?: () => void;
   onStart: () => void;
@@ -34,12 +37,14 @@ export function CompositorListenView({
   selectedEventId,
   bpm,
   tonalidadComposicion,
+  modoTonalComposicion,
   isPlaying,
   cycleProgress,
   layout = "compact",
   listenMutedTrackIds = [],
   onSetBpm,
   onSetTonalidadComposicion,
+  onSetModoTonalComposicion,
   onToggleListenTrack,
   onEnterListen,
   onStart,
@@ -106,9 +111,11 @@ export function CompositorListenView({
               <div className={LISTEN_CONTROL_CONTAINER_CLASS}>
                 <CompositorTonalidadSelect
                   tonalidadComposicion={tonalidadComposicion}
+                  modoTonalComposicion={modoTonalComposicion}
                   disabled={isPlaying}
                   showLabel
                   onTonalidadChange={onSetTonalidadComposicion}
+                  onModoTonalChange={onSetModoTonalComposicion}
                 />
               </div>
             </div>
@@ -162,9 +169,11 @@ export function CompositorListenView({
           <div className={LISTEN_CONTROL_CONTAINER_CLASS}>
             <CompositorTonalidadSelect
               tonalidadComposicion={tonalidadComposicion}
+              modoTonalComposicion={modoTonalComposicion}
               disabled={isPlaying}
               showLabel
               onTonalidadChange={onSetTonalidadComposicion}
+              onModoTonalChange={onSetModoTonalComposicion}
             />
           </div>
         </div>

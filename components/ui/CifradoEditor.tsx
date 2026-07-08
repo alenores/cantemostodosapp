@@ -14,6 +14,7 @@ import {
 } from "@/components/cifrado/CifradoEditorHelpModal";
 import { CifradoLineMergePicker } from "@/components/cifrado/CifradoLineMergePicker";
 import { CifradoUnlockIcon } from "@/components/cifrado/CifradoUnlockIcon";
+import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFields";
 import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
 import {
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
@@ -29,13 +30,18 @@ import {
   CIFRADO_EDITOR_SHEET_BG_CLASS,
   CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS,
   CIFRADO_EDITOR_LINE_FAB_CLASS,
+  CIFRADO_EDITOR_LINE_FAB_DELETE_PRIMARY_CLASS,
+  CIFRADO_EDITOR_LINE_FAB_DELETE_SECONDARY_CLASS,
+  CIFRADO_EDITOR_LINE_FAB_DIVIDER_CLASS,
   CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS,
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
   cifradoEditorToolbarSegmentedButtonClass,
   cifradoSegmentedIconButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { VozPcConfigCard } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -47,6 +53,7 @@ import {
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
   MODIFICADORES,
+  clampBpm,
   computeTapBpm,
   applyLineCopyAcordes,
   applyLineCopyCompas,
@@ -58,12 +65,14 @@ import {
   createEmptyCifrado,
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
+  clearAcordesOnLine,
+  clearBarrasOnLine,
   deleteCifradoLine,
   deleteCompasLine,
   findAcordeAt,
   formatAcorde,
   findNearestCharOffset,
-  getBeatCountForCompas,
+  getCompasCycleGolpes,
   getLineContentEndOffset,
   getLineMergeAttachOffset,
   insertCifradoLineBelow,
@@ -94,13 +103,12 @@ import {
 import {
   cycleIntensidadSlot,
   getBarraIntensidad,
-  getBarraTipoCompas,
   getIntensidadPlantilla,
   normalizeCompasConfig,
-  resizeCompasConfigIntensidad,
+  resizeCompasConfigCycleGolpes,
   updateBarraIntensidad,
 } from "@/lib/cifrado-intensidad";
-import { isNotaEnEscala, getModificadorPorDefecto } from "@/lib/cifrado-escala";
+import { isNotaEnEscala, getModificadorPorDefecto, DEFAULT_MODO_TONAL, type ModoTonal } from "@/lib/cifrado-escala";
 import {
   getBeatLevelBarAppearance,
   getBeatLevelBarHeightPercent,
@@ -120,7 +128,13 @@ import {
   type PreviewPlaybackAnchor,
 } from "@/lib/cifrado-preview-play";
 import { playCifradoPreviewBeat } from "@/lib/cifrado-cycle-playback";
-import { CIFRADO_LABEL_PEGAR_EN_RENGLON } from "@/lib/ritmo-terminologia";
+import {
+  CIFRADO_CONFIRM_DELETE_LINE_ACORDES_MESSAGE,
+  CIFRADO_CONFIRM_DELETE_LINE_COMPASES_MESSAGE,
+  CIFRADO_CONFIRM_DELETE_LINE_MESSAGE,
+  CIFRADO_LABEL_PEGAR_EN_RENGLON,
+  getCifradoConfirmAplicarCiclosTodosRenglonesMessage,
+} from "@/lib/ritmo-terminologia";
 import { Copy, CornerDownRight, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
 import {
   useCallback,
@@ -136,6 +150,8 @@ import { createPortal } from "react-dom";
 import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
 import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
+
+type LineDeleteConfirmKind = "line" | "acordes" | "compases";
 
 type CifradoEditorProps = {
   open: boolean;
@@ -234,6 +250,7 @@ type ChordPickerProps = {
   state: PickerState;
   existing?: AcordePos;
   tonalidadIndex: NotaIndex;
+  modoTonal: ModoTonal;
   notacion: NotacionAcordes;
   onApply: (noteIndex: NotaIndex, modifier: Modificador) => void;
   onRemove: () => void;
@@ -244,6 +261,7 @@ function ChordPicker({
   state,
   existing,
   tonalidadIndex,
+  modoTonal,
   notacion,
   onApply,
   onRemove,
@@ -297,7 +315,7 @@ function ChordPicker({
 
   function handleSelectNote(index: NotaIndex) {
     setNoteIndex(index);
-    setModifier(getModificadorPorDefecto(index, tonalidadIndex));
+    setModifier(getModificadorPorDefecto(index, tonalidadIndex, modoTonal));
   }
 
   return (
@@ -311,7 +329,7 @@ function ChordPicker({
       <p className="mb-2 text-xs font-medium text-text-muted">Nota</p>
       <div className="grid grid-cols-4 gap-1.5">
         {NOTA_INDICES.map((index) => {
-          const enEscala = isNotaEnEscala(index, tonalidadIndex);
+          const enEscala = isNotaEnEscala(index, tonalidadIndex, modoTonal);
           const isSelected = noteIndex !== null && noteIndex === index;
 
           return (
@@ -438,6 +456,8 @@ type LineEditFabBarProps = {
   onConfirmLineMerge: () => void;
   onCancelLineMerge: () => void;
   onDelete: () => void;
+  onDeleteAcordes: () => void;
+  onDeleteCompases: () => void;
   onInsertBelow: () => void;
   onCopy: (kind: LineCopyKind) => void;
 };
@@ -454,6 +474,8 @@ function LineEditFabBar({
   onConfirmLineMerge,
   onCancelLineMerge,
   onDelete,
+  onDeleteAcordes,
+  onDeleteCompases,
   onInsertBelow,
   onCopy,
 }: LineEditFabBarProps) {
@@ -480,56 +502,86 @@ function LineEditFabBar({
           onCancelLineMerge={onCancelLineMerge}
         />
       ) : (
-        <div className="flex flex-wrap justify-center gap-1.5">
-          <TapButton
-            type="button"
-            onClick={onDelete}
-            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            Eliminar
-          </TapButton>
-          <TapButton
-            type="button"
-            onClick={onInsertBelow}
-            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-          >
-            <Plus className="size-3.5" aria-hidden="true" />
-            Línea abajo
-          </TapButton>
-          <TapButton
-            type="button"
-            onClick={onStartLineMerge}
-            disabled={totalLines < 2}
-            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-          >
-            <CornerDownRight className="size-3.5" aria-hidden="true" />
-            {CIFRADO_LABEL_PEGAR_EN_RENGLON}
-          </TapButton>
-          <TapButton
-            type="button"
-            onClick={() => onCopy("acordes")}
-            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-          >
-            <Copy className="size-3.5" aria-hidden="true" />
-            Copiar acordes
-          </TapButton>
-          <TapButton
-            type="button"
-            onClick={() => onCopy("compas")}
-            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-          >
-            <Copy className="size-3.5" aria-hidden="true" />
-            Copiar compás
-          </TapButton>
-          <TapButton
-            type="button"
-            onClick={() => onCopy("both")}
-            className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
-          >
-            <Copy className="size-3.5" aria-hidden="true" />
-            Copiar ambos
-          </TapButton>
+        <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <TapButton
+              type="button"
+              onClick={onDelete}
+              className={CIFRADO_EDITOR_LINE_FAB_DELETE_PRIMARY_CLASS}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Eliminar
+            </TapButton>
+            <TapButton
+              type="button"
+              onClick={onDeleteAcordes}
+              className={CIFRADO_EDITOR_LINE_FAB_DELETE_SECONDARY_CLASS}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Eliminar acordes
+            </TapButton>
+            <TapButton
+              type="button"
+              onClick={onDeleteCompases}
+              className={CIFRADO_EDITOR_LINE_FAB_DELETE_SECONDARY_CLASS}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Eliminar compases
+            </TapButton>
+          </div>
+          <span
+            className={CIFRADO_EDITOR_LINE_FAB_DIVIDER_CLASS}
+            aria-hidden="true"
+          />
+          <div className="flex items-center gap-1.5">
+            <TapButton
+              type="button"
+              onClick={onInsertBelow}
+              className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              Línea abajo
+            </TapButton>
+            <TapButton
+              type="button"
+              onClick={onStartLineMerge}
+              disabled={totalLines < 2}
+              className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+            >
+              <CornerDownRight className="size-3.5" aria-hidden="true" />
+              {CIFRADO_LABEL_PEGAR_EN_RENGLON}
+            </TapButton>
+          </div>
+          <span
+            className={CIFRADO_EDITOR_LINE_FAB_DIVIDER_CLASS}
+            aria-hidden="true"
+          />
+          <div className="flex items-center gap-1.5">
+            <TapButton
+              type="button"
+              onClick={() => onCopy("acordes")}
+              className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+            >
+              <Copy className="size-3.5" aria-hidden="true" />
+              Copiar acordes
+            </TapButton>
+            <TapButton
+              type="button"
+              onClick={() => onCopy("compas")}
+              className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+            >
+              <Copy className="size-3.5" aria-hidden="true" />
+              Copiar compás
+            </TapButton>
+            <TapButton
+              type="button"
+              onClick={() => onCopy("both")}
+              className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
+            >
+              <Copy className="size-3.5" aria-hidden="true" />
+              Copiar ambos
+            </TapButton>
+          </div>
         </div>
       )}
     </div>
@@ -1833,6 +1885,7 @@ export default function CifradoEditor({
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
+  const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -1858,7 +1911,7 @@ export default function CifradoEditor({
     null,
   );
   const [compasToolTab, setCompasToolTab] =
-    useState<CifradoCompasToolTab>("guardado");
+    useState<CifradoCompasToolTab>("componer");
   const [activePlacementCycleId, setActivePlacementCycleId] = useState<
     string | null
   >(null);
@@ -1868,6 +1921,10 @@ export default function CifradoEditor({
     null,
   );
   const [editorHelpOpen, setEditorHelpOpen] = useState(false);
+  const [applyCyclesToAllLinesConfirmOpen, setApplyCyclesToAllLinesConfirmOpen] =
+    useState(false);
+  const [lineDeleteConfirmKind, setLineDeleteConfirmKind] =
+    useState<LineDeleteConfirmKind | null>(null);
   const [mergeHighlightLineIndex, setMergeHighlightLineIndex] = useState<
     number | null
   >(null);
@@ -2076,6 +2133,7 @@ export default function CifradoEditor({
       setNombre("");
       setArtista("");
       setTonalidadIndex(7);
+      setModoTonal(DEFAULT_MODO_TONAL);
       setPreviewOpen(false);
       setPicker(null);
       setLoading(false);
@@ -2092,6 +2150,7 @@ export default function CifradoEditor({
       setMarkersByLine({});
       setSelectedBarra(null);
       setMergeHighlightLineIndex(null);
+      setLineDeleteConfirmKind(null);
 
       if (mergeHighlightTimerRef.current) {
         clearTimeout(mergeHighlightTimerRef.current);
@@ -2116,6 +2175,7 @@ export default function CifradoEditor({
       );
       setSelectedBarra(null);
       setTonalidadIndex(session.tonalidad_default ?? DEFAULT_TONALIDAD);
+      setModoTonal(session.modo_tonal_default ?? DEFAULT_MODO_TONAL);
       setPhase(session.skipIngreso ? "cifrado" : "ingreso");
       setModoInsercion("acordes");
       setError(null);
@@ -2141,6 +2201,7 @@ export default function CifradoEditor({
     setNombre("");
     setArtista("");
     setTonalidadIndex(DEFAULT_TONALIDAD);
+    setModoTonal(DEFAULT_MODO_TONAL);
     setPreviewOpen(false);
     setPicker(null);
     setLoading(false);
@@ -2534,6 +2595,116 @@ export default function CifradoEditor({
     setError(null);
   }
 
+  function requestDeleteLine() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    if (splitLyricsLines(lyricsText).length <= 1) {
+      setError("La canción debe tener al menos un renglón.");
+      return;
+    }
+
+    setLineDeleteConfirmKind("line");
+  }
+
+  function requestDeleteLineAcordes() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const hasAcordes = cifrado.acordes.some(
+      (acorde) => acorde.lineIndex === editingLineIndex,
+    );
+
+    if (!hasAcordes) {
+      setToast("Este renglón no tiene acordes");
+      return;
+    }
+
+    setLineDeleteConfirmKind("acordes");
+  }
+
+  function requestDeleteLineCompases() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const hasBarras = compasConfig.barras.some(
+      (barra) => barra.lineIndex === editingLineIndex,
+    );
+
+    if (!hasBarras) {
+      setToast("Este renglón no tiene compases");
+      return;
+    }
+
+    setLineDeleteConfirmKind("compases");
+  }
+
+  function confirmLineDelete() {
+    if (lineDeleteConfirmKind === "line") {
+      handleDeleteLine();
+    } else if (lineDeleteConfirmKind === "acordes") {
+      handleDeleteLineAcordes();
+    } else if (lineDeleteConfirmKind === "compases") {
+      handleDeleteLineCompases();
+    }
+
+    setLineDeleteConfirmKind(null);
+  }
+
+  const lineDeleteConfirmMessage =
+    lineDeleteConfirmKind === "line"
+      ? CIFRADO_CONFIRM_DELETE_LINE_MESSAGE
+      : lineDeleteConfirmKind === "acordes"
+        ? CIFRADO_CONFIRM_DELETE_LINE_ACORDES_MESSAGE
+        : lineDeleteConfirmKind === "compases"
+          ? CIFRADO_CONFIRM_DELETE_LINE_COMPASES_MESSAGE
+          : "";
+
+  function handleDeleteLineAcordes() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const lineIndex = editingLineIndex;
+    const hasAcordes = cifrado.acordes.some(
+      (acorde) => acorde.lineIndex === lineIndex,
+    );
+
+    if (!hasAcordes) {
+      setToast("Este renglón no tiene acordes");
+      return;
+    }
+
+    setCifrado((current) => clearAcordesOnLine(current, lineIndex));
+    setPicker(null);
+    setError(null);
+  }
+
+  function handleDeleteLineCompases() {
+    if (editingLineIndex === null) {
+      return;
+    }
+
+    const lineIndex = editingLineIndex;
+    const hasBarras = compasConfig.barras.some(
+      (barra) => barra.lineIndex === lineIndex,
+    );
+
+    if (!hasBarras) {
+      setToast("Este renglón no tiene compases");
+      return;
+    }
+
+    setCompasConfig((current) => clearBarrasOnLine(current, lineIndex));
+    if (selectedBarra?.lineIndex === lineIndex) {
+      setSelectedBarra(null);
+    }
+    setError(null);
+  }
+
   function handleInsertLineBelow() {
     if (editingLineIndex === null) {
       return;
@@ -2555,7 +2726,9 @@ export default function CifradoEditor({
 
   function handleSetModoInsercion(modo: ModoInsercion) {
     setModoInsercion(modo);
-    if (modo !== "compas") {
+    if (modo === "compas") {
+      setCompasToolTab("componer");
+    } else {
       setSelectedBarra(null);
     }
     exitLineEditMode();
@@ -2683,7 +2856,7 @@ export default function CifradoEditor({
         : null;
     const golpes = activeCycle
       ? activeCycle.piece.cycleGolpes
-      : getBeatCountForCompas(config.tipoCompas);
+      : getCompasCycleGolpes(config);
     const intensidad = buildIntensidadForGolpes(
       golpes,
       getIntensidadPlantilla(config),
@@ -2707,6 +2880,11 @@ export default function CifradoEditor({
       return;
     }
 
+    setApplyCyclesToAllLinesConfirmOpen(true);
+  }
+
+  function confirmApplyCyclesToAllLines() {
+    setApplyCyclesToAllLinesConfirmOpen(false);
     setSelectedBarra(null);
     setCompasConfig((current) => {
       const template = resolvePlacementBarraTemplate(current);
@@ -2913,7 +3091,7 @@ export default function CifradoEditor({
         const nextPattern = cycleIntensidadSlot(
           getBarraIntensidad(barra, current),
           slotIndex,
-          getBarraTipoCompas(barra, current),
+          getBarraIntensidad(barra, current).length,
         );
 
         return updateBarraIntensidad(
@@ -2929,7 +3107,7 @@ export default function CifradoEditor({
         intensidadPlantilla: cycleIntensidadSlot(
           getIntensidadPlantilla(current),
           slotIndex,
-          current.tipoCompas,
+          getCompasCycleGolpes(current),
         ),
       };
     });
@@ -3037,6 +3215,7 @@ export default function CifradoEditor({
           barrasVersion: 2 as const,
         }),
         tonalidad_default: tonalidadIndex,
+        modo_tonal_default: modoTonal,
         bpm_default: clampedBpm,
         tiene_cifrado_avanzado: true as const,
       };
@@ -3053,6 +3232,7 @@ export default function CifradoEditor({
           cifrado: payload.cifrado,
           compas_config: payload.compas_config,
           tonalidad_default: payload.tonalidad_default,
+          modo_tonal_default: payload.modo_tonal_default,
           bpm_default: payload.bpm_default,
         });
       } else {
@@ -3291,10 +3471,10 @@ export default function CifradoEditor({
                     onSetModoInsercion={handleSetModoInsercion}
                     compasToolTab={compasToolTab}
                     onCompasToolTabChange={setCompasToolTab}
-                    tipoCompas={compasConfig.tipoCompas}
-                    onTipoCompasChange={(tipo) =>
+                    cycleGolpes={getCompasCycleGolpes(compasConfig)}
+                    onCycleGolpesChange={(golpes) =>
                       setCompasConfig((current) =>
-                        resizeCompasConfigIntensidad(current, tipo),
+                        resizeCompasConfigCycleGolpes(current, golpes),
                       )
                     }
                     intensidadPattern={intensidadEditPattern}
@@ -3361,10 +3541,10 @@ export default function CifradoEditor({
                             <CifradoCompasToolPanel
                               tab={compasToolTab}
                               onTabChange={setCompasToolTab}
-                              tipoCompas={compasConfig.tipoCompas}
-                              onTipoCompasChange={(tipo) =>
+                              cycleGolpes={getCompasCycleGolpes(compasConfig)}
+                              onCycleGolpesChange={(golpes) =>
                                 setCompasConfig((current) =>
-                                  resizeCompasConfigIntensidad(current, tipo),
+                                  resizeCompasConfigCycleGolpes(current, golpes),
                                 )
                               }
                               intensidadPattern={intensidadEditPattern}
@@ -3513,7 +3693,9 @@ export default function CifradoEditor({
                             onStartLineMerge={handleStartLineMerge}
                             onConfirmLineMerge={handleConfirmLineMerge}
                             onCancelLineMerge={handleCancelLineMerge}
-                            onDelete={handleDeleteLine}
+                            onDelete={requestDeleteLine}
+                            onDeleteAcordes={requestDeleteLineAcordes}
+                            onDeleteCompases={requestDeleteLineCompases}
                             onInsertBelow={handleInsertLineBelow}
                             onCopy={handleCopyLine}
                           />
@@ -3617,20 +3799,14 @@ export default function CifradoEditor({
 
                 {notacion !== "numero" && (
                   <VozPcConfigCard title="Tonalidad">
-                    <select
-                      id="cifrado-tonalidad-sidebar"
-                      value={tonalidadIndex}
-                      onChange={(event) =>
-                        setTonalidadIndex(Number(event.target.value) as NotaIndex)
-                      }
-                      className={inputClassName}
-                    >
-                      {NOTA_INDICES.map((index) => (
-                        <option key={index} value={index}>
-                          {getNotaLabel(index, notacion)}
-                        </option>
-                      ))}
-                    </select>
+                    <CifradoTonalidadFields
+                      idPrefix="cifrado-sidebar"
+                      notacion={notacion}
+                      tonalidadIndex={tonalidadIndex}
+                      modoTonal={modoTonal}
+                      onTonalidadChange={setTonalidadIndex}
+                      onModoTonalChange={setModoTonal}
+                    />
                   </VozPcConfigCard>
                 )}
 
@@ -3641,25 +3817,41 @@ export default function CifradoEditor({
                   >
                     BPM
                   </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="cifrado-bpm-sidebar"
-                      type="number"
+                  <div className="flex items-stretch gap-2">
+                    <ToolNumericStepper
+                      value={compasConfig.bpm}
+                      density="compact"
+                      inputId="cifrado-bpm-sidebar"
                       min={40}
                       max={240}
-                      value={compasConfig.bpm}
-                      onChange={(event) =>
+                      decrementDisabled={compasConfig.bpm <= 40}
+                      incrementDisabled={compasConfig.bpm >= 240}
+                      decrementAriaLabel="Reducir BPM"
+                      incrementAriaLabel="Aumentar BPM"
+                      onDecrement={() =>
                         setCompasConfig((current) => ({
                           ...current,
-                          bpm: Number(event.target.value) || current.bpm,
+                          bpm: clampBpm(current.bpm - 1),
                         }))
                       }
-                      className={`${inputClassName} min-w-0 flex-1 text-center`}
+                      onIncrement={() =>
+                        setCompasConfig((current) => ({
+                          ...current,
+                          bpm: clampBpm(current.bpm + 1),
+                        }))
+                      }
+                      onSetValue={(value) =>
+                        setCompasConfig((current) => ({
+                          ...current,
+                          bpm: clampBpm(value),
+                        }))
+                      }
+                      className="min-w-0 flex-1"
                     />
                     <TapButton
                       type="button"
                       onClick={handleTapTempo}
-                      className="min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                      className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
                     >
                       Tap{tapCount > 0 ? ` (${tapCount})` : ""}
                     </TapButton>
@@ -3859,6 +4051,7 @@ export default function CifradoEditor({
           state={picker}
           existing={existingPickerAcorde}
           tonalidadIndex={tonalidadIndex}
+          modoTonal={modoTonal}
           notacion={notacion}
           onApply={handleApplyAcorde}
           onRemove={handleRemoveAcorde}
@@ -3878,6 +4071,32 @@ export default function CifradoEditor({
       <CifradoEditorHelpModal
         open={editorHelpOpen}
         onClose={() => setEditorHelpOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={applyCyclesToAllLinesConfirmOpen}
+        message={getCifradoConfirmAplicarCiclosTodosRenglonesMessage(
+          placementCycleCount,
+          lines.length,
+          compasConfig.barras.length > 0,
+        )}
+        confirmLabel="Aplicar"
+        cancelLabel="Cancelar"
+        deleteConfirm={compasConfig.barras.length > 0}
+        zIndex={60}
+        onConfirm={confirmApplyCyclesToAllLines}
+        onCancel={() => setApplyCyclesToAllLinesConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={lineDeleteConfirmKind !== null}
+        message={lineDeleteConfirmMessage}
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        deleteConfirm
+        zIndex={60}
+        onConfirm={confirmLineDelete}
+        onCancel={() => setLineDeleteConfirmKind(null)}
       />
     </div>
   );

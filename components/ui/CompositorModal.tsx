@@ -73,6 +73,8 @@ export default function CompositorModal({
   setCycleBeatDurationAtSlot,
   tonalidadComposicion,
   setTonalidadComposicion,
+  modoTonalComposicion,
+  setModoTonalComposicion,
   placeTrackEvent,
   updateTrackEvent,
   removeTrackEvent,
@@ -548,6 +550,7 @@ export default function CompositorModal({
               cycleBeatDurations={cycleBeatDurations}
               bpm={bpm}
               tonalidadComposicion={tonalidadComposicion}
+              modoTonalComposicion={modoTonalComposicion}
               isPlaying={isPlaying}
               isPreviewingTrack={isPreviewingTrack}
               cycleProgress={cycleProgress}
@@ -570,6 +573,7 @@ export default function CompositorModal({
               onSetCycleGolpes={setCycleGolpes}
               onSetCycleBeatDurationAtSlot={setCycleBeatDurationAtSlot}
               onSetTonalidadComposicion={setTonalidadComposicion}
+              onSetModoTonalComposicion={setModoTonalComposicion}
               onPlaceTrackEvent={placeTrackEvent}
               onUpdateTrackEvent={updateTrackEvent}
               onRemoveTrackEvent={removeTrackEvent}
@@ -599,6 +603,7 @@ export default function CompositorModal({
               suggestCycleName={suggestCycleName}
               onSetTrackAssignment={midiImport.setTrackAssignment}
               onSetTonalidad={midiImport.setTonalidad}
+              onSetModoTonal={midiImport.setModoTonal}
               onUpdateDraftEvent={midiImport.updateDraftEvent}
               onRemoveDraftEvent={midiImport.removeDraftEvent}
               onFocusConflict={midiImport.focusConflict}
@@ -645,6 +650,7 @@ export default function CompositorModal({
               selectedEventId={selectedEventId}
               bpm={bpm}
               tonalidadComposicion={tonalidadComposicion}
+              modoTonalComposicion={modoTonalComposicion}
               isPlaying={isPlaying}
               cycleProgress={cycleProgress}
               onRefreshCycles={refreshCycles}
@@ -654,6 +660,7 @@ export default function CompositorModal({
               onEditCycle={openEditCycleSession}
               onSetBpm={setBpm}
               onSetTonalidadComposicion={setTonalidadComposicion}
+              onSetModoTonalComposicion={setModoTonalComposicion}
               onToggleListenTrack={toggleListenTrack}
               onEnterListen={resetListenPlaybackLayers}
               listenMutedTrackIds={listenMutedTrackIds}

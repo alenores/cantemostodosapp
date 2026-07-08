@@ -46,6 +46,7 @@ type CompositorMidiReviewProps = {
     instrumentId: CompositorInstrumentId | null,
   ) => void;
   onSetTonalidad: (value: NotaIndex) => void;
+  onSetModoTonal: (value: import("@/lib/cifrado-escala").ModoTonal) => void;
   onUpdateDraftEvent: (
     instrumentId: CompositorInstrumentId,
     eventId: string,
@@ -75,6 +76,7 @@ export function CompositorMidiReview({
   suggestCycleName,
   onSetTrackAssignment,
   onSetTonalidad,
+  onSetModoTonal,
   onUpdateDraftEvent,
   onRemoveDraftEvent,
   onFocusConflict,
@@ -280,8 +282,10 @@ export function CompositorMidiReview({
         </div>
         <CompositorTonalidadSelect
           tonalidadComposicion={session.tonalidadComposicion}
+          modoTonalComposicion={session.modoTonalComposicion}
           showLabel
           onTonalidadChange={onSetTonalidad}
+          onModoTonalChange={onSetModoTonal}
         />
       </div>
 

@@ -16,7 +16,7 @@ import {
 } from "@/lib/compositor";
 import type { Modificador, NotaIndex } from "@/lib/cifrado";
 import { MODIFICADORES, NOTAS_ES } from "@/lib/cifrado";
-import { isNotaEnEscala } from "@/lib/cifrado-escala";
+import { isNotaEnEscala, type ModoTonal } from "@/lib/cifrado-escala";
 import {
   compositorBlockFieldGroupClass,
   compositorBlockFieldLabelClass,
@@ -45,6 +45,7 @@ import { GripHorizontal } from "lucide-react";
 type CompositorMelodicConfigPanelProps = {
   instrumentId: CompositorInstrumentId;
   tonalidadComposicion: NotaIndex;
+  modoTonalComposicion: ModoTonal;
   draft: CompositorMelodicDraft;
   mode: "create" | "edit";
   disabled?: boolean;
@@ -116,6 +117,7 @@ function SegmentToggle<T extends string>({
 export function CompositorMelodicConfigPanel({
   instrumentId,
   tonalidadComposicion,
+  modoTonalComposicion,
   draft,
   mode,
   disabled = false,
@@ -143,18 +145,38 @@ export function CompositorMelodicConfigPanel({
 
   function setHarmonyMode(next: "nota" | "acorde") {
     if (instrumentId === "piano") {
-      onDraftChange(applyPianoHarmonyMode(draft, next, tonalidadComposicion));
+      onDraftChange(
+        applyPianoHarmonyMode(
+          draft,
+          next,
+          tonalidadComposicion,
+          modoTonalComposicion,
+        ),
+      );
       return;
     }
 
     if (instrumentId === "guitarra") {
-      onDraftChange(applyGuitarHarmonyMode(draft, next, tonalidadComposicion));
+      onDraftChange(
+        applyGuitarHarmonyMode(
+          draft,
+          next,
+          tonalidadComposicion,
+          modoTonalComposicion,
+        ),
+      );
     }
   }
 
   function setGrado(grado: CompositorGradoCromatico) {
     onDraftChange(
-      applyGradoToDraft(draft, grado, instrumentId, tonalidadComposicion),
+      applyGradoToDraft(
+        draft,
+        grado,
+        instrumentId,
+        tonalidadComposicion,
+        modoTonalComposicion,
+      ),
     );
   }
 
@@ -261,7 +283,11 @@ export function CompositorMelodicConfigPanel({
               {COMPOSITOR_GRADO_OPTIONS.map((option) => {
                 const grado = option.id;
                 const noteIndex = gradoToNotaIndex(grado, tonalidadComposicion);
-                const enEscala = isNotaEnEscala(noteIndex, tonalidadComposicion);
+                const enEscala = isNotaEnEscala(
+                  noteIndex,
+                  tonalidadComposicion,
+                  modoTonalComposicion,
+                );
                 const noteName = NOTAS_ES[noteIndex];
                 const isActive = draft.gradoCromatico === grado;
 

@@ -77,6 +77,7 @@ type CompositorPcEditorShellProps = Pick<
   | "cycleBeatDurations"
   | "bpm"
   | "tonalidadComposicion"
+  | "modoTonalComposicion"
   | "isPlaying"
   | "isPreviewingTrack"
   | "cycleProgress"
@@ -89,6 +90,7 @@ type CompositorPcEditorShellProps = Pick<
   | "listenMutedTrackIds"
   | "onSetBpm"
   | "onSetTonalidadComposicion"
+  | "onSetModoTonalComposicion"
   | "onPlaceTrackEvent"
   | "onUpdateTrackEvent"
   | "onRemoveTrackEvent"
@@ -115,6 +117,7 @@ export function CompositorPcEditorShell({
   cycleBeatDurations,
   bpm,
   tonalidadComposicion,
+  modoTonalComposicion,
   isPlaying,
   isPreviewingTrack,
   cycleProgress,
@@ -128,6 +131,7 @@ export function CompositorPcEditorShell({
   listenMutedTrackIds,
   onSetBpm,
   onSetTonalidadComposicion,
+  onSetModoTonalComposicion,
   onPlaceTrackEvent,
   onUpdateTrackEvent,
   onRemoveTrackEvent,
@@ -404,7 +408,9 @@ export function CompositorPcEditorShell({
               capasMode="none"
               placementMode="melodic"
               tonalidadComposicion={tonalidadComposicion}
+              modoTonalComposicion={modoTonalComposicion}
               onSetTonalidadComposicion={onSetTonalidadComposicion}
+              onSetModoTonalComposicion={onSetModoTonalComposicion}
               onSelectEvent={onSetSelectedEventId}
               onUpdateEvent={(eventId, patch) =>
                 onUpdateTrackEvent(eventId, patch)
@@ -430,11 +436,13 @@ export function CompositorPcEditorShell({
               selectedEventId={selectedEventId}
               bpm={bpm}
               tonalidadComposicion={tonalidadComposicion}
+              modoTonalComposicion={modoTonalComposicion}
               isPlaying={isPlaying}
               cycleProgress={cycleProgress}
               listenMutedTrackIds={listenMutedTrackIds}
               onSetBpm={onSetBpm}
               onSetTonalidadComposicion={onSetTonalidadComposicion}
+              onSetModoTonalComposicion={onSetModoTonalComposicion}
               onToggleListenTrack={onToggleListenTrack}
               onEnterListen={onEnterListen}
               onStart={onStart}

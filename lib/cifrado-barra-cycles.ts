@@ -1,10 +1,9 @@
 import type { CompositorPiece } from "@/lib/compositor";
 import {
-  getBeatCountForCompas,
+  getCompasCycleGolpes,
   type BarraCompas,
   type CompasConfig,
 } from "@/lib/cifrado";
-import { getBarraTipoCompas } from "@/lib/cifrado-intensidad";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 
 export function getBarraBeatCount(
@@ -21,7 +20,7 @@ export function getBarraBeatCount(
     return barra.intensidad.length;
   }
 
-  return getBeatCountForCompas(getBarraTipoCompas(barra, config));
+  return getCompasCycleGolpes(config);
 }
 
 export function buildIntensidadForGolpes(

@@ -12,6 +12,7 @@ export type CancioneroLocalRecord = {
   url_letra: string;
   updated_at: string;
   tiene_cifrado_avanzado?: boolean;
+  user_id?: string | null;
 };
 
 export type CancioneroLocalMeta = {

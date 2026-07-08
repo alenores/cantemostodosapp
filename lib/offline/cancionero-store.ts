@@ -23,6 +23,7 @@ export function toCancionCancionero(
     artista: record.artista,
     letra: record.letra,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
+    user_id: record.user_id ?? null,
   };
 }
 
@@ -170,5 +171,6 @@ export function getCancioneroLocalForBusqueda(
     letra: record.letra,
     url_letra: record.url_letra,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
+    user_id: record.user_id ?? null,
   }));
 }

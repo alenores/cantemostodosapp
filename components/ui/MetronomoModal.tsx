@@ -225,6 +225,7 @@ export default function MetronomoModal({
                 bpm={bpm}
                 beatPattern={beatPattern}
                 patternLength={patternLength}
+                beatDurations={beatDurations}
                 currentBeat={currentBeat}
                 isPlaying={isPlaying}
               />

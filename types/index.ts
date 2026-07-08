@@ -11,6 +11,7 @@ import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
 export type CancionGuardada = {
   id: number;
   sala_id: number | null;
+  user_id: string | null;
   nombre: string;
   artista: string | null;
   url_letra: string | null;
@@ -26,7 +27,7 @@ export type CancionGuardada = {
 
 export type CancionCancionero = Pick<
   CancionGuardada,
-  "id" | "nombre" | "artista" | "letra" | "tiene_cifrado_avanzado"
+  "id" | "nombre" | "artista" | "letra" | "tiene_cifrado_avanzado" | "user_id"
 >;
 
 export type CancionCifradoDetalle = Pick<

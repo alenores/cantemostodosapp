@@ -177,7 +177,7 @@ function MiCancionItem({
 
   return (
     <article
-      className={`relative cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
+      className={`relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
         actionsOpen
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
@@ -372,12 +372,19 @@ export default function MisCancionesPageClient() {
     async (cancionGuardadaId: number): Promise<CancionCancionero | null> => {
       const { data, error } = await supabase
         .from("canciones_guardadas")
-        .select("id, nombre, artista, letra")
+        .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
         .eq("id", cancionGuardadaId)
         .maybeSingle();
 
       if (data) {
-        return data as CancionCancionero;
+        return {
+          id: data.id,
+          nombre: data.nombre,
+          artista: data.artista,
+          letra: data.letra,
+          tiene_cifrado_avanzado: data.tiene_cifrado_avanzado ?? false,
+          user_id: data.user_id ?? null,
+        };
       }
 
       const local = await getCancioneroLocalAsCancionero();

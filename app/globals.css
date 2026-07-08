@@ -1540,8 +1540,15 @@ html.splash-active body {
 /* Listados en columnas */
 .app-list-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-list-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 640px) {

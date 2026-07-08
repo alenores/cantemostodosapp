@@ -4,7 +4,14 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { MicToggleButton } from "@/components/ui/MicToggleButton";
 import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
-import { RitmoConfigSection, ToolRitmoCompasPanel, ToolRitmoTempoPanel } from "@/components/ui/ToolRitmoConfig";
+import {
+  BeatPatternEditor,
+  RitmoConfigSection,
+  ToolRitmoCompasPanel,
+  ToolRitmoTempoPanel,
+} from "@/components/ui/ToolRitmoConfig";
+import { CompositorDesktopCicloBar } from "@/components/ui/compositor/CompositorDesktopCicloBar";
+import { CompositorDesktopTempoBar } from "@/components/ui/compositor/CompositorDesktopTempoBar";
 import {
   EncajarHelpButton,
   EncajarHelpModal,
@@ -51,6 +58,7 @@ import type {
 } from "@/lib/metronomo";
 import {
   getActivePatternSlice,
+  getBeatLevelAtOffset,
   getBeatDurationPatternSummary,
   getBeatLevelBarAppearance,
   getBeatLevelBarHeightPercent,
@@ -261,21 +269,80 @@ type RitmoDesktopTempoPanelProps = Omit<
 >;
 
 function renderRitmoDesktopCicloTempo({
-  cicloTitle = "Ciclo",
   compas,
   tempo,
+  notas,
 }: {
-  cicloTitle?: string;
   compas: RitmoDesktopCompasPanelProps;
   tempo: RitmoDesktopTempoPanelProps;
+  notas?: { vozNotaPatron: ComponentProps<typeof ToolRitmoCompasPanel>["vozNotaPatron"] };
 }) {
+  const activePattern = getActivePatternSlice(compas.beatPattern, compas.patternLength);
+
   return (
     <>
-      <VozPcConfigCard title={cicloTitle}>
-        <ToolRitmoCompasPanel embedded layout="flat" {...compas} />
+      <VozPcConfigCard>
+        <CompositorDesktopCicloBar
+          cycleGolpes={compas.patternLength}
+          cycleBeatDurations={compas.beatDurations}
+          disabled={tempo.disabled ?? false}
+          size="compact"
+          accent="voz"
+          onSetCycleGolpes={compas.onSetPatternLength}
+          onSetCycleBeatDurationAtSlot={compas.onSetBeatDurationAtSlot}
+        />
       </VozPcConfigCard>
-      <VozPcConfigCard title="Tempo">
-        <ToolRitmoTempoPanel embedded {...tempo} />
+
+      <VozPcConfigCard>
+        <BeatPatternEditor
+          pattern={compas.beatPattern}
+          patternLength={compas.patternLength}
+          variant="config"
+          slotDensity="compact"
+          embedded
+          desktopEmbedded
+          accent="voz"
+          onCycleSlot={(slotIndex) => {
+            const current = activePattern[slotIndex] ?? ("silencio" as const);
+            compas.onSetBeatLevelAtSlot(
+              slotIndex,
+              getBeatLevelAtOffset(current, 1),
+            );
+          }}
+        />
+      </VozPcConfigCard>
+
+      {notas?.vozNotaPatron ? (
+        <VozPcConfigCard>
+          <ToolRitmoCompasPanel
+            embedded
+            layout="flat"
+            scope="cycle"
+            hideCompasHelp
+            hideIntensidadTab
+            forcedTab="notas"
+            vozNotaPatron={notas.vozNotaPatron}
+            beatPattern={compas.beatPattern}
+            patternLength={compas.patternLength}
+            beatDurations={compas.beatDurations}
+            disabled={tempo.disabled ?? false}
+            patternLengthInputId={compas.patternLengthInputId}
+            onSetPatternLength={compas.onSetPatternLength}
+            onSetBeatDurationAtSlot={compas.onSetBeatDurationAtSlot}
+            onSetBeatLevelAtSlot={compas.onSetBeatLevelAtSlot}
+          />
+        </VozPcConfigCard>
+      ) : null}
+
+      <VozPcConfigCard>
+        <CompositorDesktopTempoBar
+          bpm={tempo.bpm}
+          isPlaying={tempo.isPlaying}
+          tapTempoTapCount={tempo.tapTempoTapCount}
+          accent="voz"
+          onSetBpm={tempo.onSetBpm}
+          onTapTempo={tempo.onTapTempo}
+        />
       </VozPcConfigCard>
     </>
   );
@@ -4368,20 +4435,21 @@ export function VozModeSlides({
           layout,
           layout === "desktop" ? (
             renderRitmoDesktopCicloTempo({
-              cicloTitle: "Ciclo y notas",
               compas: {
                 beatPattern: ritmoBeatPattern,
                 patternLength: ritmoPatternLength,
                 beatDurations: ritmoBeatDurations,
                 hideCompasHelp: true,
-                vozNotaPatron: {
-                  pattern: comboNotePattern,
-                  onSetAtSlot: onSetComboNoteAtSlot,
-                },
                 patternLengthInputId: "voz-combo-pattern-length",
                 onSetPatternLength: onSetRitmoPatternLength,
                 onSetBeatDurationAtSlot: onSetRitmoBeatDurationAtSlot,
                 onSetBeatLevelAtSlot: onSetRitmoBeatLevelAtSlot,
+              },
+              notas: {
+                vozNotaPatron: {
+                  pattern: comboNotePattern,
+                  onSetAtSlot: onSetComboNoteAtSlot,
+                },
               },
               tempo: {
                 bpm: ritmoBpm,

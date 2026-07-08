@@ -10,15 +10,16 @@ import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShe
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import CifradoViewerModal from "@/components/cifrado/CifradoViewerModal";
 import AddButton from "@/components/ui/AddButton";
-import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
   deleteCancionCancionero,
+  esCancionDelUsuario,
   fetchCancionCifradoDetalle,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
@@ -42,7 +43,6 @@ import type {
 } from "@/lib/cifrado-editor-session";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import type { CancioneroFormData } from "@/lib/cancionero";
 import { Music, Search, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -62,15 +62,12 @@ export default function CancioneroPageClient({
 }: CancioneroPageClientProps) {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const isDesktop = useIsDesktop();
   const supabase = useMemo(() => createClient(), []);
   const usuarioLogueado = usuarioId !== null;
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [localReady, setLocalReady] = useState(false);
   const [query, setQuery] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
-  const [cancionEditando, setCancionEditando] = useState<CancionCancionero | null>(
-    null,
-  );
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
   );
@@ -247,33 +244,25 @@ export default function CancioneroPageClient({
       return;
     }
 
-    setCancionEditando(null);
-    setFormOpen(true);
+    setEditorSession(null);
+    setEditorOpen(true);
   }
 
-  function handleEditar(cancion: CancionCancionero) {
-    if (!online || !usuarioLogueado) {
-      return;
-    }
-
-    setCancionEditando(cancion);
-    setFormOpen(true);
-  }
-
-  async function handleAdicionAvanzada(form: CancioneroFormData) {
+  async function openEditorForCancion(cancion: CancionCancionero) {
     if (!online || !usuarioLogueado || editorLoading) {
       return;
     }
 
     setEditorLoading(true);
     setActionError(null);
+    setActiveCardId(null);
 
     try {
-      const esAvanzada = Boolean(cancionEditando?.tiene_cifrado_avanzado);
+      const esAvanzada = Boolean(cancion.tiene_cifrado_avanzado);
       let detalle: CancionCifradoDetalle | null = null;
 
-      if (esAvanzada && cancionEditando) {
-        detalle = await fetchCancionCifradoDetalle(supabase, cancionEditando.id);
+      if (esAvanzada) {
+        detalle = await fetchCancionCifradoDetalle(supabase, cancion.id);
 
         if (!detalle) {
           throw new Error("No se pudo cargar el cifrado guardado de esta canción.");
@@ -281,27 +270,33 @@ export default function CancioneroPageClient({
       }
 
       const session = buildCifradoEditorSession({
-        cancionId: cancionEditando?.id,
-        nombre: form.nombre,
-        artista: form.artista,
-        letra: form.letra,
+        cancionId: cancion.id,
+        nombre: cancion.nombre,
+        artista: cancion.artista ?? "",
+        letra: cancion.letra ?? "",
         esAvanzada,
         detalle,
       });
 
-      setFormOpen(false);
-      setCancionEditando(null);
       setEditorSession(session);
       setEditorOpen(true);
-    } catch (adicionError) {
+    } catch (editorError) {
       setActionError(
-        adicionError instanceof Error
-          ? adicionError.message
-          : "No se pudo abrir el editor avanzado",
+        editorError instanceof Error
+          ? editorError.message
+          : "No se pudo abrir el editor",
       );
     } finally {
       setEditorLoading(false);
     }
+  }
+
+  function handleEditar(cancion: CancionCancionero) {
+    if (!online || !usuarioLogueado || !esCancionDelUsuario(cancion, usuarioId)) {
+      return;
+    }
+
+    void openEditorForCancion(cancion);
   }
 
   function handleEditorClose() {
@@ -434,7 +429,7 @@ export default function CancioneroPageClient({
   }
 
   function handleEliminar(cancion: CancionCancionero) {
-    if (!online || !usuarioLogueado) {
+    if (!online || !usuarioLogueado || !esCancionDelUsuario(cancion, usuarioId)) {
       return;
     }
 
@@ -485,12 +480,15 @@ export default function CancioneroPageClient({
     setCifradoViewerOpen(false);
   });
 
-  useHardwareBack(cancionViendo !== null && !formOpen && !cifradoViewerOpen, () => {
-    setCancionViendo(null);
-  });
+  useHardwareBack(
+    cancionViendo !== null && !editorOpen && !cifradoViewerOpen,
+    () => {
+      setCancionViendo(null);
+    },
+  );
 
   useHardwareBack(
-    cancionAEliminar !== null && !formOpen && cancionViendo === null,
+    cancionAEliminar !== null && !editorOpen && cancionViendo === null,
     () => {
       handleCancelEliminar();
     },
@@ -504,16 +502,23 @@ export default function CancioneroPageClient({
       <AppReadyMarker />
       <CancioneroSubpageShell
         title="Cancionero"
-        modalOpen={cancionViendo !== null || formOpen || cifradoViewerOpen}
+        modalOpen={cancionViendo !== null || editorOpen || cifradoViewerOpen}
         headerAction={
-          usuarioLogueado ? (
-            <AddButton
-              ariaLabel="Agregar canción"
-              onClick={handleNuevaCancion}
-              disabled={!online}
-              className={!online ? "opacity-40" : ""}
-            />
-          ) : null
+          <AddButton
+            ariaLabel={
+              usuarioLogueado ? "Agregar canción" : "Iniciar sesión para agregar"
+            }
+            onClick={() => {
+              if (!usuarioLogueado) {
+                showSnackbar("Iniciá sesión para agregar canciones");
+                return;
+              }
+
+              handleNuevaCancion();
+            }}
+            disabled={!online || !usuarioLogueado}
+            className={!online || !usuarioLogueado ? "opacity-40" : ""}
+          />
         }
       >
         {modoSeleccionMisCanciones && (
@@ -594,9 +599,9 @@ export default function CancioneroPageClient({
                 {cancionesFiltradas.map((cancion, index) => (
                   <div
                     key={cancion.id}
-                    className={
-                      cascadeActive ? "cancionero-item-cascade" : undefined
-                    }
+                    className={`min-w-0 max-w-full${
+                      cascadeActive ? " cancionero-item-cascade" : ""
+                    }`}
                     style={
                       cascadeActive
                         ? {
@@ -610,7 +615,9 @@ export default function CancioneroPageClient({
                   >
                     <CancioneroItemCard
                       cancion={cancion}
+                      isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
+                      puedeEditarEliminar={esCancionDelUsuario(cancion, usuarioId)}
                       mostrarSumarMisCanciones={mostrarSumarMisCanciones}
                       modoSeleccion={modoSeleccionMisCanciones}
                       actionsOpen={activeCardId === cancion.id}
@@ -630,18 +637,6 @@ export default function CancioneroPageClient({
           </>
         )}
       </CancioneroSubpageShell>
-
-      <CancioneroFormModal
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false);
-          setCancionEditando(null);
-        }}
-        onSaved={() => void reloadCanciones()}
-        cancion={cancionEditando}
-        cancionesExistentes={canciones}
-        onAdicionAvanzada={(form) => void handleAdicionAvanzada(form)}
-      />
 
       <CifradoEditor
         open={editorOpen}

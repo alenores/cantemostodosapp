@@ -775,7 +775,6 @@ function BeatDurationSegmentPicker({
           disabled={disabled}
           aria-pressed={beatDuration === option.id}
           aria-label={option.label}
-          title={option.label}
           onClick={() => onSetBeatDuration(option.id)}
           className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-[8px] border border-border bg-bg-card px-1 py-1.5 disabled:opacity-50 ${
             beatDuration === option.id
@@ -1466,6 +1465,7 @@ export function PatternLengthControl({
 export function BeatPatternEditor({
   pattern,
   patternLength,
+  beatDurations,
   disabled = false,
   variant = "config",
   currentBeat = null,
@@ -1477,6 +1477,7 @@ export function BeatPatternEditor({
 }: {
   pattern: MetronomeBeatPattern;
   patternLength: number;
+  beatDurations?: MetronomeBeatDurationPattern;
   disabled?: boolean;
   variant?: "config" | "practice";
   currentBeat?: number | null;
@@ -1487,6 +1488,9 @@ export function BeatPatternEditor({
   accent?: RitmoDesktopConfigAccent;
 }) {
   const activePattern = getActivePatternSlice(pattern, patternLength);
+  const activeBeatDurations = beatDurations
+    ? getActiveBeatDurationSlice(beatDurations, patternLength)
+    : Array.from({ length: activePattern.length }, () => "negra" as const);
   const interactive = variant === "config";
   const compactSlots = slotDensity === "compact";
   const beatLevels: MetronomeBeatLevel[] = [
@@ -1496,13 +1500,18 @@ export function BeatPatternEditor({
     "fuerte",
   ];
 
+  const useVariableWidths = beatDurations != null;
   const inactiveSlotClass = compactSlots
     ? "flex min-w-0 flex-1 flex-col items-center justify-end"
-    : "flex min-w-0 flex-1 flex-col items-center justify-end lg:w-11 lg:flex-none";
+    : `flex min-w-0 flex-1 flex-col items-center justify-end ${
+        useVariableWidths ? "" : "lg:w-11 lg:flex-none"
+      }`.trim();
 
   const interactiveSlotClass = compactSlots
     ? "flex min-h-[2.75rem] min-w-0 flex-1 flex-col items-center justify-end gap-0.5 disabled:opacity-50"
-    : "flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 disabled:opacity-50 lg:w-11 lg:flex-none";
+    : `flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 disabled:opacity-50 ${
+        useVariableWidths ? "" : "lg:w-11 lg:flex-none"
+      }`.trim();
 
   const bars = (
     <div
@@ -1511,6 +1520,9 @@ export function BeatPatternEditor({
       } ${variant === "config" ? (desktopEmbedded ? "mt-2" : "mt-3") : ""}`}
     >
       {activePattern.map((level, index) => {
+        const flexWeight = getBeatDurationMultiplier(
+          activeBeatDurations[index] ?? "negra",
+        );
         const heightPercent = Math.max(
           getBeatLevelBarHeightPercent(level),
           level === "silencio" ? 0 : 8,
@@ -1523,7 +1535,7 @@ export function BeatPatternEditor({
             <span
               key={`beat-slot-${index}`}
               className={inactiveSlotClass}
-              title={`Tiempo ${index + 1}: ${getBeatLevelLabel(level)}`}
+              style={useVariableWidths ? { flex: `${flexWeight} 1 0` } : undefined}
             >
               <span
                 className={`w-full rounded-full transition-colors ${
@@ -1550,6 +1562,7 @@ export function BeatPatternEditor({
             aria-label={`Tiempo ${index + 1}: ${getBeatLevelLabel(level)}`}
             aria-pressed={level !== "silencio"}
             className={interactiveSlotClass}
+            style={useVariableWidths ? { flex: `${flexWeight} 1 0` } : undefined}
           >
             <span
               className="w-full rounded-full"

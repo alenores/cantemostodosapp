@@ -1,3 +1,5 @@
+import type { AudioPlaybackBus } from "@/lib/audio-playback-bus";
+
 const NOTE_REFERENCE_PEAK_GAIN = 0.68;
 const MIN_PRACTICE_NOTE_DURATION_SECONDS = 0.04;
 /** Frecuencia de referencia para igualar volumen percibido con el metrónomo. */
@@ -77,6 +79,7 @@ function connectPracticeOscillator(
   durationSeconds: number,
   peakGain: number,
   pitchCompensation: boolean,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const safeDuration = Math.max(
     durationSeconds,
@@ -100,7 +103,8 @@ function connectPracticeOscillator(
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + safeDuration);
 
   oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(oscillator);
   oscillator.start(time);
   oscillator.stop(time + safeDuration + 0.03);
 }
@@ -118,6 +122,7 @@ export function scheduleVozPracticeNote(
   durationSeconds: number,
   peakGain = NOTE_REFERENCE_PEAK_GAIN,
   options: VozPracticeNoteOptions = {},
+  bus?: AudioPlaybackBus | null,
 ): void {
   if (!isValidPracticeFrequency(frequency) || durationSeconds <= 0.01) {
     return;
@@ -133,6 +138,7 @@ export function scheduleVozPracticeNote(
       durationSeconds,
       peakGain,
       false,
+      bus,
     );
     return;
   }
@@ -147,6 +153,7 @@ export function scheduleVozPracticeNote(
     durationSeconds,
     fundamentalGain,
     true,
+    bus,
   );
 
   if (useLowHarmonics) {
@@ -157,6 +164,7 @@ export function scheduleVozPracticeNote(
       durationSeconds,
       peakGain * 0.38,
       true,
+      bus,
     );
   }
 
@@ -168,6 +176,7 @@ export function scheduleVozPracticeNote(
       durationSeconds,
       peakGain * 0.18,
       true,
+      bus,
     );
   }
 }

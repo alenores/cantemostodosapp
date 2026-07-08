@@ -8,23 +8,17 @@ import { CifradoEditorHelpButton } from "@/components/cifrado/CifradoEditorHelpM
 import {
   CIFRADO_EDITOR_PC_COMPAS_STRIP_CLASS,
   CIFRADO_EDITOR_PC_TOOLBAR_SHELL_CLASS,
-  CIFRADO_EDITOR_PLAY_BUTTON_CLASS,
   cifradoEditorPcTabClass,
 } from "@/components/cifrado/cifrado-controls-ui";
-import { TapButton } from "@/components/ui/TapFeedback";
 import type { TipoCompas } from "@/lib/cifrado";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
-import { Pause, Play } from "lucide-react";
 
 type ModoInsercion = "acordes" | "compas" | "letra";
 
 type CifradoEditorPcToolbarProps = {
   modoInsercion: ModoInsercion;
   onSetModoInsercion: (modo: ModoInsercion) => void;
-  hasCompas: boolean;
-  playing: boolean;
-  onTogglePlayback: () => void;
   compasToolTab: CifradoCompasToolTab;
   onCompasToolTabChange: (tab: CifradoCompasToolTab) => void;
   tipoCompas: TipoCompas;
@@ -48,9 +42,6 @@ type CifradoEditorPcToolbarProps = {
 export function CifradoEditorPcToolbar({
   modoInsercion,
   onSetModoInsercion,
-  hasCompas,
-  playing,
-  onTogglePlayback,
   compasToolTab,
   onCompasToolTabChange,
   tipoCompas,
@@ -109,21 +100,6 @@ export function CifradoEditorPcToolbar({
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <CifradoEditorHelpButton onClick={onOpenHelp} />
-
-          {hasCompas ? (
-            <TapButton
-              type="button"
-              onClick={onTogglePlayback}
-              className={CIFRADO_EDITOR_PLAY_BUTTON_CLASS}
-              aria-label={playing ? "Pausar compás" : "Reproducir compás"}
-            >
-              {playing ? (
-                <Pause className="size-5" aria-hidden="true" />
-              ) : (
-                <Play className="size-5" aria-hidden="true" />
-              )}
-            </TapButton>
-          ) : null}
         </div>
       </div>
 

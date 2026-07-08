@@ -37,15 +37,33 @@ function findScrollableVerticalTarget(start: HTMLElement): HTMLElement | null {
   return null;
 }
 
+function wheelEventTargetElement(
+  event: ReactWheelEvent<HTMLElement>,
+): HTMLElement {
+  const { target } = event.nativeEvent;
+
+  if (target instanceof HTMLElement) {
+    return target;
+  }
+
+  if (target instanceof Node && target.parentElement) {
+    return target.parentElement;
+  }
+
+  return event.currentTarget;
+}
+
 /** Reenvía la rueda vertical al contenedor con `data-tool-vertical-scroll` más cercano que pueda desplazarse. */
 export function forwardVerticalWheel(
   event: ReactWheelEvent<HTMLElement>,
 ): void {
-  if (!shouldForwardVerticalWheel(event.nativeEvent)) {
+  if (event.defaultPrevented || !shouldForwardVerticalWheel(event.nativeEvent)) {
     return;
   }
 
-  const verticalScroller = findScrollableVerticalTarget(event.currentTarget);
+  const verticalScroller = findScrollableVerticalTarget(
+    wheelEventTargetElement(event),
+  );
 
   if (!verticalScroller) {
     return;

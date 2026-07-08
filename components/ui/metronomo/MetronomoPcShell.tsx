@@ -95,6 +95,7 @@ export function MetronomoPcShell({
             <BeatPatternEditor
               pattern={beatPattern}
               patternLength={patternLength}
+              beatDurations={beatDurations}
               variant="config"
               slotDensity="compact"
               embedded
@@ -139,6 +140,7 @@ export function MetronomoPcShell({
               bpm={bpm}
               beatPattern={beatPattern}
               patternLength={patternLength}
+              beatDurations={beatDurations}
               currentBeat={currentBeat}
               isPlaying={isPlaying}
               compact

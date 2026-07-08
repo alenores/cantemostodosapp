@@ -90,7 +90,9 @@ export async function fetchCancioneroRemoteAll(
 ): Promise<CancioneroLocalRecord[]> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado")
+    .select(
+      "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id",
+    )
     .is("sala_id", null);
 
   if (error) {
@@ -105,6 +107,7 @@ export async function fetchCancioneroRemoteAll(
     url_letra: row.url_letra ?? "",
     updated_at: normalizeTimestamp(row.updated_at) ?? new Date().toISOString(),
     tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+    user_id: row.user_id ?? null,
   }));
 }
 

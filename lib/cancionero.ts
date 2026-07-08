@@ -19,6 +19,13 @@ export type CancioneroFormData = {
 
 export type DuplicadoCancioneroNivel = "ninguno" | "nombre" | "nombre-artista";
 
+export function esCancionDelUsuario(
+  cancion: Pick<CancionCancionero, "user_id">,
+  usuarioId: string | null,
+): boolean {
+  return usuarioId !== null && cancion.user_id === usuarioId;
+}
+
 export function normalizeCancioneroText(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -102,7 +109,7 @@ export async function fetchCancionesCancionero(
 ): Promise<CancionCancionero[]> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, nombre, artista, letra, tiene_cifrado_avanzado")
+    .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
     .is("sala_id", null)
     .order("nombre", { ascending: true });
 
@@ -116,6 +123,7 @@ export async function fetchCancionesCancionero(
     artista: row.artista,
     letra: row.letra,
     tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+    user_id: row.user_id ?? null,
   }));
 }
 
@@ -186,8 +194,19 @@ export async function insertCancionCancionero(
   supabase: SupabaseClient,
   form: CancioneroFormData,
 ): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error("Se requiere sesión activa para agregar al cancionero");
+  }
+
   const { error } = await supabase.from("canciones_guardadas").insert({
     sala_id: null,
+    user_id: userId,
     nombre: form.nombre.trim(),
     artista: form.artista.trim(),
     letra: form.letra.trim(),
@@ -323,6 +342,12 @@ export async function guardarLinkEnCancionero(
     url_letra: string;
   },
 ): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const userId = session?.user?.id ?? null;
+
   const { data: existing, error: existingError } = await supabase
     .from("canciones_guardadas")
     .select("id")
@@ -340,6 +365,7 @@ export async function guardarLinkEnCancionero(
 
   const { error } = await supabase.from("canciones_guardadas").insert({
     sala_id: null,
+    user_id: userId,
     nombre: data.nombre.trim(),
     artista: data.artista?.trim() || null,
     letra: null,
@@ -360,6 +386,12 @@ export async function guardarLetraEnCancionero(
     url_letra?: string;
   },
 ): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const userId = session?.user?.id ?? null;
+
   const trimmedLetra = data.letra.trim();
   const urlLetra = data.url_letra?.trim() ?? "";
 
@@ -393,6 +425,7 @@ export async function guardarLetraEnCancionero(
 
   const { error } = await supabase.from("canciones_guardadas").insert({
     sala_id: null,
+    user_id: userId,
     nombre: data.nombre.trim(),
     artista: data.artista?.trim() || null,
     letra: trimmedLetra,

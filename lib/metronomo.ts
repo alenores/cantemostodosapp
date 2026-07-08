@@ -1,3 +1,8 @@
+import {
+  createPlaybackBus,
+  type AudioPlaybackBus,
+} from "@/lib/audio-playback-bus";
+
 export const BPM_MIN = 40;
 export const BPM_MAX = 240;
 export const BPM_DEFAULT = 80;
@@ -926,6 +931,7 @@ function scheduleClick(
   audioContext: AudioContext,
   time: number,
   level: MetronomeBeatLevel,
+  bus: AudioPlaybackBus,
 ): void {
   const audio = getBeatLevelAudio(level);
 
@@ -943,7 +949,8 @@ function scheduleClick(
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + audio.duration);
 
   oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus.output);
+  bus.track(oscillator);
 
   oscillator.start(time);
   oscillator.stop(time + audio.duration);
@@ -963,6 +970,7 @@ export type MetronomeEngine = {
 export function createMetronomeEngine(
   audioContext: AudioContext,
 ): MetronomeEngine {
+  const playbackBus = createPlaybackBus(audioContext);
   let running = false;
   let bpm = BPM_DEFAULT;
   let pattern: MetronomeBeatPattern = [...METRONOME_PATTERN_DEFAULT];
@@ -1029,7 +1037,7 @@ export function createMetronomeEngine(
         activeDurations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
       );
 
-      scheduleClick(audioContext, beatTime, level);
+      scheduleClick(audioContext, beatTime, level, playbackBus);
       scheduleBeatCallback(beatIndex, beatTime);
 
       nextBeatTime += secondsPerBeat;
@@ -1057,6 +1065,7 @@ export function createMetronomeEngine(
       running = true;
       currentBeatIndex = 0;
       nextBeatTime = audioContext.currentTime;
+      playbackBus.reset();
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);
@@ -1068,6 +1077,7 @@ export function createMetronomeEngine(
     stop() {
       running = false;
       onBeat = null;
+      playbackBus.cut();
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);

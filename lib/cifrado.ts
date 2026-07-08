@@ -127,6 +127,95 @@ export function getCompasExtensionStart(textLength: number): number {
   return textLength === 0 ? 1 : textLength;
 }
 
+export function getCompasExtensionEndOffset(textLength: number): number {
+  return getCompasExtensionStart(textLength) + COMPAS_EXTENSION_SLOT_COUNT - 1;
+}
+
+/** Fin del tramo visual de un compás cuando no hay otra barra a la derecha. */
+export function resolveCompasSegmentEndCharOffset(
+  sortedBarras: ReadonlyArray<BarraCompas>,
+  barraIndex: number,
+  contentEndOffset: number,
+  textLength: number,
+): number {
+  const barra = sortedBarras[barraIndex]!;
+
+  if (barraIndex + 1 < sortedBarras.length) {
+    return sortedBarras[barraIndex + 1]!.charOffset;
+  }
+
+  if (sortedBarras.length === 1) {
+    const end = Math.max(contentEndOffset, barra.charOffset);
+
+    if (end > barra.charOffset) {
+      return end;
+    }
+
+    return getCompasExtensionEndOffset(textLength);
+  }
+
+  if (barraIndex > 0) {
+    const prev = sortedBarras[barraIndex - 1]!;
+    const width = barra.charOffset - prev.charOffset;
+    const end = barra.charOffset + width;
+
+    if (end > barra.charOffset) {
+      return end;
+    }
+  }
+
+  return getCompasExtensionEndOffset(textLength);
+}
+
+/** Fin horizontal del tramo visual; el último ciclo replica el ancho en px del anterior. */
+export function resolveCompasSegmentEndPx(
+  sortedBarras: ReadonlyArray<BarraCompas>,
+  barraIndex: number,
+  getOffsetPx: (charOffset: number) => number | undefined,
+  contentEndOffset: number | undefined,
+  textLength: number,
+): number | undefined {
+  const barra = sortedBarras[barraIndex]!;
+  const startPx = getOffsetPx(barra.charOffset);
+
+  if (startPx === undefined) {
+    return undefined;
+  }
+
+  const nextBarra = sortedBarras[barraIndex + 1];
+
+  if (nextBarra) {
+    return getOffsetPx(nextBarra.charOffset);
+  }
+
+  if (sortedBarras.length > 1 && barraIndex > 0) {
+    const prevBarra = sortedBarras[barraIndex - 1]!;
+    const prevStartPx = getOffsetPx(prevBarra.charOffset);
+    const prevEndPx = getOffsetPx(barra.charOffset);
+
+    if (
+      prevStartPx !== undefined &&
+      prevEndPx !== undefined &&
+      prevEndPx > prevStartPx
+    ) {
+      return startPx + (prevEndPx - prevStartPx);
+    }
+  }
+
+  if (contentEndOffset === undefined) {
+    return undefined;
+  }
+
+  const endOffset = resolveCompasSegmentEndCharOffset(
+    sortedBarras,
+    barraIndex,
+    contentEndOffset,
+    textLength,
+  );
+
+  return getOffsetPx(endOffset);
+}
+
 /** Máximo de ciclos al colocar compases de una vez en un renglón. */
 export const MAX_COMPAS_PLACEMENT_CYCLE_COUNT = COMPAS_EXTENSION_SLOT_COUNT;
 
@@ -419,10 +508,20 @@ export function computeBeatTickCenters(
   return centers;
 }
 
+export type ComputeLineCompasMarkersOptions = {
+  contentEndOffset: number;
+  textLength: number;
+  /** Agrega una barra de cierre ficticia al final del renglón (solo visual). */
+  appendTerminalMeasure?: boolean;
+  /** Intensidad opcional para la barra de cierre ficticia. */
+  terminalIntensidad?: MetronomeBeatLevel;
+};
+
 export function computeLineBeatTicks(
   barras: BarraCompas[],
   getOffsetPx: (charOffset: number) => number | undefined,
   getBeatCount: (barra: BarraCompas) => number,
+  options: ComputeLineCompasMarkersOptions,
 ): number[] {
   if (barras.length === 0) {
     return [];
@@ -445,10 +544,19 @@ export function computeLineBeatTicks(
       continue;
     }
 
-    const endPx =
-      index + 1 < sorted.length
-        ? getOffsetPx(sorted[index + 1]!.charOffset)
-        : undefined;
+    const endOffset = resolveCompasSegmentEndCharOffset(
+      sorted,
+      index,
+      options.contentEndOffset,
+      options.textLength,
+    );
+    const endPx = resolveCompasSegmentEndPx(
+      sorted,
+      index,
+      getOffsetPx,
+      options.contentEndOffset,
+      options.textLength,
+    );
 
     if (endPx === undefined || endPx <= startPx) {
       continue;
@@ -479,6 +587,7 @@ export function computeLineCompasMarkersPx(
     barra: BarraCompas,
     beatIndexInMeasure: number,
   ) => MetronomeBeatLevel,
+  options?: ComputeLineCompasMarkersOptions,
 ): CompasMarker[] {
   if (barras.length === 0) {
     return [];
@@ -486,6 +595,9 @@ export function computeLineCompasMarkersPx(
 
   const sorted = [...barras].sort((a, b) => a.charOffset - b.charOffset);
   const markers: CompasMarker[] = [];
+  const contentEndOffset = options?.contentEndOffset;
+  const textLength = options?.textLength ?? 0;
+  const appendTerminalMeasure = options?.appendTerminalMeasure ?? false;
 
   for (let index = 0; index < sorted.length; index += 1) {
     const barra = sorted[index]!;
@@ -496,12 +608,22 @@ export function computeLineCompasMarkersPx(
     }
 
     const startOffset = barra.charOffset;
-    const endOffset = sorted[index + 1]?.charOffset;
     const startPx = getOffsetPx(startOffset);
 
     if (startPx === undefined) {
       continue;
     }
+
+    const endPx =
+      sorted[index + 1] !== undefined || contentEndOffset !== undefined
+        ? resolveCompasSegmentEndPx(
+            sorted,
+            index,
+            getOffsetPx,
+            contentEndOffset,
+            textLength,
+          )
+        : undefined;
 
     markers.push({
       kind: "measure",
@@ -510,12 +632,6 @@ export function computeLineCompasMarkersPx(
       cycleId: barra.cycleId ?? null,
       cycleStepIndex: 0,
     });
-
-    if (endOffset === undefined) {
-      continue;
-    }
-
-    const endPx = getOffsetPx(endOffset);
 
     if (endPx === undefined || endPx <= startPx) {
       continue;
@@ -532,6 +648,39 @@ export function computeLineCompasMarkersPx(
         cycleId: barra.cycleId ?? null,
         cycleStepIndex: beat,
       });
+    }
+  }
+
+  if (appendTerminalMeasure && contentEndOffset !== undefined) {
+    const lastIndex = sorted.length - 1;
+    const lastBarra = sorted[lastIndex]!;
+    const endPx = resolveCompasSegmentEndPx(
+      sorted,
+      lastIndex,
+      getOffsetPx,
+      contentEndOffset,
+      textLength,
+    );
+
+    if (endPx !== undefined) {
+      const lastMarkerPx = markers[markers.length - 1]?.leftPx ?? null;
+      const alreadyAtEnd =
+        lastMarkerPx !== null && Math.abs(lastMarkerPx - endPx) < 1.5;
+
+      if (!alreadyAtEnd) {
+        const intensidad =
+          options?.terminalIntensidad ??
+          resolveIntensidad?.(lastBarra, 0) ??
+          "fuerte";
+
+        markers.push({
+          kind: "measure",
+          leftPx: endPx,
+          intensidad,
+          cycleId: lastBarra.cycleId ?? null,
+          cycleStepIndex: 0,
+        });
+      }
     }
   }
 

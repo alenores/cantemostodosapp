@@ -3,6 +3,7 @@
 import type { CompositorPiece } from "@/lib/compositor";
 import {
   computeLineCompasMarkersPx,
+  getLineContentEndOffset,
   resolveCharOffsetPx,
   type AcordePos,
   type BarraCompas,
@@ -240,9 +241,25 @@ export function CifradoLyricsLine({
             (barra, beatIndex) =>
               getBarraIntensidad(barra, compasConfigForLine)[beatIndex] ??
               "medio",
+            {
+              contentEndOffset: getLineContentEndOffset(
+                characters.length,
+                acordes,
+                barras,
+              ),
+              textLength: characters.length,
+            },
           )
         : [],
-    [barras, charPositions, compasConfigForLine, cyclePiecesById, showCompas],
+    [
+      acordes,
+      barras,
+      charPositions,
+      characters.length,
+      compasConfigForLine,
+      cyclePiecesById,
+      showCompas,
+    ],
   );
 
   useEffect(() => {

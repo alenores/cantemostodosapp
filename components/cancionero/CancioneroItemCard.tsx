@@ -21,9 +21,22 @@ const ACTION_FAB_ANIM_MS = 220;
 const SUMAR_FAB_LABEL = "Guardar en Favoritas";
 const SUMAR_FAB_LABEL_VISIBLE_MS = 2000;
 
+const DESKTOP_ACTION_BTN =
+  "flex size-4 items-center justify-center rounded-sm p-0 text-text-faint/55 transition-colors duration-150";
+
+type ActionButton = {
+  key: string;
+  label: string;
+  className: string;
+  icon: typeof Bookmark;
+  action: () => void;
+};
+
 type CancioneroItemCardProps = {
   cancion: CancionCancionero;
+  isDesktop?: boolean;
   mutationsEnabled?: boolean;
+  puedeEditarEliminar?: boolean;
   mostrarSumarMisCanciones?: boolean;
   modoSeleccion?: boolean;
   actionsOpen: boolean;
@@ -37,7 +50,9 @@ type CancioneroItemCardProps = {
 
 export default function CancioneroItemCard({
   cancion,
+  isDesktop = false,
   mutationsEnabled = true,
+  puedeEditarEliminar = false,
   mostrarSumarMisCanciones = false,
   modoSeleccion = false,
   actionsOpen,
@@ -63,8 +78,16 @@ export default function CancioneroItemCard({
   const [sumarLabelVisible, setSumarLabelVisible] = useState(false);
   const [sumarLabelExiting, setSumarLabelExiting] = useState(false);
 
+  const showDesktopActions =
+    isDesktop &&
+    !modoSeleccion &&
+    (Boolean(onSumarAMisCanciones) || puedeEditarEliminar);
+
   const longPressEnabled =
-    mutationsEnabled && (mostrarSumarMisCanciones || mutationsEnabled);
+    !isDesktop &&
+    !modoSeleccion &&
+    ((mostrarSumarMisCanciones && Boolean(onSumarAMisCanciones)) ||
+      (mutationsEnabled && puedeEditarEliminar));
 
   useEffect(() => {
     return () => {
@@ -123,7 +146,7 @@ export default function CancioneroItemCard({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLElement>) {
-    if (!longPressEnabled || modoSeleccion) {
+    if (!longPressEnabled) {
       return;
     }
 
@@ -174,7 +197,7 @@ export default function CancioneroItemCard({
   }
 
   function handleContextMenu(event: MouseEvent) {
-    if (!longPressEnabled || modoSeleccion) {
+    if (!longPressEnabled) {
       return;
     }
 
@@ -187,17 +210,25 @@ export default function CancioneroItemCard({
     action();
   }
 
+  function runDesktopAction(
+    event: MouseEvent<HTMLButtonElement>,
+    action: () => void,
+  ) {
+    event.stopPropagation();
+    action();
+  }
+
   const actionButtons = [
     mostrarSumarMisCanciones && onSumarAMisCanciones
       ? {
           key: "sumar",
-          label: `Sumar ${cancion.nombre} a Favoritas`,
+          label: `Guardar ${cancion.nombre} en Favoritas`,
           className: "",
           icon: Bookmark,
           action: () => onSumarAMisCanciones(cancion),
         }
       : null,
-    mutationsEnabled
+    mutationsEnabled && puedeEditarEliminar
       ? {
           key: "editar",
           label: `Editar ${cancion.nombre}`,
@@ -207,7 +238,7 @@ export default function CancioneroItemCard({
           action: () => onEditar(cancion),
         }
       : null,
-    mutationsEnabled
+    mutationsEnabled && puedeEditarEliminar
       ? {
           key: "eliminar",
           label: `Eliminar ${cancion.nombre}`,
@@ -217,18 +248,12 @@ export default function CancioneroItemCard({
           action: () => onEliminar(cancion),
         }
       : null,
-  ].filter(Boolean) as Array<{
-    key: string;
-    label: string;
-    className: string;
-    icon: typeof Bookmark;
-    action: () => void;
-  }>;
+  ].filter(Boolean) as ActionButton[];
 
   const hasSumarAction = actionButtons.some((button) => button.key === "sumar");
 
   useEffect(() => {
-    if (!actionsOpen) {
+    if (!actionsOpen || isDesktop) {
       resetSumarLabel();
       return;
     }
@@ -261,12 +286,12 @@ export default function CancioneroItemCard({
     return () => {
       resetSumarLabel();
     };
-  }, [actionButtons.length, actionsOpen, hasSumarAction]);
+  }, [actionButtons.length, actionsOpen, hasSumarAction, isDesktop]);
 
   return (
     <article
-      className={`relative cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
-        actionsOpen || modoSeleccion
+      className={`group relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-2.5 select-none ${
+        (!isDesktop && actionsOpen) || modoSeleccion
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
       }`}
@@ -278,29 +303,79 @@ export default function CancioneroItemCard({
       onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-end gap-2.5">
         <LetraFuenteIcon
           tipo="cancionero"
           premium={cancion.tiene_cifrado_avanzado}
         />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[17px] font-semibold text-text-primary">
+        <div className="min-w-0 flex-1 pb-px">
+          <p className="truncate text-[17px] font-semibold leading-tight text-text-primary">
             {cancion.nombre}
           </p>
           {cancion.artista && (
-            <p className="mt-0.5 truncate text-[14px] text-text-muted">
+            <p className="mt-0.5 truncate text-[13px] leading-tight text-text-muted">
               {cancion.artista}
             </p>
           )}
         </div>
-        <Bookmark
-          className="size-3.5 shrink-0"
-          style={{ color: "var(--tuner-in-tune)" }}
-          aria-hidden="true"
-        />
+        {showDesktopActions ? (
+          <div
+            className="flex shrink-0 items-center gap-px pb-px opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {onSumarAMisCanciones ? (
+              <TapButton
+                type="button"
+                aria-label={`Guardar ${cancion.nombre} en Favoritas`}
+                title="Guardar en Favoritas"
+                onClick={(event) =>
+                  runDesktopAction(event, () => onSumarAMisCanciones(cancion))
+                }
+                disabled={!mostrarSumarMisCanciones}
+                className={`${DESKTOP_ACTION_BTN} hover:text-[var(--tuner-in-tune)]/85 disabled:opacity-40 disabled:hover:text-text-faint/55`}
+              >
+                <Bookmark className="size-3" aria-hidden="true" />
+              </TapButton>
+            ) : null}
+            {puedeEditarEliminar ? (
+              <>
+                <TapButton
+                  type="button"
+                  aria-label={`Editar ${cancion.nombre}`}
+                  title="Editar"
+                  onClick={(event) =>
+                    runDesktopAction(event, () => onEditar(cancion))
+                  }
+                  disabled={!mutationsEnabled}
+                  className={`${DESKTOP_ACTION_BTN} hover:text-text-secondary disabled:opacity-40 disabled:hover:text-text-faint/55`}
+                >
+                  <Pencil className="size-3" aria-hidden="true" />
+                </TapButton>
+                <TapButton
+                  type="button"
+                  aria-label={`Eliminar ${cancion.nombre}`}
+                  title="Eliminar"
+                  onClick={(event) =>
+                    runDesktopAction(event, () => onEliminar(cancion))
+                  }
+                  disabled={!mutationsEnabled}
+                  className={`${DESKTOP_ACTION_BTN} hover:text-[#d94a3d]/80 disabled:opacity-40 disabled:hover:text-text-faint/55`}
+                >
+                  <Trash2 className="size-3" aria-hidden="true" />
+                </TapButton>
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <Bookmark
+            className="mb-px size-3 shrink-0 self-end"
+            style={{ color: "var(--tuner-in-tune)" }}
+            aria-hidden="true"
+          />
+        )}
       </div>
 
-      {actionsOpen && actionButtons.length > 0 && (
+      {actionsOpen && actionButtons.length > 0 && !isDesktop && (
         <>
           <button
             type="button"

@@ -12,6 +12,7 @@ export type CancionBusquedaLocal = {
   letra: string | null;
   url_letra: string;
   tiene_cifrado_avanzado?: boolean;
+  user_id?: string | null;
 };
 
 const PESO_NOMBRE = 10;
@@ -107,14 +108,24 @@ export async function fetchCancioneroBusqueda(
 ): Promise<CancionBusquedaLocal[]> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, nombre, artista, letra, url_letra, tiene_cifrado_avanzado")
+    .select(
+      "id, nombre, artista, letra, url_letra, tiene_cifrado_avanzado, user_id",
+    )
     .is("sala_id", null);
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    nombre: row.nombre,
+    artista: row.artista,
+    letra: row.letra,
+    url_letra: row.url_letra ?? "",
+    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+    user_id: row.user_id ?? null,
+  }));
 }
 
 /** Copia local primero (como la pantalla de canciones guardadas); Supabase si no hay cache. */

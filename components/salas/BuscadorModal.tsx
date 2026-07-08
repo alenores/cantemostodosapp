@@ -449,6 +449,7 @@ export default function BuscadorModal({
         artista: c.artista,
         letra: c.letra,
         tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
+        user_id: c.user_id ?? null,
       })),
     );
   }, [online]);
@@ -627,6 +628,7 @@ export default function BuscadorModal({
           artista: c.artista,
           letra: c.letra,
           tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
+          user_id: c.user_id ?? null,
         })),
       );
 

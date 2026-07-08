@@ -1,5 +1,8 @@
 "use client";
 
+import CifradoEditorIngresoWebSearch, {
+  type CifradoEditorWebImportData,
+} from "@/components/cifrado/CifradoEditorIngresoWebSearch";
 import {
   CifradoCompasToolPanel,
   type CifradoCompasToolTab,
@@ -26,7 +29,6 @@ import {
   CIFRADO_EDITOR_SHEET_BG_CLASS,
   CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS,
   CIFRADO_EDITOR_LINE_FAB_CLASS,
-  CIFRADO_EDITOR_PLAY_BUTTON_CLASS,
   CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS,
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
@@ -110,6 +112,7 @@ import {
   type NotacionAcordes,
 } from "@/lib/notacion-acordes";
 import { createClient } from "@/lib/supabase/client";
+import { parseLetraTradicional } from "@/lib/cifrado-import";
 import type { CifradoEditorSession, CifradoSaveResult } from "@/lib/cifrado-editor-session";
 import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
 import {
@@ -144,6 +147,8 @@ type CifradoEditorProps = {
 };
 
 type EditorPhase = "ingreso" | "cifrado";
+
+type IngresoTab = "letra" | "web" | "pegar";
 
 type PickerState = {
   lineIndex: number;
@@ -385,6 +390,7 @@ type CifradoLineEditorProps = {
   text: string;
   acordes: AcordePos[];
   barras: BarraCompas[];
+  nextLineHasCompas?: boolean;
   modoAvanzado: boolean;
   modoInsercion: ModoInsercion;
   tipoCompas: TipoCompas;
@@ -570,6 +576,7 @@ function CifradoLineEditor({
   text,
   acordes,
   barras,
+  nextLineHasCompas = false,
   modoAvanzado,
   modoInsercion,
   tipoCompas,
@@ -943,9 +950,26 @@ function CifradoLineEditor({
             (barra, beatIndex) =>
               getBarraIntensidad(barra, compasConfigForLine)[beatIndex] ??
               "medio",
+            {
+              contentEndOffset: getLineContentEndOffset(
+                characters.length,
+                acordes,
+                barrasParaRender,
+              ),
+              textLength: characters.length,
+              appendTerminalMeasure: nextLineHasCompas,
+            },
           )
         : [],
-    [barrasParaRender, charPositions, compasConfigForLine, cyclePiecesById],
+    [
+      acordes,
+      barrasParaRender,
+      charPositions,
+      characters.length,
+      compasConfigForLine,
+      cyclePiecesById,
+      nextLineHasCompas,
+    ],
   );
   const draggingMeasureLeftPx =
     dragPreviewOffset !== null && barDragRef.current?.hasMoved
@@ -1360,6 +1384,7 @@ type CifradoPreviewLineProps = {
   text: string;
   acordes: AcordePos[];
   barras: BarraCompas[];
+  nextLineHasCompas?: boolean;
   tipoCompas: TipoCompas;
   intensidadPlantilla: import("@/lib/metronomo").MetronomeBeatLevel[];
   showCompas: boolean;
@@ -1375,6 +1400,7 @@ function CifradoPreviewLine({
   text,
   acordes,
   barras,
+  nextLineHasCompas = false,
   tipoCompas,
   intensidadPlantilla,
   showCompas,
@@ -1464,9 +1490,27 @@ function CifradoPreviewLine({
             (barra, beatIndex) =>
               getBarraIntensidad(barra, compasConfigForLine)[beatIndex] ??
               "medio",
+            {
+              contentEndOffset: getLineContentEndOffset(
+                characters.length,
+                acordes,
+                barras,
+              ),
+              textLength: characters.length,
+              appendTerminalMeasure: nextLineHasCompas,
+            },
           )
         : [],
-    [barras, charPositions, compasConfigForLine, cyclePiecesById, showCompas],
+    [
+      acordes,
+      barras,
+      charPositions,
+      characters.length,
+      compasConfigForLine,
+      cyclePiecesById,
+      showCompas,
+      nextLineHasCompas,
+    ],
   );
 
   useEffect(() => {
@@ -1571,8 +1615,12 @@ type CifradoPreviewOverlayProps = {
   vistaArmado: VistaArmado;
   activeBeat: ActivePreviewBeat;
   onClose: () => void;
+  playing: boolean;
+  canPlay: boolean;
+  onTogglePlayback: () => void;
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>;
+  mode?: "fullscreen" | "contained";
 };
 
 function CifradoPreviewOverlay({
@@ -1585,13 +1633,23 @@ function CifradoPreviewOverlay({
   vistaArmado,
   activeBeat,
   onClose,
+  playing,
+  canPlay,
+  onTogglePlayback,
   notacion = "es",
   cyclePiecesById,
+  mode = "fullscreen",
 }: CifradoPreviewOverlayProps) {
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const previewWidthClass =
-    vistaArmado === "celular"
-      ? "mx-auto w-full max-w-[390px]"
+  const isContained = mode === "contained";
+  const isCelularPreview = vistaArmado === "celular";
+  const isCelularContainedPreview = isContained && isCelularPreview;
+  const previewWidthClass = isCelularPreview
+    ? isContained
+      ? "w-full"
+      : "mx-auto w-full max-w-[390px]"
+    : isContained
+      ? "w-full"
       : "mx-auto w-full max-w-3xl";
 
   useEffect(() => {
@@ -1608,26 +1666,83 @@ function CifradoPreviewOverlay({
   }, [activeBeat]);
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-letra-bg">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-dark px-4 py-3">
+    <div
+      className={
+        isContained
+          ? isCelularContainedPreview
+            ? "absolute inset-0 z-10 flex justify-center overflow-hidden bg-bg-dark"
+            : "absolute inset-0 z-10 flex flex-col overflow-hidden bg-letra-bg"
+          : "fixed inset-0 z-[60] flex flex-col bg-letra-bg"
+      }
+    >
+      <div
+        className={
+          isCelularContainedPreview
+            ? "flex h-full min-h-0 w-full max-w-[390px] flex-col overflow-hidden rounded-[12px] border border-border bg-letra-bg"
+            : "flex min-h-0 min-w-0 flex-1 flex-col"
+        }
+      >
+      <header
+        className={
+          isContained
+            ? "relative flex shrink-0 items-center gap-2 border-b border-border/70 bg-[var(--cifrado-editor-sheet-bg)] px-3 py-2"
+            : "relative flex shrink-0 items-center gap-3 border-b border-border bg-bg-dark px-4 py-3"
+        }
+      >
         <TapButton
           type="button"
           onClick={onClose}
-          className="flex size-10 items-center justify-center rounded-full bg-bg-card text-text-primary"
-          aria-label="Cerrar preview"
+          className={
+            isContained
+              ? "flex size-8 items-center justify-center rounded-full bg-bg-card text-text-primary"
+              : "flex size-10 items-center justify-center rounded-full bg-bg-card text-text-primary"
+          }
+          aria-label="Cerrar previsualización"
         >
-          <X className="size-5" aria-hidden="true" />
+          <X className={isContained ? "size-4" : "size-5"} aria-hidden="true" />
         </TapButton>
 
-        <h2 className={`min-w-0 flex-1 text-center text-lg font-extrabold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS}`}>
-          Preview
+        <h2
+          className={`min-w-0 flex-1 text-center font-extrabold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS} ${
+            isContained ? "text-sm" : "text-lg"
+          }`}
+        >
+          Previsualización
         </h2>
 
-        <div className="size-10" aria-hidden="true" />
+        {showCompas ? (
+          <TapButton
+            type="button"
+            onClick={onTogglePlayback}
+            disabled={!canPlay}
+            className={`shrink-0 flex items-center justify-center rounded-full bg-compositor-config text-white shadow-lg disabled:opacity-40 ${
+              isContained ? "size-9" : "size-11"
+            }`}
+            aria-label={playing ? "Pausar compás" : "Reproducir compás"}
+          >
+            {playing ? (
+              <Pause
+                className={isContained ? "size-4" : "size-5"}
+                aria-hidden="true"
+              />
+            ) : (
+              <Play
+                className={`fill-current ${isContained ? "size-4" : "size-5"}`}
+                aria-hidden="true"
+              />
+            )}
+          </TapButton>
+        ) : (
+          <div className={isContained ? "size-8" : "size-10"} aria-hidden="true" />
+        )}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
-        <div className={`${previewWidthClass} rounded-[12px] bg-letra-bg`}>
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y ${
+          isContained ? "px-2 py-2" : "px-4 py-5"
+        }`}
+      >
+        <div className={`${previewWidthClass} bg-letra-bg`}>
           {lines.map((line, lineIndex) => (
             <div
               key={lineIndex}
@@ -1635,6 +1750,10 @@ function CifradoPreviewOverlay({
                 lineRefs.current[lineIndex] = element;
               }}
             >
+              {/*
+                Cierre visual: si el renglón siguiente tiene compases, este renglón
+                dibuja una barra final ficticia para marcar el final del ciclo.
+              */}
               <CifradoPreviewLine
                 lineIndex={lineIndex}
                 text={line}
@@ -1642,6 +1761,9 @@ function CifradoPreviewOverlay({
                   (acorde) => acorde.lineIndex === lineIndex,
                 )}
                 barras={barras.filter((barra) => barra.lineIndex === lineIndex)}
+                nextLineHasCompas={barras.some(
+                  (barra) => barra.lineIndex === lineIndex + 1,
+                )}
                 tipoCompas={tipoCompas}
                 intensidadPlantilla={intensidadPlantilla}
                 showCompas={showCompas}
@@ -1652,6 +1774,7 @@ function CifradoPreviewOverlay({
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );
@@ -1697,9 +1820,11 @@ export default function CifradoEditor({
   const isPage = isToolPagePresentation(presentation);
   const isDesktop = useIsDesktop();
   const [phase, setPhase] = useState<EditorPhase>("ingreso");
+  const [ingresoTab, setIngresoTab] = useState<IngresoTab>("letra");
   const [modoInsercion, setModoInsercion] = useState<ModoInsercion>("acordes");
   const [vistaArmado, setVistaArmado] = useState<VistaArmado>("pc");
   const [draftLyrics, setDraftLyrics] = useState("");
+  const [draftPasteTraditional, setDraftPasteTraditional] = useState("");
   const [lyricsText, setLyricsText] = useState("");
   const [cifrado, setCifrado] = useState<CifradoData>(createEmptyCifrado());
   const [compasConfig, setCompasConfig] = useState<CompasConfig>(
@@ -1800,6 +1925,14 @@ export default function CifradoEditor({
       verses: draftLines.filter((line) => line.trim().length > 0).length,
     };
   }, [draftLyrics]);
+  const draftPasteStats = useMemo(() => {
+    const draftLines = splitLyricsLines(draftPasteTraditional);
+
+    return {
+      total: draftLines.length,
+      verses: draftLines.filter((line) => line.trim().length > 0).length,
+    };
+  }, [draftPasteTraditional]);
   const hasCompas = compasConfig.barras.length > 0;
 
   const lineMergePreview = useMemo(() => {
@@ -1921,7 +2054,7 @@ export default function CifradoEditor({
 
   useHardwareBack(open, () => {
     if (previewOpen) {
-      setPreviewOpen(false);
+      handleClosePreview();
       return;
     }
 
@@ -1932,9 +2065,11 @@ export default function CifradoEditor({
     if (!open) {
       editingCancionIdRef.current = undefined;
       setPhase("ingreso");
+      setIngresoTab("letra");
       setModoInsercion("acordes");
       setVistaArmado("pc");
       setDraftLyrics("");
+      setDraftPasteTraditional("");
       setLyricsText("");
       setCifrado(createEmptyCifrado());
       setCompasConfig(createDefaultCompasConfig());
@@ -2138,6 +2273,22 @@ export default function CifradoEditor({
     setPlaying(true);
   }
 
+  const handleClosePreview = useCallback(() => {
+    stopPlayback();
+    setPreviewOpen(false);
+  }, [stopPlayback]);
+
+  const handleTogglePreview = useCallback(() => {
+    if (previewOpen) {
+      handleClosePreview();
+      return;
+    }
+
+    setPreviewOpen(true);
+  }, [handleClosePreview, previewOpen]);
+
+  const canPlayPreview = hasCompas && playbackBeats.length > 0;
+
   useEffect(() => {
     if (!toast) {
       return;
@@ -2156,6 +2307,39 @@ export default function CifradoEditor({
     ? findAcordeAt(cifrado.acordes, picker.lineIndex, picker.charOffset)
     : undefined;
 
+  function applyImportedCifrado(
+    letra: string,
+    importedCifrado: CifradoData,
+    options?: {
+      nombre?: string;
+      artista?: string;
+      warnings?: string[];
+    },
+  ) {
+    setLyricsText(letra);
+    setCifrado(importedCifrado);
+    setCompasConfig(createDefaultCompasConfig());
+    setModoInsercion("acordes");
+    setPhase("cifrado");
+    setError(null);
+
+    if (options?.nombre?.trim()) {
+      setNombre(options.nombre.trim());
+    }
+
+    if (options?.artista?.trim()) {
+      setArtista(options.artista.trim());
+    }
+
+    const warnings = options?.warnings ?? [];
+
+    if (warnings.length > 0) {
+      setToast(
+        `Letra importada (${warnings.length} aviso${warnings.length === 1 ? "" : "s"}). Revisá los acordes.`,
+      );
+    }
+  }
+
   function handleApplyLyrics() {
     const trimmed = draftLyrics.trim();
 
@@ -2164,12 +2348,29 @@ export default function CifradoEditor({
       return;
     }
 
-    setLyricsText(trimmed);
-    setCifrado(createEmptyCifrado());
-    setCompasConfig(createDefaultCompasConfig());
-    setModoInsercion("acordes");
-    setPhase("cifrado");
-    setError(null);
+    applyImportedCifrado(trimmed, createEmptyCifrado());
+  }
+
+  function handleApplyPasteTraditional() {
+    const trimmed = draftPasteTraditional.trim();
+
+    if (!trimmed) {
+      setError("Pegá la letra con acordes antes de continuar.");
+      return;
+    }
+
+    const imported = parseLetraTradicional(trimmed);
+    applyImportedCifrado(imported.letra, imported.cifrado, {
+      warnings: imported.warnings,
+    });
+  }
+
+  function handleWebImport(data: CifradoEditorWebImportData) {
+    applyImportedCifrado(data.letra, data.cifrado, {
+      nombre: data.nombre,
+      artista: data.artista,
+      warnings: data.warnings,
+    });
   }
 
   function handleLineTextChange(lineIndex: number, newText: string) {
@@ -2916,56 +3117,178 @@ export default function CifradoEditor({
       }
     >
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div
             className={`min-h-0 flex-1 ${
               phase === "ingreso"
                 ? "flex flex-col overflow-hidden p-4 lg:overflow-hidden"
                 : isDesktop
-                  ? "flex flex-col overflow-hidden px-4 pb-4 pt-4"
-                  : "flex flex-col overflow-y-auto p-4 lg:overflow-hidden"
+                  ? "flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4 pt-4"
+                  : "flex min-h-0 flex-1 flex-col overflow-y-auto p-4 lg:overflow-hidden"
             }`}
           >
             {phase === "ingreso" ? (
               <div className="flex min-h-0 flex-1 flex-col">
-                <label className={labelClassName} htmlFor="cifrado-letra-ingreso">
-                  Letra (sin acordes)
-                </label>
-                <textarea
-                  id="cifrado-letra-ingreso"
-                  value={draftLyrics}
-                  onChange={(event) => {
-                    setDraftLyrics(event.target.value);
-                    if (error) {
-                      setError(null);
-                    }
-                  }}
-                  className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
-                  placeholder="Pegá aquí la letra de la canción…"
-                />
-                <TapButton
-                  type="button"
-                  onClick={handleApplyLyrics}
-                  disabled={!draftLyrics.trim()}
-                  className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                <div
+                  className={`mb-3 shrink-0 ${CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}`}
+                  role="tablist"
+                  aria-label="Forma de ingreso"
                 >
-                  Aplicar y empezar a cifrar
-                </TapButton>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ingresoTab === "letra"}
+                    onClick={() => {
+                      setIngresoTab("letra");
+                      if (error) {
+                        setError(null);
+                      }
+                    }}
+                    className={cifradoEditorToolbarSegmentedButtonClass(
+                      ingresoTab === "letra",
+                    )}
+                  >
+                    Escribir letra
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ingresoTab === "web"}
+                    onClick={() => {
+                      setIngresoTab("web");
+                      if (error) {
+                        setError(null);
+                      }
+                    }}
+                    className={cifradoEditorToolbarSegmentedButtonClass(
+                      ingresoTab === "web",
+                    )}
+                  >
+                    Buscar en la web
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ingresoTab === "pegar"}
+                    onClick={() => {
+                      setIngresoTab("pegar");
+                      if (error) {
+                        setError(null);
+                      }
+                    }}
+                    className={cifradoEditorToolbarSegmentedButtonClass(
+                      ingresoTab === "pegar",
+                    )}
+                  >
+                    Pegar letra+acordes
+                  </button>
+                </div>
+
+                {ingresoTab === "letra" ? (
+                  <>
+                    <label
+                      className={labelClassName}
+                      htmlFor="cifrado-letra-ingreso"
+                    >
+                      Letra (sin acordes)
+                    </label>
+                    <textarea
+                      id="cifrado-letra-ingreso"
+                      value={draftLyrics}
+                      onChange={(event) => {
+                        setDraftLyrics(event.target.value);
+                        if (error) {
+                          setError(null);
+                        }
+                      }}
+                      className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
+                      placeholder="Pegá aquí la letra de la canción…"
+                    />
+                    <TapButton
+                      type="button"
+                      onClick={handleApplyLyrics}
+                      disabled={!draftLyrics.trim()}
+                      className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                    >
+                      Aplicar y empezar a cifrar
+                    </TapButton>
+                  </>
+                ) : null}
+
+                {ingresoTab === "web" ? (
+                  <CifradoEditorIngresoWebSearch
+                    onImport={handleWebImport}
+                    onError={setError}
+                  />
+                ) : null}
+
+                {ingresoTab === "pegar" ? (
+                  <>
+                    <label
+                      className={labelClassName}
+                      htmlFor="cifrado-letra-pegar"
+                    >
+                      Letra con acordes
+                    </label>
+                    <textarea
+                      id="cifrado-letra-pegar"
+                      value={draftPasteTraditional}
+                      onChange={(event) => {
+                        setDraftPasteTraditional(event.target.value);
+                        if (error) {
+                          setError(null);
+                        }
+                      }}
+                      className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
+                      placeholder="Pegá la letra con los acordes encima de cada renglón…"
+                    />
+                    <TapButton
+                      type="button"
+                      onClick={handleApplyPasteTraditional}
+                      disabled={!draftPasteTraditional.trim()}
+                      className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                    >
+                      Importar y editar
+                    </TapButton>
+                  </>
+                ) : null}
               </div>
             ) : (
               <div
                 className={`relative flex min-h-0 w-full flex-1 flex-col ${
                   isDesktop ? CIFRADO_EDITOR_PC_SHELL_CLASS : ""
                 }`}
-                onWheel={isDesktop ? forwardVerticalWheel : undefined}
               >
+                {previewOpen && isDesktop ? (
+                  <CifradoPreviewOverlay
+                    mode="contained"
+                    lines={lines}
+                    cifrado={cifrado}
+                    barras={compasConfig.barras}
+                    tipoCompas={compasConfig.tipoCompas}
+                    intensidadPlantilla={getIntensidadPlantilla(compasConfig)}
+                    showCompas={hasCompas}
+                    vistaArmado={vistaArmado}
+                    activeBeat={activeBeat}
+                    onClose={handleClosePreview}
+                    playing={playing}
+                    canPlay={canPlayPreview}
+                    onTogglePlayback={handleTogglePlayback}
+                    notacion={notacion}
+                    cyclePiecesById={cyclesById}
+                  />
+                ) : null}
+
+                <div
+                  className={`flex min-h-0 flex-1 flex-col overflow-hidden${
+                    previewOpen && isDesktop ? " pointer-events-none opacity-0" : ""
+                  }`}
+                  aria-hidden={previewOpen && isDesktop}
+                >
                 {isDesktop ? (
                   <CifradoEditorPcToolbar
                     modoInsercion={modoInsercion}
                     onSetModoInsercion={handleSetModoInsercion}
-                    hasCompas={hasCompas}
-                    playing={playing}
-                    onTogglePlayback={handleTogglePlayback}
                     compasToolTab={compasToolTab}
                     onCompasToolTabChange={setCompasToolTab}
                     tipoCompas={compasConfig.tipoCompas}
@@ -3064,21 +3387,6 @@ export default function CifradoEditor({
 
                       <div className="ml-auto flex shrink-0 items-center gap-2">
                         <CifradoEditorHelpButton onClick={() => setEditorHelpOpen(true)} />
-
-                        {hasCompas ? (
-                          <TapButton
-                            type="button"
-                            onClick={handleTogglePlayback}
-                            className={`shrink-0 ${CIFRADO_EDITOR_PLAY_BUTTON_CLASS}`}
-                            aria-label={playing ? "Pausar compás" : "Reproducir compás"}
-                          >
-                            {playing ? (
-                              <Pause className="size-5" aria-hidden="true" />
-                            ) : (
-                              <Play className="size-5" aria-hidden="true" />
-                            )}
-                          </TapButton>
-                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -3091,11 +3399,11 @@ export default function CifradoEditor({
                       ? `rounded-b-[12px] ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
                       : `rounded-[12px] ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
                   }`}
-                  onWheel={forwardVerticalWheel}
                 >
                 <div
                   data-tool-vertical-scroll=""
                   className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-2 touch-pan-y"
+                  onWheel={isDesktop ? forwardVerticalWheel : undefined}
                 >
                   {lines.map((line, lineIndex) => {
                     const isEditing = editingLineIndex === lineIndex;
@@ -3106,6 +3414,9 @@ export default function CifradoEditor({
                       lineIndex !== editingLineIndex;
                     const isMergeHighlight =
                       mergeHighlightLineIndex === lineIndex;
+                    const nextLineHasCompas = compasConfig.barras.some(
+                      (barra) => barra.lineIndex === lineIndex + 1,
+                    );
 
                     return (
                       <div
@@ -3144,6 +3455,7 @@ export default function CifradoEditor({
                           barras={compasConfig.barras.filter(
                             (barra) => barra.lineIndex === lineIndex,
                           )}
+                          nextLineHasCompas={nextLineHasCompas}
                           modoAvanzado
                           modoInsercion={modoInsercion}
                           tipoCompas={compasConfig.tipoCompas}
@@ -3213,6 +3525,7 @@ export default function CifradoEditor({
               </div>
               </div>
               </div>
+                </div>
             )}
 
             {error && phase !== "ingreso" && (
@@ -3258,10 +3571,10 @@ export default function CifradoEditor({
 
                   <TapButton
                     type="button"
-                    onClick={() => setPreviewOpen(true)}
+                    onClick={handleTogglePreview}
                     className={`mt-3 ${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS}`}
                   >
-                    Preview
+                    {previewOpen ? "Edición" : "Previsualización"}
                   </TapButton>
                 </VozPcConfigCard>
               </div>
@@ -3432,7 +3745,7 @@ export default function CifradoEditor({
                 <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
                   Vista previa
                 </p>
-                {draftLyrics.trim() ? (
+                {ingresoTab === "letra" && draftLyrics.trim() ? (
                   <>
                     <p className="mt-2 text-sm font-medium text-text-primary">
                       {draftStats.verses} versos · {draftStats.total} renglones
@@ -3441,9 +3754,23 @@ export default function CifradoEditor({
                       {draftLyrics.trim()}
                     </p>
                   </>
+                ) : ingresoTab === "pegar" && draftPasteTraditional.trim() ? (
+                  <>
+                    <p className="mt-2 text-sm font-medium text-text-primary">
+                      {draftPasteStats.verses} versos · {draftPasteStats.total}{" "}
+                      renglones
+                    </p>
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
+                      {draftPasteTraditional.trim()}
+                    </p>
+                  </>
                 ) : (
                   <p className="mt-2 text-sm text-text-muted">
-                    Pegá la letra a la izquierda para ver un resumen acá.
+                    {ingresoTab === "web"
+                      ? "Buscá una canción y previsualizala antes de importarla."
+                      : ingresoTab === "pegar"
+                        ? "Pegá la letra con acordes a la izquierda para ver un resumen acá."
+                        : "Pegá la letra a la izquierda para ver un resumen acá."}
                   </p>
                 )}
               </div>
@@ -3451,9 +3778,25 @@ export default function CifradoEditor({
               <div>
                 <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Consejos</p>
                 <ul className="space-y-2 text-xs leading-relaxed text-text-muted">
-                  <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
-                  <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
-                  <li>· Podés completar nombre y artista ahora o al guardar.</li>
+                  {ingresoTab === "letra" ? (
+                    <>
+                      <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
+                      <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
+                      <li>· Podés completar nombre y artista ahora o al guardar.</li>
+                    </>
+                  ) : ingresoTab === "web" ? (
+                    <>
+                      <li>· Solo se busca en Acordes de Canciones.</li>
+                      <li>· Al aceptar, la letra y los acordes se separan automáticamente.</li>
+                      <li>· Revisá el resultado en el editor antes de guardar.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>· Pegá el formato tradicional: acordes arriba, letra abajo.</li>
+                      <li>· La app separa letra y acordes al importar.</li>
+                      <li>· Podés ajustar todo desde el modo edición.</li>
+                    </>
+                  )}
                 </ul>
               </div>
 
@@ -3468,20 +3811,31 @@ export default function CifradoEditor({
             </div>
 
             <div className="hidden shrink-0 border-t border-border p-4 lg:block">
-              <TapButton
-                type="button"
-                onClick={handleApplyLyrics}
-                disabled={!draftLyrics.trim()}
-                className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
-              >
-                Aplicar y empezar a cifrar
-              </TapButton>
+              {ingresoTab === "letra" ? (
+                <TapButton
+                  type="button"
+                  onClick={handleApplyLyrics}
+                  disabled={!draftLyrics.trim()}
+                  className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                >
+                  Aplicar y empezar a cifrar
+                </TapButton>
+              ) : ingresoTab === "pegar" ? (
+                <TapButton
+                  type="button"
+                  onClick={handleApplyPasteTraditional}
+                  disabled={!draftPasteTraditional.trim()}
+                  className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                >
+                  Importar y editar
+                </TapButton>
+              ) : null}
             </div>
           </aside>
         )}
       </div>
 
-      {previewOpen && (
+      {previewOpen && !isDesktop ? (
         <CifradoPreviewOverlay
           lines={lines}
           cifrado={cifrado}
@@ -3491,11 +3845,14 @@ export default function CifradoEditor({
           showCompas={hasCompas}
           vistaArmado={vistaArmado}
           activeBeat={activeBeat}
-          onClose={() => setPreviewOpen(false)}
+          onClose={handleClosePreview}
+          playing={playing}
+          canPlay={canPlayPreview}
+          onTogglePlayback={handleTogglePlayback}
           notacion={notacion}
           cyclePiecesById={cyclesById}
         />
-      )}
+      ) : null}
 
       {picker && (
         <ChordPicker

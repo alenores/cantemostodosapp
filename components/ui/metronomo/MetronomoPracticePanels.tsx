@@ -26,6 +26,7 @@ export function MetronomoPracticePlaybackSummary({
   bpm,
   beatPattern,
   patternLength,
+  beatDurations,
   currentBeat,
   isPlaying,
   compact = false,
@@ -33,6 +34,7 @@ export function MetronomoPracticePlaybackSummary({
   bpm: number;
   beatPattern: MetronomeBeatPattern;
   patternLength: number;
+  beatDurations: MetronomeBeatDurationPattern;
   currentBeat: number | null;
   isPlaying: boolean;
   compact?: boolean;
@@ -65,6 +67,7 @@ export function MetronomoPracticePlaybackSummary({
         <BeatPatternEditor
           pattern={beatPattern}
           patternLength={patternLength}
+          beatDurations={beatDurations}
           variant="practice"
           currentBeat={isPlaying ? currentBeat : null}
         />
@@ -235,7 +238,6 @@ export function MetronomoScrollingRhythmTimeline({
                       : "color-mix(in srgb, var(--text-primary) 72%, transparent)",
                     opacity: isFuture ? 0.55 : 1,
                   }}
-                  title={`${getBeatLevelLabel(level)} · tiempo ${beat.beatIndex + 1}`}
                 />
               );
             })}
@@ -266,7 +268,6 @@ export function MetronomoScrollingRhythmTimeline({
                     left: `${timeToLeftPercent(hit.timestamp)}%`,
                     backgroundColor: getHitAccuracyColor(accuracy),
                   }}
-                  title={getHitFeedbackLabel(hit.deltaMsClamped)}
                 />
               );
             })}

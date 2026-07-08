@@ -1,4 +1,8 @@
 import {
+  createPlaybackBus,
+  type AudioPlaybackBus,
+} from "@/lib/audio-playback-bus";
+import {
   isGuitarChordArticulation,
   type CompositorDrumSound,
   type CompositorGuitarArticulation,
@@ -55,6 +59,7 @@ function scheduleTone(
   peakGain: number,
   duration: number,
   wave: OscillatorType,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const safeDuration = clampMelodicDuration(duration);
   const oscillator = audioContext.createOscillator();
@@ -67,7 +72,8 @@ function scheduleTone(
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + safeDuration);
 
   oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(oscillator);
 
   oscillator.start(time);
   oscillator.stop(time + safeDuration + 0.01);
@@ -80,6 +86,7 @@ function scheduleNoiseBurst(
   peakGain: number,
   filterType: BiquadFilterType,
   filterFrequency: number,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const sampleCount = Math.max(1, Math.floor(audioContext.sampleRate * duration));
   const buffer = audioContext.createBuffer(1, sampleCount, audioContext.sampleRate);
@@ -102,7 +109,8 @@ function scheduleNoiseBurst(
 
   source.connect(filter);
   filter.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(source);
 
   source.start(time);
   source.stop(time + duration + 0.01);
@@ -115,6 +123,7 @@ function scheduleSample(
   peakGain: number,
   playbackRate = 1,
   maxDuration?: number,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
@@ -128,7 +137,8 @@ function scheduleSample(
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
   source.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(source);
 
   source.start(time);
   source.stop(time + duration + 0.02);
@@ -142,6 +152,7 @@ function scheduleWindSample(
   peakGain: number,
   playbackRate: number,
   maxDuration: number,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
@@ -174,7 +185,8 @@ function scheduleWindSample(
 
   source.connect(filter);
   filter.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(source);
 
   source.start(time);
   source.stop(time + duration + 0.03);
@@ -187,6 +199,7 @@ function schedulePitchedNoteSynth(
   level: MetronomeBeatLevel,
   wave: OscillatorType,
   duration: number,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const gain = levelToGain(level);
 
@@ -201,6 +214,7 @@ function schedulePitchedNoteSynth(
     gain * 0.55,
     duration,
     wave,
+    bus,
   );
 }
 
@@ -211,6 +225,7 @@ function scheduleResolvedSample(
   level: MetronomeBeatLevel,
   gainScale: number,
   maxDuration?: number,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const gain = levelToGain(level);
 
@@ -225,6 +240,7 @@ function scheduleResolvedSample(
     gain * gainScale,
     resolved.playbackRate,
     maxDuration,
+    bus,
   );
 }
 
@@ -238,6 +254,7 @@ function scheduleMelodicFromMultiSample(
   sampleSet: CompositorSampleBank["piano"],
   gainScale: number,
   synthWave: OscillatorType,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const duration = clampMelodicDuration(durationSeconds);
   const resolved = pickNearestMultiSample(note, sampleSet);
@@ -250,11 +267,12 @@ function scheduleMelodicFromMultiSample(
       level,
       gainScale,
       duration,
+      bus,
     );
     return;
   }
 
-  schedulePitchedNoteSynth(audioContext, time, note, level, synthWave, duration);
+  schedulePitchedNoteSynth(audioContext, time, note, level, synthWave, duration, bus);
 }
 
 function schedulePianoNote(
@@ -264,6 +282,7 @@ function schedulePianoNote(
   level: MetronomeBeatLevel,
   durationSeconds: number,
   samples: CompositorSampleBank | null,
+  bus?: AudioPlaybackBus | null,
 ): void {
   scheduleMelodicFromMultiSample(
     audioContext,
@@ -275,6 +294,7 @@ function schedulePianoNote(
     samples?.piano ?? null,
     0.72,
     "sine",
+    bus,
   );
 }
 
@@ -285,9 +305,10 @@ function schedulePianoNotes(
   level: MetronomeBeatLevel,
   durationSeconds: number,
   samples: CompositorSampleBank | null,
+  bus?: AudioPlaybackBus | null,
 ): void {
   for (const note of notes) {
-    schedulePianoNote(audioContext, time, note, level, durationSeconds, samples);
+    schedulePianoNote(audioContext, time, note, level, durationSeconds, samples, bus);
   }
 }
 
@@ -298,6 +319,7 @@ function scheduleVientoNote(
   level: MetronomeBeatLevel,
   durationSeconds: number,
   samples: CompositorSampleBank | null,
+  bus?: AudioPlaybackBus | null,
 ): void {
   const gain = levelToGain(level);
 
@@ -316,11 +338,12 @@ function scheduleVientoNote(
       gain * 0.88,
       resolved.playbackRate,
       duration,
+      bus,
     );
     return;
   }
 
-  schedulePitchedNoteSynth(audioContext, time, note, level, "triangle", duration);
+  schedulePitchedNoteSynth(audioContext, time, note, level, "triangle", duration, bus);
 }
 
 function scheduleGuitarChordNotes(
@@ -331,6 +354,7 @@ function scheduleGuitarChordNotes(
   durationSeconds: number,
   samples: CompositorSampleBank | null,
   mode: "rasguido" | "bloque",
+  bus?: AudioPlaybackBus | null,
 ): void {
   const gain = levelToGain(level);
 
@@ -358,6 +382,7 @@ function scheduleGuitarChordNotes(
         gain * 0.36,
         getGuitarNotePlaybackRate(note),
         duration,
+        bus,
       );
       continue;
     }
@@ -369,6 +394,7 @@ function scheduleGuitarChordNotes(
       gain * (mode === "bloque" ? 0.22 : 0.28),
       duration * 0.9,
       "triangle",
+      bus,
     );
   }
 }
@@ -381,6 +407,7 @@ function scheduleGuitarNote(
   articulation: CompositorGuitarArticulation,
   durationSeconds: number,
   samples: CompositorSampleBank | null,
+  bus?: AudioPlaybackBus | null,
 ): void {
   if (articulation === "silencio") {
     return;
@@ -406,6 +433,7 @@ function scheduleGuitarNote(
       gain * (articulation === "rasguido" ? 0.58 : articulation === "dedo" || articulation === "bloque" ? 0.54 : 0.62),
       articulation === "rasguido" || articulation === "dedo" ? 1 : getGuitarNotePlaybackRate(note),
       duration,
+      bus,
     );
     return;
   }
@@ -418,6 +446,7 @@ function scheduleGuitarNote(
       gain * 0.42,
       duration,
       "triangle",
+      bus,
     );
     scheduleTone(
       audioContext,
@@ -426,6 +455,7 @@ function scheduleGuitarNote(
       gain * 0.18,
       duration * 0.85,
       "sine",
+      bus,
     );
     return;
   }
@@ -437,6 +467,7 @@ function scheduleGuitarNote(
     gain * 0.5,
     Math.min(duration, 0.35),
     "triangle",
+    bus,
   );
 }
 
@@ -445,6 +476,7 @@ function scheduleDrumHitSynth(
   time: number,
   sound: CompositorDrumSound,
   level: MetronomeBeatLevel,
+  bus?: AudioPlaybackBus | null,
 ): void {
   if (sound === "silencio") {
     return;
@@ -466,27 +498,28 @@ function scheduleDrumHitSynth(
       gainNode.gain.setValueAtTime(gain * 0.9, time);
       gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
       oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+      gainNode.connect(bus?.output ?? audioContext.destination);
+      bus?.track(oscillator);
       oscillator.start(time);
       oscillator.stop(time + 0.18);
       break;
     }
     case "snare":
-      scheduleNoiseBurst(audioContext, time, 0.09, gain * 0.55, "bandpass", 1800);
-      scheduleTone(audioContext, time, 180, gain * 0.2, 0.05, "triangle");
+      scheduleNoiseBurst(audioContext, time, 0.09, gain * 0.55, "bandpass", 1800, bus);
+      scheduleTone(audioContext, time, 180, gain * 0.2, 0.05, "triangle", bus);
       break;
     case "hihat":
-      scheduleNoiseBurst(audioContext, time, 0.04, gain * 0.35, "highpass", 6000);
+      scheduleNoiseBurst(audioContext, time, 0.04, gain * 0.35, "highpass", 6000, bus);
       break;
     case "hihatOpen":
-      scheduleNoiseBurst(audioContext, time, 0.14, gain * 0.42, "highpass", 5200);
+      scheduleNoiseBurst(audioContext, time, 0.14, gain * 0.42, "highpass", 5200, bus);
       break;
     case "crash":
-      scheduleNoiseBurst(audioContext, time, 0.55, gain * 0.48, "highpass", 4200);
-      scheduleTone(audioContext, time, 280, gain * 0.12, 0.35, "sine");
+      scheduleNoiseBurst(audioContext, time, 0.55, gain * 0.48, "highpass", 4200, bus);
+      scheduleTone(audioContext, time, 280, gain * 0.12, 0.35, "sine", bus);
       break;
     case "ride":
-      scheduleNoiseBurst(audioContext, time, 0.22, gain * 0.3, "bandpass", 5200);
+      scheduleNoiseBurst(audioContext, time, 0.22, gain * 0.3, "bandpass", 5200, bus);
       break;
     default:
       break;
@@ -499,6 +532,7 @@ function scheduleDrumHit(
   sound: CompositorDrumSound,
   level: MetronomeBeatLevel,
   samples: CompositorSampleBank | null,
+  bus?: AudioPlaybackBus | null,
 ): void {
   if (sound === "silencio") {
     return;
@@ -511,14 +545,14 @@ function scheduleDrumHit(
   }
 
   if (!samples) {
-    scheduleDrumHitSynth(audioContext, time, sound, level);
+    scheduleDrumHitSynth(audioContext, time, sound, level, bus);
     return;
   }
 
   const buffer = samples?.drums?.[sound] ?? null;
 
   if (!buffer) {
-    scheduleDrumHitSynth(audioContext, time, sound, level);
+    scheduleDrumHitSynth(audioContext, time, sound, level, bus);
     return;
   }
 
@@ -536,7 +570,7 @@ function scheduleDrumHit(
               : sound === "ride"
                 ? 0.58
                 : 0.62;
-  scheduleSample(audioContext, time, buffer, gain * gainScale);
+  scheduleSample(audioContext, time, buffer, gain * gainScale, 1, undefined, bus);
 }
 
 export function scheduleCompositorSound(
@@ -544,6 +578,7 @@ export function scheduleCompositorSound(
   time: number,
   sound: CompositorScheduledSound,
   samples: CompositorSampleBank | null = null,
+  bus?: AudioPlaybackBus | null,
 ): void {
   switch (sound.instrumentId) {
     case "piano":
@@ -554,6 +589,7 @@ export function scheduleCompositorSound(
         sound.level,
         sound.durationSeconds,
         samples,
+        bus,
       );
       break;
     case "guitarra":
@@ -569,6 +605,7 @@ export function scheduleCompositorSound(
           sound.durationSeconds,
           samples,
           sound.guitarArticulation === "bloque" ? "bloque" : "rasguido",
+          bus,
         );
       } else {
         scheduleGuitarNote(
@@ -579,6 +616,7 @@ export function scheduleCompositorSound(
           sound.guitarArticulation,
           sound.durationSeconds,
           samples,
+          bus,
         );
       }
       break;
@@ -589,6 +627,7 @@ export function scheduleCompositorSound(
         sound.drumSound,
         sound.level,
         samples,
+        bus,
       );
       break;
     case "viento":
@@ -599,6 +638,7 @@ export function scheduleCompositorSound(
         sound.level,
         sound.durationSeconds,
         samples,
+        bus,
       );
       break;
     default:
@@ -629,6 +669,7 @@ export function createCompositorEngine(
   audioContext: AudioContext,
   samples: CompositorSampleBank | null = null,
 ): CompositorEngine {
+  const playbackBus = createPlaybackBus(audioContext);
   let running = false;
   let piece: CompositorPiece | null = null;
   let cycleDurationSeconds = 1;
@@ -712,7 +753,7 @@ export function createCompositorEngine(
           continue;
         }
 
-        scheduleCompositorSound(audioContext, eventAudioTime, sound, samples);
+        scheduleCompositorSound(audioContext, eventAudioTime, sound, samples, playbackBus);
       }
     }
 
@@ -741,6 +782,7 @@ export function createCompositorEngine(
     piece = null;
     scheduledUntilAudioTime = 0;
     previewOnComplete = null;
+    playbackBus.cut();
 
     if (schedulerTimer !== null) {
       clearInterval(schedulerTimer);
@@ -753,6 +795,7 @@ export function createCompositorEngine(
   return {
     start(nextPiece: CompositorPiece, nextOnProgress) {
       stopInternal();
+      playbackBus.reset();
 
       piece = nextPiece;
       cycleDurationSeconds = getCompositorCycleDurationSeconds(nextPiece);
@@ -772,6 +815,7 @@ export function createCompositorEngine(
       onComplete,
     ) {
       stopInternal();
+      playbackBus.reset();
 
       piece = nextPiece;
       cycleDurationSeconds = getCompositorCycleDurationSeconds(nextPiece);
@@ -790,6 +834,7 @@ export function createCompositorEngine(
           loopStartAudioTime + sound.cycleOffsetSeconds,
           sound,
           samples,
+          playbackBus,
         );
       }
 
@@ -797,6 +842,7 @@ export function createCompositorEngine(
     },
     playOnce(nextPiece, nextOnProgress, onComplete) {
       stopInternal();
+      playbackBus.reset();
 
       piece = nextPiece;
       cycleDurationSeconds = getCompositorCycleDurationSeconds(nextPiece);
@@ -813,6 +859,7 @@ export function createCompositorEngine(
           loopStartAudioTime + sound.cycleOffsetSeconds,
           sound,
           samples,
+          playbackBus,
         );
       }
 

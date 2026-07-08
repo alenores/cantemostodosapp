@@ -1,4 +1,8 @@
 import {
+  createPlaybackBus,
+  type AudioPlaybackBus,
+} from "@/lib/audio-playback-bus";
+import {
   BPM_DEFAULT,
   getActiveBeatDurationSlice,
   getActivePatternLength,
@@ -94,6 +98,7 @@ function scheduleSustainedBeat(
   durationSeconds: number,
   level: MetronomeBeatLevel,
   frequency = VOZ_RITMO_PRACTICE_FREQUENCY,
+  bus?: AudioPlaybackBus | null,
 ): void {
   if (level === "silencio" || durationSeconds <= 0.01) {
     return;
@@ -120,7 +125,8 @@ function scheduleSustainedBeat(
   gainNode.gain.exponentialRampToValueAtTime(0.001, time + durationSeconds);
 
   oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(oscillator);
 
   oscillator.start(time);
   oscillator.stop(time + durationSeconds + 0.02);
@@ -147,6 +153,7 @@ export type VozRitmoPracticeEngine = {
 export function createVozRitmoPracticeEngine(
   audioContext: AudioContext,
 ): VozRitmoPracticeEngine {
+  const playbackBus = createPlaybackBus(audioContext);
   let running = false;
   let bpm = BPM_DEFAULT;
   let pattern: MetronomeBeatPattern = [...METRONOME_PATTERN_DEFAULT];
@@ -235,6 +242,7 @@ export function createVozRitmoPracticeEngine(
             secondsPerBeat,
             NOTE_LEVEL_PEAK_GAIN[level],
             { pitchCompensation: !intensidadOnlyLoudness },
+            playbackBus,
           );
         } else {
           scheduleSustainedBeat(
@@ -243,6 +251,7 @@ export function createVozRitmoPracticeEngine(
             secondsPerBeat,
             level,
             frequency,
+            playbackBus,
           );
         }
       }
@@ -280,6 +289,7 @@ export function createVozRitmoPracticeEngine(
       const beatZeroTime = audioContext.currentTime;
       nextBeatTime = beatZeroTime;
       setPlaybackClock(audioContext, beatZeroTime);
+      playbackBus.reset();
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);
@@ -291,6 +301,7 @@ export function createVozRitmoPracticeEngine(
     stop() {
       running = false;
       onBeat = null;
+      playbackBus.cut();
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);
@@ -317,6 +328,7 @@ export type VozMelodiaPracticeEngine = {
 export function createVozMelodiaPracticeEngine(
   audioContext: AudioContext,
 ): VozMelodiaPracticeEngine {
+  const playbackBus = createPlaybackBus(audioContext);
   let running = false;
   let bpm = BPM_DEFAULT;
   let notes: VozTarget[] = [];
@@ -393,6 +405,9 @@ export function createVozMelodiaPracticeEngine(
           targetToFrequency(note),
           beatTime,
           secondsPerBeat,
+          undefined,
+          {},
+          playbackBus,
         );
       }
 
@@ -425,6 +440,7 @@ export function createVozMelodiaPracticeEngine(
         audioContext.currentTime + MELODIA_START_OFFSET_SECONDS;
       nextBeatTime = beatZeroTime;
       setPlaybackClock(audioContext, beatZeroTime);
+      playbackBus.reset();
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);
@@ -436,6 +452,7 @@ export function createVozMelodiaPracticeEngine(
     stop() {
       running = false;
       onBeat = null;
+      playbackBus.cut();
 
       if (schedulerTimer !== null) {
         clearInterval(schedulerTimer);

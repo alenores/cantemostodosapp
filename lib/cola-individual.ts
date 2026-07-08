@@ -20,7 +20,7 @@ async function getUserId(supabase: SupabaseClient): Promise<string> {
   const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("Se requiere sesión activa para operar la cola individual");
+    throw new Error("Se requiere sesión activa para operar la fila individual");
   }
 
   return userId;

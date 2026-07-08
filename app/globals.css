@@ -104,6 +104,9 @@
   --tool-practice: #c9b07a;
   --tool-practice-section-bg: color-mix(in srgb, white 7%, #5b5656);
 
+  /* Editor de canciones — hoja de letra (fondo apenas más oscuro que los renglones blancos) */
+  --cifrado-editor-sheet-bg: color-mix(in srgb, #64748b 9%, #c8ced8);
+
   /* Layout responsive */
   --app-sidebar-width: 260px;
   --app-main-bottom-padding: calc(56px + env(safe-area-inset-bottom, 0px));
@@ -876,6 +879,68 @@ html.splash-active body {
   animation: skeleton-shimmer 2.8s ease-in-out infinite;
 }
 
+.cifrado-merge-preview-shimmer {
+  background-color: color-mix(in srgb, var(--compositor-config) 8%, var(--skeleton-base-light));
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--compositor-config) 8%, var(--skeleton-base-light)) 0%,
+    color-mix(in srgb, var(--compositor-config) 8%, var(--skeleton-base-light)) 32%,
+    color-mix(in srgb, var(--compositor-config) 18%, var(--skeleton-shine-light)) 50%,
+    color-mix(in srgb, var(--compositor-config) 8%, var(--skeleton-base-light)) 68%,
+    color-mix(in srgb, var(--compositor-config) 8%, var(--skeleton-base-light)) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2.6s ease-in-out infinite;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.cifrado-merge-dest-line-shimmer {
+  opacity: 0.9;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 38%,
+    color-mix(in srgb, var(--compositor-config) 14%, var(--cifrado-editor-sheet-bg)) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 320% 100%;
+  animation: cifrado-merge-dest-shimmer 5.5s ease-in-out infinite;
+}
+
+@keyframes cifrado-merge-dest-shimmer {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
+}
+
+.cifrado-merge-result-highlight {
+  animation: cifrado-merge-result-glow 3.4s ease-out forwards;
+}
+
+@keyframes cifrado-merge-result-glow {
+  0% {
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--compositor-config) 42%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--compositor-config) 20%, transparent);
+    background-color: color-mix(in srgb, var(--compositor-config) 10%, var(--letra-bg));
+  }
+  35% {
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--compositor-config) 28%, transparent),
+      0 0 12px color-mix(in srgb, var(--compositor-config) 12%, transparent);
+    background-color: color-mix(in srgb, var(--compositor-config) 6%, var(--letra-bg));
+  }
+  100% {
+    box-shadow: none;
+    background-color: var(--letra-bg);
+  }
+}
+
 @keyframes cancionero-eq-breathe {
   0%,
   100% {
@@ -1077,6 +1142,9 @@ html.splash-active body {
   .metronomo-help-label-shimmer,
   .help-label-shimmer,
   .sala-letra-skeleton-line,
+  .cifrado-merge-preview-shimmer,
+  .cifrado-merge-dest-line-shimmer,
+  .cifrado-merge-result-highlight,
   .cancionero-skeleton-eq-bar,
   .cancionero-item-cascade,
   .sala-lectura-fab-item,
@@ -1489,6 +1557,16 @@ html.splash-active body {
   }
 }
 
+/* Herramientas — scroll vertical con rueda, sin barra visible (PC) */
+[data-tool-vertical-scroll] {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+[data-tool-vertical-scroll]::-webkit-scrollbar {
+  display: none;
+}
+
 /* Modales de herramientas — más amplios en escritorio */
 .tool-modal-panel {
   width: 100%;
@@ -1564,6 +1642,16 @@ html.splash-active body {
   gap: 0.25rem;
 }
 
+.tool-beat-slot-row--compact {
+  width: 100%;
+  max-width: 100%;
+}
+
+.tool-beat-slot-row--compact > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 @media (min-width: 1024px) {
   .tool-beat-slot-row {
     width: fit-content;
@@ -1574,6 +1662,17 @@ html.splash-active body {
   .tool-beat-slot-row > * {
     flex: 0 0 auto;
     width: 2.75rem;
+  }
+
+  .tool-beat-slot-row.tool-beat-slot-row--compact {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .tool-beat-slot-row.tool-beat-slot-row--compact > * {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
   }
 }
 
@@ -1630,12 +1729,22 @@ html.splash-active body {
   }
 
   .compositor-tab-content .bpm-setup-panel {
-    width: fit-content;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .compositor-tab-content .bpm-setup-panel .tool-segmented-control {
+    width: 100%;
     max-width: 100%;
   }
 
   .compositor-tab-content .bpm-setup-controls {
-    width: fit-content;
+    width: 100%;
+  }
+
+  .compositor-tab-content .tool-numeric-stepper {
+    width: 100%;
+    max-width: 100%;
   }
 }
 

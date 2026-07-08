@@ -25,6 +25,7 @@ export default function MetronomoPageClient() {
     setPatternLength,
     setBeatDurationAtSlot,
     setBeatLevelAtSlot,
+    cycleBeatPatternSlot,
     tapTempo,
     tapTempoTapCount,
     toggleMic,
@@ -62,6 +63,7 @@ export default function MetronomoPageClient() {
         onSetPatternLength={setPatternLength}
         onSetBeatDurationAtSlot={setBeatDurationAtSlot}
         onSetBeatLevelAtSlot={setBeatLevelAtSlot}
+        onCycleBeatPatternSlot={cycleBeatPatternSlot}
         onTapTempo={tapTempo}
         onToggleMic={toggleMic}
         onRequestMic={() => void requestMic()}

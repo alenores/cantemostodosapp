@@ -18,9 +18,9 @@ export default async function CancionesLayout({
     : OFFLINE_GUEST_USUARIO;
 
   return (
-    <div className="flex min-h-full w-full min-w-0 flex-1 flex-col overflow-x-clip bg-bg-app">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-clip bg-bg-app">
       <AppTopHeader usuario={usuario} />
-      {children}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

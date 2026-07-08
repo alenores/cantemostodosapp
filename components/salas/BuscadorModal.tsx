@@ -829,7 +829,7 @@ export default function BuscadorModal({
       const data = (await response.json()) as { ok?: boolean; error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Error al agregar a la cola");
+        throw new Error(data.error ?? "Error al agregar a la fila");
       }
 
       await onDataChange?.();
@@ -837,7 +837,7 @@ export default function BuscadorModal({
       handleClose();
     } catch (actionError) {
       setError(
-        formatDatabaseError(actionError, "Error al agregar a la cola"),
+        formatDatabaseError(actionError, "Error al agregar a la fila"),
       );
     } finally {
       setAccionLoading(false);

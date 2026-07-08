@@ -2,6 +2,12 @@
 
 import { NOTE_NAMES } from "@/lib/afinador";
 import {
+  getToolNoteButtonClass,
+  TOOL_NOTE_GRID_CLASS,
+  TOOL_NOTE_GRID_WIDE_CLASS,
+  TOOL_NOTE_LABEL_CLASS,
+} from "@/lib/tool-note-grid-ui";
+import {
   clampTargetOctave,
   formatTargetLabel,
   shiftTargetBySemitones,
@@ -16,6 +22,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { TOOL_MODAL_MOBILE_BLEED_CLASS } from "@/components/ui/ToolModalSections";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 const TARGET_PICKER_PANEL_CLASS =
   "rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3";
@@ -80,7 +88,9 @@ export function VozPracticeDivider() {
 
 export function VozPracticeArea({ children }: { children: ReactNode }) {
   return (
-    <div className="voz-mode-practice-panel -mx-3 space-y-3 px-3 pb-1 pt-3 lg:mx-0 lg:rounded-[10px] lg:border lg:border-border/50 lg:bg-bg-card/30 lg:px-3 lg:py-3">
+    <div
+      className={`voz-mode-practice-panel ${TOOL_MODAL_MOBILE_BLEED_CLASS} space-y-3 pb-1 pt-3 lg:mx-0 lg:rounded-[10px] lg:border lg:border-border/50 lg:bg-bg-card/30 lg:px-3 lg:py-3`}
+    >
       <VozPracticeDivider />
       {children}
     </div>
@@ -111,6 +121,45 @@ function wrapIndex(index: number): number {
 
 function shiftTargetNote(target: VozTarget, delta: number): VozTarget | null {
   return shiftTargetBySemitones(target, delta);
+}
+
+function NoteGrid({
+  target,
+  onSetTarget,
+  disabled = false,
+  wide = false,
+}: {
+  target: VozTarget;
+  onSetTarget: (target: VozTarget) => void;
+  disabled?: boolean;
+  wide?: boolean;
+}) {
+  return (
+    <div
+      className={wide ? TOOL_NOTE_GRID_WIDE_CLASS : TOOL_NOTE_GRID_CLASS}
+      role="toolbar"
+      aria-label="Notas"
+    >
+      {NOTE_NAMES.map((noteName) => {
+        const isActive = target.note === noteName;
+
+        return (
+          <button
+            key={noteName}
+            type="button"
+            disabled={disabled}
+            title={noteName}
+            aria-label={noteName}
+            aria-pressed={isActive}
+            onClick={() => onSetTarget({ ...target, note: noteName })}
+            className={getToolNoteButtonClass(isActive, "voz")}
+          >
+            <span className={TOOL_NOTE_LABEL_CLASS}>{noteName}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function NoteCarousel({
@@ -272,6 +321,7 @@ export function TargetPickerBody({
   disabled = false,
   density = "default",
 }: TargetPickerBodyProps) {
+  const isDesktop = useIsDesktop();
   const compact = density === "compact";
   const octaveIndex = VOZ_OCTAVES.indexOf(clampTargetOctave(target.octave));
   const safeOctaveIndex = octaveIndex === -1 ? 0 : octaveIndex;
@@ -307,17 +357,26 @@ export function TargetPickerBody({
     />
   );
 
-  if (compact) {
+  const noteSelector = isDesktop ? (
+    <NoteGrid
+      target={target}
+      onSetTarget={onSetTarget}
+      disabled={disabled}
+      wide={compact}
+    />
+  ) : (
+    <NoteCarousel
+      target={target}
+      onSetTarget={onSetTarget}
+      disabled={disabled}
+      density={density}
+    />
+  );
+
+  if (compact && !isDesktop) {
     return (
       <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <NoteCarousel
-            target={target}
-            onSetTarget={onSetTarget}
-            disabled={disabled}
-            density={density}
-          />
-        </div>
+        <div className="min-w-0 flex-1">{noteSelector}</div>
         {octaveControls}
       </div>
     );
@@ -325,15 +384,16 @@ export function TargetPickerBody({
 
   return (
     <>
-      <NoteCarousel
-        target={target}
-        onSetTarget={onSetTarget}
-        disabled={disabled}
-        density={density}
-      />
+      {noteSelector}
 
-      <div className={octaveSectionClass}>
-        <div className="flex items-center gap-1">
+      <div className={isDesktop ? "mt-3" : octaveSectionClass}>
+        <div
+          className={
+            isDesktop
+              ? "flex items-center justify-center gap-1"
+              : "flex items-center gap-1"
+          }
+        >
           <span className="shrink-0 text-[10px] italic text-text-muted/45">
             Octava
           </span>
@@ -350,6 +410,7 @@ export function TargetPicker({
   autoCollapseWhen = false,
   collapsible = true,
   disabled = false,
+  density = "default",
 }: TargetPickerProps) {
   const [expanded, setExpanded] = useState(true);
   const collapsedLabel = formatTargetLabel(target);
@@ -365,6 +426,7 @@ export function TargetPicker({
       target={target}
       onSetTarget={onSetTarget}
       disabled={disabled}
+      density={density}
     />
   );
 

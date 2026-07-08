@@ -368,6 +368,17 @@ function createDefaultVientoEvents(gridSteps: number): CompositorTrackEvent[] {
   ];
 }
 
+export function createEmptyCompositorTrack(
+  instrumentId: CompositorInstrumentId,
+  enabled: boolean,
+): CompositorTrack {
+  return {
+    instrumentId,
+    enabled,
+    events: [],
+  };
+}
+
 export function createDefaultTrack(
   instrumentId: CompositorInstrumentId,
   enabled: boolean,
@@ -392,7 +403,6 @@ export function createDefaultTrack(
 export function createDefaultCompositorPiece(): CompositorPiece {
   const cycleGolpes = 4;
   const subdivisionsPerGolpe = COMPOSITOR_SUBDIVISIONS_PER_GOLPE;
-  const gridSteps = cycleGolpes * subdivisionsPerGolpe;
 
   return normalizeCompositorPiece({
     version: 2,
@@ -402,22 +412,21 @@ export function createDefaultCompositorPiece(): CompositorPiece {
     subdivisionsPerGolpe,
     tonalidadComposicion: DEFAULT_TONALIDAD,
     tracks: [
-      createDefaultTrack("bateria", true, gridSteps),
-      createDefaultTrack("guitarra", true, gridSteps),
-      createDefaultTrack("piano", true, gridSteps),
-      createDefaultTrack("viento", false, gridSteps),
+      createEmptyCompositorTrack("bateria", true),
+      createEmptyCompositorTrack("guitarra", true),
+      createEmptyCompositorTrack("piano", true),
+      createEmptyCompositorTrack("viento", true),
     ],
   });
 }
 
 function ensureAllInstrumentTracks(piece: CompositorPiece): CompositorTrack[] {
-  const gridSteps = getCompositorGridSteps(piece);
   const existingIds = new Set(piece.tracks.map((track) => track.instrumentId));
   const tracks = [...piece.tracks];
 
   for (const option of COMPOSITOR_INSTRUMENT_OPTIONS) {
     if (!existingIds.has(option.id)) {
-      tracks.push(createDefaultTrack(option.id, false, gridSteps));
+      tracks.push(createEmptyCompositorTrack(option.id, false));
     }
   }
 
@@ -466,11 +475,7 @@ export function getCompositorTrack(
 ): CompositorTrack {
   return (
     piece.tracks.find((track) => track.instrumentId === instrumentId) ??
-    createDefaultTrack(
-      instrumentId,
-      false,
-      getCompositorGridSteps(piece),
-    )
+    createEmptyCompositorTrack(instrumentId, false)
   );
 }
 
@@ -716,6 +721,35 @@ export function toggleCompositorTrack(
   return normalizeCompositorPiece({ ...piece, tracks });
 }
 
+export function isCompositorCycleLayer(track: CompositorTrack): boolean {
+  return track.enabled;
+}
+
+export function getCompositorCycleLayerTracks(
+  piece: CompositorPiece,
+): CompositorTrack[] {
+  return piece.tracks.filter(isCompositorCycleLayer);
+}
+
+export function applyCompositorListenMutes(
+  piece: CompositorPiece,
+  mutedInstrumentIds: ReadonlySet<CompositorInstrumentId>,
+): CompositorPiece {
+  if (mutedInstrumentIds.size === 0) {
+    return piece;
+  }
+
+  return normalizeCompositorPiece({
+    ...piece,
+    tracks: piece.tracks.map((track) => ({
+      ...track,
+      enabled: mutedInstrumentIds.has(track.instrumentId)
+        ? false
+        : track.enabled,
+    })),
+  });
+}
+
 function migrateLegacyPiece(legacy: LegacyCompositorPiece): CompositorPiece {
   const cycleGolpes = Math.max(
     1,
@@ -761,11 +795,7 @@ function migrateLegacyPiece(legacy: LegacyCompositorPiece): CompositorPiece {
     return {
       instrumentId: track.instrumentId,
       enabled: track.enabled,
-      events:
-        events.length > 0
-          ? events
-          : createDefaultTrack(track.instrumentId, track.enabled, gridSteps)
-              .events,
+      events,
     };
   });
 

@@ -47,6 +47,35 @@ export const COMPAS_LABELS: Record<TipoCompas, string> = {
   "6-8": "6/8",
 };
 
+export const TIPO_COMPAS_ORDER: readonly TipoCompas[] = ["4-4", "3-4", "6-8"];
+
+export function getTipoCompasDenominator(tipo: TipoCompas): 4 | 8 {
+  return tipo === "6-8" ? 8 : 4;
+}
+
+export function cycleTipoCompas(tipo: TipoCompas, delta: -1 | 1): TipoCompas {
+  const index = TIPO_COMPAS_ORDER.indexOf(tipo);
+  const next = Math.min(
+    TIPO_COMPAS_ORDER.length - 1,
+    Math.max(0, index + delta),
+  );
+
+  return TIPO_COMPAS_ORDER[next];
+}
+
+export function tipoCompasFromBeatCount(beats: number): TipoCompas | null {
+  switch (beats) {
+    case 3:
+      return "3-4";
+    case 4:
+      return "4-4";
+    case 6:
+      return "6-8";
+    default:
+      return null;
+  }
+}
+
 // Un acorde posicionado
 export type AcordePos = {
   lineIndex: number;
@@ -127,6 +156,54 @@ export function getLineMergeAttachOffset(
   barras: ReadonlyArray<{ charOffset: number }>,
 ): number {
   return getLineContentEndOffset(textLength, acordes, barras) + 1;
+}
+
+export type LineMergePreview = {
+  destLineIndex: number;
+  sourceLineIndex: number;
+  mergedText: string;
+  attachOffset: number;
+  destSegment: string;
+  sourceSegment: string;
+  /** Índice en mergedText donde empieza el texto pegado (letra). */
+  sourceTextStart: number;
+};
+
+/** Vista previa al pegar un renglón en otro (sin mutar datos). */
+export function computeLineMergePreview(
+  lines: string[],
+  sourceLineIndex: number,
+  destLineIndex: number,
+  destAcordes: ReadonlyArray<{ charOffset: number }>,
+  destBarras: ReadonlyArray<{ charOffset: number }>,
+): LineMergePreview | null {
+  if (
+    sourceLineIndex === destLineIndex ||
+    sourceLineIndex < 0 ||
+    destLineIndex < 0 ||
+    sourceLineIndex >= lines.length ||
+    destLineIndex >= lines.length
+  ) {
+    return null;
+  }
+
+  const destText = lines[destLineIndex] ?? "";
+  const sourceText = lines[sourceLineIndex] ?? "";
+  const attachOffset = getLineMergeAttachOffset(
+    destText.length,
+    destAcordes,
+    destBarras,
+  );
+
+  return {
+    destLineIndex,
+    sourceLineIndex,
+    mergedText: destText + sourceText,
+    attachOffset,
+    destSegment: destText,
+    sourceSegment: sourceText,
+    sourceTextStart: destText.length,
+  };
 }
 
 /** Reparte offsets de compás de forma uniforme sobre el contenido útil del renglón. */

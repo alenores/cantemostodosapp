@@ -13,6 +13,8 @@ export const RITMO_LABEL_COMPAS = "Compás";
 export const RITMO_LABEL_CICLO = "Ciclo";
 export const RITMO_LABEL_GOLPES_TAB = "Golpes";
 export const RITMO_LABEL_FIGURA = "Figura";
+export const RITMO_LABEL_FIGURA_DESKTOP = "FIGURA";
+export const RITMO_DESKTOP_CLICK_HINT = "Click para cambiar";
 export const RITMO_LABEL_INTENSIDAD = "Intensidad";
 export const RITMO_LABEL_GOLPE = "Golpe";
 export const RITMO_LABEL_CAPAS = "Capas";
@@ -234,12 +236,21 @@ export const COMPOSITOR_LABEL_IMPORTAR_MIDI = "Importar MIDI";
 
 export const COMPOSITOR_LABEL_NUEVO_CICLO_SIN_GUARDAR = "Nuevo ciclo (sin guardar)";
 
+export const COMPOSITOR_PLACEHOLDER_NOMBRE_CICLO = "Ingresar nombre del ciclo";
+
+export const COMPOSITOR_ERROR_NOMBRE_CICLO_REQUERIDO =
+  "Escribí un nombre para el ciclo.";
+
 export const COMPOSITOR_LABEL_EDITANDO_CICLO = (nombre: string) =>
   `Editando: ${nombre}`;
 
 export const COMPOSITOR_LABEL_GUARDAR_CICLO = "Guardar ciclo";
 
 export const COMPOSITOR_LABEL_GUARDAR_CAMBIOS = "Guardar cambios";
+
+export const COMPOSITOR_LABEL_GUARDAR_EDICIONES = "Guardar ediciones";
+
+export const COMPOSITOR_LABEL_ELIMINAR_CICLO = "Eliminar";
 
 export const COMPOSITOR_LABEL_GUARDAR_COMO = "Guardar como…";
 
@@ -321,6 +332,8 @@ export const CIFRADO_LABEL_CONFIRMAR_UNION = "Unir renglones";
 
 export const CIFRADO_LABEL_CANCELAR_UNION = "Cancelar";
 
+export const CIFRADO_LABEL_PREVIEW_UNION = "Vista previa";
+
 export const COMPOSITOR_CONFIRM_LOAD_CYCLE_MESSAGE = (nombre: string) =>
   `¿Cargar el ciclo "${nombre}"? Se reemplazará la composición actual.`;
 
@@ -331,7 +344,7 @@ export const COMPOSITOR_CONFIRM_LOAD_PRESET_MESSAGE = (label: string) =>
   `¿Cargar la plantilla "${label}"? Se reemplazará la composición actual.`;
 
 export const COMPOSITOR_CONFIRM_RESET_MESSAGE =
-  "Se va a restablecer todo el compositor: ciclo compartido, tempo y bloques de batería, guitarra, piano y viento. Las capas activas quedan en su estado inicial. ¿Continuar?";
+  "Se va a restablecer todo el compositor: ciclo compartido, tempo y las cuatro capas vacías, sin bloques. ¿Continuar?";
 
 export const RITMO_CONFIG_SUBTITLE =
   "Elegí el ciclo, la figura y la intensidad de cada golpe, y el tempo en BPM.";
@@ -341,8 +354,7 @@ export const RITMO_CONFIG_SUBTITLE_WITH_NOTE =
 
 export const RITMO_PATTERN_CONFIG_TITLE = "Intensidad de cada golpe";
 
-export const RITMO_PATTERN_CONFIG_HINT =
-  "Tocá cada barra: silencio → suave → medio → fuerte";
+export const RITMO_PATTERN_CONFIG_HINT = RITMO_DESKTOP_CLICK_HINT;
 
 export const RITMO_COMPAS_SETUP_TITLE = "Golpes del ciclo";
 

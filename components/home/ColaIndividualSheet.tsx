@@ -536,7 +536,7 @@ export default function ColaIndividualSheet({
           <>
             <button
               type="button"
-              aria-label="Cerrar cola"
+              aria-label="Cerrar fila"
               data-no-tap-feedback
               className={`fixed inset-0 bg-black/50 ${
                 sheetExiting ? "sala-cola-sheet-backdrop--exit" : ""

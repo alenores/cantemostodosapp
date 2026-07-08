@@ -6,7 +6,38 @@ function shouldForwardVerticalWheel(
   return !event.shiftKey && Math.abs(event.deltaY) > Math.abs(event.deltaX);
 }
 
-/** Reenvía la rueda vertical al contenedor con `data-tool-vertical-scroll`. */
+function canScrollVertically(element: HTMLElement): boolean {
+  const { overflowY } = getComputedStyle(element);
+
+  if (
+    overflowY !== "auto" &&
+    overflowY !== "scroll" &&
+    overflowY !== "overlay"
+  ) {
+    return false;
+  }
+
+  return element.scrollHeight - element.clientHeight > 0;
+}
+
+function findScrollableVerticalTarget(start: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = start;
+
+  while (node) {
+    if (
+      node.hasAttribute("data-tool-vertical-scroll") &&
+      canScrollVertically(node)
+    ) {
+      return node;
+    }
+
+    node = node.parentElement;
+  }
+
+  return null;
+}
+
+/** Reenvía la rueda vertical al contenedor con `data-tool-vertical-scroll` más cercano que pueda desplazarse. */
 export function forwardVerticalWheel(
   event: ReactWheelEvent<HTMLElement>,
 ): void {
@@ -14,20 +45,14 @@ export function forwardVerticalWheel(
     return;
   }
 
-  const verticalScroller = event.currentTarget.closest(
-    "[data-tool-vertical-scroll]",
-  );
+  const verticalScroller = findScrollableVerticalTarget(event.currentTarget);
 
-  if (!(verticalScroller instanceof HTMLElement)) {
+  if (!verticalScroller) {
     return;
   }
 
-  const maxScrollTop = verticalScroller.scrollHeight - verticalScroller.clientHeight;
-
-  if (maxScrollTop <= 0) {
-    return;
-  }
-
+  const maxScrollTop =
+    verticalScroller.scrollHeight - verticalScroller.clientHeight;
   const { scrollTop } = verticalScroller;
   const nextScrollTop = scrollTop + event.deltaY;
 

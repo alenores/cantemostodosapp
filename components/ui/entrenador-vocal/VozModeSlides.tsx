@@ -1,9 +1,10 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
+import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { MicToggleButton } from "@/components/ui/MicToggleButton";
 import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
-import { RitmoConfigSection } from "@/components/ui/ToolRitmoConfig";
+import { RitmoConfigSection, ToolRitmoCompasPanel, ToolRitmoTempoPanel } from "@/components/ui/ToolRitmoConfig";
 import {
   EncajarHelpButton,
   EncajarHelpModal,
@@ -167,32 +168,141 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type ReactNode,
 } from "react";
 import {
   TargetPicker,
+  TargetPickerBody,
   VozConfigSection,
   VozPracticeArea,
   type TargetPickerProps,
 } from "./EntrenadorVocalShared";
 import { VolumeSegmentMeter } from "./VolumeSegmentMeter";
+import {
+  VOZ_MODE_SLIDES,
+  type VozModeSlideId,
+} from "@/components/ui/entrenador-vocal/voz-mode-slides";
+import { VozMelodiaDesktopConfig } from "@/components/ui/entrenador-vocal/pc/VozMelodiaDesktopConfig";
+import {
+  VozPcConfigCard,
+  VozPcShellLayout,
+} from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
+import { VozPcModeNav } from "@/components/ui/entrenador-vocal/pc/VozPcModeNav";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 
-export const VOZ_MODE_SLIDES = [
-  { id: "encajar", label: "Encajar" },
-  { id: "sostener", label: "Sostener" },
-  { id: "octavas", label: "Octavas" },
-  { id: "melodia", label: "Melodía" },
-  { id: "ritmo", label: "Ritmo" },
-  { id: "ritmo-intensidad", label: "Ritmo-Intensidad" },
-  { id: "ritmo-nota", label: "Ritmo-Nota" },
-  { id: "combo", label: "Combo" },
-] as const;
+export { VOZ_MODE_SLIDES, type VozModeSlideId } from "@/components/ui/entrenador-vocal/voz-mode-slides";
 
-export type VozModeSlideId = (typeof VOZ_MODE_SLIDES)[number]["id"];
+function wrapModeSlide(
+  layout: "mobile" | "desktop",
+  config: ReactNode,
+  practice: ReactNode,
+  practiceHeaderExtra?: ReactNode,
+) {
+  if (layout === "desktop") {
+    return (
+      <VozPcShellLayout
+        config={config}
+        practice={practice}
+        practiceHeaderExtra={practiceHeaderExtra}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {config}
+      <VozPracticeArea>
+        {practiceHeaderExtra}
+        {practice}
+      </VozPracticeArea>
+    </div>
+  );
+}
+
+function splitPracticeMic(
+  layout: "mobile" | "desktop",
+  micControl: ReactNode,
+  practiceBody: ReactNode,
+): { practice: ReactNode; practiceHeaderExtra?: ReactNode } {
+  if (layout === "desktop") {
+    return { practice: practiceBody, practiceHeaderExtra: micControl };
+  }
+
+  return {
+    practice: (
+      <>
+        {micControl}
+        {practiceBody}
+      </>
+    ),
+    practiceHeaderExtra: undefined,
+  };
+}
+
+function renderDesktopTargetPicker(targetPicker: TargetPickerProps) {
+  return (
+    <TargetPickerBody
+      target={targetPicker.target}
+      onSetTarget={targetPicker.onSetTarget}
+      disabled={targetPicker.disabled}
+    />
+  );
+}
+
+type RitmoDesktopCompasPanelProps = Omit<
+  ComponentProps<typeof ToolRitmoCompasPanel>,
+  "embedded" | "layout"
+>;
+
+type RitmoDesktopTempoPanelProps = Omit<
+  ComponentProps<typeof ToolRitmoTempoPanel>,
+  "embedded"
+>;
+
+function renderRitmoDesktopCicloTempo({
+  cicloTitle = "Ciclo",
+  compas,
+  tempo,
+}: {
+  cicloTitle?: string;
+  compas: RitmoDesktopCompasPanelProps;
+  tempo: RitmoDesktopTempoPanelProps;
+}) {
+  return (
+    <>
+      <VozPcConfigCard title={cicloTitle}>
+        <ToolRitmoCompasPanel embedded layout="flat" {...compas} />
+      </VozPcConfigCard>
+      <VozPcConfigCard title="Tempo">
+        <ToolRitmoTempoPanel embedded {...tempo} />
+      </VozPcConfigCard>
+    </>
+  );
+}
+
+function renderPracticeMicControl(
+  layout: "mobile" | "desktop",
+  isActive: boolean,
+  onToggle: () => void,
+  micStarting: boolean,
+) {
+  return (
+    <VozPracticeMicRow
+      variant={layout === "desktop" ? "header" : "center"}
+      isActive={isActive}
+      onToggle={onToggle}
+      disabled={micStarting}
+    />
+  );
+}
 
 const CHART_WIDTH = 320;
 const CHART_HEIGHT_WIDE = 258;
 const CHART_HEIGHT_SOSTENER = 342;
+const CHART_PC_HEIGHT_SOSTENER = 180;
+const CHART_PC_HEIGHT_MELODIA = 180;
+const CHART_PC_HEIGHT_OCTAVAS = 165;
 const CHART_WIDE_PADDING_LEFT = 44;
 const CHART_MELODIA_PADDING = 6;
 const CHART_MELODIA_WINDOW_CYCLES = 3;
@@ -204,6 +314,8 @@ const OCTAVAS_CHART_WIDTH = 320;
 const OCTAVAS_CHART_HEIGHT = 280;
 const OCTAVAS_CHART_PADDING = 10;
 const OCTAVAS_CENTS_PER_PIXEL = 0.055;
+
+type VozPracticeLayout = "mobile" | "desktop";
 
 function getOctavasLowerTargetY(chartHeight = OCTAVAS_CHART_HEIGHT): number {
   return chartHeight * 0.72;
@@ -253,61 +365,6 @@ function useTimelineNow(active: boolean, playbackSynced = false): number {
   }
 
   return playbackSynced ? getPlaybackNow() : performance.now();
-}
-
-const VOZ_MODE_GROUPS = [
-  { label: "Tono", startIndex: 0, endIndex: 3 },
-  { label: "Ritmo + voz", startIndex: 4, endIndex: 7 },
-] as const;
-
-function VozModeDesktopNav({
-  activeIndex,
-  onChangeIndex,
-  animating,
-}: {
-  activeIndex: number;
-  onChangeIndex: (index: number) => void;
-  animating: boolean;
-}) {
-  return (
-    <nav
-      className="hidden w-[11.5rem] shrink-0 flex-col gap-3 self-stretch border-r border-border pr-3 lg:flex"
-      aria-label="Modos del entrenador vocal"
-    >
-      {VOZ_MODE_GROUPS.map((group) => (
-        <div key={group.label}>
-          <p className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-wider text-text-muted">
-            {group.label}
-          </p>
-          <div className="flex flex-col gap-0.5">
-            {VOZ_MODE_SLIDES.slice(group.startIndex, group.endIndex + 1).map(
-              (slide, offset) => {
-                const index = group.startIndex + offset;
-                const isActive = activeIndex === index;
-
-                return (
-                  <button
-                    key={slide.id}
-                    type="button"
-                    aria-current={isActive ? "page" : undefined}
-                    disabled={animating}
-                    onClick={() => onChangeIndex(index)}
-                    className={`rounded-[8px] px-2.5 py-2 text-left text-[11px] font-bold leading-tight transition-colors disabled:opacity-60 ${
-                      isActive
-                        ? "bg-voz-config/15 text-voz-config"
-                        : "text-text-muted hover:bg-bg-card hover:text-text-primary"
-                    }`}
-                  >
-                    {slide.label}
-                  </button>
-                );
-              },
-            )}
-          </div>
-        </div>
-      ))}
-    </nav>
-  );
 }
 
 function ModeCarouselShell({
@@ -575,27 +632,9 @@ function ModeCarouselShell({
   }
 
   return (
-    <div className="w-full lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden">
-      <VozModeDesktopNav
-        activeIndex={activeIndex}
-        onChangeIndex={onChangeIndex}
-        animating={animating}
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
-        <div className="mb-3 hidden shrink-0 items-center justify-between gap-2 lg:flex">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-text-primary">
-                {activeSlide.label}
-              </p>
-              <p className="mt-0.5 text-[10px] font-semibold text-text-muted">
-                Modo {activeIndex + 1} de {slideCount}
-              </p>
-            </div>
-            {titleAction}
-          </div>
-
-          <div className="mb-3 flex items-center gap-2 lg:hidden">
+    <div className="w-full">
+      <div className="flex min-w-0 flex-1 flex-col">
+          <div className="mb-3 flex items-center gap-2">
             <button
               type="button"
               aria-label="Modo anterior"
@@ -629,19 +668,19 @@ function ModeCarouselShell({
             </button>
           </div>
 
-        <div className="min-h-0 flex-1 lg:overflow-y-auto lg:overscroll-y-contain">
+        <div className="min-h-0 flex-1">
           <div
             className="overflow-hidden rounded-[14px] border-2 border-border-card shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_5%,transparent)]"
             style={{ backgroundColor: "var(--tool-practice-section-bg)" }}
           >
             <div
               ref={viewportRef}
-              className="touch-pan-y overflow-hidden transition-[height] duration-200 ease-out lg:!h-auto"
+              className="touch-pan-y overflow-hidden transition-[height] duration-200 ease-out"
               style={viewportHeight !== null ? { height: viewportHeight } : undefined}
               aria-label={`Modo ${activeSlide.label}. Deslizá horizontalmente para cambiar.`}
             >
               <div
-                className="flex items-start will-change-transform lg:hidden"
+                className="flex items-start will-change-transform"
                 style={{
                   width: "300%",
                   transform: `translateX(calc(-33.333333% + ${offsetX}px))`,
@@ -654,13 +693,9 @@ function ModeCarouselShell({
                 {renderPanelColumn(activeIndex, true)}
                 {renderPanelColumn(nextIndex)}
               </div>
-
-              <div className="hidden lg:block lg:px-4 lg:py-3">
-                {renderSlide(activeIndex)}
-              </div>
             </div>
 
-            <div className="flex items-center justify-center gap-1.5 border-t border-border px-3 py-2 lg:hidden">
+            <div className="flex items-center justify-center gap-1.5 border-t border-border px-3 py-2">
               {VOZ_MODE_SLIDES.map((slide, index) => (
                 <button
                   key={slide.id}
@@ -729,6 +764,7 @@ function PitchLadderBar({
   detectedNote,
   voiceRms = 0,
   size = "default",
+  layout = "mobile",
 }: {
   targetNote: string;
   cents: number;
@@ -736,8 +772,14 @@ function PitchLadderBar({
   detectedNote: string | null;
   voiceRms?: number;
   size?: "default" | "large";
+  layout?: VozPracticeLayout;
 }) {
-  const barHeightClass = size === "large" ? "h-28" : "h-14";
+  const barHeightClass =
+    layout === "desktop"
+      ? "h-20"
+      : size === "large"
+        ? "h-28"
+        : "h-14";
   const slots = getLadderNoteSlots(targetNote);
   const markerLeft = centsToLadderPercent(cents);
   const markerColor = getVozAccuracyColor(accuracy, cents);
@@ -890,39 +932,53 @@ function InstantAttemptsStrip({
 function VozCalibrePicker({
   calibre,
   onSetCalibre,
+  embedded = false,
 }: {
   calibre: VozCalibre;
   onSetCalibre: (value: VozCalibre) => void;
+  embedded?: boolean;
 }) {
-  return (
-    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
-        Calibre de afinación
-      </p>
-      <div className="mt-2 flex gap-1">
+  const controls = (
+    <>
+      <div
+        className="tool-segmented-control tool-segmented-control--inline flex gap-1"
+        role="group"
+        aria-label="Calibre de afinación"
+      >
         {VOZ_CALIBRE_OPTIONS.map((option) => {
           const selected = calibre === option.id;
 
           return (
-            <TapButton
+            <button
               key={option.id}
               type="button"
               aria-pressed={selected}
               onClick={() => onSetCalibre(option.id)}
-              className={`min-w-0 flex-1 rounded-[8px] border px-1 py-2 text-center text-[11px] font-bold leading-tight transition-colors ${
-                selected
-                  ? "border-voz-config bg-voz-config/15 text-voz-config"
-                  : "border-border bg-bg-dark text-text-secondary"
+              className={`min-w-0 flex-1 shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold ${
+                selected ? "bg-voz-config text-white" : "text-text-muted"
               }`}
             >
               {option.label}
-            </TapButton>
+            </button>
           );
         })}
       </div>
       <p className="mt-2 text-[10px] leading-snug text-text-muted">
         {getVozCalibreDescription(calibre)}
       </p>
+    </>
+  );
+
+  if (embedded) {
+    return controls;
+  }
+
+  return (
+    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
+        Calibre de afinación
+      </p>
+      <div className="mt-2">{controls}</div>
     </div>
   );
 }
@@ -940,78 +996,93 @@ function OctavasQueDigaPicker({
   onSetPitchMode,
   scaleRepetitions,
   onSetScaleRepetitions,
+  embedded = false,
 }: {
   pitchMode: VozOctavasPitchMode;
   onSetPitchMode: (mode: VozOctavasPitchMode) => void;
   scaleRepetitions: number;
   onSetScaleRepetitions: (value: number) => void;
+  embedded?: boolean;
 }) {
+  const modeControls = (
+    <div
+      className="tool-segmented-control tool-segmented-control--inline flex gap-1"
+      role="group"
+      aria-label="Qué decir en octavas"
+    >
+      {OCTAVAS_PITCH_MODE_OPTIONS.map((option) => {
+        const selected = pitchMode === option.id;
+
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onSetPitchMode(option.id)}
+            className={`min-w-0 flex-1 shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold ${
+              selected ? "bg-voz-config text-white" : "text-text-muted"
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const scaleControls =
+    pitchMode === "scale" ? (
+      <div className={embedded ? "mt-3" : "mt-3 border-t border-border/60 pt-3"}>
+        <p
+          className={
+            embedded
+              ? "mb-2 text-[10px] font-bold uppercase tracking-wide text-voz-config"
+              : "text-xs font-semibold uppercase tracking-wide text-voz-config"
+          }
+        >
+          Repetición de la nota por escala
+        </p>
+        <ToolNumericStepper
+          value={scaleRepetitions}
+          density={embedded ? "compact" : "default"}
+          decrementAriaLabel="Reducir repeticiones"
+          incrementAriaLabel="Aumentar repeticiones"
+          decrementDisabled={
+            scaleRepetitions <= VOZ_OCTAVAS_SCALE_REPETITIONS_MIN
+          }
+          incrementDisabled={
+            scaleRepetitions >= VOZ_OCTAVAS_SCALE_REPETITIONS_MAX
+          }
+          onDecrement={() =>
+            onSetScaleRepetitions(
+              clampOctavasScaleRepetitions(scaleRepetitions - 1),
+            )
+          }
+          onIncrement={() =>
+            onSetScaleRepetitions(
+              clampOctavasScaleRepetitions(scaleRepetitions + 1),
+            )
+          }
+        />
+      </div>
+    ) : null;
+
+  if (embedded) {
+    return (
+      <>
+        {modeControls}
+        {scaleControls}
+      </>
+    );
+  }
+
   return (
     <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
         Ciclo
       </p>
-      <div className="mt-2 flex gap-1">
-        {OCTAVAS_PITCH_MODE_OPTIONS.map((option) => {
-          const selected = pitchMode === option.id;
-
-          return (
-            <TapButton
-              key={option.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onSetPitchMode(option.id)}
-              className={`min-w-0 flex-1 rounded-[8px] border px-1 py-2 text-center text-[11px] font-bold leading-tight transition-colors ${
-                selected
-                  ? "border-voz-config bg-voz-config/15 text-voz-config"
-                  : "border-border bg-bg-dark text-text-secondary"
-              }`}
-            >
-              {option.label}
-            </TapButton>
-          );
-        })}
-      </div>
-      {pitchMode === "scale" ? (
-        <div className="mt-3 border-t border-border/60 pt-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
-            Repetición de la nota por escala
-          </p>
-          <div className="mt-2 flex items-center justify-center gap-3">
-            <TapButton
-              type="button"
-              aria-label="Reducir repeticiones"
-              disabled={scaleRepetitions <= VOZ_OCTAVAS_SCALE_REPETITIONS_MIN}
-              onClick={() =>
-                onSetScaleRepetitions(
-                  clampOctavasScaleRepetitions(scaleRepetitions - 1),
-                )
-              }
-              className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-            >
-              −
-            </TapButton>
-            <div className="min-w-[5rem] text-center">
-              <p className="text-2xl font-extrabold leading-none text-text-primary">
-                {scaleRepetitions}
-              </p>
-            </div>
-            <TapButton
-              type="button"
-              aria-label="Aumentar repeticiones"
-              disabled={scaleRepetitions >= VOZ_OCTAVAS_SCALE_REPETITIONS_MAX}
-              onClick={() =>
-                onSetScaleRepetitions(
-                  clampOctavasScaleRepetitions(scaleRepetitions + 1),
-                )
-              }
-              className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-            >
-              +
-            </TapButton>
-          </div>
-        </div>
-      ) : null}
+      <div className="mt-2">{modeControls}</div>
+      {scaleControls}
     </div>
   );
 }
@@ -1091,6 +1162,7 @@ function HoldClockDial({
   accuracy,
   cents,
   calibre,
+  compact = false,
 }: {
   progress: number;
   holdTargetSeconds: number;
@@ -1099,8 +1171,9 @@ function HoldClockDial({
   accuracy: VozAccuracy;
   cents: number;
   calibre: VozCalibre;
+  compact?: boolean;
 }) {
-  const SIZE = 112;
+  const SIZE = compact ? 88 : 112;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
   const R = SIZE / 2 - 10;
@@ -1206,6 +1279,7 @@ function HoldTimerPanel({
   accuracy,
   cents,
   calibre,
+  layout = "mobile",
 }: {
   samples: VozHistorySample[];
   holdTargetSeconds: number;
@@ -1213,6 +1287,7 @@ function HoldTimerPanel({
   accuracy: VozAccuracy;
   cents: number;
   calibre: VozCalibre;
+  layout?: VozPracticeLayout;
 }) {
   const now = useTimelineNow(samples.length > 0);
   const holdMs = useMemo(
@@ -1248,6 +1323,7 @@ function HoldTimerPanel({
             accuracy={accuracy}
             cents={cents}
             calibre={calibre}
+            compact={layout === "desktop"}
           />
           <div className="mt-0.5 flex items-baseline justify-center gap-1">
             <span className="text-base font-extrabold leading-none tabular-nums text-text-primary">
@@ -1455,6 +1531,7 @@ export function PitchHistoryChart({
   showLiveNoteRail = false,
   voiceRms = 0,
   liveChartCents,
+  layout = "mobile",
 }: {
   samples: VozHistorySample[];
   active: boolean;
@@ -1476,12 +1553,22 @@ export function PitchHistoryChart({
   voiceRms?: number;
   /** Sostener: posición de bolita (= promedio móvil); null = oculta. */
   liveChartCents?: number | null;
+  layout?: VozPracticeLayout;
 }) {
   const isMelodia = mode === "melodia";
   const isSostener = mode === "sostener";
   const isHoldChart = isSostener && !isMelodia;
   const isSostenerLayout = isSostener || isMelodia;
-  const chartHeight = isSostenerLayout ? CHART_HEIGHT_SOSTENER : CHART_HEIGHT_WIDE;
+  const chartHeight =
+    layout === "desktop"
+      ? isMelodia
+        ? CHART_PC_HEIGHT_MELODIA
+        : isSostener
+          ? CHART_PC_HEIGHT_SOSTENER
+          : CHART_HEIGHT_WIDE
+      : isSostenerLayout
+        ? CHART_HEIGHT_SOSTENER
+        : CHART_HEIGHT_WIDE;
   const maxCents = isHoldChart
     ? VOZ_HOLD_CHART_MAX_CENTS
     : VOZ_HISTORY_CHART_WIDE_MAX_CENTS;
@@ -1733,8 +1820,14 @@ export function PitchHistoryChart({
         }
       >
         <div
-          className="relative min-w-0 flex-1 overflow-hidden rounded-[12px] border border-border bg-bg-card"
-          style={{ aspectRatio: `${CHART_WIDTH} / ${chartHeight}` }}
+          className={`relative min-w-0 overflow-hidden rounded-[12px] border border-border bg-bg-card ${
+            layout === "desktop" ? "w-full" : "flex-1"
+          }`}
+          style={
+            layout === "desktop"
+              ? { height: `${chartHeight}px` }
+              : { aspectRatio: `${CHART_WIDTH} / ${chartHeight}` }
+          }
         >
         {!isMelodia ? (
         <div
@@ -2023,6 +2116,7 @@ function VozRitmoTimeline({
   beatDurations,
   isPlaying,
   voiceSamples,
+  layout = "mobile",
 }: {
   beatMarkers: VozRitmoBeatMarker[];
   bpm: number;
@@ -2031,6 +2125,7 @@ function VozRitmoTimeline({
   beatDurations: MetronomeBeatDurationPattern;
   isPlaying: boolean;
   voiceSamples: VozRitmoVoiceSample[];
+  layout?: VozPracticeLayout;
 }) {
   const now = useTimelineNow(
     isPlaying || beatMarkers.length > 0,
@@ -2083,7 +2178,13 @@ function VozRitmoTimeline({
 
   return (
     <div className="overflow-hidden rounded-[12px] border border-border bg-bg-card">
-      <div className="flex gap-2 px-2 pb-3 pt-4">
+      <div
+        className={
+          layout === "desktop"
+            ? "flex gap-2 px-2 py-2"
+            : "flex gap-2 px-2 pb-3 pt-4"
+        }
+      >
         <div className="flex w-14 shrink-0 flex-col justify-end gap-1">
           <span className="text-[9px] font-semibold uppercase tracking-wide text-text-muted">
             Ritmo
@@ -2102,7 +2203,13 @@ function VozRitmoTimeline({
 
           <div
             className="relative"
-            style={{ height: `${RITMO_TIMELINE_PATTERN_ROW_PX}px` }}
+            style={{
+              height: `${
+                layout === "desktop"
+                  ? Math.round(RITMO_TIMELINE_PATTERN_ROW_PX * 0.8)
+                  : RITMO_TIMELINE_PATTERN_ROW_PX
+              }px`,
+            }}
           >
             {beatSegments.map((segment, index) => {
               if (segment.level === "silencio") {
@@ -2180,6 +2287,8 @@ function VozComboPractice({
   accuracy,
   holdCalibre,
   voiceRms = 0,
+  hideMic = false,
+  layout = "mobile",
 }: {
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
@@ -2200,14 +2309,18 @@ function VozComboPractice({
   accuracy: VozAccuracy;
   holdCalibre?: VozCalibre;
   voiceRms?: number;
+  hideMic?: boolean;
+  layout?: VozPracticeLayout;
 }) {
   return (
     <>
-      <VozPracticeMicRow
-        isActive={ritmoMicActive}
-        onToggle={onToggleRitmoMic}
-        disabled={micStarting}
-      />
+      {hideMic ? null : (
+        <VozPracticeMicRow
+          isActive={ritmoMicActive}
+          onToggle={onToggleRitmoMic}
+          disabled={micStarting}
+        />
+      )}
 
       <PitchHistoryChart
         samples={historySamples}
@@ -2228,6 +2341,7 @@ function VozComboPractice({
         playbackSynced={ritmoPlaying}
         showLiveNoteRail
         voiceRms={voiceRms}
+        layout={layout}
       />
 
       <VozRitmoPlayControl
@@ -2242,13 +2356,21 @@ function VozPracticeMicRow({
   isActive,
   onToggle,
   disabled = false,
+  variant = "center",
 }: {
   isActive: boolean;
   onToggle: () => void;
   disabled?: boolean;
+  variant?: "center" | "header";
 }) {
   return (
-    <div className="relative z-20 flex items-center justify-center overflow-visible py-1">
+    <div
+      className={
+        variant === "header"
+          ? "relative z-20 flex shrink-0 items-center justify-end overflow-visible"
+          : "relative z-20 flex items-center justify-center overflow-visible py-1"
+      }
+    >
       <MicToggleButton
         size="sm"
         isActive={isActive}
@@ -2329,13 +2451,16 @@ function VozTonePracticePlayControl({
   practiceActive,
   onTogglePractice,
   micStarting,
+  variant = "center",
 }: {
   practiceActive: boolean;
   onTogglePractice: () => void;
   micStarting: boolean;
+  variant?: "center" | "header";
 }) {
   return (
     <VozPracticeMicRow
+      variant={variant}
       isActive={practiceActive}
       onToggle={onTogglePractice}
       disabled={micStarting}
@@ -2366,6 +2491,8 @@ function VozRitmoPractice({
   historySamples,
   holdCalibre,
   voiceRms = 0,
+  hideMic = false,
+  layout = "mobile",
 }: {
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
@@ -2389,14 +2516,18 @@ function VozRitmoPractice({
   historySamples: VozHistorySample[];
   holdCalibre?: VozCalibre;
   voiceRms?: number;
+  hideMic?: boolean;
+  layout?: VozPracticeLayout;
 }) {
   return (
     <>
-      <VozPracticeMicRow
-        isActive={ritmoMicActive}
-        onToggle={onToggleRitmoMic}
-        disabled={micStarting}
-      />
+      {hideMic ? null : (
+        <VozPracticeMicRow
+          isActive={ritmoMicActive}
+          onToggle={onToggleRitmoMic}
+          disabled={micStarting}
+        />
+      )}
 
       <VozRitmoTimeline
         beatMarkers={beatMarkers}
@@ -2406,6 +2537,7 @@ function VozRitmoPractice({
         beatDurations={ritmoBeatDurations}
         isPlaying={ritmoPlaying}
         voiceSamples={voiceSamples}
+        layout={layout}
       />
 
       <VozRitmoPlayControl
@@ -2426,6 +2558,7 @@ function VozRitmoPractice({
             accuracy={accuracy}
             detectedNote={detection?.note ?? null}
             voiceRms={voiceRms}
+            layout={layout}
           />
           <PitchHistoryChart
             samples={historySamples}
@@ -2444,6 +2577,7 @@ function VozRitmoPractice({
             calibre={holdCalibre}
             voiceRms={voiceRms}
             showLiveNoteRail
+            layout={layout}
           />
         </>
       ) : null}
@@ -2466,6 +2600,8 @@ function VozMelodiaPractice({
   targetOctave,
   historySamples,
   holdCalibre,
+  hideMic = false,
+  layout = "mobile",
 }: {
   melodiaPlaying: boolean;
   onToggleMelodiaPlaying: () => void;
@@ -2481,6 +2617,8 @@ function VozMelodiaPractice({
   targetOctave: number;
   historySamples: VozHistorySample[];
   holdCalibre: VozCalibre;
+  hideMic?: boolean;
+  layout?: VozPracticeLayout;
 }) {
   const melodiaBeatDurations = useMemo(
     () => buildMelodiaCompasState(melodiaPatternLength, melodiaBeatDuration).beatDurations,
@@ -2494,11 +2632,13 @@ function VozMelodiaPractice({
 
   return (
     <>
-      <VozPracticeMicRow
-        isActive={melodiaMicActive}
-        onToggle={onToggleMelodiaMic}
-        disabled={micStarting}
-      />
+      {hideMic ? null : (
+        <VozPracticeMicRow
+          isActive={melodiaMicActive}
+          onToggle={onToggleMelodiaMic}
+          disabled={micStarting}
+        />
+      )}
 
       <PitchHistoryChart
         samples={historySamples}
@@ -2515,6 +2655,7 @@ function VozMelodiaPractice({
         beatDurations={melodiaBeatDurations}
         patternLength={melodiaPatternLength}
         notePattern={melodiaNotePattern}
+        layout={layout}
       />
 
       <VozMelodiaPlayControl
@@ -2621,12 +2762,14 @@ function OctavasPitchChart({
   samples,
   runPhase,
   sequenceProgress,
+  layout = "mobile",
 }: {
   target: VozTarget;
   noteDurationSeconds: number;
   samples: VozOctavasChartSample[];
   runPhase: OctavasRunPhase;
   sequenceProgress: number;
+  layout?: VozPracticeLayout;
 }) {
   const noteDurationMs = noteDurationSeconds * 1000;
   const pauseMs = VOZ_OCTAVAS_PAUSE_MS;
@@ -2687,7 +2830,11 @@ function OctavasPitchChart({
 
       <div
         className="relative w-full"
-        style={{ aspectRatio: `${OCTAVAS_CHART_WIDTH} / ${OCTAVAS_CHART_HEIGHT}` }}
+        style={
+          layout === "desktop"
+            ? { height: `${CHART_PC_HEIGHT_OCTAVAS}px` }
+            : { aspectRatio: `${OCTAVAS_CHART_WIDTH} / ${OCTAVAS_CHART_HEIGHT}` }
+        }
       >
         <svg
           viewBox={`0 0 ${OCTAVAS_CHART_WIDTH} ${OCTAVAS_CHART_HEIGHT}`}
@@ -2803,6 +2950,7 @@ function VozOctavasPractice({
   detection,
   practiceActive,
   voiceRms = 0,
+  layout = "mobile",
 }: {
   baseTarget: VozTarget;
   pitchMode: VozOctavasPitchMode;
@@ -2811,6 +2959,7 @@ function VozOctavasPractice({
   detection: NoteDetection | null;
   practiceActive: boolean;
   voiceRms?: number;
+  layout?: VozPracticeLayout;
 }) {
   const [runPhase, setRunPhase] = useState<OctavasRunPhase>("idle");
   const [samples, setSamples] = useState<VozOctavasChartSample[]>([]);
@@ -3076,6 +3225,7 @@ function VozOctavasPractice({
         samples={samples}
         runPhase={runPhase}
         sequenceProgress={sequenceProgress}
+        layout={layout}
       />
 
       <VozChartPlayControl
@@ -3142,6 +3292,7 @@ function VozIntensidadTimeline({
   ritmoBeatDurations,
   isPlaying,
   voiceSamples,
+  layout = "mobile",
 }: {
   beatMarkers: VozRitmoBeatMarker[];
   bpm: number;
@@ -3150,6 +3301,7 @@ function VozIntensidadTimeline({
   ritmoBeatDurations: MetronomeBeatDurationPattern;
   isPlaying: boolean;
   voiceSamples: VozIntensidadVoiceSample[];
+  layout?: VozPracticeLayout;
 }) {
   const now = useTimelineNow(
     isPlaying || beatMarkers.length > 0,
@@ -3205,7 +3357,13 @@ function VozIntensidadTimeline({
 
   return (
     <div className="overflow-hidden rounded-[12px] border border-border bg-bg-card">
-      <div className="flex gap-2 px-2 pb-3 pt-4">
+      <div
+        className={
+          layout === "desktop"
+            ? "flex gap-2 px-2 py-2"
+            : "flex gap-2 px-2 pb-3 pt-4"
+        }
+      >
         <div className="flex w-14 shrink-0 flex-col justify-end gap-1">
           <span className="text-[9px] font-semibold uppercase tracking-wide text-text-muted">
             Patrón
@@ -3222,7 +3380,11 @@ function VozIntensidadTimeline({
             aria-hidden="true"
           />
 
-          <div className="relative flex h-10 items-end gap-0.5">
+          <div
+            className={`relative flex items-end gap-0.5 ${
+              layout === "desktop" ? "h-8" : "h-10"
+            }`}
+          >
             {beatSegments.map((segment, index) => {
               const left = timeToPercent(segment.startMs);
               const right = timeToPercent(segment.endMs);
@@ -3292,6 +3454,8 @@ function VozIntensidadPractice({
   ritmoBeatDurations,
   voiceSamples,
   voiceRms,
+  hideMic = false,
+  layout = "mobile",
 }: {
   ritmoPlaying: boolean;
   onToggleRitmoPlaying: () => void;
@@ -3305,16 +3469,20 @@ function VozIntensidadPractice({
   ritmoBeatDurations: MetronomeBeatDurationPattern;
   voiceSamples: VozIntensidadVoiceSample[];
   voiceRms: number;
+  hideMic?: boolean;
+  layout?: VozPracticeLayout;
 }) {
   const liveLevelPercent = rmsToBarHeightPercent(voiceRms);
 
   return (
     <>
-      <VozPracticeMicRow
-        isActive={ritmoMicActive}
-        onToggle={onToggleRitmoMic}
-        disabled={micStarting}
-      />
+      {hideMic ? null : (
+        <VozPracticeMicRow
+          isActive={ritmoMicActive}
+          onToggle={onToggleRitmoMic}
+          disabled={micStarting}
+        />
+      )}
 
       {ritmoMicActive ? (
         <div className="mb-1 flex items-end justify-center gap-2">
@@ -3330,6 +3498,7 @@ function VozIntensidadPractice({
         ritmoBeatDurations={ritmoBeatDurations}
         isPlaying={ritmoPlaying}
         voiceSamples={voiceSamples}
+        layout={layout}
       />
 
       <VozRitmoPlayControl
@@ -3411,6 +3580,7 @@ export type VozModeSlidesProps = {
   onTapMelodiaTempo: () => void;
   comboNotePattern: VozNotaPattern;
   onSetComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
+  onDesktopHelpActionChange?: (action: ReactNode | null) => void;
 };
 
 export function VozModeSlides({
@@ -3478,7 +3648,9 @@ export function VozModeSlides({
   onTapMelodiaTempo,
   comboNotePattern,
   onSetComboNoteAtSlot,
+  onDesktopHelpActionChange,
 }: VozModeSlidesProps) {
+  const isDesktop = useIsDesktop();
   const [encajarHelpOpen, setEncajarHelpOpen] = useState(false);
   const [sostenerHelpOpen, setSostenerHelpOpen] = useState(false);
   const [octavasHelpOpen, setOctavasHelpOpen] = useState(false);
@@ -3573,38 +3745,141 @@ export function VozModeSlides({
     }
   }
 
-  function renderSlideContent(slideId: VozModeSlideId, isFocusedSlide = true) {
+  const activeSlideId = VOZ_MODE_SLIDES[activeIndex]?.id ?? "encajar";
+
+  useEffect(() => {
+    if (!isDesktop || !onDesktopHelpActionChange) {
+      onDesktopHelpActionChange?.(null);
+      return;
+    }
+
+    onDesktopHelpActionChange(renderActiveSlideHelpButton(activeSlideId));
+  }, [activeSlideId, isDesktop, onDesktopHelpActionChange]);
+
+  function renderSlideContent(
+    slideId: VozModeSlideId,
+    layout: "mobile" | "desktop" = "mobile",
+  ) {
     switch (slideId) {
-      case "encajar":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      case "encajar": {
+        const encajarPractice = splitPracticeMic(
+          layout,
+          <VozTonePracticePlayControl
+            variant={layout === "desktop" ? "header" : "center"}
+            practiceActive={tonePracticeActive}
+            onTogglePractice={onToggleTonePractice}
+            micStarting={micStarting}
+          />,
+          <>
+            <PitchLadderBar
+              targetNote={targetNote}
+              cents={centsFromTarget}
+              accuracy={accuracy}
+              detectedNote={detection?.note ?? null}
+              voiceRms={voiceRms}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            <VozPcConfigCard title="Nota objetivo">
+              {renderDesktopTargetPicker(targetPicker)}
+            </VozPcConfigCard>
+          ) : (
             <VozConfigSection
               collapsible
               collapsedSummary={encajarConfigSummary}
             >
               <TargetPicker {...targetPicker} collapsible={false} />
             </VozConfigSection>
-            <VozPracticeArea>
-              <VozTonePracticePlayControl
-                practiceActive={tonePracticeActive}
-                onTogglePractice={onToggleTonePractice}
-                micStarting={micStarting}
-              />
-              <PitchLadderBar
-                targetNote={targetNote}
-                cents={centsFromTarget}
-                accuracy={accuracy}
-                detectedNote={detection?.note ?? null}
-                voiceRms={voiceRms}
-                size="large"
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          encajarPractice.practice,
+          encajarPractice.practiceHeaderExtra,
         );
-      case "sostener":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "sostener": {
+        const holdSecondsControl = (
+          <ToolNumericStepper
+            value={holdTargetSeconds}
+            suffix="segundos"
+            density={layout === "desktop" ? "compact" : "default"}
+            decrementAriaLabel="Reducir segundos"
+            incrementAriaLabel="Aumentar segundos"
+            decrementDisabled={holdTargetSeconds <= VOZ_HOLD_TARGET_MIN}
+            incrementDisabled={holdTargetSeconds >= VOZ_HOLD_TARGET_MAX}
+            onDecrement={() =>
+              onSetHoldTargetSeconds(
+                clampHoldTargetSeconds(holdTargetSeconds - 1),
+              )
+            }
+            onIncrement={() =>
+              onSetHoldTargetSeconds(
+                clampHoldTargetSeconds(holdTargetSeconds + 1),
+              )
+            }
+          />
+        );
+
+        const sostenerPractice = splitPracticeMic(
+          layout,
+          <VozTonePracticePlayControl
+            variant={layout === "desktop" ? "header" : "center"}
+            practiceActive={tonePracticeActive}
+            onTogglePractice={onToggleTonePractice}
+            micStarting={micStarting}
+          />,
+          <>
+            <PitchHistoryChart
+              samples={holdHistorySamples}
+              active
+              mode="sostener"
+              targetNote={targetNote}
+              targetOctave={targetPicker.target.octave}
+              detection={detection}
+              accuracy={holdAccuracy}
+              cents={rawLiveCents ?? 0}
+              liveChartCents={rawLiveCents}
+              calibre={holdCalibre}
+              voiceRms={voiceRms}
+              showLiveNoteRail
+              layout={layout}
+            />
+            <HoldTimerPanel
+              samples={holdHistorySamples}
+              holdTargetSeconds={holdTargetSeconds}
+              celebrationKey={celebrationKey}
+              accuracy={holdAccuracy}
+              cents={rawLiveCents ?? 0}
+              calibre={holdCalibre}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            <>
+              <VozPcConfigCard title="Nota objetivo">
+                {renderDesktopTargetPicker(targetPicker)}
+              </VozPcConfigCard>
+              <VozPcConfigCard title="Calibre">
+                <VozCalibrePicker
+                  embedded
+                  calibre={holdCalibre}
+                  onSetCalibre={onSetHoldCalibre}
+                />
+              </VozPcConfigCard>
+              <VozPcConfigCard title="Meta tiempo a sostener">
+                {holdSecondsControl}
+              </VozPcConfigCard>
+            </>
+          ) : (
             <VozConfigSection
               collapsible
               collapsedSummary={sostenerConfigSummary}
@@ -3618,77 +3893,85 @@ export function VozModeSlides({
                 <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
                   Meta tiempo a sostener
                 </p>
-                <div className="mt-2 flex items-center justify-center gap-3">
-                  <TapButton
-                    type="button"
-                    aria-label="Reducir segundos"
-                    disabled={holdTargetSeconds <= VOZ_HOLD_TARGET_MIN}
-                    onClick={() =>
-                      onSetHoldTargetSeconds(
-                        clampHoldTargetSeconds(holdTargetSeconds - 1),
-                      )
-                    }
-                    className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-                  >
-                    −
-                  </TapButton>
-                  <div className="min-w-[5rem] text-center">
-                    <p className="text-2xl font-extrabold leading-none text-text-primary">
-                      {holdTargetSeconds}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-text-muted">segundos</p>
-                  </div>
-                  <TapButton
-                    type="button"
-                    aria-label="Aumentar segundos"
-                    disabled={holdTargetSeconds >= VOZ_HOLD_TARGET_MAX}
-                    onClick={() =>
-                      onSetHoldTargetSeconds(
-                        clampHoldTargetSeconds(holdTargetSeconds + 1),
-                      )
-                    }
-                    className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-                  >
-                    +
-                  </TapButton>
-                </div>
+                <div className="mt-2">{holdSecondsControl}</div>
               </div>
             </VozConfigSection>
-            <VozPracticeArea>
-              <VozTonePracticePlayControl
-                practiceActive={tonePracticeActive}
-                onTogglePractice={onToggleTonePractice}
-                micStarting={micStarting}
-              />
-              <PitchHistoryChart
-                samples={holdHistorySamples}
-                active
-                mode="sostener"
-                targetNote={targetNote}
-                targetOctave={targetPicker.target.octave}
-                detection={detection}
-                accuracy={holdAccuracy}
-                cents={rawLiveCents ?? 0}
-                liveChartCents={rawLiveCents}
-                calibre={holdCalibre}
-                voiceRms={voiceRms}
-                showLiveNoteRail
-              />
-              <HoldTimerPanel
-                samples={holdHistorySamples}
-                holdTargetSeconds={holdTargetSeconds}
-                celebrationKey={celebrationKey}
-                accuracy={holdAccuracy}
-                cents={rawLiveCents ?? 0}
-                calibre={holdCalibre}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          sostenerPractice.practice,
+          sostenerPractice.practiceHeaderExtra,
         );
-      case "octavas":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "octavas": {
+        const octavasDurationControl = (
+          <ToolNumericStepper
+            value={octavasNoteDurationSeconds}
+            suffix="segundos"
+            density={layout === "desktop" ? "compact" : "default"}
+            decrementAriaLabel="Reducir duración"
+            incrementAriaLabel="Aumentar duración"
+            decrementDisabled={
+              octavasNoteDurationSeconds <= VOZ_OCTAVAS_NOTE_DURATION_MIN
+            }
+            incrementDisabled={
+              octavasNoteDurationSeconds >= VOZ_OCTAVAS_NOTE_DURATION_MAX
+            }
+            onDecrement={() =>
+              onSetOctavasNoteDurationSeconds(
+                clampOctavasNoteDurationSeconds(octavasNoteDurationSeconds - 1),
+              )
+            }
+            onIncrement={() =>
+              onSetOctavasNoteDurationSeconds(
+                clampOctavasNoteDurationSeconds(octavasNoteDurationSeconds + 1),
+              )
+            }
+          />
+        );
+
+        const octavasPractice = splitPracticeMic(
+          layout,
+          <VozTonePracticePlayControl
+            variant={layout === "desktop" ? "header" : "center"}
+            practiceActive={tonePracticeActive}
+            onTogglePractice={onToggleTonePractice}
+            micStarting={micStarting}
+          />,
+          <>
+            <VozOctavasPractice
+              baseTarget={targetPicker.target}
+              pitchMode={octavasPitchMode}
+              scaleRepetitions={octavasScaleRepetitions}
+              noteDurationSeconds={octavasNoteDurationSeconds}
+              detection={detection}
+              practiceActive={tonePracticeActive}
+              voiceRms={voiceRms}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            <>
+              <VozPcConfigCard title="Nota objetivo">
+                {renderDesktopTargetPicker(targetPicker)}
+              </VozPcConfigCard>
+              <VozPcConfigCard title="Qué decir">
+                <OctavasQueDigaPicker
+                  embedded
+                  pitchMode={octavasPitchMode}
+                  onSetPitchMode={onSetOctavasPitchMode}
+                  scaleRepetitions={octavasScaleRepetitions}
+                  onSetScaleRepetitions={onSetOctavasScaleRepetitions}
+                />
+              </VozPcConfigCard>
+              <VozPcConfigCard title="Duración de cada nota">
+                {octavasDurationControl}
+              </VozPcConfigCard>
+            </>
+          ) : (
             <VozConfigSection
               collapsible
               collapsedSummary={octavasConfigSummary}
@@ -3704,72 +3987,65 @@ export function VozModeSlides({
                 <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
                   Duración de cada nota
                 </p>
-                <div className="mt-2 flex items-center justify-center gap-3">
-                  <TapButton
-                    type="button"
-                    aria-label="Reducir duración"
-                    disabled={
-                      octavasNoteDurationSeconds <= VOZ_OCTAVAS_NOTE_DURATION_MIN
-                    }
-                    onClick={() =>
-                      onSetOctavasNoteDurationSeconds(
-                        clampOctavasNoteDurationSeconds(
-                          octavasNoteDurationSeconds - 1,
-                        ),
-                      )
-                    }
-                    className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-                  >
-                    −
-                  </TapButton>
-                  <div className="min-w-[5rem] text-center">
-                    <p className="text-2xl font-extrabold leading-none text-text-primary">
-                      {octavasNoteDurationSeconds}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-text-muted">segundos</p>
-                  </div>
-                  <TapButton
-                    type="button"
-                    aria-label="Aumentar duración"
-                    disabled={
-                      octavasNoteDurationSeconds >= VOZ_OCTAVAS_NOTE_DURATION_MAX
-                    }
-                    onClick={() =>
-                      onSetOctavasNoteDurationSeconds(
-                        clampOctavasNoteDurationSeconds(
-                          octavasNoteDurationSeconds + 1,
-                        ),
-                      )
-                    }
-                    className="flex size-9 items-center justify-center rounded-full border border-border bg-bg-dark text-lg font-bold text-text-primary disabled:opacity-40"
-                  >
-                    +
-                  </TapButton>
-                </div>
+                <div className="mt-2">{octavasDurationControl}</div>
               </div>
             </VozConfigSection>
-            <VozPracticeArea>
-              <VozTonePracticePlayControl
-                practiceActive={tonePracticeActive}
-                onTogglePractice={onToggleTonePractice}
-                micStarting={micStarting}
-              />
-              <VozOctavasPractice
-                baseTarget={targetPicker.target}
-                pitchMode={octavasPitchMode}
-                scaleRepetitions={octavasScaleRepetitions}
-                noteDurationSeconds={octavasNoteDurationSeconds}
-                detection={detection}
-                practiceActive={tonePracticeActive}
-                voiceRms={voiceRms}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          octavasPractice.practice,
+          octavasPractice.practiceHeaderExtra,
         );
-      case "melodia":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "melodia": {
+        const melodiaPractice = splitPracticeMic(
+          layout,
+          renderPracticeMicControl(
+            layout,
+            melodiaMicActive,
+            onToggleMelodiaMic,
+            micStarting,
+          ),
+          <>
+            <VozMelodiaPractice
+              melodiaPlaying={melodiaPlaying}
+              onToggleMelodiaPlaying={onToggleMelodiaPlaying}
+              melodiaMicActive={melodiaMicActive}
+              onToggleMelodiaMic={onToggleMelodiaMic}
+              micStarting={micStarting}
+              beatMarkers={beatMarkers}
+              melodiaBpm={melodiaBpm}
+              melodiaPatternLength={melodiaPatternLength}
+              melodiaBeatDuration={melodiaBeatDuration}
+              melodiaNotePattern={melodiaNotePattern}
+              targetNote={practiceTargetNote}
+              targetOctave={practiceTargetOctave}
+              historySamples={historySamples}
+              holdCalibre={holdCalibre}
+              hideMic={layout === "desktop"}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            <VozPcConfigCard>
+              <VozMelodiaDesktopConfig
+                patternLength={melodiaPatternLength}
+                beatDuration={melodiaBeatDuration}
+                bpm={melodiaBpm}
+                isPlaying={melodiaPlaying}
+                tapTempoTapCount={melodiaTapTempoTapCount}
+                notePattern={melodiaNotePattern}
+                onSetPatternLength={onSetMelodiaPatternLength}
+                onSetBeatDuration={onSetMelodiaBeatDuration}
+                onSetNoteAtSlot={onSetMelodiaNoteAtSlot}
+                onSetBpm={onSetMelodiaBpm}
+                onTapTempo={onTapMelodiaTempo}
+              />
+            </VozPcConfigCard>
+          ) : (
             <MelodiaConfigSection
               collapsedSummary={melodiaConfigSummary}
               patternLength={melodiaPatternLength}
@@ -3787,30 +4063,78 @@ export function VozModeSlides({
               onSetBpm={onSetMelodiaBpm}
               onTapTempo={onTapMelodiaTempo}
             />
-            <VozPracticeArea>
-              <VozMelodiaPractice
-                melodiaPlaying={melodiaPlaying}
-                onToggleMelodiaPlaying={onToggleMelodiaPlaying}
-                melodiaMicActive={melodiaMicActive}
-                onToggleMelodiaMic={onToggleMelodiaMic}
-                micStarting={micStarting}
-                beatMarkers={beatMarkers}
-                melodiaBpm={melodiaBpm}
-                melodiaPatternLength={melodiaPatternLength}
-                melodiaBeatDuration={melodiaBeatDuration}
-                melodiaNotePattern={melodiaNotePattern}
-                targetNote={practiceTargetNote}
-                targetOctave={practiceTargetOctave}
-                historySamples={historySamples}
-                holdCalibre={holdCalibre}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          melodiaPractice.practice,
+          melodiaPractice.practiceHeaderExtra,
         );
-      case "ritmo":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "ritmo": {
+        const ritmoPractice = splitPracticeMic(
+          layout,
+          renderPracticeMicControl(
+            layout,
+            ritmoMicActive,
+            onToggleRitmoMic,
+            micStarting,
+          ),
+          <>
+            <VozRitmoPractice
+              ritmoPlaying={ritmoPlaying}
+              onToggleRitmoPlaying={onToggleRitmoPlaying}
+              ritmoMicActive={ritmoMicActive}
+              onToggleRitmoMic={onToggleRitmoMic}
+              micStarting={micStarting}
+              beatMarkers={beatMarkers}
+              ritmoBpm={ritmoBpm}
+              ritmoBeatPattern={ritmoBeatPattern}
+              ritmoPatternLength={ritmoPatternLength}
+              ritmoBeatDurations={ritmoBeatDurations}
+              voiceSamples={ritmoVoiceSamples}
+              evaluateTone={false}
+              detection={detection}
+              objectiveLabel={practiceObjectiveLabel}
+              targetFrequency={targetFrequency}
+              targetNote={practiceTargetNote}
+              targetOctave={practiceTargetOctave}
+              cents={centsFromTarget}
+              accuracy={accuracy}
+              historySamples={historySamples}
+              voiceRms={voiceRms}
+              hideMic={layout === "desktop"}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        const ritmoDesktopTempo = {
+          bpm: ritmoBpm,
+          isPlaying: ritmoPlaying,
+          tapTempoTapCount: ritmoTapTempoTapCount,
+          disabled: ritmoPlaying,
+          onSetBpm: onSetRitmoBpm,
+          onTapTempo: onTapRitmoTempo,
+        };
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            renderRitmoDesktopCicloTempo({
+              compas: {
+                beatPattern: ritmoBeatPattern,
+                patternLength: ritmoPatternLength,
+                beatDurations: ritmoBeatDurations,
+                hideCompasHelp: true,
+                hideIntensidadTab: true,
+                vozBeatSoundTab: true,
+                patternLengthInputId: "voz-ritmo-pattern-length",
+                onSetPatternLength: onSetRitmoPatternLength,
+                onSetBeatDurationAtSlot: onSetRitmoBeatDurationAtSlot,
+                onSetBeatLevelAtSlot: onSetRitmoBeatLevelAtSlot,
+              },
+              tempo: ritmoDesktopTempo,
+            })
+          ) : (
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
@@ -3830,37 +4154,65 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeArea>
-              <VozRitmoPractice
-                ritmoPlaying={ritmoPlaying}
-                onToggleRitmoPlaying={onToggleRitmoPlaying}
-                ritmoMicActive={ritmoMicActive}
-                onToggleRitmoMic={onToggleRitmoMic}
-                micStarting={micStarting}
-                beatMarkers={beatMarkers}
-                ritmoBpm={ritmoBpm}
-                ritmoBeatPattern={ritmoBeatPattern}
-                ritmoPatternLength={ritmoPatternLength}
-                ritmoBeatDurations={ritmoBeatDurations}
-                voiceSamples={ritmoVoiceSamples}
-                evaluateTone={false}
-                detection={detection}
-                objectiveLabel={practiceObjectiveLabel}
-                targetFrequency={targetFrequency}
-                targetNote={practiceTargetNote}
-                targetOctave={practiceTargetOctave}
-                cents={centsFromTarget}
-                accuracy={accuracy}
-                historySamples={historySamples}
-                voiceRms={voiceRms}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          ritmoPractice.practice,
+          ritmoPractice.practiceHeaderExtra,
         );
-      case "ritmo-intensidad":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "ritmo-intensidad": {
+        const intensidadPractice = splitPracticeMic(
+          layout,
+          renderPracticeMicControl(
+            layout,
+            ritmoMicActive,
+            onToggleRitmoMic,
+            micStarting,
+          ),
+          <>
+            <VozIntensidadPractice
+              ritmoPlaying={ritmoPlaying}
+              onToggleRitmoPlaying={onToggleRitmoPlaying}
+              ritmoMicActive={ritmoMicActive}
+              onToggleRitmoMic={onToggleRitmoMic}
+              micStarting={micStarting}
+              beatMarkers={beatMarkers}
+              ritmoBpm={ritmoBpm}
+              ritmoBeatPattern={ritmoBeatPattern}
+              ritmoPatternLength={ritmoPatternLength}
+              ritmoBeatDurations={ritmoBeatDurations}
+              voiceSamples={intensidadVoiceSamples}
+              voiceRms={voiceRms}
+              hideMic={layout === "desktop"}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            renderRitmoDesktopCicloTempo({
+              compas: {
+                beatPattern: ritmoBeatPattern,
+                patternLength: ritmoPatternLength,
+                beatDurations: ritmoBeatDurations,
+                hideCompasHelp: true,
+                patternLengthInputId: "voz-ritmo-intensidad-pattern-length",
+                onSetPatternLength: onSetRitmoPatternLength,
+                onSetBeatDurationAtSlot: onSetRitmoBeatDurationAtSlot,
+                onSetBeatLevelAtSlot: onSetRitmoBeatLevelAtSlot,
+              },
+              tempo: {
+                bpm: ritmoBpm,
+                isPlaying: ritmoPlaying,
+                tapTempoTapCount: ritmoTapTempoTapCount,
+                disabled: ritmoPlaying,
+                onSetBpm: onSetRitmoBpm,
+                onTapTempo: onTapRitmoTempo,
+              },
+            })
+          ) : (
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
@@ -3878,28 +4230,80 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeArea>
-              <VozIntensidadPractice
-                ritmoPlaying={ritmoPlaying}
-                onToggleRitmoPlaying={onToggleRitmoPlaying}
-                ritmoMicActive={ritmoMicActive}
-                onToggleRitmoMic={onToggleRitmoMic}
-                micStarting={micStarting}
-                beatMarkers={beatMarkers}
-                ritmoBpm={ritmoBpm}
-                ritmoBeatPattern={ritmoBeatPattern}
-                ritmoPatternLength={ritmoPatternLength}
-                ritmoBeatDurations={ritmoBeatDurations}
-                voiceSamples={intensidadVoiceSamples}
-                voiceRms={voiceRms}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          intensidadPractice.practice,
+          intensidadPractice.practiceHeaderExtra,
         );
-      case "ritmo-nota":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "ritmo-nota": {
+        const ritmoNotaPractice = splitPracticeMic(
+          layout,
+          renderPracticeMicControl(
+            layout,
+            ritmoMicActive,
+            onToggleRitmoMic,
+            micStarting,
+          ),
+          <>
+            <VozRitmoPractice
+              ritmoPlaying={ritmoPlaying}
+              onToggleRitmoPlaying={onToggleRitmoPlaying}
+              ritmoMicActive={ritmoMicActive}
+              onToggleRitmoMic={onToggleRitmoMic}
+              micStarting={micStarting}
+              beatMarkers={beatMarkers}
+              ritmoBpm={ritmoBpm}
+              ritmoBeatPattern={ritmoBeatPattern}
+              ritmoPatternLength={ritmoPatternLength}
+              ritmoBeatDurations={ritmoBeatDurations}
+              voiceSamples={ritmoVoiceSamples}
+              evaluateTone
+              detection={detection}
+              objectiveLabel={objectiveLabel}
+              targetFrequency={targetFrequency}
+              targetNote={targetNote}
+              targetOctave={targetPicker.target.octave}
+              cents={centsFromTarget}
+              accuracy={accuracy}
+              historySamples={historySamples}
+              holdCalibre={holdCalibre}
+              voiceRms={voiceRms}
+              hideMic={layout === "desktop"}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            <>
+              <VozPcConfigCard title="Nota objetivo">
+                {renderDesktopTargetPicker(targetPicker)}
+              </VozPcConfigCard>
+              {renderRitmoDesktopCicloTempo({
+                compas: {
+                  beatPattern: ritmoBeatPattern,
+                  patternLength: ritmoPatternLength,
+                  beatDurations: ritmoBeatDurations,
+                  hideCompasHelp: true,
+                  patternLengthInputId: "voz-ritmo-nota-pattern-length",
+                  onSetPatternLength: onSetRitmoPatternLength,
+                  onSetBeatDurationAtSlot: onSetRitmoBeatDurationAtSlot,
+                  onSetBeatLevelAtSlot: onSetRitmoBeatLevelAtSlot,
+                },
+                tempo: {
+                  bpm: ritmoBpm,
+                  isPlaying: ritmoPlaying,
+                  tapTempoTapCount: ritmoTapTempoTapCount,
+                  disabled: ritmoPlaying,
+                  onSetBpm: onSetRitmoBpm,
+                  onTapTempo: onTapRitmoTempo,
+                },
+              })}
+            </>
+          ) : (
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={ritmoNotaConfigSummary}
@@ -3918,38 +4322,77 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeArea>
-              <VozRitmoPractice
-                ritmoPlaying={ritmoPlaying}
-                onToggleRitmoPlaying={onToggleRitmoPlaying}
-                ritmoMicActive={ritmoMicActive}
-                onToggleRitmoMic={onToggleRitmoMic}
-                micStarting={micStarting}
-                beatMarkers={beatMarkers}
-                ritmoBpm={ritmoBpm}
-                ritmoBeatPattern={ritmoBeatPattern}
-                ritmoPatternLength={ritmoPatternLength}
-                ritmoBeatDurations={ritmoBeatDurations}
-                voiceSamples={ritmoVoiceSamples}
-                evaluateTone
-                detection={detection}
-                objectiveLabel={objectiveLabel}
-                targetFrequency={targetFrequency}
-                targetNote={targetNote}
-                targetOctave={targetPicker.target.octave}
-                cents={centsFromTarget}
-                accuracy={accuracy}
-                historySamples={historySamples}
-                holdCalibre={holdCalibre}
-                voiceRms={voiceRms}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          ritmoNotaPractice.practice,
+          ritmoNotaPractice.practiceHeaderExtra,
         );
-      case "combo":
-        return (
-          <div className="voz-mode-slide-layout space-y-3 lg:space-y-0">
+      }
+      case "combo": {
+        const comboPractice = splitPracticeMic(
+          layout,
+          renderPracticeMicControl(
+            layout,
+            ritmoMicActive,
+            onToggleRitmoMic,
+            micStarting,
+          ),
+          <>
+            <VozComboPractice
+              ritmoPlaying={ritmoPlaying}
+              onToggleRitmoPlaying={onToggleRitmoPlaying}
+              ritmoMicActive={ritmoMicActive}
+              onToggleRitmoMic={onToggleRitmoMic}
+              micStarting={micStarting}
+              beatMarkers={beatMarkers}
+              ritmoBpm={ritmoBpm}
+              ritmoBeatPattern={ritmoBeatPattern}
+              ritmoPatternLength={ritmoPatternLength}
+              ritmoBeatDurations={ritmoBeatDurations}
+              comboNotePattern={comboNotePattern}
+              historySamples={historySamples}
+              detection={detection}
+              targetNote={practiceTargetNote}
+              targetOctave={practiceTargetOctave}
+              cents={centsFromTarget}
+              accuracy={accuracy}
+              holdCalibre={holdCalibre}
+              voiceRms={voiceRms}
+              hideMic={layout === "desktop"}
+              layout={layout}
+            />
+            <InstantAttemptsStrip attempts={instantAttempts} />
+          </>,
+        );
+
+        return wrapModeSlide(
+          layout,
+          layout === "desktop" ? (
+            renderRitmoDesktopCicloTempo({
+              cicloTitle: "Ciclo y notas",
+              compas: {
+                beatPattern: ritmoBeatPattern,
+                patternLength: ritmoPatternLength,
+                beatDurations: ritmoBeatDurations,
+                hideCompasHelp: true,
+                vozNotaPatron: {
+                  pattern: comboNotePattern,
+                  onSetAtSlot: onSetComboNoteAtSlot,
+                },
+                patternLengthInputId: "voz-combo-pattern-length",
+                onSetPatternLength: onSetRitmoPatternLength,
+                onSetBeatDurationAtSlot: onSetRitmoBeatDurationAtSlot,
+                onSetBeatLevelAtSlot: onSetRitmoBeatLevelAtSlot,
+              },
+              tempo: {
+                bpm: ritmoBpm,
+                isPlaying: ritmoPlaying,
+                tapTempoTapCount: ritmoTapTempoTapCount,
+                disabled: ritmoPlaying,
+                onSetBpm: onSetRitmoBpm,
+                onTapTempo: onTapRitmoTempo,
+              },
+            })
+          ) : (
             <RitmoConfigSection
               compasLayout="flat"
               collapsedSummary={comboConfigSummary}
@@ -3971,50 +4414,36 @@ export function VozModeSlides({
               onSetBpm={onSetRitmoBpm}
               onTapTempo={onTapRitmoTempo}
             />
-            <VozPracticeArea>
-              <VozComboPractice
-                ritmoPlaying={ritmoPlaying}
-                onToggleRitmoPlaying={onToggleRitmoPlaying}
-                ritmoMicActive={ritmoMicActive}
-                onToggleRitmoMic={onToggleRitmoMic}
-                micStarting={micStarting}
-                beatMarkers={beatMarkers}
-                ritmoBpm={ritmoBpm}
-                ritmoBeatPattern={ritmoBeatPattern}
-                ritmoPatternLength={ritmoPatternLength}
-                ritmoBeatDurations={ritmoBeatDurations}
-                comboNotePattern={comboNotePattern}
-                historySamples={historySamples}
-                detection={detection}
-                targetNote={practiceTargetNote}
-                targetOctave={practiceTargetOctave}
-                cents={centsFromTarget}
-                accuracy={accuracy}
-                holdCalibre={holdCalibre}
-                voiceRms={voiceRms}
-              />
-              <InstantAttemptsStrip attempts={instantAttempts} />
-            </VozPracticeArea>
-          </div>
+          ),
+          comboPractice.practice,
+          comboPractice.practiceHeaderExtra,
         );
+      }
     }
   }
 
   return (
     <>
-      <ModeCarouselShell
-        activeIndex={activeIndex}
-        onChangeIndex={onChangeIndex}
-        titleAction={renderActiveSlideHelpButton(
-          VOZ_MODE_SLIDES[activeIndex]?.id ?? "encajar",
-        )}
-        renderSlide={(index) =>
-          renderSlideContent(
-            VOZ_MODE_SLIDES[index]!.id,
-            index === activeIndex,
-          )
-        }
-      />
+      {isDesktop ? (
+        <div className="flex h-full min-h-0 flex-1 overflow-hidden rounded-[12px] border border-border bg-bg-card">
+          <VozPcModeNav
+            activeIndex={activeIndex}
+            onChangeIndex={onChangeIndex}
+          />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {renderSlideContent(activeSlideId, "desktop")}
+          </div>
+        </div>
+      ) : (
+        <ModeCarouselShell
+          activeIndex={activeIndex}
+          onChangeIndex={onChangeIndex}
+          titleAction={renderActiveSlideHelpButton(activeSlideId)}
+          renderSlide={(index) =>
+            renderSlideContent(VOZ_MODE_SLIDES[index]!.id, "mobile")
+          }
+        />
+      )}
       <EncajarHelpModal
         open={encajarHelpOpen}
         onClose={() => setEncajarHelpOpen(false)}

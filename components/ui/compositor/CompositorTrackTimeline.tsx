@@ -23,7 +23,7 @@ import type {
   CompositorPiece,
   CompositorTrackEvent,
 } from "@/lib/compositor";
-import { getInstrumentLabel } from "@/lib/compositor";
+import { getInstrumentLabel, isCompositorCycleLayer } from "@/lib/compositor";
 import {
   buildDrumTimelineRows,
   buildMelodicTimelineRows,
@@ -87,6 +87,9 @@ type CompositorTrackTimelineProps = {
   tonalidadComposicion?: NotaIndex;
   onSetTonalidadComposicion?: (value: NotaIndex) => void;
   highlightEventId?: string | null;
+  layout?: "default" | "desktop";
+  capacityLabel?: string;
+  configHeaderTrailing?: React.ReactNode;
 };
 
 function renderTimelineBlock({
@@ -379,6 +382,9 @@ export function CompositorTrackTimeline({
   tonalidadComposicion,
   onSetTonalidadComposicion,
   highlightEventId = null,
+  layout = "default",
+  capacityLabel,
+  configHeaderTrailing,
 }: CompositorTrackTimelineProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridSteps = getCompositorGridSteps(piece);
@@ -620,6 +626,11 @@ export function CompositorTrackTimeline({
                   onInstrumentChange={onSelectTrack}
                 />
               ) : null}
+              {layout === "desktop" && capacityLabel ? (
+                <p className="ml-auto shrink-0 text-[11px] text-text-muted">
+                  {capacityLabel}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -692,6 +703,49 @@ export function CompositorTrackTimeline({
     </div>
   ) : null;
 
+  const showDesktopCapacityInHeader =
+    layout === "desktop" &&
+    capacityLabel != null &&
+    placementMode !== "melodic";
+
+  const configHeaderRow =
+    layout === "desktop" &&
+    (showDesktopCapacityInHeader || configHeaderTrailing) ? (
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        {configHeaderTrailing ? (
+          <div className="shrink-0">{configHeaderTrailing}</div>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        {showDesktopCapacityInHeader ? (
+          <p className="ml-auto shrink-0 text-[11px] text-text-muted">
+            {capacityLabel}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
+  if (usesPalette && layout === "desktop") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        {previewSection ? (
+          <div className="shrink-0 rounded-[10px] border border-border/50 bg-bg-darker/70 px-2 py-2">
+            {previewSection}
+          </div>
+        ) : null}
+        <div
+          data-tool-vertical-scroll=""
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y"
+        >
+          <div className="rounded-[10px] border border-border bg-bg-card px-2 py-3">
+            {configHeaderRow}
+            {editSection}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (usesPalette) {
     return (
       <div className="space-y-2">
@@ -731,6 +785,8 @@ export function CompositorMultiTrackTimeline({
   cycleProgress,
   octaveExact,
   togglesDisabled = false,
+  onlyCycleLayers = false,
+  listenMutedTrackIds = [],
   onToggleTrack,
 }: {
   piece: CompositorPiece;
@@ -739,6 +795,8 @@ export function CompositorMultiTrackTimeline({
   cycleProgress: number | null;
   octaveExact: boolean;
   togglesDisabled?: boolean;
+  onlyCycleLayers?: boolean;
+  listenMutedTrackIds?: readonly CompositorInstrumentId[];
   onToggleTrack?: (
     instrumentId: CompositorInstrumentId,
     enabled: boolean,
@@ -749,6 +807,10 @@ export function CompositorMultiTrackTimeline({
     cycleProgress == null
       ? null
       : Math.max(0, Math.min(1, cycleProgress));
+  const mutedTrackIds = new Set(listenMutedTrackIds);
+  const visibleTracks = onlyCycleLayers
+    ? piece.tracks.filter(isCompositorCycleLayer)
+    : piece.tracks;
 
   return (
     <div
@@ -756,14 +818,14 @@ export function CompositorMultiTrackTimeline({
         togglesDisabled ? "opacity-[0.72]" : ""
       }`}
     >
-      {piece.tracks.map((track) => {
+      {visibleTracks.map((track) => {
           const isMelodic = compositorHasContenidoTab(track.instrumentId);
           const melodicRows = isMelodic
             ? buildMelodicTimelineRows(track.events, octaveExact)
             : buildDrumTimelineRows();
           const rowCount = Math.max(1, melodicRows.length);
           const heightPx = Math.min(96, Math.max(32, rowCount * 10));
-          const isEnabled = track.enabled;
+          const isEnabled = !mutedTrackIds.has(track.instrumentId);
 
           return (
             <div

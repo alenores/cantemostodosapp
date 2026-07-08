@@ -1,10 +1,9 @@
 "use client";
 
+import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import {
   BEATS_PER_MEASURE_MAX,
   BEATS_PER_MEASURE_MIN,
-  BPM_MAX,
-  BPM_MIN,
   getActiveBeatDurationSlice,
   getBeatDurationAtIndex,
   getBeatDurationLabel,
@@ -14,6 +13,16 @@ import type {
   MetronomeBeatDuration,
   MetronomeBeatDurationPattern,
 } from "@/lib/metronomo";
+import {
+  ritmoDesktopSectionHintClass,
+  ritmoDesktopSectionTitleClass,
+  type RitmoDesktopConfigAccent,
+} from "@/lib/ritmo-compas-ui";
+import {
+  RITMO_DESKTOP_CLICK_HINT,
+  RITMO_LABEL_FIGURA_DESKTOP,
+  RITMO_LABEL_GOLPES_TAB,
+} from "@/lib/ritmo-terminologia";
 
 const FIGURA_GLYPH: Record<MetronomeBeatDuration, string> = {
   redonda: "○",
@@ -25,30 +34,30 @@ const FIGURA_GLYPH: Record<MetronomeBeatDuration, string> = {
 
 /**
  * Franja compacta de Ciclo para escritorio: golpes, figura por golpe (clic
- * directo para ciclar, sin panel expandido) y tempo — todo en una fila,
+ * directo para ciclar, sin panel expandido) — golpes y figuras en una fila,
  * mismo tamaño de control que las grillas de timbre/intensidad. Reemplaza
- * a ToolRitmoCompasPanel + ToolRitmoTempoPanel (pensados para dedo, con
- * carruseles grandes) dentro del Compositor de escritorio.
+ * a ToolRitmoCompasPanel (pensado para dedo, con carruseles grandes) dentro
+ * del Compositor de escritorio. El tempo va en CompositorDesktopTempoBar.
  */
 export function CompositorDesktopCicloBar({
   cycleGolpes,
   cycleBeatDurations,
-  bpm,
   disabled = false,
+  size = "compact",
+  accent,
   onSetCycleGolpes,
   onSetCycleBeatDurationAtSlot,
-  onSetBpm,
 }: {
   cycleGolpes: number;
   cycleBeatDurations: MetronomeBeatDurationPattern;
-  bpm: number;
   disabled?: boolean;
+  size?: "compact" | "comfortable";
+  accent?: RitmoDesktopConfigAccent;
   onSetCycleGolpes: (value: number) => void;
   onSetCycleBeatDurationAtSlot: (
     slotIndex: number,
     duration: MetronomeBeatDuration,
   ) => void;
-  onSetBpm: (value: number) => void;
 }) {
   const activeDurations = getActiveBeatDurationSlice(
     cycleBeatDurations,
@@ -62,40 +71,50 @@ export function CompositorDesktopCicloBar({
     onSetCycleBeatDurationAtSlot(slotIndex, getBeatDurationAtIndex(nextIndex));
   }
 
+  const comfortable = size === "comfortable";
+  const mutedLabelClass = comfortable
+    ? "mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted"
+    : "mb-1 text-[9px] font-semibold uppercase tracking-wide text-text-muted";
+  const accentTitleClass = accent
+    ? ritmoDesktopSectionTitleClass(accent)
+    : mutedLabelClass;
+  const figuraButtonClass = comfortable
+    ? "flex h-9 min-w-[2.25rem] flex-1 items-center justify-center rounded-md border border-border bg-bg-dark text-base text-text-secondary disabled:opacity-40 hover:border-border-strong"
+    : "flex h-6 flex-1 items-center justify-center rounded border border-border bg-bg-dark text-sm text-text-secondary disabled:opacity-40 hover:border-border-strong";
+
   return (
-    <div className="flex flex-wrap items-center gap-6 px-4 py-2.5">
-      <div>
-        <p className="mb-1 text-[9px] text-text-muted">Golpes</p>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            disabled={disabled || cycleGolpes <= BEATS_PER_MEASURE_MIN}
-            onClick={() => onSetCycleGolpes(cycleGolpes - 1)}
-            aria-label="Reducir golpes"
-            className="flex size-[22px] items-center justify-center rounded border border-border bg-bg-dark text-sm font-bold text-text-primary disabled:opacity-40"
-          >
-            −
-          </button>
-          <span className="w-8 text-center text-xs font-bold text-text-primary">
-            {cycleGolpes}
-          </span>
-          <button
-            type="button"
-            disabled={disabled || cycleGolpes >= BEATS_PER_MEASURE_MAX}
-            onClick={() => onSetCycleGolpes(cycleGolpes + 1)}
-            aria-label="Aumentar golpes"
-            className="flex size-[22px] items-center justify-center rounded border border-border bg-bg-dark text-sm font-bold text-text-primary disabled:opacity-40"
-          >
-            +
-          </button>
-        </div>
+    <div
+      className={
+        comfortable
+          ? "flex flex-wrap items-end gap-8"
+          : "flex flex-wrap items-end gap-6"
+      }
+    >
+      <div className={comfortable ? "min-w-[11rem]" : "min-w-[10rem]"}>
+        <p className={accentTitleClass}>{RITMO_LABEL_GOLPES_TAB}</p>
+        <ToolNumericStepper
+          value={cycleGolpes}
+          density={comfortable ? "default" : "compact"}
+          disabled={disabled}
+          decrementDisabled={cycleGolpes <= BEATS_PER_MEASURE_MIN}
+          incrementDisabled={cycleGolpes >= BEATS_PER_MEASURE_MAX}
+          decrementAriaLabel="Reducir golpes"
+          incrementAriaLabel="Aumentar golpes"
+          onDecrement={() => onSetCycleGolpes(cycleGolpes - 1)}
+          onIncrement={() => onSetCycleGolpes(cycleGolpes + 1)}
+        />
       </div>
 
-      <div className="min-w-[200px] flex-1">
-        <p className="mb-1 text-[9px] text-text-muted">
-          Figura por golpe · clic para cambiar
-        </p>
-        <div className="flex gap-[3px]">
+      <div className={comfortable ? "min-w-[min(100%,28rem)] flex-1" : "min-w-[200px] flex-1"}>
+        {accent ? (
+          <p className={ritmoDesktopSectionTitleClass(accent)}>
+            {RITMO_LABEL_FIGURA_DESKTOP}
+          </p>
+        ) : (
+          <p className={mutedLabelClass}>Figura por golpe</p>
+        )}
+        <p className={ritmoDesktopSectionHintClass}>{RITMO_DESKTOP_CLICK_HINT}</p>
+        <div className="mt-2 flex gap-1">
           {activeDurations.map((duration, index) => (
             <button
               key={index}
@@ -103,39 +122,11 @@ export function CompositorDesktopCicloBar({
               disabled={disabled}
               onClick={() => cycleFigura(index, duration)}
               title={`${getBeatDurationLabel(duration)} · golpe ${index + 1}`}
-              className="flex h-6 flex-1 items-center justify-center rounded border border-border bg-bg-dark text-sm text-text-secondary disabled:opacity-40 hover:border-border-strong"
+              className={figuraButtonClass}
             >
               {FIGURA_GLYPH[duration]}
             </button>
           ))}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-1 text-[9px] text-text-muted">Tempo</p>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            disabled={disabled || bpm <= BPM_MIN}
-            onClick={() => onSetBpm(bpm - 1)}
-            aria-label="Reducir tempo"
-            className="flex size-[22px] items-center justify-center rounded border border-border bg-bg-dark text-sm font-bold text-text-primary disabled:opacity-40"
-          >
-            −
-          </button>
-          <span className="w-9 text-center text-xs font-bold text-text-primary">
-            {bpm}
-          </span>
-          <button
-            type="button"
-            disabled={disabled || bpm >= BPM_MAX}
-            onClick={() => onSetBpm(bpm + 1)}
-            aria-label="Aumentar tempo"
-            className="flex size-[22px] items-center justify-center rounded border border-border bg-bg-dark text-sm font-bold text-text-primary disabled:opacity-40"
-          >
-            +
-          </button>
-          <span className="ml-1 text-[9px] text-text-muted">BPM</span>
         </div>
       </div>
     </div>

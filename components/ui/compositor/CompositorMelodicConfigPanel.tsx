@@ -56,14 +56,16 @@ type CompositorMelodicConfigPanelProps = {
 function MelodicFieldGroup({
   label,
   mode,
+  className,
   children,
 }: {
   label: string;
   mode: "create" | "edit";
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className={compositorBlockFieldGroupClass(mode)}>
+    <div className={`${compositorBlockFieldGroupClass(mode)} ${className ?? ""}`}>
       <p className={compositorBlockFieldLabelClass(mode)}>{label}</p>
       {children}
     </div>
@@ -132,6 +134,12 @@ export function CompositorMelodicConfigPanel({
   const showModifier = isMelodicAcordeMode(instrumentId, draft);
   const guitarChordAttack: "rasguido" | "bloque" =
     draft.guitarArticulation === "bloque" ? "bloque" : "rasguido";
+  const showGuitarTimbreInline =
+    instrumentId === "guitarra" && harmonyMode === "nota";
+  const desktopHalfTipoWidthClass =
+    "lg:w-1/4 lg:max-w-[25%] lg:flex-none lg:shrink-0";
+  const desktopHalfIntensidadWidthClass =
+    "lg:w-1/2 lg:max-w-[50%] lg:flex-none lg:shrink-0";
 
   function setHarmonyMode(next: "nota" | "acorde") {
     if (instrumentId === "piano") {
@@ -150,6 +158,34 @@ export function CompositorMelodicConfigPanel({
     );
   }
 
+  const intensidadGroup = (
+    <MelodicFieldGroup
+      label={RITMO_LABEL_INTENSIDAD}
+      mode={mode}
+      className={
+        showHarmonyToggle
+          ? "min-w-0 flex-1"
+          : instrumentId === "viento"
+            ? desktopHalfIntensidadWidthClass
+            : undefined
+      }
+    >
+      <SegmentToggle
+        value={draft.level}
+        options={METRONOME_BEAT_LEVELS.map((level) => ({
+          value: level,
+          label: getBeatLevelLabel(level),
+        }))}
+        disabled={disabled}
+        ariaLabel={RITMO_LABEL_INTENSIDAD}
+        mode={mode}
+        onChange={(level) =>
+          onDraftChange({ ...draft, level: level as MetronomeBeatLevel })
+        }
+      />
+    </MelodicFieldGroup>
+  );
+
   return (
     <div data-compositor-edit-surface="" className="space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -165,19 +201,55 @@ export function CompositorMelodicConfigPanel({
 
       <div className="flex flex-col gap-2">
           {showHarmonyToggle ? (
-            <MelodicFieldGroup label="Tipo" mode={mode}>
-              <SegmentToggle
-                value={harmonyMode}
-                options={[
-                  { value: "nota", label: "Nota" },
-                  { value: "acorde", label: "Acorde" },
-                ]}
-                disabled={disabled}
-                ariaLabel="Nota o acorde"
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-stretch">
+              <MelodicFieldGroup
+                label="Tipo"
                 mode={mode}
-                onChange={setHarmonyMode}
-              />
-            </MelodicFieldGroup>
+                className={`min-w-0 flex-1 ${
+                  showGuitarTimbreInline ? desktopHalfTipoWidthClass : ""
+                }`}
+              >
+                <SegmentToggle
+                  value={harmonyMode}
+                  options={[
+                    { value: "nota", label: "Nota" },
+                    { value: "acorde", label: "Acorde" },
+                  ]}
+                  disabled={disabled}
+                  ariaLabel="Nota o acorde"
+                  mode={mode}
+                  onChange={setHarmonyMode}
+                />
+              </MelodicFieldGroup>
+              {showGuitarTimbreInline ? (
+                <MelodicFieldGroup
+                  label={RITMO_LABEL_TIMBRE}
+                  mode={mode}
+                  className={`min-w-0 ${desktopHalfTipoWidthClass}`}
+                >
+                  <SegmentToggle
+                    value={
+                      draft.guitarArticulation === "dedo" ? "dedo" : "pua"
+                    }
+                    options={[
+                      { value: "pua", label: "Púa" },
+                      { value: "dedo", label: "Dedo" },
+                    ]}
+                    disabled={disabled}
+                    ariaLabel="Púa o dedo"
+                    mode={mode}
+                    onChange={(articulation) =>
+                      onDraftChange({
+                        ...draft,
+                        guitarArticulation:
+                          articulation as CompositorGuitarArticulation,
+                      })
+                    }
+                  />
+                </MelodicFieldGroup>
+              ) : null}
+              {intensidadGroup}
+            </div>
           ) : null}
 
           <MelodicFieldGroup label={RITMO_LABEL_NOTA} mode={mode}>
@@ -270,44 +342,8 @@ export function CompositorMelodicConfigPanel({
             </MelodicFieldGroup>
           ) : null}
 
-          {instrumentId === "guitarra" && harmonyMode === "nota" ? (
-            <MelodicFieldGroup label={RITMO_LABEL_TIMBRE} mode={mode}>
-              <SegmentToggle
-                value={
-                  draft.guitarArticulation === "dedo" ? "dedo" : "pua"
-                }
-                options={[
-                  { value: "pua", label: "Púa" },
-                  { value: "dedo", label: "Dedo" },
-                ]}
-                disabled={disabled}
-                ariaLabel="Púa o dedo"
-                mode={mode}
-                onChange={(articulation) =>
-                  onDraftChange({
-                    ...draft,
-                    guitarArticulation: articulation as CompositorGuitarArticulation,
-                  })
-                }
-              />
-            </MelodicFieldGroup>
-          ) : null}
 
-          <MelodicFieldGroup label={RITMO_LABEL_INTENSIDAD} mode={mode}>
-            <SegmentToggle
-              value={draft.level}
-              options={METRONOME_BEAT_LEVELS.map((level) => ({
-                value: level,
-                label: getBeatLevelLabel(level),
-              }))}
-              disabled={disabled}
-              ariaLabel={RITMO_LABEL_INTENSIDAD}
-              mode={mode}
-              onChange={(level) =>
-                onDraftChange({ ...draft, level: level as MetronomeBeatLevel })
-              }
-            />
-          </MelodicFieldGroup>
+          {!showHarmonyToggle ? intensidadGroup : null}
       </div>
 
       {mode === "create" ? (

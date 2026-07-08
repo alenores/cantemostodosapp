@@ -41,7 +41,7 @@ export default function EditorCancionesPageClient() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+    <div className="tool-page-layout flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
       <CifradoEditor
         open
         presentation="page"

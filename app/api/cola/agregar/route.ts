@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: formatDatabaseError(error, "Error al agregar a la cola"),
+        error: formatDatabaseError(error, "Error al agregar a la fila"),
       },
       { status: 500 },
     );

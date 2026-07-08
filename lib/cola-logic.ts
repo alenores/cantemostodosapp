@@ -552,7 +552,7 @@ async function insertColaJuntadaRow(
     throw lastSchemaError;
   }
 
-  throw new Error("No se pudo agregar la canción a la cola.");
+  throw new Error("No se pudo agregar la canción a la fila.");
 }
 
 export async function agregarACola(

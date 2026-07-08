@@ -1,7 +1,7 @@
 "use client";
 
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { CompositorDesktopEditorShell } from "@/components/ui/compositor/CompositorDesktopEditorShell";
+import { CompositorPcEditorShell } from "@/components/ui/compositor/CompositorPcEditorShell";
 import { CompositorDrumPatternPicker } from "@/components/ui/compositor/CompositorDrumPatternPicker";
 import { CompositorEditorStatusBar } from "@/components/ui/compositor/CompositorEditorStatusBar";
 import { CompositorListenView } from "@/components/ui/compositor/CompositorListenView";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/ToolRitmoConfig";
 import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { ToolModalMobileBleed } from "@/components/ui/ToolModalSections";
 import { COMPOSITOR_DUMMY_BEAT_PATTERN } from "@/hooks/useCompositor";
 import {
   COMPOSITOR_MELODIC_INSTRUMENT_IDS,
@@ -43,8 +44,10 @@ import { NOTAS_ES } from "@/lib/cifrado";
 import {
   COMPOSITOR_CONFIRM_CYCLE_STRUCTURE_MESSAGE,
   COMPOSITOR_CONFIRM_APLICAR_RITMO_BATERIA,
+  COMPOSITOR_CONFIRM_DELETE_CYCLE_MESSAGE,
   COMPOSITOR_CONFIRM_RESET_MESSAGE,
   COMPOSITOR_LABEL_CICLO_COMPARTIDO,
+  COMPOSITOR_LABEL_ELIMINAR_CICLO,
   COMPOSITOR_LABEL_RESET_ZONA,
   COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD,
 } from "@/lib/ritmo-terminologia";
@@ -54,7 +57,7 @@ import type {
 } from "@/lib/metronomo";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type PendingCycleStructureChange =
@@ -83,6 +86,9 @@ export type CompositorEditorProps = {
   onSetActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
   onSetSelectedEventId: (eventId: string | null) => void;
   onToggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
+  onToggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
+  onEnterListen: () => void;
+  listenMutedTrackIds: CompositorInstrumentId[];
   onSetBpm: (value: number) => void;
   onSetCycleGolpes: (value: number) => void;
   onSetCycleBeatDurationAtSlot: (
@@ -115,7 +121,8 @@ export type CompositorEditorProps = {
   cyclesError: string | null;
   cyclesNotice: string | null;
   editorNotice: string | null;
-  suggestCycleName: () => string;
+  cycleName: string;
+  onCycleNameChange: (value: string) => void;
   onSaveCurrentCycle: (nombre: string) => Promise<unknown>;
   onUpdateActiveCycle: (nombre?: string) => Promise<unknown>;
   onDiscardChanges: () => void;
@@ -152,6 +159,9 @@ export function CompositorEditor({
   onSetActiveTrackId,
   onSetSelectedEventId,
   onToggleTrack,
+  onToggleListenTrack,
+  onEnterListen,
+  listenMutedTrackIds,
   onSetBpm,
   onSetCycleGolpes,
   onSetCycleBeatDurationAtSlot,
@@ -170,7 +180,8 @@ export function CompositorEditor({
   cyclesError,
   cyclesNotice,
   editorNotice,
-  suggestCycleName,
+  cycleName,
+  onCycleNameChange,
   onSaveCurrentCycle,
   onUpdateActiveCycle,
   onDiscardChanges,
@@ -183,6 +194,7 @@ export function CompositorEditor({
   const isDesktop = useIsDesktop();
   const [activeTab, setActiveTab] = useState<CompositorEditorTab>("ciclo");
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [deleteCycleConfirmOpen, setDeleteCycleConfirmOpen] = useState(false);
   const [cycleStructureConfirmOpen, setCycleStructureConfirmOpen] =
     useState(false);
   const [pendingCycleStructureChange, setPendingCycleStructureChange] =
@@ -321,30 +333,185 @@ export function CompositorEditor({
   }
 
   return (
-    <div className="space-y-2.5">
-      <CompositorEditorStatusBar
-        piece={piece}
-        disabled={configLocked}
-        isLoggedIn={isLoggedIn}
-        online={online}
-        activeCycle={activeCycle}
-        isPieceModifiedFromBaseline={isPieceModifiedFromBaseline}
-        cyclesBusy={cyclesBusy}
-        cyclesError={cyclesError}
-        cyclesNotice={cyclesNotice}
-        editorNotice={editorNotice}
-        trackOverflowWarning={trackOverflowWarning}
-        suggestCycleName={suggestCycleName}
-        onSaveCurrentCycle={onSaveCurrentCycle}
-        onUpdateActiveCycle={onUpdateActiveCycle}
-        onDiscardChanges={onDiscardChanges}
-        onSetCyclePublic={onSetCyclePublic}
-        onDeleteCycle={onDeleteCycle}
-        onCycleDeleted={onCycleDeleted}
-      />
+    <div
+      className={
+        isDesktop
+          ? "flex min-h-0 flex-1 flex-col"
+          : undefined
+      }
+    >
+      {!isDesktop ? (
+        <ToolModalMobileBleed className="space-y-2.5">
+          <CompositorEditorStatusBar
+            piece={piece}
+            disabled={configLocked}
+            isLoggedIn={isLoggedIn}
+            online={online}
+            activeCycle={activeCycle}
+            isPieceModifiedFromBaseline={isPieceModifiedFromBaseline}
+            cyclesBusy={cyclesBusy}
+            cyclesError={cyclesError}
+            cyclesNotice={cyclesNotice}
+            editorNotice={editorNotice}
+            trackOverflowWarning={trackOverflowWarning}
+            cycleName={cycleName}
+            onCycleNameChange={onCycleNameChange}
+            onSaveCurrentCycle={onSaveCurrentCycle}
+            onUpdateActiveCycle={onUpdateActiveCycle}
+            onDiscardChanges={onDiscardChanges}
+            onSetCyclePublic={onSetCyclePublic}
+            onDeleteCycle={onDeleteCycle}
+            onCycleDeleted={onCycleDeleted}
+          />
 
-      {isDesktop ? (
-        <CompositorDesktopEditorShell
+          <CompositorEditorTabShell
+            activeTab={activeTab}
+            disabled={configLocked}
+            summary={tabSummary}
+            onTabChange={handleTabChange}
+            onOpenPractice={() => setActiveTab("practicar")}
+          >
+            {activeTab === "ciclo" ? (
+              <div className="space-y-2.5">
+                <ToolRitmoCompasPanel
+                  beatPattern={COMPOSITOR_DUMMY_BEAT_PATTERN}
+                  patternLength={cycleGolpes}
+                  beatDurations={cycleBeatDurations}
+                  disabled={configLocked}
+                  variant="compositor"
+                  scope="cycle"
+                  layout="flat"
+                  sectionLabel={COMPOSITOR_LABEL_CICLO_COMPARTIDO}
+                  sectionLabelNormalCase
+                  patternLengthInputId="compositor-cycle-golpes"
+                  onSetPatternLength={requestCycleGolpesChange}
+                  onSetBeatDurationAtSlot={requestCycleBeatDurationChange}
+                  onSetBeatLevelAtSlot={() => {}}
+                />
+
+                <ToolRitmoTempoPanel
+                  bpm={bpm}
+                  isPlaying={isPlaying}
+                  tapTempoTapCount={tapTempoTapCount}
+                  accent="compositor"
+                  onSetBpm={onSetBpm}
+                  onTapTempo={onTapTempo}
+                />
+
+                <div className="border-t border-dashed border-border/90 pt-2">
+                  {activeCycle && onDeleteCycle ? (
+                    <TapButton
+                      type="button"
+                      disabled={configLocked || cyclesBusy}
+                      onClick={() => setDeleteCycleConfirmOpen(true)}
+                      aria-label={`Eliminar ${activeCycle.nombre}`}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--tuner-lejos)]/35 bg-[var(--tuner-lejos)]/10 py-2 text-xs font-semibold text-[var(--tuner-lejos)] disabled:opacity-50 lg:mx-auto lg:w-auto lg:px-6"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      {COMPOSITOR_LABEL_ELIMINAR_CICLO}
+                    </TapButton>
+                  ) : (
+                    <TapButton
+                      type="button"
+                      disabled={configLocked}
+                      onClick={() => setResetConfirmOpen(true)}
+                      aria-label="Restablecer todo el compositor"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-dark py-2 text-xs font-semibold text-text-muted disabled:opacity-50 lg:mx-auto lg:w-auto lg:px-6"
+                    >
+                      <RotateCcw className="size-3.5" aria-hidden="true" />
+                      {COMPOSITOR_LABEL_RESET_ZONA}
+                    </TapButton>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {activeTab === "bateria" ? (
+              <div className="space-y-2.5">
+                <CompositorDrumPatternPicker
+                  activePatternId={activeDrumPatternId}
+                  disabled={configLocked}
+                  onSelectPattern={handleDrumPatternClick}
+                />
+                <CompositorTrackTimeline
+                  piece={piece}
+                  instrumentId="bateria"
+                  events={drumTrack.events}
+                  selectedEventId={selectedDrumEvent ? selectedEventId : null}
+                  cycleProgress={isPreviewingTrack ? cycleProgress : null}
+                  octaveExact={true}
+                  disabled={configLocked}
+                  trackAtCapacity={isTrackAtCapacity(drumTrack)}
+                  isPreviewingTrack={isPreviewingTrack}
+                  previewDisabled={isPlaying}
+                  capasMode="none"
+                  placementMode="drum"
+                  onSelectEvent={onSetSelectedEventId}
+                  onUpdateEvent={(eventId, patch) =>
+                    onUpdateTrackEvent(eventId, patch)
+                  }
+                  onPlaceEvent={(partial) =>
+                    onPlaceTrackEvent("bateria", partial)
+                  }
+                  onRemoveEvent={onRemoveTrackEvent}
+                  onPreviewTrack={() => void onPreviewActiveTrack()}
+                />
+              </div>
+            ) : null}
+
+            {activeTab === "melodias" ? (
+              <CompositorTrackTimeline
+                piece={piece}
+                instrumentId={melodicTrackId}
+                events={melodicTrack.events}
+                selectedEventId={
+                  selectedMelodicEvent ? selectedEventId : null
+                }
+                cycleProgress={isPreviewingTrack ? cycleProgress : null}
+                octaveExact={true}
+                disabled={configLocked}
+                trackAtCapacity={isTrackAtCapacity(melodicTrack)}
+                isPreviewingTrack={isPreviewingTrack}
+                previewDisabled={isPlaying}
+                capasMode="melodic"
+                placementMode="melodic"
+                tonalidadComposicion={tonalidadComposicion}
+                onSetTonalidadComposicion={onSetTonalidadComposicion}
+                onSelectTrack={onSetActiveTrackId}
+                onSelectEvent={onSetSelectedEventId}
+                onUpdateEvent={(eventId, patch) =>
+                  onUpdateTrackEvent(eventId, patch)
+                }
+                onPlaceEvent={(partial, options) =>
+                  onPlaceTrackEvent(melodicTrackId, partial, options)
+                }
+                onRemoveEvent={onRemoveTrackEvent}
+                onPreviewTrack={() => void onPreviewActiveTrack()}
+              />
+            ) : null}
+
+            {activeTab === "practicar" ? (
+              <CompositorListenView
+                piece={piece}
+                activeTrackId={activeTrackId}
+                selectedEventId={selectedEventId}
+                bpm={bpm}
+                tonalidadComposicion={tonalidadComposicion}
+                isPlaying={isPlaying}
+                cycleProgress={cycleProgress}
+                listenMutedTrackIds={listenMutedTrackIds}
+                onSetBpm={onSetBpm}
+                onSetTonalidadComposicion={onSetTonalidadComposicion}
+                onToggleListenTrack={onToggleListenTrack}
+                onEnterListen={onEnterListen}
+                onStart={onStart}
+                onStop={onStop}
+              />
+            ) : null}
+          </CompositorEditorTabShell>
+        </ToolModalMobileBleed>
+      ) : (
+        <CompositorPcEditorShell
           piece={piece}
           activeTrackId={activeTrackId}
           activeDrumPatternId={activeDrumPatternId}
@@ -357,153 +524,26 @@ export function CompositorEditor({
           isPreviewingTrack={isPreviewingTrack}
           cycleProgress={cycleProgress}
           tapTempoTapCount={tapTempoTapCount}
+          disabled={configLocked}
           onSetActiveTrackId={onSetActiveTrackId}
           onSetSelectedEventId={onSetSelectedEventId}
           onToggleTrack={onToggleTrack}
+          onToggleListenTrack={onToggleListenTrack}
+          onEnterListen={onEnterListen}
+          listenMutedTrackIds={listenMutedTrackIds}
           onSetBpm={onSetBpm}
-          onSetCycleGolpes={onSetCycleGolpes}
-          onSetCycleBeatDurationAtSlot={onSetCycleBeatDurationAtSlot}
           onSetTonalidadComposicion={onSetTonalidadComposicion}
           onPlaceTrackEvent={onPlaceTrackEvent}
           onUpdateTrackEvent={onUpdateTrackEvent}
           onRemoveTrackEvent={onRemoveTrackEvent}
           onTapTempo={onTapTempo}
-          onStart={onStart}
           onPreviewActiveTrack={onPreviewActiveTrack}
+          onStart={onStart}
           onStop={onStop}
-          onReset={onReset}
+          onRequestCycleGolpesChange={requestCycleGolpesChange}
+          onRequestCycleBeatDurationChange={requestCycleBeatDurationChange}
           onSelectDrumPattern={handleDrumPatternClick}
         />
-      ) : (
-      <CompositorEditorTabShell
-        activeTab={activeTab}
-        disabled={configLocked}
-        summary={tabSummary}
-        onTabChange={handleTabChange}
-        onOpenPractice={() => setActiveTab("practicar")}
-      >
-          {activeTab === "ciclo" ? (
-            <div className="space-y-2.5">
-              <ToolRitmoCompasPanel
-                beatPattern={COMPOSITOR_DUMMY_BEAT_PATTERN}
-                patternLength={cycleGolpes}
-                beatDurations={cycleBeatDurations}
-                disabled={configLocked}
-                variant="compositor"
-                scope="cycle"
-                layout="flat"
-                sectionLabel={COMPOSITOR_LABEL_CICLO_COMPARTIDO}
-                sectionLabelNormalCase
-                patternLengthInputId="compositor-cycle-golpes"
-                onSetPatternLength={requestCycleGolpesChange}
-                onSetBeatDurationAtSlot={requestCycleBeatDurationChange}
-                onSetBeatLevelAtSlot={() => {}}
-              />
-
-              <ToolRitmoTempoPanel
-                bpm={bpm}
-                isPlaying={isPlaying}
-                tapTempoTapCount={tapTempoTapCount}
-                onSetBpm={onSetBpm}
-                onTapTempo={onTapTempo}
-              />
-
-              <div className="border-t border-dashed border-border/90 pt-2">
-                <TapButton
-                  type="button"
-                  disabled={configLocked}
-                  onClick={() => setResetConfirmOpen(true)}
-                  aria-label="Restablecer todo el compositor"
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-dark py-2 text-xs font-semibold text-text-muted disabled:opacity-50 lg:mx-auto lg:w-auto lg:px-6"
-                >
-                  <RotateCcw className="size-3.5" aria-hidden="true" />
-                  {COMPOSITOR_LABEL_RESET_ZONA}
-                </TapButton>
-              </div>
-            </div>
-          ) : null}
-
-          {activeTab === "bateria" ? (
-            <div className="space-y-2.5">
-              <CompositorDrumPatternPicker
-                activePatternId={activeDrumPatternId}
-                disabled={configLocked}
-                onSelectPattern={handleDrumPatternClick}
-              />
-              <CompositorTrackTimeline
-              piece={piece}
-              instrumentId="bateria"
-              events={drumTrack.events}
-              selectedEventId={selectedDrumEvent ? selectedEventId : null}
-              cycleProgress={isPreviewingTrack ? cycleProgress : null}
-              octaveExact={true}
-              disabled={configLocked}
-              trackAtCapacity={isTrackAtCapacity(drumTrack)}
-              isPreviewingTrack={isPreviewingTrack}
-              previewDisabled={isPlaying}
-              capasMode="none"
-              placementMode="drum"
-              onSelectEvent={onSetSelectedEventId}
-              onUpdateEvent={(eventId, patch) =>
-                onUpdateTrackEvent(eventId, patch)
-              }
-              onPlaceEvent={(partial) =>
-                onPlaceTrackEvent("bateria", partial)
-              }
-              onRemoveEvent={onRemoveTrackEvent}
-              onPreviewTrack={() => void onPreviewActiveTrack()}
-            />
-            </div>
-          ) : null}
-
-          {activeTab === "melodias" ? (
-            <CompositorTrackTimeline
-              piece={piece}
-              instrumentId={melodicTrackId}
-              events={melodicTrack.events}
-              selectedEventId={
-                selectedMelodicEvent ? selectedEventId : null
-              }
-              cycleProgress={isPreviewingTrack ? cycleProgress : null}
-              octaveExact={true}
-              disabled={configLocked}
-              trackAtCapacity={isTrackAtCapacity(melodicTrack)}
-              isPreviewingTrack={isPreviewingTrack}
-              previewDisabled={isPlaying}
-              capasMode="melodic"
-              placementMode="melodic"
-              tonalidadComposicion={tonalidadComposicion}
-              onSetTonalidadComposicion={onSetTonalidadComposicion}
-              onSelectTrack={onSetActiveTrackId}
-              onSelectEvent={onSetSelectedEventId}
-              onUpdateEvent={(eventId, patch) =>
-                onUpdateTrackEvent(eventId, patch)
-              }
-              onPlaceEvent={(partial, options) =>
-                onPlaceTrackEvent(melodicTrackId, partial, options)
-              }
-              onRemoveEvent={onRemoveTrackEvent}
-              onPreviewTrack={() => void onPreviewActiveTrack()}
-            />
-          ) : null}
-
-          {activeTab === "practicar" ? (
-            <CompositorListenView
-              piece={piece}
-              activeTrackId={activeTrackId}
-              selectedEventId={selectedEventId}
-              bpm={bpm}
-              tonalidadComposicion={tonalidadComposicion}
-              isPlaying={isPlaying}
-              cycleProgress={cycleProgress}
-              onSetBpm={onSetBpm}
-              onSetTonalidadComposicion={onSetTonalidadComposicion}
-              onToggleTrack={onToggleTrack}
-              onStart={onStart}
-              onStop={onStop}
-            />
-          ) : null}
-      </CompositorEditorTabShell>
       )}
 
       <ConfirmDialog
@@ -557,6 +597,30 @@ export function CompositorEditor({
           onReset();
         }}
         onCancel={() => setResetConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={deleteCycleConfirmOpen}
+        message={
+          activeCycle
+            ? COMPOSITOR_CONFIRM_DELETE_CYCLE_MESSAGE(activeCycle.nombre)
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        deleteConfirm
+        zIndex={60}
+        onConfirm={() => {
+          if (!activeCycle || !onDeleteCycle) {
+            return;
+          }
+
+          setDeleteCycleConfirmOpen(false);
+          void onDeleteCycle(activeCycle.id).then(() => {
+            onCycleDeleted?.();
+          });
+        }}
+        onCancel={() => setDeleteCycleConfirmOpen(false)}
       />
     </div>
   );

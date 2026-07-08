@@ -34,10 +34,12 @@ export function MelodiaConfigSection({
   onSetBpm,
   onTapTempo,
   headerAction,
+  embedded = false,
 }: {
   collapsedSummary?: string;
   autoCollapseWhen?: boolean;
   headerAction?: ReactNode;
+  embedded?: boolean;
   patternLength: number;
   beatDuration: MetronomeBeatDuration;
   beatPattern: MetronomeBeatPattern;
@@ -70,6 +72,7 @@ export function MelodiaConfigSection({
       collapsedSummary={summary}
       autoCollapseWhen={autoCollapseWhen}
       configHeaderAction={headerAction}
+      embedded={embedded}
       hideIntensidadTab
       hideCompasHelp
       uniformFigura

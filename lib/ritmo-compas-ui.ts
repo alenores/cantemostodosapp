@@ -1,6 +1,24 @@
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import { getBeatLevelBarHeightPercent } from "@/lib/metronomo";
 
+/** Título de sección en paneles de configuración de escritorio (Tempo, Golpes, etc.). */
+export type RitmoDesktopConfigAccent = "voz" | "compositor";
+
+export function ritmoDesktopSectionTitleClass(
+  accent: RitmoDesktopConfigAccent,
+  options?: { uppercase?: boolean },
+): string {
+  const colorClass =
+    accent === "compositor" ? "text-compositor-config" : "text-voz-config";
+  const caseClass = options?.uppercase === false ? "normal-case" : "uppercase";
+
+  return `mb-1.5 text-[10px] font-bold ${caseClass} tracking-wide ${colorClass}`;
+}
+
+/** Subtítulo bajo títulos de sección en paneles de escritorio (FIGURA, INTENSIDAD, etc.). */
+export const ritmoDesktopSectionHintClass =
+  "mt-1 text-[11px] leading-snug text-text-muted";
+
 /** Escala de altura de barras en el preview del ciclo (config). */
 export const RITMO_CYCLE_VOLUME_BAR_SCALE = 0.36;
 /** Misma escala +30 % para el gráfico de práctica del slide ritmo. */

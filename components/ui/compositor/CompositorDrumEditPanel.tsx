@@ -33,14 +33,16 @@ type CompositorDrumEditPanelProps = {
 function DrumFieldGroup({
   label,
   mode,
+  className,
   children,
 }: {
   label: string;
   mode: "create" | "edit";
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className={compositorBlockFieldGroupClass(mode)}>
+    <div className={`${compositorBlockFieldGroupClass(mode)} ${className ?? ""}`}>
       <p className={compositorBlockFieldLabelClass(mode)}>{label}</p>
       {children}
     </div>
@@ -122,7 +124,11 @@ export function CompositorDrumEditPanel({
           />
         </DrumFieldGroup>
 
-        <DrumFieldGroup label={RITMO_LABEL_INTENSIDAD} mode={mode}>
+        <DrumFieldGroup
+          label={RITMO_LABEL_INTENSIDAD}
+          mode={mode}
+          className="lg:w-1/2 lg:max-w-[50%] lg:flex-none lg:shrink-0"
+        >
           <SegmentToggle
             value={draft.level}
             options={METRONOME_BEAT_LEVELS.map((level) => ({

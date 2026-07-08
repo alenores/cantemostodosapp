@@ -26,11 +26,13 @@ import type {
 } from "@/lib/voz-ritmo";
 import type { VozIntensidadVoiceSample } from "@/lib/voz-intensidad";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import { TOOL_MODAL_MOBILE_GUTTER_CLASS } from "@/components/ui/ToolModalSections";
 import { ToolPresentationRoot } from "@/components/ui/ToolPresentationRoot";
 import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
 import { Mic } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 type EntrenadorVocalModalProps = {
   open: boolean;
@@ -239,8 +241,10 @@ export default function EntrenadorVocalModal({
   presentation = "modal",
 }: EntrenadorVocalModalProps) {
   const [activeModeIndex, setActiveModeIndex] = useState(0);
+  const [desktopHelpAction, setDesktopHelpAction] = useState<ReactNode>(null);
   const prevSlideIndexRef = useRef(activeModeIndex);
   const isPage = isToolPagePresentation(presentation);
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     if (!open) {
@@ -299,17 +303,32 @@ export default function EntrenadorVocalModal({
     >
       <ToolModalHeader
         titleId="entrenador-vocal-titulo"
-        title="Entrenador Vocal"
+        title={isDesktop ? undefined : "Entrenador Vocal"}
+        headerContent={
+          isDesktop ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <h2
+                id="entrenador-vocal-titulo"
+                className="min-w-0 truncate text-lg font-extrabold text-accent"
+              >
+                Entrenador Vocal
+              </h2>
+              {desktopHelpAction}
+            </div>
+          ) : undefined
+        }
         closeAriaLabel="Cerrar entrenador vocal"
         onClose={onClose}
         showClose={!isPage}
       />
 
       <div
-        className={`flex min-h-0 flex-1 flex-col touch-pan-y overscroll-y-contain ${
+        className={`flex min-h-0 flex-1 flex-col ${
           !micPermissionGranted || micError
-            ? "overflow-y-auto px-3 py-4 lg:px-5 lg:py-5"
-            : "flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden lg:px-5 lg:py-4"
+            ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
+            : isDesktop
+              ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
+              : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
         }`}
       >
         {!micPermissionGranted || micError ? (
@@ -319,11 +338,20 @@ export default function EntrenadorVocalModal({
             onRequestMic={onRequestMic}
           />
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col px-3 py-4 lg:min-h-0 lg:overflow-hidden lg:px-0 lg:py-0">
+          <div
+            className={
+              isDesktop
+                ? "flex min-h-0 flex-1 flex-col"
+                : "flex min-h-0 flex-1 flex-col px-3 py-4"
+            }
+          >
             {micStarting ? <MicConnectingPanel /> : null}
             <VozModeSlides
               activeIndex={activeModeIndex}
               onChangeIndex={setActiveModeIndex}
+              onDesktopHelpActionChange={
+                isDesktop ? setDesktopHelpAction : undefined
+              }
               onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
               onSetIntensidadEvaluation={onSetIntensidadEvaluation}
               effectiveTarget={effectiveTarget}

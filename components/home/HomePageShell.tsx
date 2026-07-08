@@ -169,7 +169,7 @@ function HomeModoLecturaOverlay({
             />
             <HomeModoLecturaFabOption
               icon={ListMusic}
-              label={`Cola · ${pendientesCount}`}
+              label={`Fila · ${pendientesCount}`}
               cascadeIndex={3}
               onClick={() => {
                 onCerrar();

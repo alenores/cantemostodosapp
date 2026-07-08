@@ -1,7 +1,7 @@
 import {
   COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
   createCompositorEvent,
-  createDefaultTrack,
+  createEmptyCompositorTrack,
   type CompositorDrumSound,
   type CompositorInstrumentId,
   type CompositorPiece,
@@ -174,13 +174,12 @@ export function convertMidiToCompositorPiece(
     subdivisionsPerGolpe,
     tonalidadComposicion,
     tracks: [
-      createDefaultTrack("bateria", true, gridSteps),
-      createDefaultTrack("guitarra", true, gridSteps),
-      createDefaultTrack("piano", true, gridSteps),
-      createDefaultTrack("viento", false, gridSteps),
+      createEmptyCompositorTrack("bateria", true),
+      createEmptyCompositorTrack("guitarra", true),
+      createEmptyCompositorTrack("piano", true),
+      createEmptyCompositorTrack("viento", true),
     ].map((track) => ({
       ...track,
-      events: [],
       enabled: selectedLayers.includes(track.instrumentId),
     })),
   };

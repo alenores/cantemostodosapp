@@ -50,7 +50,7 @@ export default function HomeHubDestinations() {
           label={HUB_DESTINATION_INDIVIDUAL_LABEL}
           icon={Music2}
           iconColor="var(--accent)"
-          ariaLabel="Cantar individualmente con letra y cola"
+          ariaLabel="Cantar individualmente con letra y fila"
           onClick={() => navigateWithProgress("/individual")}
           cta={
             <span className="w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm font-bold text-white">

@@ -56,7 +56,7 @@ export default function ColaPanelHeader({
         {onClose ? (
           <TapButton
             type="button"
-            aria-label="Cerrar cola"
+            aria-label="Cerrar fila"
             onClick={onClose}
             className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-muted/70 active:text-text-secondary"
           >

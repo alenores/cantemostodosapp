@@ -4,10 +4,14 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { CompositorCommunityLibrary } from "@/components/ui/compositor/CompositorCommunityLibrary";
 import { CompositorCyclesLibrary } from "@/components/ui/compositor/CompositorCyclesLibrary";
 import { CompositorEditor } from "@/components/ui/compositor/CompositorEditor";
-import { CompositorListenView } from "@/components/ui/compositor/CompositorListenView";
+import { CompositorEditorStatusBar } from "@/components/ui/compositor/CompositorEditorStatusBar";
+import { CompositorCycleNameField } from "@/components/ui/compositor/CompositorCycleNameField";
 import { CompositorMidiCropStep } from "@/components/ui/compositor/CompositorMidiCropStep";
 import { CompositorMidiReview } from "@/components/ui/compositor/CompositorMidiReview";
 import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
+import {
+  TOOL_MODAL_MOBILE_GUTTER_CLASS,
+} from "@/components/ui/ToolModalSections";
 import { ToolPresentationRoot } from "@/components/ui/ToolPresentationRoot";
 import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
@@ -15,21 +19,24 @@ import { useCompositorCommunityCycles } from "@/hooks/useCompositorCommunityCycl
 import type { UseCompositorResult } from "@/hooks/useCompositor";
 import { useCompositorMidiImport } from "@/hooks/useCompositorMidiImport";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
-import type { CompositorInstrumentId } from "@/lib/compositor";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import {
+  formatTrackOverflowDetails,
+  pieceHasTrackOverflow,
+  type CompositorInstrumentId,
+} from "@/lib/compositor";
 import { buildCropPreviewPiece } from "@/lib/compositor-midi";
 import {
   COMPOSITOR_CONFIRM_CANCELAR_IMPORT_MIDI,
   COMPOSITOR_CONFIRM_LEAVE_EDITOR_MESSAGE,
   COMPOSITOR_LABEL_COMUNIDAD,
   COMPOSITOR_LABEL_COMPOSITOR,
-  COMPOSITOR_LABEL_EDITANDO_CICLO,
   COMPOSITOR_LABEL_MIS_CICLOS,
-  COMPOSITOR_LABEL_NUEVO_CICLO_SIN_GUARDAR,
   COMPOSITOR_LABEL_REVISION_MIDI,
   COMPOSITOR_LABEL_RECORTE_MIDI,
-  COMPOSITOR_TAB_PRACTICAR,
+  COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD,
 } from "@/lib/ritmo-terminologia";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CompositorLibraryTab = "mine" | "community";
 
@@ -70,6 +77,9 @@ export default function CompositorModal({
   updateTrackEvent,
   removeTrackEvent,
   toggleTrack,
+  toggleListenTrack,
+  resetListenPlaybackLayers,
+  listenMutedTrackIds,
   tapTempo,
   start,
   previewActiveTrack,
@@ -99,10 +109,21 @@ export default function CompositorModal({
   presentation = "modal",
 }: CompositorModalProps) {
   const isPage = isToolPagePresentation(presentation);
+  const isDesktop = useIsDesktop();
+  const configLocked = isPlaying || isPreviewingTrack;
+  const trackOverflowWarning = useMemo(() => {
+    if (!pieceHasTrackOverflow(piece)) {
+      return null;
+    }
+
+    return COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD(
+      formatTrackOverflowDetails(piece),
+    );
+  }, [piece]);
   const [libraryTab, setLibraryTab] = useState<CompositorLibraryTab>("mine");
   const [editorOpen, setEditorOpen] = useState(false);
-  const [listenOpen, setListenOpen] = useState(false);
-  const [listenCycleName, setListenCycleName] = useState("");
+  const [draftCycleName, setDraftCycleName] = useState("");
+  const [listeningCycleId, setListeningCycleId] = useState<string | null>(null);
   const [leaveEditorConfirmOpen, setLeaveEditorConfirmOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [cancelMidiConfirmOpen, setCancelMidiConfirmOpen] = useState(false);
@@ -127,8 +148,7 @@ export default function CompositorModal({
     if (open) {
       setLibraryTab("mine");
       setEditorOpen(false);
-      setListenOpen(false);
-      setListenCycleName("");
+      setListeningCycleId(null);
       setLeaveEditorConfirmOpen(false);
       setCloseConfirmOpen(false);
       setCancelMidiConfirmOpen(false);
@@ -144,7 +164,15 @@ export default function CompositorModal({
     }
   }, [inMidiCrop, stop]);
 
-  useHardwareBack(open && (editorOpen || listenOpen || inMidiImport), () => {
+  useEffect(() => {
+    if (!editorOpen) {
+      return;
+    }
+
+    setDraftCycleName(activeCycle?.nombre ?? "");
+  }, [editorOpen, activeCycle?.id, activeCycle?.nombre]);
+
+  useHardwareBack(open && (editorOpen || listeningCycleId !== null || inMidiImport), () => {
     if (inMidiReview) {
       midiImport.backToCrop();
       return;
@@ -155,8 +183,8 @@ export default function CompositorModal({
       return;
     }
 
-    if (listenOpen) {
-      closeListenSession();
+    if (listeningCycleId !== null) {
+      closeListeningSession();
       return;
     }
 
@@ -169,19 +197,39 @@ export default function CompositorModal({
 
   function beginNewCycleSession() {
     stop();
+
+    if (listeningCycleId !== null) {
+      resetListenPlaybackLayers();
+      setListeningCycleId(null);
+    }
+
+    clearActiveCycle();
     resetPiece();
-    setListenOpen(false);
+    setDraftCycleName("");
     setEditorOpen(true);
   }
 
   function openEditCycleSession(cycleId: string) {
     stop();
     loadCycle(cycleId);
-    setListenOpen(false);
+    closeListeningSession();
     setEditorOpen(true);
   }
 
-  function openListenCycleSession(cycleId: string) {
+  function closeListeningSession() {
+    stop();
+    resetListenPlaybackLayers();
+    clearActiveCycle();
+    resetPiece();
+    setListeningCycleId(null);
+  }
+
+  function toggleListenCycleSession(cycleId: string) {
+    if (listeningCycleId === cycleId) {
+      closeListeningSession();
+      return;
+    }
+
     const cycle = savedCycles.find((entry) => entry.id === cycleId);
 
     if (!cycle) {
@@ -190,21 +238,12 @@ export default function CompositorModal({
 
     stop();
     loadCycle(cycleId);
-    setListenCycleName(cycle.nombre);
     setEditorOpen(false);
-    setListenOpen(true);
-  }
-
-  function closeListenSession() {
-    stop();
-    clearActiveCycle();
-    resetPiece();
-    setListenOpen(false);
-    setListenCycleName("");
+    setListeningCycleId(cycleId);
   }
 
   function requestLibraryTabChange(nextTab: CompositorLibraryTab) {
-    if (nextTab === libraryTab || editorOpen || listenOpen || inMidiImport) {
+    if (nextTab === libraryTab || editorOpen || listeningCycleId !== null || inMidiImport) {
       return;
     }
 
@@ -296,8 +335,14 @@ export default function CompositorModal({
     setEditorOpen(false);
   }
 
+  function handleDiscardCycleChanges() {
+    discardCycleChanges();
+    setDraftCycleName(activeCycle?.nombre ?? "");
+  }
+
   function confirmLeaveEditor() {
     discardCycleChanges();
+    setDraftCycleName("");
     setEditorOpen(false);
     setLeaveEditorConfirmOpen(false);
   }
@@ -323,17 +368,51 @@ export default function CompositorModal({
     onClose();
   }
 
-  const modalTitle = listenOpen
-    ? listenCycleName || COMPOSITOR_TAB_PRACTICAR
-    : editorOpen
-    ? activeCycle
-      ? COMPOSITOR_LABEL_EDITANDO_CICLO(activeCycle.nombre)
-      : COMPOSITOR_LABEL_NUEVO_CICLO_SIN_GUARDAR
-    : inMidiReview
+  const modalTitle = inMidiReview
       ? COMPOSITOR_LABEL_REVISION_MIDI
       : inMidiCrop
         ? COMPOSITOR_LABEL_RECORTE_MIDI
         : COMPOSITOR_LABEL_COMPOSITOR;
+
+  const useEditorHeaderToolbar = editorOpen && isDesktop;
+
+  const editorHeaderContent = editorOpen ? (
+    useEditorHeaderToolbar ? (
+      <CompositorEditorStatusBar
+        variant="header"
+        piece={piece}
+        disabled={configLocked}
+        isLoggedIn={isLoggedIn}
+        online={online}
+        activeCycle={activeCycle}
+        isPieceModifiedFromBaseline={isPieceModifiedFromBaseline}
+        cyclesBusy={cyclesBusy}
+        cyclesError={cyclesError}
+        cyclesNotice={cyclesNotice}
+        editorNotice={editorNotice}
+        trackOverflowWarning={trackOverflowWarning}
+        cycleName={draftCycleName}
+        onCycleNameChange={setDraftCycleName}
+        onSaveCurrentCycle={saveCurrentCycle}
+        onUpdateActiveCycle={updateActiveCycle}
+        onDiscardChanges={handleDiscardCycleChanges}
+        onSetCyclePublic={setCyclePublic}
+        onDeleteCycle={deleteCycle}
+        onCycleDeleted={() => {
+          setEditorOpen(false);
+        }}
+        onReset={resetPiece}
+      />
+    ) : (
+      <CompositorCycleNameField
+        id="compositor-titulo"
+        value={draftCycleName}
+        mode={activeCycle ? "edit" : "create"}
+        disabled={configLocked}
+        onChange={setDraftCycleName}
+      />
+    )
+  ) : null;
 
   return (
     <ToolPresentationRoot
@@ -387,22 +466,20 @@ export default function CompositorModal({
     >
       <ToolModalHeader
         titleId="compositor-titulo"
-        title={modalTitle}
+        title={editorOpen ? undefined : modalTitle}
+        headerContent={editorHeaderContent}
+        density={editorOpen ? "compact" : "default"}
         closeAriaLabel="Cerrar compositor"
         onClose={requestClose}
         onBack={
-          listenOpen
-            ? closeListenSession
-            : editorOpen
+          editorOpen
             ? requestLeaveEditor
             : inMidiImport
               ? requestMidiBack
               : undefined
         }
         backAriaLabel={
-          listenOpen
-            ? "Volver a mis ciclos"
-            : inMidiReview
+          inMidiReview
             ? "Volver al recorte"
             : inMidiCrop
               ? "Cancelar importación"
@@ -411,8 +488,10 @@ export default function CompositorModal({
         showClose={!isPage}
       />
 
-        {!editorOpen && !listenOpen && !inMidiImport ? (
-          <div className="shrink-0 border-b border-border bg-bg-dark px-4 pb-3 pt-1">
+        {!editorOpen && !inMidiImport ? (
+          <div
+            className={`shrink-0 border-b border-border bg-bg-dark pb-3 pt-1 ${TOOL_MODAL_MOBILE_GUTTER_CLASS} lg:px-4`}
+          >
             <div
               className="tool-segmented-control tool-segmented-control--inline"
               role="tablist"
@@ -449,25 +528,16 @@ export default function CompositorModal({
         ) : null}
 
         <div
-          data-tool-vertical-scroll=""
-          className="flex min-h-0 flex-1 flex-col touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-4 lg:px-6 lg:py-5"
+          data-tool-vertical-scroll={editorOpen && isDesktop ? undefined : ""}
+          className={`flex min-h-0 flex-1 flex-col ${
+            editorOpen && isDesktop
+              ? "overflow-hidden px-4 py-2 lg:px-5 lg:py-2"
+              : editorOpen
+                ? `overflow-hidden ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-2`
+                : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4 lg:py-5`
+          }`}
         >
-          {listenOpen ? (
-            <CompositorListenView
-              piece={piece}
-              activeTrackId={activeTrackId}
-              selectedEventId={selectedEventId}
-              bpm={bpm}
-              tonalidadComposicion={tonalidadComposicion}
-              isPlaying={isPlaying}
-              cycleProgress={cycleProgress}
-              onSetBpm={setBpm}
-              onSetTonalidadComposicion={setTonalidadComposicion}
-              onToggleTrack={toggleTrack}
-              onStart={() => void start()}
-              onStop={stop}
-            />
-          ) : editorOpen ? (
+          {editorOpen ? (
             <CompositorEditor
               piece={piece}
               activeTrackId={activeTrackId}
@@ -488,10 +558,14 @@ export default function CompositorModal({
               cyclesError={cyclesError}
               cyclesNotice={cyclesNotice}
               editorNotice={editorNotice}
-              suggestCycleName={suggestCycleName}
+              cycleName={draftCycleName}
+              onCycleNameChange={setDraftCycleName}
               onSetActiveTrackId={setActiveTrackId}
               onSetSelectedEventId={setSelectedEventId}
               onToggleTrack={toggleTrack}
+              onToggleListenTrack={toggleListenTrack}
+              onEnterListen={resetListenPlaybackLayers}
+              listenMutedTrackIds={listenMutedTrackIds}
               onSetBpm={setBpm}
               onSetCycleGolpes={setCycleGolpes}
               onSetCycleBeatDurationAtSlot={setCycleBeatDurationAtSlot}
@@ -507,7 +581,7 @@ export default function CompositorModal({
               onApplyDrumPattern={applyDrumPattern}
               onSaveCurrentCycle={saveCurrentCycle}
               onUpdateActiveCycle={updateActiveCycle}
-              onDiscardChanges={discardCycleChanges}
+              onDiscardChanges={handleDiscardCycleChanges}
               isLoggedIn={isLoggedIn}
               online={online}
               onSetCyclePublic={setCyclePublic}
@@ -565,11 +639,26 @@ export default function CompositorModal({
               cyclesLoading={cyclesLoading}
               cyclesBusy={cyclesBusy || midiImport.loading}
               cyclesError={cyclesError ?? midiImport.error}
+              listeningCycleId={listeningCycleId}
+              playbackPiece={piece}
+              activeTrackId={activeTrackId}
+              selectedEventId={selectedEventId}
+              bpm={bpm}
+              tonalidadComposicion={tonalidadComposicion}
+              isPlaying={isPlaying}
+              cycleProgress={cycleProgress}
               onRefreshCycles={refreshCycles}
               onBeginNewCycle={beginNewCycleSession}
               onImportMidiFile={handleImportMidiFile}
-              onListenCycle={openListenCycleSession}
+              onToggleListenCycle={toggleListenCycleSession}
               onEditCycle={openEditCycleSession}
+              onSetBpm={setBpm}
+              onSetTonalidadComposicion={setTonalidadComposicion}
+              onToggleListenTrack={toggleListenTrack}
+              onEnterListen={resetListenPlaybackLayers}
+              listenMutedTrackIds={listenMutedTrackIds}
+              onStartPlayback={() => void start()}
+              onStopPlayback={stop}
             />
           ) : (
             <CompositorCommunityLibrary

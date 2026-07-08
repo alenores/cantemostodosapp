@@ -206,7 +206,7 @@ function MiCancionItem({
           ) : null}
         </div>
         <TapButton
-          aria-label={`Agregar ${cancion.nombre} a la cola`}
+          aria-label={`Agregar ${cancion.nombre} a la fila`}
           disabled={colaDeshabilitada}
           onClick={(event) => {
             event.stopPropagation();
@@ -473,12 +473,12 @@ export default function MisCancionesPageClient() {
         await cola.agregarALista(
           usuarioCancionToCancionInput(cancion, letraTexto),
         );
-        showSnackbar("Agregada a la cola");
+        showSnackbar("Agregada a la fila");
       } catch (error) {
         setActionError(
           error instanceof Error
             ? error.message
-            : "No se pudo agregar a la cola",
+            : "No se pudo agregar a la fila",
         );
       }
     },

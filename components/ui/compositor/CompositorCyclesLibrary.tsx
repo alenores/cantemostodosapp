@@ -1,21 +1,16 @@
 "use client";
 
+import { CompositorCycleCard } from "@/components/ui/compositor/CompositorCycleCard";
 import { CompositorMidiImportButton } from "@/components/ui/compositor/CompositorMidiImportButton";
-import { CompositorCycleLayerIcons } from "@/components/ui/compositor/CompositorCycleLayerIcons";
 import { TapButton } from "@/components/ui/TapFeedback";
+import type { CompositorInstrumentId, CompositorPiece } from "@/lib/compositor";
 import type { CompositorCycle } from "@/lib/compositor-cycles";
-import { formatCompositorCycleSummary } from "@/lib/compositor";
+import type { NotaIndex } from "@/lib/cifrado";
 import {
-  COMPOSITOR_LABEL_COMPARTIDO_COMUNIDAD,
-  COMPOSITOR_LABEL_EDITAR_CICLO,
-  COMPOSITOR_LABEL_ESCUCHAR_CICLO,
   COMPOSITOR_LABEL_MIS_CICLOS,
   COMPOSITOR_LABEL_NUEVO_CICLO,
 } from "@/lib/ritmo-terminologia";
-import { Pencil, Play, Plus, RefreshCw } from "lucide-react";
-
-const CYCLE_CARD_ACTION_BUTTON_CLASS =
-  "flex size-7 items-center justify-center rounded-full border border-compositor-config/35 bg-compositor-config/10 text-compositor-config disabled:opacity-40";
+import { Plus, RefreshCw } from "lucide-react";
 
 type CompositorCyclesLibraryProps = {
   isLoggedIn: boolean;
@@ -24,11 +19,26 @@ type CompositorCyclesLibraryProps = {
   cyclesLoading: boolean;
   cyclesBusy: boolean;
   cyclesError: string | null;
+  listeningCycleId: string | null;
+  playbackPiece: CompositorPiece;
+  activeTrackId: CompositorInstrumentId;
+  selectedEventId: string | null;
+  bpm: number;
+  tonalidadComposicion: NotaIndex;
+  isPlaying: boolean;
+  cycleProgress: number | null;
+  listenMutedTrackIds: CompositorInstrumentId[];
   onRefreshCycles: () => Promise<void>;
   onBeginNewCycle: () => void;
   onImportMidiFile?: (file: File) => void | Promise<void>;
-  onListenCycle: (cycleId: string) => void;
+  onToggleListenCycle: (cycleId: string) => void;
   onEditCycle: (cycleId: string) => void;
+  onSetBpm: (value: number) => void;
+  onSetTonalidadComposicion: (value: NotaIndex) => void;
+  onToggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
+  onEnterListen: () => void;
+  onStartPlayback: () => void;
+  onStopPlayback: () => void;
 };
 
 export function CompositorCyclesLibrary({
@@ -38,11 +48,26 @@ export function CompositorCyclesLibrary({
   cyclesLoading,
   cyclesBusy,
   cyclesError,
+  listeningCycleId,
+  playbackPiece,
+  activeTrackId,
+  selectedEventId,
+  bpm,
+  tonalidadComposicion,
+  isPlaying,
+  cycleProgress,
+  listenMutedTrackIds,
   onRefreshCycles,
   onBeginNewCycle,
   onImportMidiFile,
-  onListenCycle,
+  onToggleListenCycle,
   onEditCycle,
+  onSetBpm,
+  onSetTonalidadComposicion,
+  onToggleListenTrack,
+  onEnterListen,
+  onStartPlayback,
+  onStopPlayback,
 }: CompositorCyclesLibraryProps) {
   const controlsDisabled = cyclesBusy;
 
@@ -116,49 +141,29 @@ export function CompositorCyclesLibrary({
         ) : null}
 
         {savedCycles.map((cycle) => (
-          <div
+          <CompositorCycleCard
             key={cycle.id}
-            className="rounded-lg border border-border bg-bg-darker/70 px-2.5 py-1.5"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <p className="truncate text-xs font-semibold text-text-primary">
-                    {cycle.nombre}
-                  </p>
-                  <CompositorCycleLayerIcons piece={cycle.piece} compact />
-                </div>
-                <p className="mt-0.5 truncate text-[9px] text-text-muted">
-                  {formatCompositorCycleSummary(cycle.piece)}
-                  {" · "}
-                  {cycle.storage === "remote" ? "Nube" : "Local"}
-                  {cycle.esPublico ? ` · ${COMPOSITOR_LABEL_COMPARTIDO_COMUNIDAD}` : ""}
-                </p>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-1">
-                <TapButton
-                  type="button"
-                  disabled={controlsDisabled}
-                  onClick={() => onListenCycle(cycle.id)}
-                  aria-label={`${COMPOSITOR_LABEL_ESCUCHAR_CICLO} ${cycle.nombre}`}
-                  className={CYCLE_CARD_ACTION_BUTTON_CLASS}
-                >
-                  <Play className="size-3.5" aria-hidden="true" />
-                </TapButton>
-
-                <TapButton
-                  type="button"
-                  disabled={controlsDisabled}
-                  onClick={() => onEditCycle(cycle.id)}
-                  aria-label={`${COMPOSITOR_LABEL_EDITAR_CICLO} ${cycle.nombre}`}
-                  className={CYCLE_CARD_ACTION_BUTTON_CLASS}
-                >
-                  <Pencil className="size-3.5" aria-hidden="true" />
-                </TapButton>
-              </div>
-            </div>
-          </div>
+            cycle={cycle}
+            controlsDisabled={controlsDisabled}
+            isExpanded={listeningCycleId === cycle.id}
+            isPlaybackActive={listeningCycleId === cycle.id}
+            piece={playbackPiece}
+            activeTrackId={activeTrackId}
+            selectedEventId={selectedEventId}
+            bpm={bpm}
+            tonalidadComposicion={tonalidadComposicion}
+            isPlaying={isPlaying}
+            cycleProgress={cycleProgress}
+            listenMutedTrackIds={listenMutedTrackIds}
+            onToggleListen={() => onToggleListenCycle(cycle.id)}
+            onEdit={() => onEditCycle(cycle.id)}
+            onSetBpm={onSetBpm}
+            onSetTonalidadComposicion={onSetTonalidadComposicion}
+            onToggleListenTrack={onToggleListenTrack}
+            onEnterListen={onEnterListen}
+            onStart={onStartPlayback}
+            onStop={onStopPlayback}
+          />
         ))}
       </div>
     </div>

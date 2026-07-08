@@ -2,6 +2,7 @@
 
 import {
   addCompositorTrackEvent,
+  applyCompositorListenMutes,
   cloneCompositorPiece,
   COMPOSITOR_MAX_EVENTS_PER_TRACK,
   compositorPiecesEqualContent,
@@ -116,6 +117,9 @@ export type UseCompositorResult = {
   ) => void;
   removeTrackEvent: (eventId: string, instrumentId?: CompositorInstrumentId) => void;
   toggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
+  toggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
+  resetListenPlaybackLayers: () => void;
+  listenMutedTrackIds: CompositorInstrumentId[];
   tapTempo: () => void;
   start: () => Promise<void>;
   previewActiveTrack: () => Promise<void>;
@@ -156,8 +160,12 @@ export function useCompositor({
     createDefaultCompositorPiece,
   );
   const [editorNotice, setEditorNotice] = useState<string | null>(null);
+  const [listenMutedTrackIds, setListenMutedTrackIds] = useState<
+    CompositorInstrumentId[]
+  >([]);
 
   const pieceRef = useRef(piece);
+  const listenMutedTrackIdsRef = useRef(listenMutedTrackIds);
   const isPlayingRef = useRef(false);
   const isPreviewingRef = useRef(false);
   const isPreviewingCropRef = useRef(false);
@@ -169,6 +177,7 @@ export function useCompositor({
   const samplesReadyRef = useRef(false);
 
   pieceRef.current = piece;
+  listenMutedTrackIdsRef.current = listenMutedTrackIds;
   isPlayingRef.current = isPlaying;
 
   const activeTrack = getCompositorTrack(piece, activeTrackId);
@@ -340,16 +349,37 @@ export function useCompositor({
     setCycleProgress(progress);
   }, []);
 
+  const getPlaybackPiece = useCallback(() => {
+    return applyCompositorListenMutes(
+      pieceRef.current,
+      new Set(listenMutedTrackIdsRef.current),
+    );
+  }, []);
+
   const start = useCallback(async () => {
     if (isPreviewingRef.current) {
       stop();
     }
 
     try {
-      await prepareSamplesForPlayback();
+      const playbackPiece = getPlaybackPiece();
+      setSamplesLoading(true);
+
+      try {
+        const audioContext = await ensureAudioContext();
+        const samples = await ensureCompositorSamplesForPiece(
+          audioContext,
+          playbackPiece,
+        );
+        engineRef.current?.stop();
+        engineRef.current = createCompositorEngine(audioContext, samples);
+      } finally {
+        setSamplesLoading(false);
+      }
+
       setCycleProgress(0);
 
-      engineRef.current?.start(pieceRef.current, (progress) => {
+      engineRef.current?.start(playbackPiece, (progress) => {
         handleProgress(progress);
       });
 
@@ -358,7 +388,7 @@ export function useCompositor({
     } catch {
       stop();
     }
-  }, [handleProgress, prepareSamplesForPlayback, stop]);
+  }, [ensureAudioContext, getPlaybackPiece, handleProgress, stop]);
 
   const previewActiveTrack = useCallback(async () => {
     if (isPlayingRef.current) {
@@ -681,6 +711,26 @@ export function useCompositor({
     [restartIfPlaying, updatePiece],
   );
 
+  const resetListenPlaybackLayers = useCallback(() => {
+    setListenMutedTrackIds([]);
+  }, []);
+
+  const toggleListenTrack = useCallback(
+    (instrumentId: CompositorInstrumentId, enabled: boolean) => {
+      setListenMutedTrackIds((current) => {
+        const next = enabled
+          ? current.filter((id) => id !== instrumentId)
+          : current.includes(instrumentId)
+            ? current
+            : [...current, instrumentId];
+
+        return next;
+      });
+      restartIfPlaying();
+    },
+    [restartIfPlaying],
+  );
+
   const tapTempo = useCallback(() => {
     const now = performance.now();
     tapTimestampsRef.current = [...tapTimestampsRef.current, now].slice(-8);
@@ -868,6 +918,9 @@ export function useCompositor({
     updateTrackEvent,
     removeTrackEvent,
     toggleTrack,
+    toggleListenTrack,
+    resetListenPlaybackLayers,
+    listenMutedTrackIds,
     tapTempo,
     start,
     previewActiveTrack,

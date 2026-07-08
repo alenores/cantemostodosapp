@@ -3,6 +3,26 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
+/** Gutter horizontal del cuerpo del modal en móvil (alineado con entrenador vocal). */
+export const TOOL_MODAL_MOBILE_GUTTER_CLASS = "px-3 lg:px-6";
+
+/** Cancela el gutter del modal para usar todo el ancho útil del panel. */
+export const TOOL_MODAL_MOBILE_BLEED_CLASS = "-mx-3 px-3";
+
+export function ToolModalMobileBleed({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`${TOOL_MODAL_MOBILE_BLEED_CLASS} ${className}`.trim()}>
+      {children}
+    </div>
+  );
+}
+
 type ToolModalSectionProps = {
   title?: string;
   subtitle?: string;

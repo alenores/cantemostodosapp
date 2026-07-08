@@ -72,6 +72,7 @@ export default function CancioneroHubToolsLayer({
     setPatternLength: setMetronomoPatternLength,
     setBeatDurationAtSlot: setMetronomoBeatDurationAtSlot,
     setBeatLevelAtSlot: setMetronomoBeatLevelAtSlot,
+    cycleBeatPatternSlot: cycleMetronomoBeatPatternSlot,
     tapTempo: tapMetronomoTempo,
     tapTempoTapCount: metronomoTapTempoTapCount,
     toggleMic: toggleMetronomoMic,
@@ -296,6 +297,7 @@ export default function CancioneroHubToolsLayer({
         onSetPatternLength={setMetronomoPatternLength}
         onSetBeatDurationAtSlot={setMetronomoBeatDurationAtSlot}
         onSetBeatLevelAtSlot={setMetronomoBeatLevelAtSlot}
+        onCycleBeatPatternSlot={cycleMetronomoBeatPatternSlot}
         onTapTempo={tapMetronomoTempo}
         tapTempoTapCount={metronomoTapTempoTapCount}
         onToggleMic={toggleMetronomoMic}

@@ -1,7 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
-import AutoScrollControl from "@/components/home/AutoScrollControl";
+import LecturaBottomControls from "@/components/home/LecturaBottomControls";
 import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
@@ -33,6 +33,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
+import { useLetraZoom } from "@/hooks/useLetraZoom";
 import { parsePresenceState } from "@/lib/presence";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, PresenceUsuario, SesionSala } from "@/types";
@@ -234,6 +235,7 @@ export default function SalaPageShell({
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
+  const [lecturaZoomEligible, setLecturaZoomEligible] = useState(false);
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
@@ -309,6 +311,13 @@ export default function SalaPageShell({
     contentKey: cancionActivaScrollKey,
     embedIframeRef,
   });
+
+  const {
+    level: letraZoomLevel,
+    factor: letraZoomFactor,
+    decrease: decreaseLetraZoom,
+    increase: increaseLetraZoom,
+  } = useLetraZoom(cancionActivaScrollKey);
 
   const presenceBarVisible =
     !modoLectura && online && presenceUsuarios.length > 0;
@@ -705,6 +714,8 @@ export default function SalaPageShell({
               nombreRevealGeneration={cancionNombreRevealGen}
               headerLeading={headerLeading}
               headerAction={headerActions}
+              letraZoomFactor={letraZoomFactor}
+              onLecturaZoomEligibleChange={setLecturaZoomEligible}
               onExpand={
                 !modoLectura && cancionActiva && !disconnected
                   ? handleExpand
@@ -786,12 +797,17 @@ export default function SalaPageShell({
             onAfinador={() => setAfinadorOpen(true)}
           />
 
-          <AutoScrollControl
-            level={autoScrollLevel}
-            enabled={Boolean(cancionActiva)}
+          <LecturaBottomControls
+            showZoom={lecturaZoomEligible}
+            zoomLevel={letraZoomLevel}
+            zoomEnabled={Boolean(cancionActiva)}
+            onZoomDecrease={decreaseLetraZoom}
+            onZoomIncrease={increaseLetraZoom}
+            autoScrollLevel={autoScrollLevel}
+            autoScrollEnabled={Boolean(cancionActiva)}
             fixedRightCss={lecturaFixedRightCss}
-            onAccelerate={accelerateAutoScroll}
-            onDecelerate={decelerateAutoScroll}
+            onAutoScrollAccelerate={accelerateAutoScroll}
+            onAutoScrollDecelerate={decelerateAutoScroll}
           />
         </>
       ) : null}

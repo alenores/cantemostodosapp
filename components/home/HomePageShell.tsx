@@ -1,7 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
-import AutoScrollControl from "@/components/home/AutoScrollControl";
+import LecturaBottomControls from "@/components/home/LecturaBottomControls";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
@@ -11,6 +11,7 @@ import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
+import { useLetraZoom } from "@/hooks/useLetraZoom";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_AVISO_EXIT_MS,
@@ -210,6 +211,7 @@ export default function HomePageShell() {
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
+  const [lecturaZoomEligible, setLecturaZoomEligible] = useState(false);
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
@@ -231,6 +233,13 @@ export default function HomePageShell() {
     contentKey: cancionActivaScrollKey,
     embedIframeRef,
   });
+
+  const {
+    level: letraZoomLevel,
+    factor: letraZoomFactor,
+    decrease: decreaseLetraZoom,
+    increase: increaseLetraZoom,
+  } = useLetraZoom(cancionActivaScrollKey);
 
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
@@ -364,6 +373,8 @@ export default function HomePageShell() {
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
               headerAction={headerActions}
+              letraZoomFactor={letraZoomFactor}
+              onLecturaZoomEligibleChange={setLecturaZoomEligible}
               onExpand={
                 !modoLectura && cola.cancionActiva ? handleExpand : undefined
               }
@@ -438,12 +449,17 @@ export default function HomePageShell() {
             onAfinador={() => setAfinadorOpen(true)}
           />
 
-          <AutoScrollControl
-            level={autoScrollLevel}
-            enabled={Boolean(cola.cancionActiva)}
+          <LecturaBottomControls
+            showZoom={lecturaZoomEligible}
+            zoomLevel={letraZoomLevel}
+            zoomEnabled={Boolean(cola.cancionActiva)}
+            onZoomDecrease={decreaseLetraZoom}
+            onZoomIncrease={increaseLetraZoom}
+            autoScrollLevel={autoScrollLevel}
+            autoScrollEnabled={Boolean(cola.cancionActiva)}
             fixedRightCss={lecturaFixedRightCss}
-            onAccelerate={accelerateAutoScroll}
-            onDecelerate={decelerateAutoScroll}
+            onAutoScrollAccelerate={accelerateAutoScroll}
+            onAutoScrollDecelerate={decelerateAutoScroll}
           />
         </>
       ) : null}

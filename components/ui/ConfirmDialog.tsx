@@ -27,6 +27,7 @@ export default function ConfirmDialog({
 
   return (
     <div
+      data-confirm-dialog=""
       className="fixed inset-0 flex items-center justify-center px-4"
       style={{ zIndex }}
     >

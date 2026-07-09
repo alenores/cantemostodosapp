@@ -1,26 +1,25 @@
 "use client";
 
-import CifradoLecturaSidePanel, {
-  getLecturaPremiumCompasLabel,
-} from "@/components/cifrado/CifradoLecturaSidePanel";
+import CifradoLecturaSidePanel from "@/components/cifrado/CifradoLecturaSidePanel";
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import { useCifradoPlayback } from "@/hooks/useCifradoPlayback";
 import type { CancionCifradoDetalle } from "@/types";
-import type { RefObject } from "react";
+import type { CSSProperties, RefObject } from "react";
 
 type LetraCifradoLecturaShellProps = {
   detalle: CancionCifradoDetalle;
   scrollRef: RefObject<HTMLDivElement | null>;
   scrollEndPadding: string;
+  letraZoomStyle?: CSSProperties;
 };
 
 export default function LetraCifradoLecturaShell({
   detalle,
   scrollRef,
   scrollEndPadding,
+  letraZoomStyle,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
-  const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
   const hasCompases = Boolean(compasConfig?.barras?.length);
 
   const playback = useCifradoPlayback({
@@ -32,7 +31,6 @@ export default function LetraCifradoLecturaShell({
   return (
     <div className="flex h-full min-h-0 min-w-0 w-full flex-col lg:flex-row">
       <CifradoLecturaSidePanel
-        compasLabel={getLecturaPremiumCompasLabel(tipoCompas)}
         showCompasMarkers={hasCompases}
         playing={playback.playing}
         canPlay={playback.canPlay}
@@ -54,6 +52,7 @@ export default function LetraCifradoLecturaShell({
           ref={scrollRef}
           data-cancionero-letra-scroll=""
           className="min-h-0 flex-1 touch-pan-y overscroll-y-contain overflow-y-auto bg-letra-bg lg:rounded-none lg:rounded-r-[12px]"
+          style={letraZoomStyle}
         >
         <LetraCifradoPanel
           detalle={detalle}

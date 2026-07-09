@@ -119,7 +119,7 @@ export const CIFRADO_INTENSIDAD_PATTERN_FLUID_CLASS =
   "flex w-full min-w-0 items-end justify-center gap-0.5 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-1.5";
 
 export const CIFRADO_EDITOR_LINE_FAB_CLASS =
-  "mt-2 mb-3 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-2 shadow-sm";
+  "relative z-[30] mt-2 mb-3 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-2 shadow-sm";
 
 export const CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS =
   "flex items-center gap-1.5 rounded-full border border-border bg-bg-dark px-3 py-1.5 text-xs font-medium text-text-secondary";
@@ -132,3 +132,14 @@ export const CIFRADO_EDITOR_LINE_FAB_DELETE_SECONDARY_CLASS =
 
 export const CIFRADO_EDITOR_LINE_FAB_DIVIDER_CLASS =
   "mx-0.5 h-5 w-px shrink-0 self-center bg-white/20";
+
+/** Casillas de compás a la derecha de la letra: ancho fijo (1ch). Sin flex-1. */
+export const CIFRADO_LINE_LANE_SLOT_CLASS = "inline-block min-w-[1ch]";
+
+export const CIFRADO_LINE_LANE_CONTAINER_CLASS = "inline-flex min-w-0 flex-1";
+
+/** @deprecated Solo compatibilidad visual; usar CIFRADO_LINE_LANE_* */
+export const CIFRADO_COMPAS_EXTENSION_SLOT_CLASS = CIFRADO_LINE_LANE_SLOT_CLASS;
+
+/** @deprecated Solo compatibilidad visual; usar CIFRADO_LINE_LANE_* */
+export const CIFRADO_COMPAS_EXTENSION_CONTAINER_CLASS = CIFRADO_LINE_LANE_CONTAINER_CLASS;

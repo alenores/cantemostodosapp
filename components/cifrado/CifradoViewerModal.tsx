@@ -573,6 +573,7 @@ export default function CifradoViewerModal({
                   letra={cancion.letra ?? ""}
                   acordes={cifradoDisplay.acordes}
                   barras={barras}
+                  lineTerminalOffsets={compasConfig?.lineTerminalOffsets}
                   tipoCompas={tipoCompas}
                   showCompas={showCompas}
                   activeBeatAnchors={activeBeatAnchors}

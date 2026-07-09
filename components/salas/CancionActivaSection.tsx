@@ -30,7 +30,16 @@ import {
   getLetraTextScrollEndPadding,
 } from "@/lib/sala-layout";
 import { Star } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { getLetraZoomStyle } from "@/lib/letra-zoom";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 function CancionActivaHeader({
   cancionNombre,
@@ -120,6 +129,8 @@ type CancionActivaSectionProps = {
   headerLeading?: ReactNode;
   headerAction?: ReactNode;
   onExpand?: () => void;
+  letraZoomFactor?: number;
+  onLecturaZoomEligibleChange?: (eligible: boolean) => void;
 };
 
 function LetraEmptySheet({ modoLectura }: { modoLectura: boolean }) {
@@ -151,6 +162,8 @@ export default function CancionActivaSection({
   headerLeading = null,
   headerAction = null,
   onExpand,
+  letraZoomFactor = 1,
+  onLecturaZoomEligibleChange,
 }: CancionActivaSectionProps) {
   const letraScrollRefLocal = useRef<HTMLDivElement>(null);
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
@@ -291,6 +304,22 @@ export default function CancionActivaSection({
       hasCancion &&
       (esperandoCifrado || showCifradoAvanzado));
 
+  const lecturaZoomEligible =
+    modoLectura &&
+    showLetraSheet &&
+    !waitingForExtract &&
+    !esperandoCifrado &&
+    (showTexto || showCifradoAvanzado);
+
+  useEffect(() => {
+    onLecturaZoomEligibleChange?.(lecturaZoomEligible);
+  }, [lecturaZoomEligible, onLecturaZoomEligibleChange]);
+
+  const letraZoomStyle: CSSProperties | undefined =
+    modoLectura && lecturaZoomEligible
+      ? getLetraZoomStyle(letraZoomFactor)
+      : undefined;
+
   if (showLetraSheet) {
     const scrollEndPadding = modoLectura
       ? "calc(16px + env(safe-area-inset-bottom, 0px))"
@@ -337,6 +366,7 @@ export default function CancionActivaSection({
               detalle={cifradoDetalle}
               scrollRef={letraScrollRef}
               scrollEndPadding={scrollEndPadding}
+              letraZoomStyle={letraZoomStyle}
             />
           ) : (
             <div
@@ -347,6 +377,7 @@ export default function CancionActivaSection({
                   ? "overflow-y-auto rounded-[12px]"
                   : "overflow-y-auto"
               }`}
+              style={letraZoomStyle}
             >
               {esperandoCifrado ? (
                 <div

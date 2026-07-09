@@ -119,6 +119,13 @@ export type CompasConfig = {
   compositorPresetId?: TipoCompas;
   /** 2 = cada barra marca el inicio de un compás (movible). Ausente/1 = formato legacy. */
   barrasVersion?: 1 | 2;
+  /** Cierre fijo del último compás por renglón (decisión del usuario). */
+  lineTerminalOffsets?: LineTerminalOffset[];
+};
+
+export type LineTerminalOffset = {
+  lineIndex: number;
+  charOffset: number;
 };
 
 /** Mínimo charOffset de compás: inicio del renglón (primer carácter). */
@@ -126,15 +133,193 @@ export function clampCompasCharOffset(charOffset: number): number {
   return Math.max(0, Math.round(charOffset));
 }
 
-/** Casillas instrumentales a la derecha de la letra en el editor. */
-export const COMPAS_EXTENSION_SLOT_COUNT = 24;
+/** Máximo de ciclos al colocar compases de una vez en un renglón. */
+export const MAX_COMPAS_PLACEMENT_CYCLE_COUNT = 128;
 
-export function getCompasExtensionStart(textLength: number): number {
-  return textLength === 0 ? 1 : textLength;
+/** Ancho aproximado de cada casilla horizontal del renglón (px). */
+export const LINE_LANE_SLOT_WIDTH_PX = 8;
+
+/** Mínimo de casillas en el carril libre de un renglón. */
+export const LINE_LANE_MIN_SLOT_COUNT = 80;
+
+/** Primera casilla del carril libre a la derecha de la letra (o 0 si no hay texto). */
+export function getLineLaneStart(textLength: number): number {
+  return textLength > 0 ? textLength : 0;
 }
 
-export function getCompasExtensionEndOffset(textLength: number): number {
-  return getCompasExtensionStart(textLength) + COMPAS_EXTENSION_SLOT_COUNT - 1;
+/** Casillas del carril libre según el ancho visible del renglón. */
+export function computeLineLaneSlotCount(
+  containerWidthPx: number,
+  textLength: number,
+): number {
+  const totalSlots = Math.max(
+    LINE_LANE_MIN_SLOT_COUNT,
+    Math.floor(containerWidthPx / LINE_LANE_SLOT_WIDTH_PX),
+  );
+
+  if (textLength <= 0) {
+    return totalSlots;
+  }
+
+  return Math.max(8, totalSlots - textLength);
+}
+
+/** Última casilla válida del renglón (letra + carril libre). */
+export function getLineMaxCharOffset(
+  textLength: number,
+  laneSlotCount: number,
+): number {
+  return Math.max(0, getLineLaneStart(textLength) + laneSlotCount - 1);
+}
+
+export function clampCompasCharOffsetToLane(
+  charOffset: number,
+  textLength: number,
+  laneSlotCount: number,
+): number {
+  const maxOffset = getLineMaxCharOffset(textLength, laneSlotCount);
+
+  return Math.min(Math.max(0, Math.round(charOffset)), maxOffset);
+}
+
+export function getLineTerminalOffset(
+  config: CompasConfig,
+  lineIndex: number,
+): number | undefined {
+  return config.lineTerminalOffsets?.find(
+    (entry) => entry.lineIndex === lineIndex,
+  )?.charOffset;
+}
+
+export function setLineTerminalOffset(
+  config: CompasConfig,
+  lineIndex: number,
+  charOffset: number,
+): CompasConfig {
+  const clamped = clampCompasCharOffset(charOffset);
+  const rest = (config.lineTerminalOffsets ?? []).filter(
+    (entry) => entry.lineIndex !== lineIndex,
+  );
+
+  return {
+    ...config,
+    lineTerminalOffsets: [...rest, { lineIndex, charOffset: clamped }].sort(
+      (a, b) => a.lineIndex - b.lineIndex,
+    ),
+  };
+}
+
+export function removeLineTerminalOffset(
+  config: CompasConfig,
+  lineIndex: number,
+): CompasConfig {
+  const rest = (config.lineTerminalOffsets ?? []).filter(
+    (entry) => entry.lineIndex !== lineIndex,
+  );
+
+  if (rest.length === (config.lineTerminalOffsets?.length ?? 0)) {
+    return config;
+  }
+
+  return {
+    ...config,
+    lineTerminalOffsets: rest.length > 0 ? rest : undefined,
+  };
+}
+
+export function computeDefaultLineTerminalCharOffset(
+  lineBarras: ReadonlyArray<BarraCompas>,
+  contentEndOffset: number,
+  textLength: number,
+): number {
+  if (lineBarras.length === 0) {
+    return contentEndOffset;
+  }
+
+  const sorted = [...lineBarras].sort((a, b) => a.charOffset - b.charOffset);
+
+  return resolveCompasSegmentEndCharOffset(
+    sorted,
+    sorted.length - 1,
+    contentEndOffset,
+    textLength,
+  );
+}
+
+export function resolveLineTerminalCharOffset(
+  config: CompasConfig,
+  lineIndex: number,
+  lineBarras: ReadonlyArray<BarraCompas>,
+  contentEndOffset: number,
+  textLength: number,
+): number | undefined {
+  if (lineBarras.length === 0) {
+    return undefined;
+  }
+
+  const stored = getLineTerminalOffset(config, lineIndex);
+
+  if (stored !== undefined) {
+    return stored;
+  }
+
+  return undefined;
+}
+
+export function ensureLineTerminalOffset(
+  config: CompasConfig,
+  _lineIndex: number,
+  _contentEndOffset: number,
+  _textLength: number,
+): CompasConfig {
+  return config;
+}
+
+export function resetLineTerminalOffset(
+  config: CompasConfig,
+  lineIndex: number,
+  contentEndOffset: number,
+  textLength: number,
+): CompasConfig {
+  const lineBarras = config.barras.filter((barra) => barra.lineIndex === lineIndex);
+
+  if (lineBarras.length === 0) {
+    return removeLineTerminalOffset(config, lineIndex);
+  }
+
+  const defaultTerminal = computeDefaultLineTerminalCharOffset(
+    lineBarras,
+    contentEndOffset,
+    textLength,
+  );
+
+  return setLineTerminalOffset(config, lineIndex, defaultTerminal);
+}
+
+export function initializeMissingLineTerminalOffsets(
+  config: CompasConfig,
+  _lines: readonly string[],
+  _cifrado: CifradoData,
+): CompasConfig {
+  return config;
+}
+
+export function moveLineTerminalOffset(
+  config: CompasConfig,
+  lineIndex: number,
+  toOffset: number,
+): CompasConfig {
+  const lineBarras = config.barras
+    .filter((barra) => barra.lineIndex === lineIndex)
+    .sort((a, b) => a.charOffset - b.charOffset);
+  const lastBarra = lineBarras[lineBarras.length - 1];
+  const minOffset = lastBarra ? lastBarra.charOffset + 1 : 0;
+
+  return setLineTerminalOffset(
+    config,
+    lineIndex,
+    Math.max(minOffset, clampCompasCharOffset(toOffset)),
+  );
 }
 
 /** Fin del tramo visual de un compás cuando no hay otra barra a la derecha. */
@@ -143,6 +328,7 @@ export function resolveCompasSegmentEndCharOffset(
   barraIndex: number,
   contentEndOffset: number,
   textLength: number,
+  terminalCharOffset?: number,
 ): number {
   const barra = sortedBarras[barraIndex]!;
 
@@ -150,27 +336,11 @@ export function resolveCompasSegmentEndCharOffset(
     return sortedBarras[barraIndex + 1]!.charOffset;
   }
 
-  if (sortedBarras.length === 1) {
-    const end = Math.max(contentEndOffset, barra.charOffset);
-
-    if (end > barra.charOffset) {
-      return end;
-    }
-
-    return getCompasExtensionEndOffset(textLength);
+  if (terminalCharOffset !== undefined) {
+    return clampCompasCharOffset(terminalCharOffset);
   }
 
-  if (barraIndex > 0) {
-    const prev = sortedBarras[barraIndex - 1]!;
-    const width = barra.charOffset - prev.charOffset;
-    const end = barra.charOffset + width;
-
-    if (end > barra.charOffset) {
-      return end;
-    }
-  }
-
-  return getCompasExtensionEndOffset(textLength);
+  return Math.max(contentEndOffset, barra.charOffset);
 }
 
 /** Fin horizontal del tramo visual; el último ciclo replica el ancho en px del anterior. */
@@ -180,6 +350,7 @@ export function resolveCompasSegmentEndPx(
   getOffsetPx: (charOffset: number) => number | undefined,
   contentEndOffset: number | undefined,
   textLength: number,
+  terminalCharOffset?: number,
 ): number | undefined {
   const barra = sortedBarras[barraIndex]!;
   const startPx = getOffsetPx(barra.charOffset);
@@ -192,6 +363,14 @@ export function resolveCompasSegmentEndPx(
 
   if (nextBarra) {
     return getOffsetPx(nextBarra.charOffset);
+  }
+
+  if (terminalCharOffset !== undefined) {
+    const terminalPx = getOffsetPx(terminalCharOffset);
+
+    if (terminalPx !== undefined && terminalPx > startPx) {
+      return terminalPx;
+    }
   }
 
   if (sortedBarras.length > 1 && barraIndex > 0) {
@@ -217,13 +396,33 @@ export function resolveCompasSegmentEndPx(
     barraIndex,
     contentEndOffset,
     textLength,
+    terminalCharOffset,
   );
 
   return getOffsetPx(endOffset);
 }
 
-/** Máximo de ciclos al colocar compases de una vez en un renglón. */
-export const MAX_COMPAS_PLACEMENT_CYCLE_COUNT = COMPAS_EXTENSION_SLOT_COUNT;
+/** True si el offset cae estrictamente entre dos inicios de ciclo consecutivos. */
+export function isCharOffsetInsideCompasCycle(
+  lineBarras: ReadonlyArray<BarraCompas>,
+  charOffset: number,
+  excludeCharOffset?: number,
+): boolean {
+  const sorted = [...lineBarras]
+    .filter((barra) => barra.charOffset !== excludeCharOffset)
+    .sort((a, b) => a.charOffset - b.charOffset);
+
+  for (let index = 0; index < sorted.length - 1; index += 1) {
+    const start = sorted[index]!.charOffset;
+    const nextStart = sorted[index + 1]!.charOffset;
+
+    if (charOffset > start && charOffset < nextStart) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /** Última posición horizontal con letra, acorde o compás en un renglón. */
 export function getLineContentEndOffset(
@@ -376,32 +575,23 @@ export function remapCharOffsetForLineCopy(
   charOffset: number,
   sourceTextLength: number,
   targetTextLength: number,
-  extensionSlotCount = COMPAS_EXTENSION_SLOT_COUNT,
+  sourceLaneSlotCount = LINE_LANE_MIN_SLOT_COUNT,
+  targetLaneSlotCount = LINE_LANE_MIN_SLOT_COUNT,
 ): number {
-  const sourceExtStart = getCompasExtensionStart(sourceTextLength);
-  const targetExtStart = getCompasExtensionStart(targetTextLength);
+  const sourceMax = getLineMaxCharOffset(sourceTextLength, sourceLaneSlotCount);
+  const targetMax = getLineMaxCharOffset(targetTextLength, targetLaneSlotCount);
 
-  if (charOffset < sourceExtStart) {
-    if (sourceTextLength <= 0) {
-      return 0;
-    }
-
-    if (sourceTextLength === targetTextLength) {
-      return clampCompasCharOffset(charOffset);
-    }
-
-    const ratio = charOffset / sourceTextLength;
-
-    return clampCompasCharOffset(Math.round(ratio * targetTextLength));
+  if (sourceMax <= 0) {
+    return 0;
   }
 
-  const extensionSlot = charOffset - sourceExtStart;
-  const clampedSlot = Math.min(
-    Math.max(0, extensionSlot),
-    extensionSlotCount - 1,
-  );
+  if (sourceMax === targetMax) {
+    return clampCompasCharOffset(charOffset);
+  }
 
-  return targetExtStart + clampedSlot;
+  const ratio = charOffset / sourceMax;
+
+  return clampCompasCharOffset(Math.round(ratio * targetMax));
 }
 
 /** Remapea barras de compás preservando el espaciado relativo del patrón en el renglón. */
@@ -409,14 +599,13 @@ export function remapCompasPatternForLineCopy(
   template: BarraCompas[],
   sourceTextLength: number,
   targetTextLength: number,
-  extensionSlotCount = COMPAS_EXTENSION_SLOT_COUNT,
+  sourceLaneSlotCount = LINE_LANE_MIN_SLOT_COUNT,
+  targetLaneSlotCount = LINE_LANE_MIN_SLOT_COUNT,
 ): number[] {
   if (template.length === 0) {
     return [];
   }
 
-  const sourceExtStart = getCompasExtensionStart(sourceTextLength);
-  const targetExtStart = getCompasExtensionStart(targetTextLength);
   const sorted = [...template].sort((a, b) => a.charOffset - b.charOffset);
   const firstOffset = sorted[0].charOffset;
   const lastOffset = sorted[sorted.length - 1].charOffset;
@@ -427,7 +616,8 @@ export function remapCompasPatternForLineCopy(
         firstOffset,
         sourceTextLength,
         targetTextLength,
-        extensionSlotCount,
+        sourceLaneSlotCount,
+        targetLaneSlotCount,
       ),
     ];
   }
@@ -439,26 +629,21 @@ export function remapCompasPatternForLineCopy(
           firstOffset,
           sourceTextLength,
           targetTextLength,
-          extensionSlotCount,
+          sourceLaneSlotCount,
+          targetLaneSlotCount,
         );
-
-  let targetLastOffset: number;
-
-  if (lastOffset >= sourceExtStart) {
-    targetLastOffset = targetExtStart + (lastOffset - sourceExtStart);
-  } else {
-    targetLastOffset = remapCharOffsetForLineCopy(
-      lastOffset,
-      sourceTextLength,
-      targetTextLength,
-      extensionSlotCount,
-    );
-  }
-
-  targetLastOffset = Math.max(targetFirstOffset, targetLastOffset);
+  const targetLastOffset = remapCharOffsetForLineCopy(
+    lastOffset,
+    sourceTextLength,
+    targetTextLength,
+    sourceLaneSlotCount,
+    targetLaneSlotCount,
+  );
+  const clampedLastOffset = Math.max(targetFirstOffset, targetLastOffset);
+  const targetMax = getLineMaxCharOffset(targetTextLength, targetLaneSlotCount);
 
   const sourceSpan = lastOffset - firstOffset;
-  const targetSpan = targetLastOffset - targetFirstOffset;
+  const targetSpan = clampedLastOffset - targetFirstOffset;
 
   if (sourceSpan === 0) {
     return sorted.map(() => targetFirstOffset);
@@ -471,8 +656,9 @@ export function remapCompasPatternForLineCopy(
     let nextOffset = clampCompasCharOffset(
       Math.round(targetFirstOffset + relative * targetSpan),
     );
+    nextOffset = Math.min(nextOffset, targetMax);
 
-    while (usedOffsets.has(nextOffset)) {
+    while (usedOffsets.has(nextOffset) && nextOffset < targetMax) {
       nextOffset += 1;
     }
 
@@ -535,6 +721,8 @@ export function computeBeatTickCenters(
 export type ComputeLineCompasMarkersOptions = {
   contentEndOffset: number;
   textLength: number;
+  /** Cierre fijo del último compás (charOffset). */
+  lineTerminalCharOffset?: number;
   /** Agrega una barra de cierre ficticia al final del renglón (solo visual). */
   appendTerminalMeasure?: boolean;
   /** Intensidad opcional para la barra de cierre ficticia. */
@@ -573,6 +761,7 @@ export function computeLineBeatTicks(
       index,
       options.contentEndOffset,
       options.textLength,
+      options.lineTerminalCharOffset,
     );
     const endPx = resolveCompasSegmentEndPx(
       sorted,
@@ -580,6 +769,7 @@ export function computeLineBeatTicks(
       getOffsetPx,
       options.contentEndOffset,
       options.textLength,
+      options.lineTerminalCharOffset,
     );
 
     if (endPx === undefined || endPx <= startPx) {
@@ -601,6 +791,8 @@ export type CompasMarker = {
   cycleId?: string | null;
   /** Índice del golpe dentro del compás (0 = primer golpe). */
   cycleStepIndex?: number;
+  /** Número de ciclo/compás en el renglón (solo en inicios de ciclo reales). */
+  compasNumero?: number;
 };
 
 export function computeLineCompasMarkersPx(
@@ -622,6 +814,7 @@ export function computeLineCompasMarkersPx(
   const contentEndOffset = options?.contentEndOffset;
   const textLength = options?.textLength ?? 0;
   const appendTerminalMeasure = options?.appendTerminalMeasure ?? false;
+  const lineTerminalCharOffset = options?.lineTerminalCharOffset;
 
   for (let index = 0; index < sorted.length; index += 1) {
     const barra = sorted[index]!;
@@ -646,6 +839,7 @@ export function computeLineCompasMarkersPx(
             getOffsetPx,
             contentEndOffset,
             textLength,
+            lineTerminalCharOffset,
           )
         : undefined;
 
@@ -655,6 +849,7 @@ export function computeLineCompasMarkersPx(
       intensidad: resolveIntensidad?.(barra, 0),
       cycleId: barra.cycleId ?? null,
       cycleStepIndex: 0,
+      compasNumero: barra.compasNumero,
     });
 
     if (endPx === undefined || endPx <= startPx) {
@@ -684,6 +879,7 @@ export function computeLineCompasMarkersPx(
       getOffsetPx,
       contentEndOffset,
       textLength,
+      lineTerminalCharOffset,
     );
 
     if (endPx !== undefined) {
@@ -1088,6 +1284,13 @@ export function deleteCompasLine(
           ? { ...barra, lineIndex: barra.lineIndex - 1 }
           : barra,
       ),
+    lineTerminalOffsets: (config.lineTerminalOffsets ?? [])
+      .filter((entry) => entry.lineIndex !== lineIndex)
+      .map((entry) =>
+        entry.lineIndex > lineIndex
+          ? { ...entry, lineIndex: entry.lineIndex - 1 }
+          : entry,
+      ),
   };
 }
 
@@ -1105,10 +1308,13 @@ export function clearBarrasOnLine(
   config: CompasConfig,
   lineIndex: number,
 ): CompasConfig {
-  return {
-    ...config,
-    barras: config.barras.filter((barra) => barra.lineIndex !== lineIndex),
-  };
+  return removeLineTerminalOffset(
+    {
+      ...config,
+      barras: config.barras.filter((barra) => barra.lineIndex !== lineIndex),
+    },
+    lineIndex,
+  );
 }
 
 export function insertCifradoLineBelow(
@@ -1135,6 +1341,11 @@ export function insertCompasLineBelow(
       barra.lineIndex > lineIndex
         ? { ...barra, lineIndex: barra.lineIndex + 1 }
         : barra,
+    ),
+    lineTerminalOffsets: (config.lineTerminalOffsets ?? []).map((entry) =>
+      entry.lineIndex > lineIndex
+        ? { ...entry, lineIndex: entry.lineIndex + 1 }
+        : entry,
     ),
   };
 }
@@ -1255,6 +1466,19 @@ export function mergeCompasLineInto(
 
         return a.charOffset - b.charOffset;
       }),
+      lineTerminalOffsets: (config.lineTerminalOffsets ?? [])
+        .filter((entry) => entry.lineIndex !== sourceLineIndex)
+        .map((entry) => {
+          if (entry.lineIndex === destLineIndex) {
+            return entry;
+          }
+
+          if (entry.lineIndex > sourceLineIndex) {
+            return { ...entry, lineIndex: entry.lineIndex - 1 };
+          }
+
+          return entry;
+        }),
     },
     destLineIndex,
   );
@@ -1300,6 +1524,7 @@ export function applyLineCopyCompas(
   template: BarraCompas[],
   sourceTextLength: number,
   targetTextLength: number,
+  sourceTerminalCharOffset?: number,
 ): CompasConfig {
   const rest = config.barras.filter(
     (barra) => barra.lineIndex !== targetLineIndex,
@@ -1318,7 +1543,7 @@ export function applyLineCopyCompas(
     charOffset: remappedOffsets[index],
   }));
 
-  return renumberLineBarrasCompas(
+  let next = renumberLineBarrasCompas(
     {
       ...config,
       barras: [...rest, ...copied].sort((a, b) => {
@@ -1331,6 +1556,20 @@ export function applyLineCopyCompas(
     },
     targetLineIndex,
   );
+
+  if (sourceTerminalCharOffset !== undefined) {
+    next = setLineTerminalOffset(
+      next,
+      targetLineIndex,
+      remapCharOffsetForLineCopy(
+        sourceTerminalCharOffset,
+        sourceTextLength,
+        targetTextLength,
+      ),
+    );
+  }
+
+  return next;
 }
 
 export function findNearestCharOffset(

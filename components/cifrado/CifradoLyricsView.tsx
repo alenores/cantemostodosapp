@@ -3,13 +3,22 @@
 import type { CompositorPiece } from "@/lib/compositor";
 import {
   computeLineCompasMarkersPx,
+  computeLineLaneSlotCount,
   getLineContentEndOffset,
+  getLineLaneStart,
+  LINE_LANE_MIN_SLOT_COUNT,
   resolveCharOffsetPx,
+  resolveLineTerminalCharOffset,
   type AcordePos,
   type BarraCompas,
+  type CompasConfig,
   type CompasMarker,
   type TipoCompas,
 } from "@/lib/cifrado";
+import {
+  CIFRADO_LINE_LANE_CONTAINER_CLASS,
+  CIFRADO_LINE_LANE_SLOT_CLASS,
+} from "@/components/cifrado/cifrado-controls-ui";
 import { getBarraBeatCount } from "@/lib/cifrado-barra-cycles";
 import { getBarraIntensidad } from "@/lib/cifrado-intensidad";
 import {
@@ -26,12 +35,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-export const COMPAS_EXTENSION_SLOTS = 24;
-
-export function getCompasExtensionStart(textLength: number): number {
-  return textLength === 0 ? 1 : textLength;
-}
 
 export function splitLyricsLines(text: string): string[] {
   return text.replace(/\r\n/g, "\n").split("\n");
@@ -143,6 +146,8 @@ export type CifradoLyricsLineProps = {
   isPlaybackActiveLine?: boolean;
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, CompositorPiece>;
+  lineTerminalOffsets?: CompasConfig["lineTerminalOffsets"];
+  nextLineHasCompas?: boolean;
 };
 
 export function CifradoLyricsLine({
@@ -160,19 +165,42 @@ export function CifradoLyricsLine({
   isPlaybackActiveLine = false,
   notacion = "es",
   cyclePiecesById,
+  lineTerminalOffsets,
+  nextLineHasCompas = false,
 }: CifradoLyricsLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
+  const [laneSlotCount, setLaneSlotCount] = useState(LINE_LANE_MIN_SLOT_COUNT);
   const characters = [...text];
-  const extensionStart = getCompasExtensionStart(characters.length);
+  const laneStart = getLineLaneStart(characters.length);
   const compasConfigForLine = useMemo(
     () => ({
       tipoCompas,
       intensidadPlantilla,
       bpm: 0,
       barras: [] as BarraCompas[],
+      lineTerminalOffsets,
     }),
-    [intensidadPlantilla, tipoCompas],
+    [intensidadPlantilla, lineTerminalOffsets, tipoCompas],
+  );
+  const lineTerminalCharOffset = useMemo(
+    () =>
+      barras.length > 0
+        ? resolveLineTerminalCharOffset(
+            compasConfigForLine,
+            lineIndex,
+            barras,
+            getLineContentEndOffset(characters.length, acordes, barras),
+            characters.length,
+          )
+        : undefined,
+    [
+      acordes,
+      barras,
+      characters.length,
+      compasConfigForLine,
+      lineIndex,
+    ],
   );
   const activeBeatLeftPx =
     activeBeatAnchors.find((anchor) => anchor.lineIndex === lineIndex)?.leftPx ??
@@ -186,6 +214,15 @@ export function CifradoLyricsLine({
     }
 
     const containerRect = container.getBoundingClientRect();
+    const nextLaneSlotCount = computeLineLaneSlotCount(
+      containerRect.width,
+      text.length,
+    );
+
+    setLaneSlotCount((current) =>
+      current === nextLaneSlotCount ? current : nextLaneSlotCount,
+    );
+
     const spans = container.querySelectorAll("[data-char-index]");
     const positions: CharPosition[] = [];
 
@@ -207,11 +244,11 @@ export function CifradoLyricsLine({
     });
 
     setCharPositions(positions);
-  }, []);
+  }, [text]);
 
   useLayoutEffect(() => {
     measurePositions();
-  }, [measurePositions, text, showCompas]);
+  }, [laneSlotCount, measurePositions, text, showCompas]);
 
   useEffect(() => {
     const container = textLaneRef.current;
@@ -248,6 +285,8 @@ export function CifradoLyricsLine({
                 barras,
               ),
               textLength: characters.length,
+              lineTerminalCharOffset,
+              appendTerminalMeasure: nextLineHasCompas,
             },
           )
         : [],
@@ -258,6 +297,8 @@ export function CifradoLyricsLine({
       characters.length,
       compasConfigForLine,
       cyclePiecesById,
+      lineTerminalCharOffset,
+      nextLineHasCompas,
       showCompas,
     ],
   );
@@ -291,37 +332,42 @@ export function CifradoLyricsLine({
         />
       )}
       <div className="pointer-events-none relative flex w-full items-baseline pt-5">
-        <span className="inline shrink-0">
-          {characters.length === 0 ? (
-            <span data-char-index={0}> </span>
-          ) : (
-            characters.map((char, charIndex) => (
-              <span key={charIndex} data-char-index={charIndex}>
-                {char}
-              </span>
-            ))
-          )}
-        </span>
-
-        {showCompas && (
-          <span
-            className={`ml-1 inline-flex min-h-[1.25rem] min-w-[10ch] flex-1 border-l border-dashed pl-0.5 ${
-              letraSheet
-                ? "border-black/15"
-                : "border-accent/30 bg-accent/[0.04] opacity-70"
-            }`}
-            aria-hidden="true"
-          >
-            {Array.from({ length: COMPAS_EXTENSION_SLOTS }).map((_, slot) => (
+        {characters.length === 0 ? (
+          <span className={`${CIFRADO_LINE_LANE_CONTAINER_CLASS} w-full`}>
+            {Array.from({ length: laneSlotCount }).map((_, slot) => (
               <span
-                key={`preview-ext-${slot}`}
-                data-char-index={extensionStart + slot}
-                className="inline-block min-w-[1ch] flex-1"
+                key={`lyrics-lane-${slot}`}
+                data-char-index={slot}
+                className={CIFRADO_LINE_LANE_SLOT_CLASS}
               >
-                {" "}
+                {slot === 0 ? " " : "\u00a0"}
               </span>
             ))}
           </span>
+        ) : (
+          <>
+            <span className="inline shrink-0">
+              {characters.map((char, charIndex) => (
+                <span key={charIndex} data-char-index={charIndex}>
+                  {char}
+                </span>
+              ))}
+            </span>
+            <span
+              className={CIFRADO_LINE_LANE_CONTAINER_CLASS}
+              aria-hidden="true"
+            >
+              {Array.from({ length: laneSlotCount }).map((_, slot) => (
+                <span
+                  key={`lyrics-lane-${slot}`}
+                  data-char-index={laneStart + slot}
+                  className={CIFRADO_LINE_LANE_SLOT_CLASS}
+                >
+                  {"\u00a0"}
+                </span>
+              ))}
+            </span>
+          </>
         )}
       </div>
 
@@ -340,23 +386,23 @@ export function CifradoLyricsLine({
           <div
             key={`cifrado-acorde-${lineIndex}-${acorde.charOffset}`}
             className="pointer-events-none absolute top-0"
-            style={{ left: position.center }}
+            style={{ left: position.left }}
           >
             <span
-              className={`absolute -translate-x-1/2 whitespace-nowrap rounded px-0.5 font-bold text-accent ${
+              className={`absolute whitespace-nowrap rounded px-0.5 font-bold leading-none text-accent ${
                 letraSheet ? "text-[length:var(--letra-size)]" : compact ? "text-[10px]" : "text-xs"
               }`}
-              style={{ top: letraSheet ? 2 : compact ? 4 : 6, left: 0 }}
+              style={{ top: letraSheet ? 0 : compact ? 2 : 4, left: 0 }}
             >
               {formatAcordeNotacion(acorde.noteIndex, acorde.modifier, notacion)}
             </span>
             <span
-              className="absolute w-px -translate-x-1/2 bg-accent/50"
+              className="absolute w-px bg-accent/50"
               style={{ top: stemTop, left: 0, height: stemHeight }}
               aria-hidden="true"
             />
             <span
-              className="absolute size-1 -translate-x-1/2 rounded-full bg-accent"
+              className="absolute size-1 rounded-full bg-accent"
               style={{ top: dotTop, left: 0 }}
               aria-hidden="true"
             />
@@ -394,6 +440,7 @@ export type CifradoLyricsBlockProps = {
   className?: string;
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, CompositorPiece>;
+  lineTerminalOffsets?: CompasConfig["lineTerminalOffsets"];
 };
 
 export function CifradoLyricsBlock({
@@ -412,6 +459,7 @@ export function CifradoLyricsBlock({
   className = "",
   notacion = "es",
   cyclePiecesById,
+  lineTerminalOffsets,
 }: CifradoLyricsBlockProps) {
   const lines = useMemo(() => splitLyricsLines(letra), [letra]);
 
@@ -427,6 +475,10 @@ export function CifradoLyricsBlock({
             text={line}
             acordes={acordes.filter((acorde) => acorde.lineIndex === lineIndex)}
             barras={barras.filter((barra) => barra.lineIndex === lineIndex)}
+            nextLineHasCompas={barras.some(
+              (barra) => barra.lineIndex === lineIndex + 1,
+            )}
+            lineTerminalOffsets={lineTerminalOffsets}
             tipoCompas={tipoCompas}
             intensidadPlantilla={intensidadPlantilla}
             showCompas={showCompas}

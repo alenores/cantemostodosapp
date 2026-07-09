@@ -16,6 +16,7 @@ export type CifradoTonalidadFieldsProps = {
   tonalidadIndex: NotaIndex;
   modoTonal: ModoTonal;
   layout?: "stacked" | "inline";
+  showModoTonal?: boolean;
   onTonalidadChange: (next: NotaIndex) => void;
   onModoTonalChange: (next: ModoTonal) => void;
 };
@@ -26,6 +27,7 @@ export function CifradoTonalidadFields({
   tonalidadIndex,
   modoTonal,
   layout = "stacked",
+  showModoTonal = true,
   onTonalidadChange,
   onModoTonalChange,
 }: CifradoTonalidadFieldsProps) {
@@ -59,23 +61,25 @@ export function CifradoTonalidadFields({
         </select>
       </label>
 
-      <label htmlFor={`${idPrefix}-modo-tonal`}>
-        <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Modo</span>
-        <select
-          id={`${idPrefix}-modo-tonal`}
-          value={modoTonal}
-          onChange={(event) =>
-            onModoTonalChange(event.target.value as ModoTonal)
-          }
-          className={selectClassName}
-        >
-          {MODOS_TONALES.map((modo) => (
-            <option key={modo.id} value={modo.id}>
-              {modo.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showModoTonal ? (
+        <label htmlFor={`${idPrefix}-modo-tonal`}>
+          <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Modo</span>
+          <select
+            id={`${idPrefix}-modo-tonal`}
+            value={modoTonal}
+            onChange={(event) =>
+              onModoTonalChange(event.target.value as ModoTonal)
+            }
+            className={selectClassName}
+          >
+            {MODOS_TONALES.map((modo) => (
+              <option key={modo.id} value={modo.id}>
+                {modo.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
     </div>
   );
 }

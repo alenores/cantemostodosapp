@@ -15,6 +15,7 @@ import { type NotacionAcordes } from "@/lib/notacion-acordes";
 export type CifradoSettingsFieldsProps = {
   idPrefix?: string;
   showCompas: boolean;
+  showModoTonal?: boolean;
   notacion: NotacionAcordes;
   tonalidadIndex: NotaIndex;
   modoTonal: ModoTonal;
@@ -30,6 +31,7 @@ export type CifradoSettingsFieldsProps = {
 export default function CifradoSettingsFields({
   idPrefix = "cifrado-viewer",
   showCompas,
+  showModoTonal = true,
   notacion,
   tonalidadIndex,
   modoTonal,
@@ -51,6 +53,7 @@ export default function CifradoSettingsFields({
           notacion={notacion}
           tonalidadIndex={tonalidadIndex}
           modoTonal={modoTonal}
+          showModoTonal={showModoTonal}
           onTonalidadChange={onTonalidadChange}
           onModoTonalChange={onModoTonalChange}
         />

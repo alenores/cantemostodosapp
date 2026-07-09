@@ -1,7 +1,7 @@
 "use client";
 
 import { CifradoLyricsBlock } from "@/components/cifrado/CifradoLyricsView";
-import { COMPAS_LABELS, type AcordePos, type CompasMarker } from "@/lib/cifrado";
+import { type AcordePos, type CompasMarker } from "@/lib/cifrado";
 import { getIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
@@ -38,7 +38,6 @@ export default function LetraCifradoPanel({
   const compasConfig = detalle.compas_config;
   const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
   const showCompasMarcadores = Boolean(compasConfig?.barras?.length);
-  const compasLabel = COMPAS_LABELS[tipoCompas];
   const acordes = cifradoAcordes ?? detalle.cifrado.acordes;
 
   const horizontalPaddingStyle = modoLectura
@@ -55,20 +54,12 @@ export default function LetraCifradoPanel({
       }`}
       style={{ paddingBottom: scrollEndPadding }}
     >
-      {showCompasMarcadores && !modoLectura ? (
-        <p
-          className="mb-3 text-sm font-semibold text-letra-text/70"
-          style={horizontalPaddingStyle}
-        >
-          Compás {compasLabel}
-        </p>
-      ) : null}
-
       <div style={horizontalPaddingStyle}>
         <CifradoLyricsBlock
           letra={letra}
           acordes={acordes}
           barras={compasConfig?.barras ?? []}
+          lineTerminalOffsets={compasConfig?.lineTerminalOffsets}
           tipoCompas={tipoCompas}
           intensidadPlantilla={
             compasConfig ? getIntensidadPlantilla(compasConfig) : []

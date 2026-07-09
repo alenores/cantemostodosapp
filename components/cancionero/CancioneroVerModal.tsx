@@ -273,6 +273,7 @@ function CancionSlide({
                   letra={cancion.letra}
                   acordes={cifradoDisplay.acordes}
                   barras={compasConfig?.barras ?? []}
+                  lineTerminalOffsets={compasConfig?.lineTerminalOffsets}
                   tipoCompas={tipoCompas}
                   showCompas={showCompasMarcadores}
                   letraSheet

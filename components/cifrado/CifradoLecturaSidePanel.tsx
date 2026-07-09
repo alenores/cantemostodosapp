@@ -3,15 +3,12 @@
 import CifradoSettingsFields from "@/components/cifrado/CifradoSettingsFields";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { APP_SIDEBAR_WIDTH_CSS } from "@/lib/app-layout";
-import { COMPAS_LABELS } from "@/lib/cifrado";
-import type { TipoCompas } from "@/lib/cifrado";
 import type { NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import { Pause, Play } from "lucide-react";
 
 type CifradoLecturaSidePanelProps = {
-  compasLabel: string;
   showCompasMarkers?: boolean;
   playing: boolean;
   canPlay: boolean;
@@ -32,12 +29,7 @@ export function getLecturaPremiumRailWidthCss(): string {
   return APP_SIDEBAR_WIDTH_CSS;
 }
 
-export function getLecturaPremiumCompasLabel(tipoCompas: TipoCompas): string {
-  return COMPAS_LABELS[tipoCompas];
-}
-
 export default function CifradoLecturaSidePanel({
-  compasLabel,
   showCompasMarkers = true,
   playing,
   canPlay,
@@ -62,10 +54,6 @@ export default function CifradoLecturaSidePanel({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
         {showCompasMarkers ? (
           <>
-            <p className="mb-4 text-sm font-semibold text-text-muted">
-              Compás {compasLabel}
-            </p>
-
             <TapButton
               type="button"
               onClick={onTogglePlayback}
@@ -85,6 +73,7 @@ export default function CifradoLecturaSidePanel({
         <CifradoSettingsFields
           idPrefix="cifrado-lectura"
           showCompas={showCompasMarkers}
+          showModoTonal={false}
           notacion={notacion}
           tonalidadIndex={tonalidadIndex}
           modoTonal={modoTonal}

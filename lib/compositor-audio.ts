@@ -657,6 +657,13 @@ export type CompositorEngine = {
     onProgress: (cycleProgress: number) => void,
     onComplete?: () => void,
   ): void;
+  playTrackCycles(
+    piece: CompositorPiece,
+    instrumentId: CompositorInstrumentId,
+    cycleCount: number,
+    onProgress: (cycleProgress: number) => void,
+    onComplete?: () => void,
+  ): void;
   playOnce(
     piece: CompositorPiece,
     onProgress: (cycleProgress: number) => void,
@@ -836,6 +843,48 @@ export function createCompositorEngine(
           samples,
           playbackBus,
         );
+      }
+
+      startProgressLoop(false, onComplete);
+    },
+    playTrackCycles(
+      nextPiece,
+      instrumentId,
+      cycleCount,
+      nextOnProgress,
+      onComplete,
+    ) {
+      stopInternal();
+      playbackBus.reset();
+
+      const safeCycleCount = Math.max(1, Math.round(cycleCount));
+      const singleCycleDurationSeconds =
+        getCompositorCycleDurationSeconds(nextPiece);
+
+      piece = nextPiece;
+      cycleDurationSeconds = singleCycleDurationSeconds * safeCycleCount;
+      onProgress = nextOnProgress;
+      running = true;
+      loopStartAudioTime = audioContext.currentTime;
+      scheduledUntilAudioTime =
+        loopStartAudioTime + cycleDurationSeconds;
+
+      const sounds = buildCompositorScheduledSounds(nextPiece, {
+        onlyInstrumentId: instrumentId,
+      });
+
+      for (let cycleIndex = 0; cycleIndex < safeCycleCount; cycleIndex += 1) {
+        const cycleOffsetSeconds = cycleIndex * singleCycleDurationSeconds;
+
+        for (const sound of sounds) {
+          scheduleCompositorSound(
+            audioContext,
+            loopStartAudioTime + cycleOffsetSeconds + sound.cycleOffsetSeconds,
+            sound,
+            samples,
+            playbackBus,
+          );
+        }
       }
 
       startProgressLoop(false, onComplete);

@@ -32,6 +32,7 @@ export type CifradoEditorWebImportData = {
 type CifradoEditorIngresoWebSearchProps = {
   onImport: (data: CifradoEditorWebImportData) => void;
   onError: (message: string) => void;
+  importDisabled?: boolean;
 };
 
 type Pantalla = "busqueda" | "preview";
@@ -85,6 +86,7 @@ function ResultadoItem({
 export default function CifradoEditorIngresoWebSearch({
   onImport,
   onError,
+  importDisabled = false,
 }: CifradoEditorIngresoWebSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pantalla, setPantalla] = useState<Pantalla>("busqueda");
@@ -274,7 +276,7 @@ export default function CifradoEditorIngresoWebSearch({
         <TapButton
           type="button"
           onClick={() => void handleUsarCancion()}
-          disabled={importando}
+          disabled={importando || importDisabled}
           className={`mt-3 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
         >
           {importando ? "Importando…" : "Usar esta canción"}

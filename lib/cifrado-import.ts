@@ -1,9 +1,26 @@
 import {
   createEmptyCifrado,
+  NOTAS_ES,
   type AcordePos,
   type CifradoData,
+  type NotaIndex,
 } from "@/lib/cifrado";
+import {
+  MODOS_TONALES,
+  type ModoTonal,
+} from "@/lib/cifrado-escala";
 import { parseAcordeToken } from "@/lib/notacion-acordes";
+
+export type TonalidadLineDetectResult = {
+  tonalidadIndex: NotaIndex;
+  modoTonal: ModoTonal;
+};
+
+const TONALIDAD_LABEL_PREFIX_PATTERN =
+  /^(?:(?:t)?ono|(?:t)?onalidad|clave|key)\s*[:\-–]?\s*/i;
+
+const MODO_MENOR_WORDS = /\b(menor|minor|min)\b/i;
+const MODO_MAYOR_WORDS = /\b(mayor|major|maj)\b/i;
 
 export type CifradoImportResult = {
   letra: string;
@@ -109,6 +126,248 @@ function parseChordLinePair(
   }
 
   return { acordes, warnings };
+}
+
+function parseTonalidadFromSingleToken(
+  token: string,
+): { tonalidadIndex: NotaIndex; modoTonal: ModoTonal } | null {
+  const trimmed = token.trim();
+
+  if (!trimmed || trimmed.length > 16) {
+    return null;
+  }
+
+  const parsed = parseAcordeToken(trimmed);
+
+  if (!parsed) {
+    return null;
+  }
+
+  const isMinor = parsed.modifier === "m" || parsed.modifier === "m7";
+
+  if (!isMinor && parsed.modifier !== "") {
+    return null;
+  }
+
+  return {
+    tonalidadIndex: parsed.noteIndex,
+    modoTonal: isMinor ? "menor" : "mayor",
+  };
+}
+
+function inferModoFromTrailingText(text: string): ModoTonal | null {
+  const trimmed = text.trim();
+
+  if (!trimmed || /^m\.?$/i.test(trimmed)) {
+    return "menor";
+  }
+
+  if (MODO_MENOR_WORDS.test(trimmed)) {
+    return "menor";
+  }
+
+  if (MODO_MAYOR_WORDS.test(trimmed)) {
+    return "mayor";
+  }
+
+  return null;
+}
+
+export function formatTonalidadDetectLabel(
+  tonalidad: TonalidadLineDetectResult,
+): string {
+  const modoLabel =
+    MODOS_TONALES.find((item) => item.id === tonalidad.modoTonal)?.label ??
+    "Mayor";
+
+  return `${NOTAS_ES[tonalidad.tonalidadIndex]} ${modoLabel.toLowerCase()}`;
+}
+
+export function formatTonalidadDetectLabelTitle(
+  tonalidad: TonalidadLineDetectResult,
+): string {
+  const modoLabel =
+    MODOS_TONALES.find((item) => item.id === tonalidad.modoTonal)?.label ??
+    "Mayor";
+
+  return `${NOTAS_ES[tonalidad.tonalidadIndex]} ${modoLabel}`;
+}
+
+export function parseTonalidadLine(line: string): TonalidadLineDetectResult | null {
+  const trimmed = line.trim();
+
+  if (!trimmed || trimmed.length > 40) {
+    return null;
+  }
+
+  if (isChordLine(trimmed)) {
+    return null;
+  }
+
+  const withoutPrefix = trimmed
+    .replace(TONALIDAD_LABEL_PREFIX_PATTERN, "")
+    .trim();
+
+  if (!withoutPrefix) {
+    return null;
+  }
+
+  const singleToken = parseTonalidadFromSingleToken(withoutPrefix);
+
+  if (singleToken) {
+    return singleToken;
+  }
+
+  const words = withoutPrefix.split(/\s+/);
+
+  if (words.length < 2 || words.length > 4) {
+    return null;
+  }
+
+  const noteToken = words[0] ?? "";
+  const noteParsed = parseTonalidadFromSingleToken(noteToken);
+
+  if (!noteParsed) {
+    return null;
+  }
+
+  const trailingText = words.slice(1).join(" ");
+  const inferredModo = inferModoFromTrailingText(trailingText);
+
+  if (!inferredModo) {
+    return null;
+  }
+
+  return {
+    tonalidadIndex: noteParsed.tonalidadIndex,
+    modoTonal: noteParsed.modoTonal === "menor" ? "menor" : inferredModo,
+  };
+}
+
+type FirstChordLocation = {
+  lineIndex: number;
+  charStart: number;
+};
+
+function isTonalidadLabelLine(line: string): boolean {
+  return parseTonalidadLine(line.trim()) !== null;
+}
+
+function findFirstChordInLines(rawLines: string[]): FirstChordLocation | null {
+  for (let lineIndex = 0; lineIndex < rawLines.length; lineIndex += 1) {
+    const line = rawLines[lineIndex] ?? "";
+    const trimmed = line.trim();
+
+    if (!trimmed || isTonalidadLabelLine(trimmed)) {
+      continue;
+    }
+
+    for (const { token, start } of tokenizeChordLine(line)) {
+      if (parseAcordeToken(token)) {
+        return {
+          lineIndex,
+          charStart: start,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildStrippedText(
+  rawLines: string[],
+  removeLinesBefore: number,
+  stripCharsOnLine?: number,
+): string {
+  if (removeLinesBefore >= rawLines.length) {
+    return "";
+  }
+
+  const kept = rawLines.slice(removeLinesBefore);
+
+  if (stripCharsOnLine !== undefined && kept.length > 0) {
+    kept[0] = (kept[0] ?? "").slice(stripCharsOnLine).trimStart();
+  }
+
+  return kept.join("\n").trimEnd();
+}
+
+export function getPrimerAcordeOrdenado(
+  acordes: readonly AcordePos[],
+): AcordePos | null {
+  if (acordes.length === 0) {
+    return null;
+  }
+
+  return [...acordes].sort(
+    (a, b) => a.lineIndex - b.lineIndex || a.charOffset - b.charOffset,
+  )[0] ?? null;
+}
+
+export function splitTonalidadLineFromText(text: string): {
+  textWithoutTonalidadLine: string;
+  tonalidad: TonalidadLineDetectResult | null;
+} {
+  const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+  const firstNonEmptyIndex = rawLines.findIndex((line) => line.trim().length > 0);
+
+  if (firstNonEmptyIndex >= 0) {
+    const firstLine = rawLines[firstNonEmptyIndex] ?? "";
+    const tonalidad = parseTonalidadLine(firstLine);
+
+    if (tonalidad) {
+      return {
+        textWithoutTonalidadLine: buildStrippedText(
+          rawLines,
+          firstNonEmptyIndex + 1,
+        ),
+        tonalidad,
+      };
+    }
+  }
+
+  const chordLocation = findFirstChordInLines(rawLines);
+  const scanBeforeLine =
+    chordLocation?.lineIndex ?? rawLines.length;
+
+  for (let lineIndex = 0; lineIndex < scanBeforeLine; lineIndex += 1) {
+    const tonalidad = parseTonalidadLine(rawLines[lineIndex] ?? "");
+
+    if (tonalidad) {
+      return {
+        textWithoutTonalidadLine: buildStrippedText(rawLines, lineIndex + 1),
+        tonalidad,
+      };
+    }
+  }
+
+  if (!chordLocation) {
+    return {
+      textWithoutTonalidadLine: text,
+      tonalidad: null,
+    };
+  }
+
+  const chordLine = rawLines[chordLocation.lineIndex] ?? "";
+  const prefix = chordLine.slice(0, chordLocation.charStart).trim();
+  const tonalidadFromPrefix = parseTonalidadLine(prefix);
+
+  if (tonalidadFromPrefix) {
+    return {
+      textWithoutTonalidadLine: buildStrippedText(
+        rawLines,
+        chordLocation.lineIndex,
+        chordLocation.charStart,
+      ),
+      tonalidad: tonalidadFromPrefix,
+    };
+  }
+
+  return {
+    textWithoutTonalidadLine: text,
+    tonalidad: null,
+  };
 }
 
 export function parseLetraTradicional(text: string): CifradoImportResult {

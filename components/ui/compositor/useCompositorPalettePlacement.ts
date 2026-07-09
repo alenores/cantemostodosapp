@@ -32,7 +32,7 @@ type UseCompositorPalettePlacementOptions = {
   drumDraft: CompositorDrumDraft;
   onPlaceEvent: (
     partial: Partial<CompositorTrackEvent>,
-    options?: { rowId?: string; octaveExact?: boolean },
+    options?: { rowId?: string; octaveExact?: boolean; selectOnPlace?: boolean },
   ) => string | null;
 };
 
@@ -119,6 +119,7 @@ export function useCompositorPalettePlacement({
       return onPlaceEvent(partial, {
         rowId: cell.rowId,
         octaveExact,
+        selectOnPlace: false,
       });
     },
     [

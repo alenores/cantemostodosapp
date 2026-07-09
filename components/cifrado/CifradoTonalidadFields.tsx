@@ -13,10 +13,11 @@ const NOTA_INDICES = Array.from({ length: 12 }, (_, index) => index as NotaIndex
 export type CifradoTonalidadFieldsProps = {
   idPrefix?: string;
   notacion: NotacionAcordes;
-  tonalidadIndex: NotaIndex;
-  modoTonal: ModoTonal;
+  tonalidadIndex: NotaIndex | null;
+  modoTonal: ModoTonal | null;
   layout?: "stacked" | "inline";
   showModoTonal?: boolean;
+  requireSelection?: boolean;
   onTonalidadChange: (next: NotaIndex) => void;
   onModoTonalChange: (next: ModoTonal) => void;
 };
@@ -28,6 +29,7 @@ export function CifradoTonalidadFields({
   modoTonal,
   layout = "stacked",
   showModoTonal = true,
+  requireSelection = false,
   onTonalidadChange,
   onModoTonalChange,
 }: CifradoTonalidadFieldsProps) {
@@ -47,12 +49,23 @@ export function CifradoTonalidadFields({
         <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tono</span>
         <select
           id={`${idPrefix}-tonalidad`}
-          value={tonalidadIndex}
-          onChange={(event) =>
-            onTonalidadChange(Number(event.target.value) as NotaIndex)
-          }
+          value={tonalidadIndex ?? ""}
+          onChange={(event) => {
+            const next = event.target.value;
+
+            if (!next) {
+              return;
+            }
+
+            onTonalidadChange(Number(next) as NotaIndex);
+          }}
           className={selectClassName}
         >
+          {requireSelection ? (
+            <option value="" disabled>
+              Elegí el tono
+            </option>
+          ) : null}
           {NOTA_INDICES.map((index) => (
             <option key={index} value={index}>
               {getNotaLabel(index, notacion)}
@@ -66,12 +79,23 @@ export function CifradoTonalidadFields({
           <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Modo</span>
           <select
             id={`${idPrefix}-modo-tonal`}
-            value={modoTonal}
-            onChange={(event) =>
-              onModoTonalChange(event.target.value as ModoTonal)
-            }
+            value={modoTonal ?? ""}
+            onChange={(event) => {
+              const next = event.target.value;
+
+              if (!next) {
+                return;
+              }
+
+              onModoTonalChange(next as ModoTonal);
+            }}
             className={selectClassName}
           >
+            {requireSelection ? (
+              <option value="" disabled>
+                Elegí el modo
+              </option>
+            ) : null}
             {MODOS_TONALES.map((modo) => (
               <option key={modo.id} value={modo.id}>
                 {modo.label}

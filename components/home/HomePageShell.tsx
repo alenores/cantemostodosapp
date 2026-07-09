@@ -1,7 +1,9 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import type { LecturaCompasPlaybackState } from "@/components/cifrado/LetraCifradoLecturaShell";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
+import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
@@ -30,6 +32,7 @@ import {
   Search,
   SkipForward,
   SlidersHorizontal,
+  Type,
   X,
 } from "lucide-react";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
@@ -51,6 +54,7 @@ type HomeModoLecturaFabOptionProps = {
   disabled?: boolean;
   iconAfter?: boolean;
   cascadeIndex: number;
+  className?: string;
 };
 
 function HomeModoLecturaFabOption({
@@ -60,6 +64,7 @@ function HomeModoLecturaFabOption({
   disabled = false,
   iconAfter = false,
   cascadeIndex,
+  className = "",
 }: HomeModoLecturaFabOptionProps) {
   const iconNode = (
     <Icon className="size-4 shrink-0" aria-hidden="true" />
@@ -73,7 +78,7 @@ function HomeModoLecturaFabOption({
       onClick={onClick}
       className={`sala-lectura-fab-item pointer-events-auto flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY} ${
         disabled ? FLOAT_BTN_DISABLED : ""
-      }`}
+      } ${className}`}
       style={{
         animationDelay: `${cascadeIndex * LECTURA_FAB_CASCADE_STEP_MS}ms`,
       }}
@@ -98,12 +103,14 @@ type HomeModoLecturaOverlayProps = {
   pendientesCount: number;
   fixedRightCss: string;
   menuCompacto?: boolean;
+  showZoomOption?: boolean;
   onCerrar: () => void;
   onContraer: () => void;
   onSiguiente: () => void;
   onCola: () => void;
   onBuscar: () => void;
   onAfinador: () => void;
+  onAbrirZoom?: () => void;
 };
 
 function HomeModoLecturaOverlay({
@@ -111,16 +118,20 @@ function HomeModoLecturaOverlay({
   pendientesCount,
   fixedRightCss,
   menuCompacto = false,
+  showZoomOption = false,
   onCerrar,
   onContraer,
   onSiguiente,
   onCola,
   onBuscar,
   onAfinador,
+  onAbrirZoom,
 }: HomeModoLecturaOverlayProps) {
   if (!abierto) {
     return null;
   }
+
+  let cascadeIndex = 0;
 
   return (
     <>
@@ -143,7 +154,7 @@ function HomeModoLecturaOverlay({
         <HomeModoLecturaFabOption
           icon={Minimize2}
           label="Contraer"
-          cascadeIndex={0}
+          cascadeIndex={cascadeIndex++}
           onClick={onContraer}
         />
         {!menuCompacto ? (
@@ -151,7 +162,7 @@ function HomeModoLecturaOverlay({
             <HomeModoLecturaFabOption
               icon={Search}
               label="Buscar"
-              cascadeIndex={1}
+              cascadeIndex={cascadeIndex++}
               onClick={() => {
                 onCerrar();
                 onBuscar();
@@ -161,7 +172,7 @@ function HomeModoLecturaOverlay({
               icon={SkipForward}
               label="Siguiente"
               iconAfter
-              cascadeIndex={2}
+              cascadeIndex={cascadeIndex++}
               disabled={pendientesCount === 0}
               onClick={() => {
                 onCerrar();
@@ -171,7 +182,7 @@ function HomeModoLecturaOverlay({
             <HomeModoLecturaFabOption
               icon={ListMusic}
               label={`Fila · ${pendientesCount}`}
-              cascadeIndex={3}
+              cascadeIndex={cascadeIndex++}
               onClick={() => {
                 onCerrar();
                 onCola();
@@ -182,12 +193,24 @@ function HomeModoLecturaOverlay({
         <HomeModoLecturaFabOption
           icon={Music2}
           label="Afinador"
-          cascadeIndex={menuCompacto ? 1 : 4}
+          cascadeIndex={cascadeIndex++}
           onClick={() => {
             onCerrar();
             onAfinador();
           }}
         />
+        {showZoomOption ? (
+          <HomeModoLecturaFabOption
+            icon={Type}
+            label="Tamaño letra"
+            cascadeIndex={cascadeIndex++}
+            onClick={() => {
+              onCerrar();
+              onAbrirZoom?.();
+            }}
+            className="lg:hidden"
+          />
+        ) : null}
       </div>
     </>
   );
@@ -212,6 +235,10 @@ export default function HomePageShell() {
   const [modoLectura, setModoLectura] = useState(false);
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [lecturaZoomEligible, setLecturaZoomEligible] = useState(false);
+  const [compasesOcultos, setCompasesOcultos] = useState(false);
+  const [zoomPanelAbierto, setZoomPanelAbierto] = useState(false);
+  const [lecturaCompasPlayback, setLecturaCompasPlayback] =
+    useState<LecturaCompasPlaybackState | null>(null);
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
@@ -240,6 +267,19 @@ export default function HomePageShell() {
     decrease: decreaseLetraZoom,
     increase: increaseLetraZoom,
   } = useLetraZoom(cancionActivaScrollKey);
+
+  useEffect(() => {
+    setCompasesOcultos(false);
+    setLecturaCompasPlayback(null);
+    setZoomPanelAbierto(false);
+  }, [cancionActivaScrollKey]);
+
+  const handleLecturaCompasPlaybackStateChange = useCallback(
+    (state: LecturaCompasPlaybackState | null) => {
+      setLecturaCompasPlayback(state);
+    },
+    [],
+  );
 
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
@@ -273,18 +313,26 @@ export default function HomePageShell() {
 
   const salirModoLectura = useCallback(() => {
     setOverlayAbierto(false);
+    setZoomPanelAbierto(false);
     setAfinadorOpen(false);
+    setCompasesOcultos(false);
+    setLecturaCompasPlayback(null);
     setModoLectura(false);
   }, []);
 
   const handleModoLecturaBack = useCallback(() => {
+    if (zoomPanelAbierto) {
+      setZoomPanelAbierto(false);
+      return;
+    }
+
     if (overlayAbierto) {
       setOverlayAbierto(false);
       return;
     }
 
     salirModoLectura();
-  }, [overlayAbierto, salirModoLectura]);
+  }, [overlayAbierto, salirModoLectura, zoomPanelAbierto]);
 
   useHardwareBack(modoLectura, handleModoLecturaBack);
 
@@ -375,6 +423,13 @@ export default function HomePageShell() {
               headerAction={headerActions}
               letraZoomFactor={letraZoomFactor}
               onLecturaZoomEligibleChange={setLecturaZoomEligible}
+              compasesOcultos={compasesOcultos}
+              onToggleCompasesOcultos={() =>
+                setCompasesOcultos((ocultos) => !ocultos)
+              }
+              onLecturaCompasPlaybackStateChange={
+                handleLecturaCompasPlaybackStateChange
+              }
               onExpand={
                 !modoLectura && cola.cancionActiva ? handleExpand : undefined
               }
@@ -417,7 +472,10 @@ export default function HomePageShell() {
                 ? "Cerrar controles"
                 : "Abrir controles de modo lectura"
             }
-            onClick={() => setOverlayAbierto((open) => !open)}
+            onClick={() => {
+              setZoomPanelAbierto(false);
+              setOverlayAbierto((open) => !open);
+            }}
             className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP} ${
               overlayAbierto ? "border-accent/45" : ""
             }`}
@@ -441,12 +499,23 @@ export default function HomePageShell() {
             pendientesCount={cola.pendientesCount}
             fixedRightCss={lecturaFixedRightCss}
             menuCompacto={lecturaConColaLateral}
+            showZoomOption={lecturaZoomEligible}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
             onBuscar={() => setBuscadorOpen(true)}
             onAfinador={() => setAfinadorOpen(true)}
+            onAbrirZoom={() => setZoomPanelAbierto(true)}
+          />
+
+          <LecturaZoomPanel
+            open={zoomPanelAbierto}
+            level={letraZoomLevel}
+            enabled={Boolean(cola.cancionActiva)}
+            onDecrease={decreaseLetraZoom}
+            onIncrease={increaseLetraZoom}
+            onClose={() => setZoomPanelAbierto(false)}
           />
 
           <LecturaBottomControls
@@ -457,6 +526,17 @@ export default function HomePageShell() {
             onZoomIncrease={increaseLetraZoom}
             autoScrollLevel={autoScrollLevel}
             autoScrollEnabled={Boolean(cola.cancionActiva)}
+            hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
+            compasesOcultos={compasesOcultos}
+            onToggleCompasesOcultos={() =>
+              setCompasesOcultos((ocultos) => !ocultos)
+            }
+            compasPlaying={lecturaCompasPlayback?.playing ?? false}
+            compasCanPlay={lecturaCompasPlayback?.canPlay ?? false}
+            compasBpm={lecturaCompasPlayback?.bpm ?? 120}
+            onCompasTogglePlayback={() => lecturaCompasPlayback?.toggle()}
+            onCompasBpmDecrease={() => lecturaCompasPlayback?.decreaseBpm()}
+            onCompasBpmIncrease={() => lecturaCompasPlayback?.increaseBpm()}
             fixedRightCss={lecturaFixedRightCss}
             onAutoScrollAccelerate={accelerateAutoScroll}
             onAutoScrollDecelerate={decelerateAutoScroll}

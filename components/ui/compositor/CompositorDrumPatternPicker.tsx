@@ -6,30 +6,39 @@ import {
   type CompositorDrumPatternId,
 } from "@/lib/compositor-drum-patterns";
 import {
+  COMPOSITOR_ARIA_DETENER_PREVIEW_RITMO_BATERIA,
   COMPOSITOR_ARIA_MODAL_RITMOS_BATERIA,
+  COMPOSITOR_ARIA_PREVIEW_RITMO_BATERIA,
   COMPOSITOR_HELP_RITMOS_BATERIA,
   COMPOSITOR_LABEL_PLANTILLAS,
   COMPOSITOR_LABEL_RITMOS_BATERIA,
 } from "@/lib/ritmo-terminologia";
-import { X } from "lucide-react";
+import { Play, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const DRUM_PREVIEW_COLOR = "var(--compositor-block-bateria)";
+const DRUM_PREVIEW_PLAYHEAD_COLOR = "var(--compositor-config)";
 
 type CompositorDrumPatternPickerProps = {
   activePatternId: CompositorDrumPatternId | null;
+  previewingPatternId: CompositorDrumPatternId | null;
+  previewProgress: number | null;
   disabled?: boolean;
   onSelectPattern: (patternId: CompositorDrumPatternId) => void;
+  onPreviewPattern: (patternId: CompositorDrumPatternId) => void;
+  onStopPreview: () => void;
 };
 
 function DrumPatternMiniPreview({
   patternId,
   events,
   cycleGolpes,
+  playheadProgress,
 }: {
   patternId: CompositorDrumPatternId;
   events: Array<{ startStep: number; durationSteps: number }>;
   cycleGolpes: number;
+  playheadProgress: number | null;
 }) {
   const gridSteps = cycleGolpes * 4;
 
@@ -49,6 +58,15 @@ function DrumPatternMiniPreview({
           }}
         />
       ))}
+      {playheadProgress != null ? (
+        <div
+          className="absolute inset-y-0 w-0.5 rounded-full"
+          style={{
+            left: `${playheadProgress * 100}%`,
+            backgroundColor: DRUM_PREVIEW_PLAYHEAD_COLOR,
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -56,13 +74,19 @@ function DrumPatternMiniPreview({
 function DrumPatternCard({
   pattern,
   isActive,
+  isPreviewing,
+  previewProgress,
   disabled,
   onSelect,
+  onPreview,
 }: {
   pattern: (typeof COMPOSITOR_DRUM_PATTERNS)[number];
   isActive: boolean;
+  isPreviewing: boolean;
+  previewProgress: number | null;
   disabled: boolean;
   onSelect: () => void;
+  onPreview: () => void;
 }) {
   return (
     <TapButton
@@ -75,16 +99,46 @@ function DrumPatternCard({
       className={`flex flex-col rounded-lg border px-2.5 py-2.5 text-left transition-colors disabled:opacity-50 ${
         isActive
           ? "border-compositor-config bg-compositor-config/10"
-          : "border-border bg-bg-dark hover:border-border-strong"
+          : isPreviewing
+            ? "border-compositor-config/60 bg-compositor-config/5"
+            : "border-border bg-bg-dark hover:border-border-strong"
       }`}
     >
-      <span
-        className={`text-[11px] font-bold leading-tight ${
-          isActive ? "text-compositor-config" : "text-text-primary"
-        }`}
-      >
-        {pattern.label}
-      </span>
+      <div className="flex items-start justify-between gap-2">
+        <span
+          className={`text-[11px] font-bold leading-tight ${
+            isActive || isPreviewing
+              ? "text-compositor-config"
+              : "text-text-primary"
+          }`}
+        >
+          {pattern.label}
+        </span>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={
+            isPreviewing
+              ? COMPOSITOR_ARIA_DETENER_PREVIEW_RITMO_BATERIA(pattern.label)
+              : COMPOSITOR_ARIA_PREVIEW_RITMO_BATERIA(pattern.label)
+          }
+          onClick={(event) => {
+            event.stopPropagation();
+            onPreview();
+          }}
+          className={`flex size-6 shrink-0 items-center justify-center rounded-md border transition-colors disabled:opacity-50 ${
+            isPreviewing
+              ? "border-compositor-config bg-compositor-config/15 text-compositor-config"
+              : "border-border bg-bg-card text-text-muted hover:border-border-strong hover:text-text-primary"
+          }`}
+        >
+          {isPreviewing ? (
+            <Square className="size-2.5 fill-current" aria-hidden="true" />
+          ) : (
+            <Play className="size-2.5 fill-current" aria-hidden="true" />
+          )}
+        </button>
+      </div>
       <span className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-text-muted">
         {pattern.descripcion}
       </span>
@@ -92,6 +146,7 @@ function DrumPatternCard({
         patternId={pattern.id}
         events={pattern.events}
         cycleGolpes={pattern.cycleGolpes}
+        playheadProgress={isPreviewing ? previewProgress : null}
       />
     </TapButton>
   );
@@ -99,8 +154,12 @@ function DrumPatternCard({
 
 export function CompositorDrumPatternPicker({
   activePatternId,
+  previewingPatternId,
+  previewProgress,
   disabled = false,
   onSelectPattern,
+  onPreviewPattern,
+  onStopPreview,
 }: CompositorDrumPatternPickerProps) {
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -119,9 +178,20 @@ export function CompositorDrumPatternPicker({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [modalOpen]);
 
+  useEffect(() => {
+    if (!modalOpen && previewingPatternId) {
+      onStopPreview();
+    }
+  }, [modalOpen, onStopPreview, previewingPatternId]);
+
   function handleSelectPattern(patternId: CompositorDrumPatternId) {
+    onStopPreview();
     setModalOpen(false);
     onSelectPattern(patternId);
+  }
+
+  function handlePreviewPattern(patternId: CompositorDrumPatternId) {
+    onPreviewPattern(patternId);
   }
 
   return (
@@ -150,7 +220,7 @@ export function CompositorDrumPatternPicker({
             role="dialog"
             aria-modal="true"
             aria-label={COMPOSITOR_ARIA_MODAL_RITMOS_BATERIA}
-            className="relative z-10 flex max-h-[min(80vh,40rem)] w-full max-w-sm flex-col rounded-[12px] border border-border bg-bg-card"
+            className="relative z-10 flex max-h-[min(85vh,44rem)] w-full max-w-lg flex-col rounded-[12px] border border-border bg-bg-card"
           >
             <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/80 px-4 py-3">
               <div className="min-w-0">
@@ -182,8 +252,13 @@ export function CompositorDrumPatternPicker({
                     key={pattern.id}
                     pattern={pattern}
                     isActive={activePatternId === pattern.id}
+                    isPreviewing={previewingPatternId === pattern.id}
+                    previewProgress={
+                      previewingPatternId === pattern.id ? previewProgress : null
+                    }
                     disabled={disabled}
                     onSelect={() => handleSelectPattern(pattern.id)}
+                    onPreview={() => handlePreviewPattern(pattern.id)}
                   />
                 ))}
               </div>

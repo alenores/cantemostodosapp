@@ -4,13 +4,26 @@ import CifradoLecturaSidePanel from "@/components/cifrado/CifradoLecturaSidePane
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import { useCifradoPlayback } from "@/hooks/useCifradoPlayback";
 import type { CancionCifradoDetalle } from "@/types";
-import type { CSSProperties, RefObject } from "react";
+import { useEffect, type CSSProperties, type RefObject } from "react";
+
+export type LecturaCompasPlaybackState = {
+  hasCompases: boolean;
+  playing: boolean;
+  canPlay: boolean;
+  bpm: number;
+  toggle: () => void;
+  decreaseBpm: () => void;
+  increaseBpm: () => void;
+};
 
 type LetraCifradoLecturaShellProps = {
   detalle: CancionCifradoDetalle;
   scrollRef: RefObject<HTMLDivElement | null>;
   scrollEndPadding: string;
   letraZoomStyle?: CSSProperties;
+  compasesOcultos?: boolean;
+  onToggleCompasesOcultos?: () => void;
+  onCompasPlaybackStateChange?: (state: LecturaCompasPlaybackState | null) => void;
 };
 
 export default function LetraCifradoLecturaShell({
@@ -18,9 +31,13 @@ export default function LetraCifradoLecturaShell({
   scrollRef,
   scrollEndPadding,
   letraZoomStyle,
+  compasesOcultos = false,
+  onToggleCompasesOcultos,
+  onCompasPlaybackStateChange,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
   const hasCompases = Boolean(compasConfig?.barras?.length);
+  const showCompasMarcadores = hasCompases && !compasesOcultos;
 
   const playback = useCifradoPlayback({
     detalle,
@@ -28,10 +45,48 @@ export default function LetraCifradoLecturaShell({
     enabled: hasCompases,
   });
 
+  useEffect(() => {
+    if (compasesOcultos && playback.playing) {
+      playback.handleTogglePlayback();
+    }
+  }, [compasesOcultos, playback.playing, playback.handleTogglePlayback]);
+
+  useEffect(() => {
+    if (!onCompasPlaybackStateChange) {
+      return;
+    }
+
+    if (!hasCompases) {
+      onCompasPlaybackStateChange(null);
+      return;
+    }
+
+    onCompasPlaybackStateChange({
+      hasCompases: true,
+      playing: playback.playing,
+      canPlay: playback.canPlay,
+      bpm: playback.bpm,
+      toggle: playback.handleTogglePlayback,
+      decreaseBpm: () =>
+        playback.handleBpmChange(Math.max(40, playback.bpm - 1)),
+      increaseBpm: () =>
+        playback.handleBpmChange(Math.min(240, playback.bpm + 1)),
+    });
+  }, [
+    hasCompases,
+    onCompasPlaybackStateChange,
+    playback.bpm,
+    playback.canPlay,
+    playback.handleTogglePlayback,
+    playback.handleBpmChange,
+    playback.playing,
+  ]);
+
   return (
     <div className="flex h-full min-h-0 min-w-0 w-full flex-col lg:flex-row">
       <CifradoLecturaSidePanel
-        showCompasMarkers={hasCompases}
+        hasCompases={hasCompases}
+        compasesOcultos={compasesOcultos}
         playing={playback.playing}
         canPlay={playback.canPlay}
         notacion={playback.notacion}
@@ -40,6 +95,7 @@ export default function LetraCifradoLecturaShell({
         bpm={playback.bpm}
         tapCount={playback.tapCount}
         onTogglePlayback={playback.handleTogglePlayback}
+        onToggleCompasesOcultos={onToggleCompasesOcultos}
         onNotacionChange={playback.handleNotacionChange}
         onTonalidadChange={playback.handleTonalidadChange}
         onModoTonalChange={playback.handleModoTonalChange}
@@ -62,6 +118,7 @@ export default function LetraCifradoLecturaShell({
           notacion={playback.notacion}
           activeBeatAnchors={playback.activeBeatAnchors}
           activePlaybackLineIndex={playback.activePlaybackLineIndex}
+          showCompas={showCompasMarcadores}
           onMarkersReady={hasCompases ? playback.handleMarkersReady : undefined}
           onLineRef={hasCompases ? playback.handleLineRef : undefined}
         />

@@ -412,7 +412,13 @@ export default function CifradoViewerModal({
         return;
       }
 
-      const beat = beats[playbackIndexRef.current % beats.length];
+      if (playbackIndexRef.current >= beats.length) {
+        setPlaying(false);
+        setActiveBeat(null);
+        return;
+      }
+
+      const beat = beats[playbackIndexRef.current];
 
       setActiveBeat({
         kind: beat.kind,

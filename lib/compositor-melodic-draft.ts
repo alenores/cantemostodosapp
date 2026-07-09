@@ -12,10 +12,12 @@ import {
   type CompositorGradoCromatico,
 } from "@/lib/compositor-melodic-pitch";
 import { getModificadorPorDefecto, type ModoTonal } from "@/lib/cifrado-escala";
+import { getMelodicOctaveRange } from "@/lib/compositor-timeline-layout";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 
 export type CompositorMelodicDraft = {
   gradoCromatico: CompositorGradoCromatico;
+  octavaRelativa: number;
   level: MetronomeBeatLevel;
   chordModifier: Modificador;
   pianoHarmonyMode: "nota" | "acorde";
@@ -23,10 +25,11 @@ export type CompositorMelodicDraft = {
 };
 
 export function createDefaultMelodicDraft(
-  _instrumentId: CompositorInstrumentId,
+  instrumentId: CompositorInstrumentId,
 ): CompositorMelodicDraft {
   return {
     gradoCromatico: 1,
+    octavaRelativa: getMelodicOctaveRange(instrumentId).min,
     level: "medio",
     chordModifier: "",
     pianoHarmonyMode: "nota",
@@ -52,6 +55,7 @@ export function draftFromEvent(
   return normalizeMelodicDraft(
     {
       gradoCromatico: clampGradoCromatico(event.gradoCromatico),
+      octavaRelativa: event.octavaRelativa ?? event.note.octave,
       level: event.level,
       chordModifier: (event.chordModifier ?? "") as Modificador,
       pianoHarmonyMode: event.pianoHarmonyMode === "acorde" ? "acorde" : "nota",

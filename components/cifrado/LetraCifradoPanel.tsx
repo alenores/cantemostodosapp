@@ -19,6 +19,7 @@ type LetraCifradoPanelProps = {
   notacion?: NotacionAcordes;
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   activePlaybackLineIndex?: number | null;
+  showCompas?: boolean;
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
   onLineRef?: (lineIndex: number, element: HTMLDivElement | null) => void;
 };
@@ -31,13 +32,15 @@ export default function LetraCifradoPanel({
   notacion = "es",
   activeBeatAnchors = [],
   activePlaybackLineIndex = null,
+  showCompas,
   onMarkersReady,
   onLineRef,
 }: LetraCifradoPanelProps) {
   const letra = detalle.letra?.trim() ?? "";
   const compasConfig = detalle.compas_config;
   const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
-  const showCompasMarcadores = Boolean(compasConfig?.barras?.length);
+  const showCompasMarcadores =
+    showCompas ?? Boolean(compasConfig?.barras?.length);
   const acordes = cifradoAcordes ?? detalle.cifrado.acordes;
 
   const horizontalPaddingStyle = modoLectura

@@ -14,6 +14,7 @@ import {
 } from "@/components/cifrado/CifradoEditorHelpModal";
 import { CifradoLineMergePicker } from "@/components/cifrado/CifradoLineMergePicker";
 import { CifradoUnlockIcon } from "@/components/cifrado/CifradoUnlockIcon";
+import { CifradoIngresoTonalidadInferModal } from "@/components/cifrado/CifradoIngresoTonalidadInferModal";
 import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFields";
 import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
 import {
@@ -60,6 +61,8 @@ import {
   applyLineCopyCompas,
   charOffsetToPx,
   computeLineCompasMarkersPx,
+  computePreviewMeasureStemHeightPx,
+  PREVIEW_MEASURE_MARKER_DOT_HEIGHT_PX,
   clampCompasCharOffset,
   clampCompasCharOffsetToLane,
   computeEvenCompasPlacementOffsets,
@@ -132,7 +135,17 @@ import {
   type NotacionAcordes,
 } from "@/lib/notacion-acordes";
 import { createClient } from "@/lib/supabase/client";
-import { parseLetraTradicional } from "@/lib/cifrado-import";
+import {
+  formatTonalidadDetectLabelTitle,
+  getPrimerAcordeOrdenado,
+  parseLetraTradicional,
+  splitTonalidadLineFromText,
+  type TonalidadLineDetectResult,
+} from "@/lib/cifrado-import";
+import {
+  inferTonalidadFromAcordes,
+  type TonalidadInferResult,
+} from "@/lib/cifrado-tonalidad-infer";
 import type { CifradoEditorSession, CifradoSaveResult } from "@/lib/cifrado-editor-session";
 import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
 import {
@@ -1565,6 +1578,8 @@ type CompasMarkersRowProps = {
   activeBeatLeftPx?: number | null;
   playbackHighlight?: boolean;
   showMeasureStem?: boolean;
+  measureStemHeightPx?: number;
+  hideOpenEndedMeasures?: boolean;
 };
 
 function CompasMarkersRow({
@@ -1573,14 +1588,20 @@ function CompasMarkersRow({
   activeBeatLeftPx = null,
   playbackHighlight = false,
   showMeasureStem = false,
+  measureStemHeightPx,
+  hideOpenEndedMeasures = false,
 }: CompasMarkersRowProps) {
   if (markers.length === 0) {
     return null;
   }
 
+  const useFixedPreviewStem = measureStemHeightPx !== undefined;
+
   return (
     <div
-      className={`relative ${showMeasureStem ? "mt-1 min-h-6 pb-3" : "h-4"}`}
+      className={`relative ${
+        showMeasureStem && !useFixedPreviewStem ? "mt-1 min-h-6 pb-3" : "h-4"
+      }`}
       aria-hidden="true"
     >
       {markers.map((marker, index) => {
@@ -1593,6 +1614,10 @@ function CompasMarkersRow({
           Math.abs(marker.leftPx - activeBeatLeftPx) < 2;
 
         if (marker.kind === "measure") {
+          if (hideOpenEndedMeasures && marker.compasNumero === undefined) {
+            return null;
+          }
+
           const level = marker.intensidad ?? "fuerte";
           const barAppearance = getBeatLevelBarAppearance(level);
           const measureHeight = Math.max(
@@ -1608,8 +1633,17 @@ function CompasMarkersRow({
             >
               {showMeasureStem && (
                 <span
-                  className="absolute bottom-full left-0 w-px bg-text-muted/75"
-                  style={{ height: "2.75rem" }}
+                  className={`absolute left-0 w-px bg-text-muted/75 ${
+                    useFixedPreviewStem ? "z-0" : "bottom-full"
+                  }`}
+                  style={{
+                    ...(useFixedPreviewStem
+                      ? { bottom: `${PREVIEW_MEASURE_MARKER_DOT_HEIGHT_PX}px` }
+                      : {}),
+                    height: useFixedPreviewStem
+                      ? `${measureStemHeightPx}px`
+                      : "2.75rem",
+                  }}
                 />
               )}
               <span
@@ -1626,7 +1660,7 @@ function CompasMarkersRow({
                   border: barAppearance.border,
                 }}
               />
-              {showMeasureStem && marker.compasNumero !== undefined && (
+              {showMeasureStem && !useFixedPreviewStem && marker.compasNumero !== undefined && (
                 <span
                   className="absolute top-full left-0 mt-0.5 -translate-x-1/2 text-[10px] font-bold leading-none tabular-nums"
                   style={{ color: barAppearance.backgroundColor }}
@@ -1702,7 +1736,9 @@ function CifradoPreviewLine({
   cyclePiecesById,
 }: CifradoPreviewLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
+  const compasRowRef = useRef<HTMLDivElement>(null);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
+  const [compasRowBottomPx, setCompasRowBottomPx] = useState<number | undefined>();
   const [laneSlotCount, setLaneSlotCount] = useState(LINE_LANE_MIN_SLOT_COUNT);
   const characters = [...text];
   const laneStart = getLineLaneStart(characters.length);
@@ -1816,6 +1852,35 @@ function CifradoPreviewLine({
     ],
   );
 
+  const previewMeasureStemHeightPx = useMemo(
+    () =>
+      computePreviewMeasureStemHeightPx(
+        charPositions,
+        acordes,
+        characters.length,
+        compasRowBottomPx,
+      ),
+    [acordes, charPositions, characters.length, compasRowBottomPx],
+  );
+
+  useLayoutEffect(() => {
+    const lane = textLaneRef.current;
+    const compasRow = compasRowRef.current;
+
+    if (!lane || !compasRow) {
+      setCompasRowBottomPx(undefined);
+      return;
+    }
+
+    const laneRect = lane.getBoundingClientRect();
+    const rowRect = compasRow.getBoundingClientRect();
+    const nextBottom = rowRect.bottom - laneRect.top;
+
+    setCompasRowBottomPx((current) =>
+      current === nextBottom ? current : nextBottom,
+    );
+  }, [charPositions, compasMarkers.length, laneSlotCount, showCompas]);
+
   useEffect(() => {
     onMarkersReady?.(lineIndex, compasMarkers);
   }, [compasMarkers, lineIndex, onMarkersReady]);
@@ -1895,7 +1960,7 @@ function CifradoPreviewLine({
               aria-hidden="true"
             />
             <span
-              className="absolute size-1 rounded-full bg-accent"
+              className="absolute z-10 size-1 rounded-full bg-accent"
               style={{ top: dotTop, left: 0 }}
               aria-hidden="true"
             />
@@ -1904,12 +1969,14 @@ function CifradoPreviewLine({
       })}
 
       {compasMarkers.length > 0 && (
-        <div className="mt-1.5">
+        <div ref={compasRowRef} className="mt-1.5">
           <CompasMarkersRow
             markers={compasMarkers}
             activeBeatLeftPx={activeBeatLeftPx}
             playbackHighlight={activeBeatLeftPx !== null}
-            showMeasureStem={false}
+            showMeasureStem
+            measureStemHeightPx={previewMeasureStemHeightPx}
+            hideOpenEndedMeasures
           />
         </div>
       )}
@@ -2163,6 +2230,20 @@ export default function CifradoEditor({
   const [artista, setArtista] = useState("");
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
+  const [ingresoTonalidadIndex, setIngresoTonalidadIndex] =
+    useState<NotaIndex | null>(null);
+  const [ingresoModoTonal, setIngresoModoTonal] = useState<ModoTonal | null>(
+    null,
+  );
+  const [tonalidadSugeridaOpen, setTonalidadSugeridaOpen] = useState(false);
+  const [tonalidadSugerida, setTonalidadSugerida] =
+    useState<TonalidadLineDetectResult | null>(null);
+  const [tonalidadInferOpen, setTonalidadInferOpen] = useState(false);
+  const [tonalidadInferResult, setTonalidadInferResult] =
+    useState<TonalidadInferResult | null>(null);
+  const lastTonalidadDetectLineRef = useRef<string | null>(null);
+  const lastChordInferTextRef = useRef<string | null>(null);
+  const chordInferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -2261,14 +2342,30 @@ export default function CifradoEditor({
       verses: draftLines.filter((line) => line.trim().length > 0).length,
     };
   }, [draftLyrics]);
-  const draftPasteStats = useMemo(() => {
-    const draftLines = splitLyricsLines(draftPasteTraditional);
+  const draftPastePreview = useMemo(() => {
+    if (!draftPasteTraditional.trim()) {
+      return {
+        text: "",
+        stats: { total: 0, verses: 0 },
+      };
+    }
+
+    const { textWithoutTonalidadLine } = splitTonalidadLineFromText(
+      draftPasteTraditional,
+    );
+    const previewText = textWithoutTonalidadLine.trim();
+    const draftLines = splitLyricsLines(previewText);
 
     return {
-      total: draftLines.length,
-      verses: draftLines.filter((line) => line.trim().length > 0).length,
+      text: previewText,
+      stats: {
+        total: draftLines.length,
+        verses: draftLines.filter((line) => line.trim().length > 0).length,
+      },
     };
   }, [draftPasteTraditional]);
+  const ingresoTonalidadLista =
+    ingresoTonalidadIndex !== null && ingresoModoTonal !== null;
   const hasCompas = compasConfig.barras.length > 0;
 
   const lineMergePreview = useMemo(() => {
@@ -2421,6 +2518,19 @@ export default function CifradoEditor({
       setArtista("");
       setTonalidadIndex(7);
       setModoTonal(DEFAULT_MODO_TONAL);
+      setIngresoTonalidadIndex(null);
+      setIngresoModoTonal(null);
+      setTonalidadSugeridaOpen(false);
+      setTonalidadSugerida(null);
+      setTonalidadInferOpen(false);
+      setTonalidadInferResult(null);
+      lastTonalidadDetectLineRef.current = null;
+      lastChordInferTextRef.current = null;
+
+      if (chordInferTimerRef.current) {
+        clearTimeout(chordInferTimerRef.current);
+        chordInferTimerRef.current = null;
+      }
       setPreviewOpen(false);
       setPicker(null);
       setLoading(false);
@@ -2473,6 +2583,19 @@ export default function CifradoEditor({
       setSelectedBarra(null);
       setTonalidadIndex(session.tonalidad_default ?? DEFAULT_TONALIDAD);
       setModoTonal(session.modo_tonal_default ?? DEFAULT_MODO_TONAL);
+      setIngresoTonalidadIndex(session.tonalidad_default ?? DEFAULT_TONALIDAD);
+      setIngresoModoTonal(session.modo_tonal_default ?? DEFAULT_MODO_TONAL);
+      setTonalidadSugeridaOpen(false);
+      setTonalidadSugerida(null);
+      setTonalidadInferOpen(false);
+      setTonalidadInferResult(null);
+      lastTonalidadDetectLineRef.current = null;
+      lastChordInferTextRef.current = null;
+
+      if (chordInferTimerRef.current) {
+        clearTimeout(chordInferTimerRef.current);
+        chordInferTimerRef.current = null;
+      }
       setPhase(session.skipIngreso ? "cifrado" : "ingreso");
       setModoInsercion("acordes");
       setError(null);
@@ -2499,6 +2622,11 @@ export default function CifradoEditor({
     setArtista("");
     setTonalidadIndex(DEFAULT_TONALIDAD);
     setModoTonal(DEFAULT_MODO_TONAL);
+    setIngresoTonalidadIndex(null);
+    setIngresoModoTonal(null);
+    setTonalidadSugeridaOpen(false);
+    setTonalidadSugerida(null);
+    lastTonalidadDetectLineRef.current = null;
     setPreviewOpen(false);
     setPicker(null);
     setLoading(false);
@@ -2561,7 +2689,13 @@ export default function CifradoEditor({
         return;
       }
 
-      const beat = beats[playbackIndexRef.current % beats.length];
+      if (playbackIndexRef.current >= beats.length) {
+        setPlaying(false);
+        setActiveBeat(null);
+        return;
+      }
+
+      const beat = beats[playbackIndexRef.current];
 
       setActiveBeat({
         kind: beat.kind,
@@ -2665,6 +2799,127 @@ export default function CifradoEditor({
     ? findAcordeAt(cifrado.acordes, picker.lineIndex, picker.charOffset)
     : undefined;
 
+  function assertIngresoTonalidad(): boolean {
+    if (!ingresoTonalidadLista) {
+      setError("Elegí el tono y el modo antes de continuar.");
+      return false;
+    }
+
+    return true;
+  }
+
+  function commitIngresoTonalidad() {
+    if (ingresoTonalidadIndex === null || ingresoModoTonal === null) {
+      return;
+    }
+
+    setTonalidadIndex(ingresoTonalidadIndex);
+    setModoTonal(ingresoModoTonal);
+  }
+
+  function clearChordInferTimer() {
+    if (chordInferTimerRef.current) {
+      clearTimeout(chordInferTimerRef.current);
+      chordInferTimerRef.current = null;
+    }
+  }
+
+  function maybeInferTonalidadFromAcordes(value: string) {
+    const { textWithoutTonalidadLine, tonalidad: lineTonalidad } =
+      splitTonalidadLineFromText(value);
+
+    if (lineTonalidad) {
+      setTonalidadInferOpen(false);
+      setTonalidadInferResult(null);
+      return;
+    }
+
+    const textToAnalyze = textWithoutTonalidadLine.trim();
+
+    if (!textToAnalyze) {
+      return;
+    }
+
+    if (textToAnalyze === lastChordInferTextRef.current) {
+      return;
+    }
+
+    const imported = parseLetraTradicional(textToAnalyze);
+    const primerAcorde = getPrimerAcordeOrdenado(imported.cifrado.acordes);
+    const inference = inferTonalidadFromAcordes(
+      imported.cifrado.acordes,
+      primerAcorde,
+    );
+
+    lastChordInferTextRef.current = textToAnalyze;
+
+    if (!inference) {
+      setTonalidadInferOpen(false);
+      setTonalidadInferResult(null);
+      return;
+    }
+
+    setTonalidadInferResult(inference);
+    setTonalidadInferOpen(true);
+  }
+
+  function scheduleChordTonalidadInfer(value: string) {
+    clearChordInferTimer();
+    chordInferTimerRef.current = setTimeout(() => {
+      chordInferTimerRef.current = null;
+      maybeInferTonalidadFromAcordes(value);
+    }, 450);
+  }
+
+  function handleSelectInferredTonalidad(tonalidad: TonalidadLineDetectResult) {
+    setIngresoTonalidadIndex(tonalidad.tonalidadIndex);
+    setIngresoModoTonal(tonalidad.modoTonal);
+    setTonalidadInferOpen(false);
+  }
+
+  function handleDismissInferredTonalidad() {
+    setTonalidadInferOpen(false);
+  }
+
+  function handleDraftPasteTraditionalChange(value: string) {
+    const split = splitTonalidadLineFromText(value);
+    const cleanedValue = split.tonalidad
+      ? split.textWithoutTonalidadLine.trim()
+      : value;
+
+    setDraftPasteTraditional(cleanedValue);
+
+    if (error) {
+      setError(null);
+    }
+
+    const detectSignature = split.tonalidad
+      ? `${split.tonalidad.tonalidadIndex}:${split.tonalidad.modoTonal}:${cleanedValue}`
+      : null;
+
+    if (
+      split.tonalidad &&
+      detectSignature &&
+      detectSignature !== lastTonalidadDetectLineRef.current
+    ) {
+      lastTonalidadDetectLineRef.current = detectSignature;
+      lastChordInferTextRef.current = cleanedValue;
+      clearChordInferTimer();
+      setTonalidadInferOpen(false);
+      setTonalidadInferResult(null);
+      setIngresoTonalidadIndex(split.tonalidad.tonalidadIndex);
+      setIngresoModoTonal(split.tonalidad.modoTonal);
+      setTonalidadSugerida(split.tonalidad);
+      setTonalidadSugeridaOpen(true);
+      return;
+    }
+
+    if (!split.tonalidad) {
+      lastTonalidadDetectLineRef.current = null;
+      scheduleChordTonalidadInfer(cleanedValue);
+    }
+  }
+
   function applyImportedCifrado(
     letra: string,
     importedCifrado: CifradoData,
@@ -2706,6 +2961,11 @@ export default function CifradoEditor({
       return;
     }
 
+    if (!assertIngresoTonalidad()) {
+      return;
+    }
+
+    commitIngresoTonalidad();
     applyImportedCifrado(trimmed, createEmptyCifrado());
   }
 
@@ -2717,13 +2977,31 @@ export default function CifradoEditor({
       return;
     }
 
-    const imported = parseLetraTradicional(trimmed);
+    if (!assertIngresoTonalidad()) {
+      return;
+    }
+
+    const { textWithoutTonalidadLine } = splitTonalidadLineFromText(trimmed);
+    const textToImport = textWithoutTonalidadLine.trim();
+
+    if (!textToImport) {
+      setError("Pegá la letra con acordes antes de continuar.");
+      return;
+    }
+
+    commitIngresoTonalidad();
+    const imported = parseLetraTradicional(textToImport);
     applyImportedCifrado(imported.letra, imported.cifrado, {
       warnings: imported.warnings,
     });
   }
 
   function handleWebImport(data: CifradoEditorWebImportData) {
+    if (!assertIngresoTonalidad()) {
+      return;
+    }
+
+    commitIngresoTonalidad();
     applyImportedCifrado(data.letra, data.cifrado, {
       nombre: data.nombre,
       artista: data.artista,
@@ -3153,6 +3431,15 @@ export default function CifradoEditor({
       (barra) => barra.lineIndex === lineIndex,
     );
 
+    if (lineBarras.length > 0) {
+      const lastOffset = Math.max(...lineBarras.map((barra) => barra.charOffset));
+
+      if (clampedOffset <= lastOffset) {
+        setToast("Solo podés agregar una línea a la derecha de la última.");
+        return;
+      }
+    }
+
     if (isCharOffsetInsideCompasCycle(lineBarras, clampedOffset)) {
       setToast("No podés agregar un ciclo dentro de otro.");
       return;
@@ -3475,7 +3762,20 @@ export default function CifradoEditor({
     const lineBarras = compasConfig.barras.filter(
       (barra) => barra.lineIndex === lineIndex,
     );
-    const clampedTo = clampCompasCharOffset(toOffset);
+    const sorted = [...lineBarras].sort((a, b) => a.charOffset - b.charOffset);
+    const fromIndex = sorted.findIndex((barra) => barra.charOffset === fromOffset);
+    const prev = fromIndex > 0 ? sorted[fromIndex - 1] : undefined;
+    const next = fromIndex >= 0 ? sorted[fromIndex + 1] : undefined;
+    const minAllowed = prev ? prev.charOffset + 1 : 0;
+    const maxAllowed = next ? next.charOffset - 1 : Number.POSITIVE_INFINITY;
+    const clampedTo = Math.min(
+      Math.max(clampCompasCharOffset(toOffset), minAllowed),
+      maxAllowed,
+    );
+
+    if (clampedTo === fromOffset) {
+      return;
+    }
 
     if (isCharOffsetInsideCompasCycle(lineBarras, clampedTo, fromOffset)) {
       setToast("No podés mover un ciclo dentro de otro.");
@@ -3758,7 +4058,7 @@ export default function CifradoEditor({
                     <TapButton
                       type="button"
                       onClick={handleApplyLyrics}
-                      disabled={!draftLyrics.trim()}
+                      disabled={!draftLyrics.trim() || !ingresoTonalidadLista}
                       className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                     >
                       Aplicar y empezar a cifrar
@@ -3770,6 +4070,7 @@ export default function CifradoEditor({
                   <CifradoEditorIngresoWebSearch
                     onImport={handleWebImport}
                     onError={setError}
+                    importDisabled={!ingresoTonalidadLista}
                   />
                 ) : null}
 
@@ -3784,19 +4085,18 @@ export default function CifradoEditor({
                     <textarea
                       id="cifrado-letra-pegar"
                       value={draftPasteTraditional}
-                      onChange={(event) => {
-                        setDraftPasteTraditional(event.target.value);
-                        if (error) {
-                          setError(null);
-                        }
-                      }}
+                      onChange={(event) =>
+                        handleDraftPasteTraditionalChange(event.target.value)
+                      }
                       className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
                       placeholder="Pegá la letra con los acordes encima de cada renglón…"
                     />
                     <TapButton
                       type="button"
                       onClick={handleApplyPasteTraditional}
-                      disabled={!draftPasteTraditional.trim()}
+                      disabled={
+                        !draftPasteTraditional.trim() || !ingresoTonalidadLista
+                      }
                       className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                     >
                       Importar y editar
@@ -4332,6 +4632,20 @@ export default function CifradoEditor({
                   className={inputClassName}
                   placeholder="Artista"
                 />
+                <div className="mt-4">
+                  <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                    Tonalidad
+                  </p>
+                  <CifradoTonalidadFields
+                    idPrefix="cifrado-ingreso"
+                    notacion={notacion}
+                    tonalidadIndex={ingresoTonalidadIndex}
+                    modoTonal={ingresoModoTonal}
+                    requireSelection
+                    onTonalidadChange={setIngresoTonalidadIndex}
+                    onModoTonalChange={setIngresoModoTonal}
+                  />
+                </div>
               </div>
 
               <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
@@ -4347,14 +4661,14 @@ export default function CifradoEditor({
                       {draftLyrics.trim()}
                     </p>
                   </>
-                ) : ingresoTab === "pegar" && draftPasteTraditional.trim() ? (
+                ) : ingresoTab === "pegar" && draftPastePreview.text ? (
                   <>
                     <p className="mt-2 text-sm font-medium text-text-primary">
-                      {draftPasteStats.verses} versos · {draftPasteStats.total}{" "}
-                      renglones
+                      {draftPastePreview.stats.verses} versos ·{" "}
+                      {draftPastePreview.stats.total} renglones
                     </p>
                     <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
-                      {draftPasteTraditional.trim()}
+                      {draftPastePreview.text}
                     </p>
                   </>
                 ) : (
@@ -4373,21 +4687,25 @@ export default function CifradoEditor({
                 <ul className="space-y-2 text-xs leading-relaxed text-text-muted">
                   {ingresoTab === "letra" ? (
                     <>
+                      <li>· Elegí el tono y el modo antes de continuar.</li>
                       <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
                       <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
                       <li>· Podés completar nombre y artista ahora o al guardar.</li>
                     </>
                   ) : ingresoTab === "web" ? (
                     <>
+                      <li>· Elegí el tono y el modo antes de importar.</li>
                       <li>· Solo se busca en Acordes de Canciones.</li>
                       <li>· Al aceptar, la letra y los acordes se separan automáticamente.</li>
                       <li>· Revisá el resultado en el editor antes de guardar.</li>
                     </>
                   ) : (
                     <>
+                      <li>· Elegí el tono y el modo antes de continuar.</li>
+                      <li>· Si el pegado incluye «Tono:» (aunque falte la T), se detecta y no entra en la letra.</li>
+                      <li>· Si no, la app puede sugerir el tono según los acordes pegados.</li>
                       <li>· Pegá el formato tradicional: acordes arriba, letra abajo.</li>
                       <li>· La app separa letra y acordes al importar.</li>
-                      <li>· Podés ajustar todo desde el modo edición.</li>
                     </>
                   )}
                 </ul>
@@ -4408,7 +4726,7 @@ export default function CifradoEditor({
                 <TapButton
                   type="button"
                   onClick={handleApplyLyrics}
-                  disabled={!draftLyrics.trim()}
+                  disabled={!draftLyrics.trim() || !ingresoTonalidadLista}
                   className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                 >
                   Aplicar y empezar a cifrar
@@ -4417,7 +4735,9 @@ export default function CifradoEditor({
                 <TapButton
                   type="button"
                   onClick={handleApplyPasteTraditional}
-                  disabled={!draftPasteTraditional.trim()}
+                  disabled={
+                    !draftPasteTraditional.trim() || !ingresoTonalidadLista
+                  }
                   className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                 >
                   Importar y editar
@@ -4473,6 +4793,33 @@ export default function CifradoEditor({
       <CifradoEditorHelpModal
         open={editorHelpOpen}
         onClose={() => setEditorHelpOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={tonalidadSugeridaOpen && tonalidadSugerida !== null}
+        message={
+          tonalidadSugerida
+            ? `Tono detectado: "${formatTonalidadDetectLabelTitle(tonalidadSugerida)}"`
+            : ""
+        }
+        confirmLabel="Usar sugerencia"
+        cancelLabel="Elegir manualmente"
+        zIndex={70}
+        onConfirm={() => setTonalidadSugeridaOpen(false)}
+        onCancel={() => {
+          setIngresoTonalidadIndex(null);
+          setIngresoModoTonal(null);
+          setTonalidadSugeridaOpen(false);
+        }}
+      />
+
+      <CifradoIngresoTonalidadInferModal
+        open={tonalidadInferOpen}
+        candidates={tonalidadInferResult?.candidates ?? []}
+        multipleTonalidades={tonalidadInferResult?.multipleTonalidades ?? false}
+        zIndex={70}
+        onSelect={handleSelectInferredTonalidad}
+        onDismiss={handleDismissInferredTonalidad}
       />
 
       <ConfirmDialog

@@ -63,6 +63,8 @@ export default function CompositorModal({
   isPlaying,
   isPreviewingTrack,
   isPreviewingCrop,
+  previewingDrumPatternId,
+  drumPatternPreviewProgress,
   cycleProgress,
   tapTempoTapCount,
   samplesLoading,
@@ -85,6 +87,8 @@ export default function CompositorModal({
   tapTempo,
   start,
   previewActiveTrack,
+  previewDrumPattern,
+  stopDrumPatternPreview,
   previewPieceOnce,
   previewPieceTrackOnce,
   stop,
@@ -553,6 +557,8 @@ export default function CompositorModal({
               modoTonalComposicion={modoTonalComposicion}
               isPlaying={isPlaying}
               isPreviewingTrack={isPreviewingTrack}
+              previewingDrumPatternId={previewingDrumPatternId}
+              drumPatternPreviewProgress={drumPatternPreviewProgress}
               cycleProgress={cycleProgress}
               tapTempoTapCount={tapTempoTapCount}
               samplesLoading={samplesLoading}
@@ -580,6 +586,10 @@ export default function CompositorModal({
               onTapTempo={tapTempo}
               onStart={() => void start()}
               onPreviewActiveTrack={() => void previewActiveTrack()}
+              onPreviewDrumPattern={(patternId) =>
+                void previewDrumPattern(patternId)
+              }
+              onStopDrumPatternPreview={stopDrumPatternPreview}
               onStop={stop}
               onReset={resetPiece}
               onApplyDrumPattern={applyDrumPattern}

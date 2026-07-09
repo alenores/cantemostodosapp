@@ -82,6 +82,8 @@ export type CompositorEditorProps = {
   modoTonalComposicion: ModoTonal;
   isPlaying: boolean;
   isPreviewingTrack: boolean;
+  previewingDrumPatternId: CompositorDrumPatternId | null;
+  drumPatternPreviewProgress: number | null;
   cycleProgress: number | null;
   tapTempoTapCount: number;
   samplesLoading: boolean;
@@ -102,7 +104,11 @@ export type CompositorEditorProps = {
   onPlaceTrackEvent: (
     instrumentId: CompositorInstrumentId,
     partial: Partial<CompositorTrackEvent>,
-    options?: { rowId?: string; octaveExact?: boolean },
+    options?: {
+      rowId?: string;
+      octaveExact?: boolean;
+      selectOnPlace?: boolean;
+    },
   ) => string | null;
   onUpdateTrackEvent: (
     eventId: string,
@@ -116,6 +122,8 @@ export type CompositorEditorProps = {
   onTapTempo: () => void;
   onStart: () => void;
   onPreviewActiveTrack: () => void;
+  onPreviewDrumPattern: (patternId: CompositorDrumPatternId) => void;
+  onStopDrumPatternPreview: () => void;
   onStop: () => void;
   onReset: () => void;
   onApplyDrumPattern: (patternId: CompositorDrumPatternId) => void;
@@ -157,6 +165,8 @@ export function CompositorEditor({
   modoTonalComposicion,
   isPlaying,
   isPreviewingTrack,
+  previewingDrumPatternId,
+  drumPatternPreviewProgress,
   cycleProgress,
   tapTempoTapCount,
   samplesLoading,
@@ -177,6 +187,8 @@ export function CompositorEditor({
   onTapTempo,
   onStart,
   onPreviewActiveTrack,
+  onPreviewDrumPattern,
+  onStopDrumPatternPreview,
   onStop,
   onReset,
   onApplyDrumPattern,
@@ -435,8 +447,14 @@ export function CompositorEditor({
               <div className="space-y-2.5">
                 <CompositorDrumPatternPicker
                   activePatternId={activeDrumPatternId}
+                  previewingPatternId={previewingDrumPatternId}
+                  previewProgress={drumPatternPreviewProgress}
                   disabled={configLocked}
                   onSelectPattern={handleDrumPatternClick}
+                  onPreviewPattern={(patternId) =>
+                    void onPreviewDrumPattern(patternId)
+                  }
+                  onStopPreview={onStopDrumPatternPreview}
                 />
                 <CompositorTrackTimeline
                   piece={piece}
@@ -532,6 +550,8 @@ export function CompositorEditor({
           modoTonalComposicion={modoTonalComposicion}
           isPlaying={isPlaying}
           isPreviewingTrack={isPreviewingTrack}
+          previewingDrumPatternId={previewingDrumPatternId}
+          drumPatternPreviewProgress={drumPatternPreviewProgress}
           cycleProgress={cycleProgress}
           tapTempoTapCount={tapTempoTapCount}
           disabled={configLocked}
@@ -549,6 +569,8 @@ export function CompositorEditor({
           onRemoveTrackEvent={onRemoveTrackEvent}
           onTapTempo={onTapTempo}
           onPreviewActiveTrack={onPreviewActiveTrack}
+          onPreviewDrumPattern={onPreviewDrumPattern}
+          onStopDrumPatternPreview={onStopDrumPatternPreview}
           onStart={onStart}
           onStop={onStop}
           onRequestCycleGolpesChange={requestCycleGolpesChange}

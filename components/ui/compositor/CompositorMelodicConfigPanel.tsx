@@ -31,27 +31,28 @@ import {
   type CompositorGradoCromatico,
 } from "@/lib/compositor-melodic-pitch";
 import {
-  COMPOSITOR_LABEL_ARRASTRAR_GRAFICO,
+  COMPOSITOR_LABEL_AGREGAR_BLOQUE,
   COMPOSITOR_LABEL_CREAR_BLOQUE,
   COMPOSITOR_LABEL_EDITAR_BLOQUE,
+  COMPOSITOR_LABEL_OCTAVA,
   RITMO_LABEL_INTENSIDAD,
   RITMO_LABEL_NOTA,
   RITMO_LABEL_TIMBRE,
 } from "@/lib/ritmo-terminologia";
 import { METRONOME_BEAT_LEVELS, getBeatLevelLabel } from "@/lib/metronomo";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
-import { GripHorizontal } from "lucide-react";
 
 type CompositorMelodicConfigPanelProps = {
   instrumentId: CompositorInstrumentId;
   tonalidadComposicion: NotaIndex;
   modoTonalComposicion: ModoTonal;
   draft: CompositorMelodicDraft;
+  visibleOctaves: number[];
   mode: "create" | "edit";
   disabled?: boolean;
   onDraftChange: (draft: CompositorMelodicDraft) => void;
   onExitEdit?: () => void;
-  onPointerDownDrag: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onAddBlock?: () => void;
 };
 
 function MelodicFieldGroup({
@@ -73,7 +74,7 @@ function MelodicFieldGroup({
   );
 }
 
-function SegmentToggle<T extends string>({
+function SegmentToggle<T extends string | number>({
   value,
   options,
   disabled,
@@ -96,7 +97,7 @@ function SegmentToggle<T extends string>({
     >
       {options.map((option) => (
         <button
-          key={option.value}
+          key={String(option.value)}
           type="button"
           disabled={disabled}
           aria-pressed={value === option.value}
@@ -119,11 +120,12 @@ export function CompositorMelodicConfigPanel({
   tonalidadComposicion,
   modoTonalComposicion,
   draft,
+  visibleOctaves,
   mode,
   disabled = false,
   onDraftChange,
   onExitEdit,
-  onPointerDownDrag,
+  onAddBlock,
 }: CompositorMelodicConfigPanelProps) {
   const showHarmonyToggle =
     instrumentId === "piano" || instrumentId === "guitarra";
@@ -317,6 +319,22 @@ export function CompositorMelodicConfigPanel({
             </div>
           </MelodicFieldGroup>
 
+          <MelodicFieldGroup label={COMPOSITOR_LABEL_OCTAVA} mode={mode}>
+            <SegmentToggle
+              value={draft.octavaRelativa}
+              options={visibleOctaves.map((octave) => ({
+                value: octave,
+                label: String(octave),
+              }))}
+              disabled={disabled}
+              ariaLabel={COMPOSITOR_LABEL_OCTAVA}
+              mode={mode}
+              onChange={(octave) =>
+                onDraftChange({ ...draft, octavaRelativa: octave })
+              }
+            />
+          </MelodicFieldGroup>
+
           {showModifier ? (
             <MelodicFieldGroup label="Modificador" mode={mode}>
               <div className="flex flex-wrap gap-1">
@@ -372,15 +390,14 @@ export function CompositorMelodicConfigPanel({
           {!showHarmonyToggle ? intensidadGroup : null}
       </div>
 
-      {mode === "create" ? (
+      {mode === "create" && onAddBlock ? (
         <TapButton
           type="button"
           disabled={disabled}
-          onPointerDown={onPointerDownDrag}
-          className="flex w-fit touch-none items-center justify-center gap-2 self-start rounded-lg border border-dashed border-compositor-config/60 bg-compositor-config/10 px-4 py-1.5 text-xs font-bold text-compositor-config disabled:opacity-50"
+          onClick={onAddBlock}
+          className="flex w-fit items-center justify-center self-start rounded-lg border border-compositor-config/60 bg-compositor-config px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
         >
-          <GripHorizontal className="size-4" aria-hidden="true" />
-          {COMPOSITOR_LABEL_ARRASTRAR_GRAFICO}
+          {COMPOSITOR_LABEL_AGREGAR_BLOQUE}
         </TapButton>
       ) : null}
     </div>

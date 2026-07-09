@@ -14,8 +14,7 @@ import {
   melodicPitchFromAbsoluteNote,
 } from "@/lib/compositor-melodic-pitch";
 
-export const COMPOSITOR_MELODIC_MIN_ROWS = 3;
-export const COMPOSITOR_FULL_PITCH_SPAN = 10;
+
 export const COMPOSITOR_TIMELINE_STEP_MIN_PX = 28;
 export const COMPOSITOR_TIMELINE_ROW_HEIGHT_PX = 32;
 export const COMPOSITOR_TIMELINE_ROW_LABEL_WIDTH_PX = 18;
@@ -67,55 +66,80 @@ function pitchLabel(pitchIndex: number, octave?: number, octaveExact = false): s
   return note;
 }
 
-function getUsedPitchIndices(events: CompositorTrackEvent[]): number[] {
-  const indices = new Set<number>();
-
-  for (const event of events) {
-    const index = getNoteIndex(event.note.note);
-    if (index !== -1) {
-      indices.add(index);
-    }
-  }
-
-  return [...indices].sort((left, right) => left - right);
+function absoluteMelodicPitch(pitchIndex: number, octave: number): number {
+  return octave * 12 + wrapPitchIndex(pitchIndex);
 }
 
-function buildDynamicPitchRange(usedIndices: number[]): number[] {
-  if (usedIndices.length === 0) {
-    return [0, 4, 7];
-  }
+function buildGuitarTwoOctaveMelodicRows(): CompositorMelodicRow[] {
+  const rows: CompositorMelodicRow[] = [];
+  let pitchIndex = 4;
+  let octave = 2;
 
-  const min = usedIndices[0]!;
-  const max = usedIndices[usedIndices.length - 1]!;
-  const span = max - min + 1;
+  for (let index = 0; index < 24; index += 1) {
+    rows.push({
+      id: `pitch-${pitchIndex}-${octave}`,
+      kind: "pitchOctave",
+      pitchIndex,
+      octave,
+      label: pitchLabel(pitchIndex, octave, true),
+    });
+    pitchIndex += 1;
 
-  if (span >= COMPOSITOR_FULL_PITCH_SPAN) {
-    return Array.from({ length: 12 }, (_, index) => index);
-  }
-
-  const paddedMin = wrapPitchIndex(min - 1);
-  const paddedMax = wrapPitchIndex(max + 1);
-  const rows: number[] = [];
-
-  if (paddedMax >= paddedMin) {
-    for (let index = paddedMin; index <= paddedMax; index += 1) {
-      rows.push(index);
-    }
-  } else {
-    for (let index = paddedMin; index < 12; index += 1) {
-      rows.push(index);
-    }
-    for (let index = 0; index <= paddedMax; index += 1) {
-      rows.push(index);
+    if (pitchIndex >= 12) {
+      pitchIndex = 0;
+      octave += 1;
     }
   }
 
-  while (rows.length < COMPOSITOR_MELODIC_MIN_ROWS) {
-    const next = wrapPitchIndex((rows[rows.length - 1] ?? 0) + 1);
-    if (rows.includes(next)) {
-      break;
+  return rows;
+}
+
+export function getMelodicOctaveRange(instrumentId: CompositorInstrumentId): {
+  min: number;
+  max: number;
+} {
+  const min =
+    instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
+  const max =
+    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 5 : min + 1;
+
+  return { min, max };
+}
+
+export function getVisibleMelodicOctaves(
+  instrumentId: CompositorInstrumentId,
+): number[] {
+  const octaves = new Set<number>();
+
+  for (const row of buildDefaultTwoOctaveMelodicRows(instrumentId)) {
+    if (row.kind === "pitchOctave") {
+      octaves.add(row.octave);
     }
-    rows.push(next);
+  }
+
+  return [...octaves].sort((left, right) => left - right);
+}
+
+export function buildDefaultTwoOctaveMelodicRows(
+  instrumentId: CompositorInstrumentId,
+): CompositorMelodicRow[] {
+  if (instrumentId === "guitarra") {
+    return buildGuitarTwoOctaveMelodicRows();
+  }
+
+  const { min, max } = getMelodicOctaveRange(instrumentId);
+  const rows: CompositorMelodicRow[] = [];
+
+  for (let octave = min; octave <= max; octave += 1) {
+    for (let pitchIndex = 0; pitchIndex < 12; pitchIndex += 1) {
+      rows.push({
+        id: `pitch-${pitchIndex}-${octave}`,
+        kind: "pitchOctave",
+        pitchIndex,
+        octave,
+        label: pitchLabel(pitchIndex, octave, true),
+      });
+    }
   }
 
   return rows;
@@ -147,46 +171,51 @@ export function getPrimaryOctave(events: CompositorTrackEvent[]): number {
 }
 
 export function buildMelodicTimelineRows(
-  events: CompositorTrackEvent[],
+  _events: CompositorTrackEvent[],
   octaveExact: boolean,
+  instrumentId?: CompositorInstrumentId,
 ): CompositorMelodicRow[] {
-  if (!octaveExact) {
-    const pitchIndices = buildDynamicPitchRange(getUsedPitchIndices(events));
+  if (instrumentId) {
+    return buildDefaultTwoOctaveMelodicRows(instrumentId);
+  }
 
-    return pitchIndices.map((pitchIndex) => ({
+  if (!octaveExact) {
+    return Array.from({ length: 12 }, (_, pitchIndex) => ({
       id: `pitch-${pitchIndex}`,
-      kind: "pitch",
+      kind: "pitch" as const,
       pitchIndex,
       label: pitchLabel(pitchIndex),
     }));
   }
 
-  const primaryOctave = getPrimaryOctave(events);
-  const primaryEvents = events.filter(
-    (event) => (event.octavaRelativa ?? event.note.octave) === primaryOctave,
-  );
-  const overflowEvents = events.filter(
-    (event) => (event.octavaRelativa ?? event.note.octave) !== primaryOctave,
-  );
-  const pitchIndices = buildDynamicPitchRange(getUsedPitchIndices(primaryEvents));
+  return buildDefaultTwoOctaveMelodicRows("piano");
+}
 
-  const rows: CompositorMelodicRow[] = pitchIndices.map((pitchIndex) => ({
-    id: `pitch-${pitchIndex}-${primaryOctave}`,
-    kind: "pitchOctave",
-    pitchIndex,
-    octave: primaryOctave,
-    label: pitchLabel(pitchIndex, primaryOctave, true),
-  }));
+function findNearestMelodicRowId(
+  rows: CompositorMelodicRow[],
+  pitchIndex: number,
+  octave: number,
+): string | undefined {
+  const targetPitch = absoluteMelodicPitch(pitchIndex, octave);
+  let bestRow: CompositorMelodicRow | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
 
-  if (overflowEvents.length > 0) {
-    rows.push({
-      id: "overflow",
-      kind: "overflow",
-      label: "+Oct",
-    });
+  for (const row of rows) {
+    if (row.kind !== "pitchOctave") {
+      continue;
+    }
+
+    const distance = Math.abs(
+      absoluteMelodicPitch(row.pitchIndex, row.octave) - targetPitch,
+    );
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestRow = row;
+    }
   }
 
-  return rows;
+  return bestRow?.id;
 }
 
 export function getMelodicEventRowId(
@@ -196,6 +225,7 @@ export function getMelodicEventRowId(
 ): string {
   const pitchIndex = getNoteIndex(event.note.note);
   const safePitchIndex = pitchIndex === -1 ? 0 : pitchIndex;
+  const octave = event.octavaRelativa ?? event.note.octave;
 
   if (!octaveExact) {
     const match = rows.find(
@@ -208,14 +238,18 @@ export function getMelodicEventRowId(
     (row) =>
       row.kind === "pitchOctave" &&
       row.pitchIndex === safePitchIndex &&
-      row.octave === event.note.octave,
+      row.octave === octave,
   );
 
   if (primaryRow) {
     return primaryRow.id;
   }
 
-  return rows.find((row) => row.kind === "overflow")?.id ?? rows[0]?.id ?? "overflow";
+  return (
+    findNearestMelodicRowId(rows, safePitchIndex, octave) ??
+    rows[0]?.id ??
+    "pitch-0-3"
+  );
 }
 
 export function buildDrumTimelineRows(): CompositorDrumRow[] {
@@ -465,7 +499,7 @@ function getSecondaryOctave(
   const minOctave =
     instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
   const maxOctave =
-    instrumentId === "viento" ? 5 : minOctave + 1;
+    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 5 : minOctave + 1;
   return primaryOctave === minOctave ? maxOctave : minOctave;
 }
 
@@ -595,6 +629,32 @@ export function computeMovedEventPatch(
     Math.min(rowsSnapshot.length - 1, originRowIndex + deltaRows),
   );
   const targetRow = rowsSnapshot[targetRowIndex]!;
+
+  return {
+    ...timing,
+    ...melodicPitchPatchForTimelineRow(
+      targetRow,
+      originNote,
+      instrumentId,
+      primaryOctave,
+      rowsSnapshot,
+      originRowIndex,
+      deltaRows,
+      tonalidadComposicion,
+    ),
+  };
+}
+
+function melodicPitchPatchForTimelineRow(
+  targetRow: CompositorMelodicRow,
+  originNote: CompositorSlotNote,
+  instrumentId: CompositorInstrumentId,
+  primaryOctave: number,
+  rowsSnapshot: CompositorMelodicRow[],
+  originRowIndex: number,
+  deltaRows: number,
+  tonalidadComposicion: NotaIndex,
+): Pick<CompositorTrackEvent, "gradoCromatico" | "octavaRelativa"> {
   const pitchSourceRow = getPitchRowAlongDragPath(
     rowsSnapshot,
     originRowIndex,
@@ -610,7 +670,58 @@ export function computeMovedEventPatch(
   const pitch = melodicPitchFromAbsoluteNote(note, tonalidadComposicion);
 
   return {
-    ...timing,
+    gradoCromatico: pitch.gradoCromatico,
+    octavaRelativa: clampMelodicOctaveForInstrument(
+      pitch.octavaRelativa,
+      instrumentId,
+    ),
+  };
+}
+
+export function computeMovedEventPatchForMelodicCell(
+  instrumentId: CompositorInstrumentId,
+  event: CompositorTrackEvent,
+  originDurationSteps: number,
+  targetRow: CompositorMelodicRow,
+  targetStartStep: number,
+  originNote: CompositorSlotNote,
+  primaryOctave: number,
+  tonalidadComposicion: NotaIndex,
+  gridSteps: number,
+  subdivisionsPerGolpe: number,
+): CompositorTimelineEventPatch {
+  const startStep = Math.max(
+    0,
+    Math.min(gridSteps - originDurationSteps, targetStartStep),
+  );
+  const durationSteps = clampEventDurationSteps(
+    instrumentId,
+    { ...event, startStep },
+    originDurationSteps,
+    gridSteps,
+    subdivisionsPerGolpe,
+  );
+
+  if (!isMelodicTimelineInstrument(instrumentId)) {
+    return { startStep, durationSteps };
+  }
+
+  const pitchSourceRow =
+    targetRow.kind === "pitch" || targetRow.kind === "pitchOctave"
+      ? targetRow
+      : null;
+  const note = noteForMelodicTimelineRow(
+    targetRow,
+    originNote,
+    instrumentId,
+    primaryOctave,
+    pitchSourceRow,
+  );
+  const pitch = melodicPitchFromAbsoluteNote(note, tonalidadComposicion);
+
+  return {
+    startStep,
+    durationSteps,
     gradoCromatico: pitch.gradoCromatico,
     octavaRelativa: clampMelodicOctaveForInstrument(
       pitch.octavaRelativa,

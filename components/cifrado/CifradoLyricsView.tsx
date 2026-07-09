@@ -4,6 +4,8 @@ import type { CompositorPiece } from "@/lib/compositor";
 import {
   computeLineCompasMarkersPx,
   computeLineLaneSlotCount,
+  computePreviewMeasureStemHeightPx,
+  PREVIEW_MEASURE_MARKER_DOT_HEIGHT_PX,
   getLineContentEndOffset,
   getLineLaneStart,
   LINE_LANE_MIN_SLOT_COUNT,
@@ -52,6 +54,8 @@ type CompasMarkersRowProps = {
   activeBeatLeftPx?: number | null;
   playbackHighlight?: boolean;
   showMeasureStem?: boolean;
+  measureStemHeightPx?: number;
+  hideOpenEndedMeasures?: boolean;
 };
 
 function CompasMarkersRow({
@@ -60,6 +64,8 @@ function CompasMarkersRow({
   activeBeatLeftPx = null,
   playbackHighlight = false,
   showMeasureStem = false,
+  measureStemHeightPx,
+  hideOpenEndedMeasures = false,
 }: CompasMarkersRowProps) {
   if (markers.length === 0) {
     return null;
@@ -72,9 +78,13 @@ function CompasMarkersRow({
     ? "bg-blue-800 shadow-[0_0_0_2px_rgba(30,64,175,0.4)]"
     : "bg-accent/70";
 
+  const useFixedPreviewStem = measureStemHeightPx !== undefined;
+
   return (
     <div
-      className={`relative ${showMeasureStem ? "mt-1 min-h-4" : "h-4"}`}
+      className={`relative ${
+        showMeasureStem && !useFixedPreviewStem ? "mt-1 min-h-4" : "h-4"
+      }`}
       aria-hidden="true"
     >
       {markers.map((marker, index) => {
@@ -87,6 +97,10 @@ function CompasMarkersRow({
           Math.abs(marker.leftPx - activeBeatLeftPx) < 2;
 
         if (marker.kind === "measure") {
+          if (hideOpenEndedMeasures && marker.compasNumero === undefined) {
+            return null;
+          }
+
           return (
             <span
               key={`compas-measure-${index}`}
@@ -95,8 +109,17 @@ function CompasMarkersRow({
             >
               {showMeasureStem && (
                 <span
-                  className="absolute bottom-full left-0 w-px bg-text-muted/75"
-                  style={{ height: "2.75rem" }}
+                  className={`absolute left-0 w-px bg-text-muted/75 ${
+                    useFixedPreviewStem ? "z-0" : "bottom-full"
+                  }`}
+                  style={{
+                    ...(useFixedPreviewStem
+                      ? { bottom: `${PREVIEW_MEASURE_MARKER_DOT_HEIGHT_PX}px` }
+                      : {}),
+                    height: useFixedPreviewStem
+                      ? `${measureStemHeightPx}px`
+                      : "1.5rem",
+                  }}
                 />
               )}
               <span
@@ -104,9 +127,9 @@ function CompasMarkersRow({
                   isDraggingMeasure || isActiveBeat
                     ? activeMeasureClass
                     : "bg-text-muted/90"
-                } ${isActiveBeat && playbackHighlight ? "z-10 w-2" : "w-1.5"}`}
+                } ${isActiveBeat && playbackHighlight ? "z-10 w-1.5" : "w-1.5"}`}
                 style={{
-                  height: isActiveBeat && playbackHighlight ? "1rem" : "0.75rem",
+                  height: isActiveBeat && playbackHighlight ? "0.5rem" : "0.375rem",
                 }}
               />
             </span>
@@ -121,8 +144,8 @@ function CompasMarkersRow({
             } ${isActiveBeat && playbackHighlight ? "z-10" : ""}`}
             style={{
               left: marker.leftPx,
-              width: isActiveBeat && playbackHighlight ? "0.75rem" : "0.625rem",
-              height: isActiveBeat && playbackHighlight ? "0.625rem" : "0.25rem",
+              width: isActiveBeat && playbackHighlight ? "0.5rem" : "0.5rem",
+              height: isActiveBeat && playbackHighlight ? "0.375rem" : "0.125rem",
             }}
           />
         );
@@ -169,7 +192,9 @@ export function CifradoLyricsLine({
   nextLineHasCompas = false,
 }: CifradoLyricsLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
+  const compasRowRef = useRef<HTMLDivElement>(null);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
+  const [compasRowBottomPx, setCompasRowBottomPx] = useState<number | undefined>();
   const [laneSlotCount, setLaneSlotCount] = useState(LINE_LANE_MIN_SLOT_COUNT);
   const characters = [...text];
   const laneStart = getLineLaneStart(characters.length);
@@ -303,6 +328,35 @@ export function CifradoLyricsLine({
     ],
   );
 
+  const previewMeasureStemHeightPx = useMemo(
+    () =>
+      computePreviewMeasureStemHeightPx(
+        charPositions,
+        acordes,
+        characters.length,
+        compasRowBottomPx,
+      ),
+    [acordes, charPositions, characters.length, compasRowBottomPx],
+  );
+
+  useLayoutEffect(() => {
+    const lane = textLaneRef.current;
+    const compasRow = compasRowRef.current;
+
+    if (!lane || !compasRow) {
+      setCompasRowBottomPx(undefined);
+      return;
+    }
+
+    const laneRect = lane.getBoundingClientRect();
+    const rowRect = compasRow.getBoundingClientRect();
+    const nextBottom = rowRect.bottom - laneRect.top;
+
+    setCompasRowBottomPx((current) =>
+      current === nextBottom ? current : nextBottom,
+    );
+  }, [charPositions, compasMarkers.length, laneSlotCount, showCompas]);
+
   useEffect(() => {
     onMarkersReady?.(lineIndex, compasMarkers);
   }, [compasMarkers, lineIndex, onMarkersReady]);
@@ -402,7 +456,7 @@ export function CifradoLyricsLine({
               aria-hidden="true"
             />
             <span
-              className="absolute size-1 rounded-full bg-accent"
+              className="absolute z-10 size-1 rounded-full bg-accent"
               style={{ top: dotTop, left: 0 }}
               aria-hidden="true"
             />
@@ -411,12 +465,14 @@ export function CifradoLyricsLine({
       })}
 
       {compasMarkers.length > 0 && (
-        <div className="mt-1.5">
+        <div ref={compasRowRef} className="mt-1.5">
           <CompasMarkersRow
             markers={compasMarkers}
             activeBeatLeftPx={activeBeatLeftPx}
             playbackHighlight={activeBeatLeftPx !== null}
-            showMeasureStem={false}
+            showMeasureStem
+            measureStemHeightPx={previewMeasureStemHeightPx}
+            hideOpenEndedMeasures
           />
         </div>
       )}

@@ -10,10 +10,13 @@ import {
 } from "@/lib/compositor-melodic-draft";
 import {
   clampMelodicOctaveForInstrument,
+  resolveMelodicPitchToNote,
 } from "@/lib/compositor-melodic-pitch";
 import {
+  buildMelodicTimelineRows,
   COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
   COMPOSITOR_TIMELINE_STEP_MIN_PX,
+  getMelodicEventRowId,
   type CompositorMelodicRow,
 } from "@/lib/compositor-timeline-layout";
 
@@ -102,6 +105,89 @@ export function buildMelodicPlacementPartial(
     startStep: step,
     durationSteps: Math.max(1, subdivisionsPerGolpe),
     ...partial,
+  };
+}
+
+export function getNextMelodicPlacementStep(
+  events: CompositorTrackEvent[],
+  gridSteps: number,
+  durationSteps: number,
+): number | null {
+  if (events.length === 0) {
+    return durationSteps > gridSteps ? null : 0;
+  }
+
+  let maxEnd = 0;
+
+  for (const event of events) {
+    maxEnd = Math.max(maxEnd, event.startStep + event.durationSteps);
+  }
+
+  if (maxEnd + durationSteps > gridSteps) {
+    return null;
+  }
+
+  return maxEnd;
+}
+
+export function getMelodicRowIdForDraft(
+  draft: CompositorMelodicDraft,
+  instrumentId: CompositorInstrumentId,
+  tonalidadComposicion: NotaIndex,
+): string | null {
+  const note = resolveMelodicPitchToNote(
+    {
+      gradoCromatico: draft.gradoCromatico,
+      octavaRelativa: clampMelodicOctaveForInstrument(
+        draft.octavaRelativa,
+        instrumentId,
+      ),
+    },
+    tonalidadComposicion,
+  );
+  const rows = buildMelodicTimelineRows([], true, instrumentId);
+  const syntheticEvent = {
+    gradoCromatico: draft.gradoCromatico,
+    octavaRelativa: draft.octavaRelativa,
+    note,
+  } as CompositorTrackEvent;
+
+  return getMelodicEventRowId(syntheticEvent, rows, true);
+}
+
+export function buildMelodicAddPartial(
+  draft: CompositorMelodicDraft,
+  events: CompositorTrackEvent[],
+  instrumentId: CompositorInstrumentId,
+  tonalidadComposicion: NotaIndex,
+  subdivisionsPerGolpe: number,
+  gridSteps: number,
+): Partial<CompositorTrackEvent> | null {
+  const durationSteps = Math.max(1, subdivisionsPerGolpe);
+  const startStep = getNextMelodicPlacementStep(
+    events,
+    gridSteps,
+    durationSteps,
+  );
+
+  if (startStep == null) {
+    return null;
+  }
+
+  const octavaRelativa = clampMelodicOctaveForInstrument(
+    draft.octavaRelativa,
+    instrumentId,
+  );
+
+  return {
+    startStep,
+    durationSteps,
+    ...draftToEventPatch(
+      draft,
+      instrumentId,
+      tonalidadComposicion,
+      octavaRelativa,
+    ),
   };
 }
 

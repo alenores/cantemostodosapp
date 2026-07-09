@@ -52,6 +52,12 @@ export function useCompositorTimelineBlockDrag({
   onSelect,
   onUpdate,
 }: UseCompositorTimelineBlockDragOptions) {
+  const melodicRowDragRef = useRef(melodicRowDrag);
+  melodicRowDragRef.current = melodicRowDrag;
+
+  const eventRef = useRef(event);
+  eventRef.current = event;
+
   const originRef = useRef({
     startStep: event.startStep,
     durationSteps: event.durationSteps,
@@ -98,13 +104,15 @@ export function useCompositorTimelineBlockDrag({
   const applyDrag = useCallback(
     (mode: TimelineBlockDragMode, deltaSteps: number, deltaRows: number) => {
       const origin = originRef.current;
+      const currentEvent = eventRef.current;
+      const currentMelodicRowDrag = melodicRowDragRef.current;
 
       if (mode === "move") {
-        if (canChangeRow && melodicRowDrag) {
+        if (canChangeRow && currentMelodicRowDrag) {
           onUpdate(
             computeMovedEventPatch(
               instrumentId,
-              event,
+              currentEvent,
               origin.startStep,
               origin.durationSteps,
               origin.note,
@@ -115,7 +123,7 @@ export function useCompositorTimelineBlockDrag({
               gridSteps,
               subdivisionsPerGolpe,
               origin.primaryOctave,
-              melodicRowDrag.tonalidadComposicion,
+              currentMelodicRowDrag.tonalidadComposicion,
             ),
           );
           return;
@@ -124,7 +132,7 @@ export function useCompositorTimelineBlockDrag({
         onUpdate(
           computeMovedEventSteps(
             instrumentId,
-            event,
+            currentEvent,
             origin.startStep,
             origin.durationSteps,
             deltaSteps,
@@ -139,7 +147,7 @@ export function useCompositorTimelineBlockDrag({
         onUpdate(
           computeResizedEndEventSteps(
             instrumentId,
-            event,
+            currentEvent,
             origin.startStep,
             origin.durationSteps,
             deltaSteps,
@@ -153,7 +161,7 @@ export function useCompositorTimelineBlockDrag({
       onUpdate(
         computeResizedStartEventSteps(
           instrumentId,
-          event,
+          currentEvent,
           origin.startStep,
           origin.durationSteps,
           deltaSteps,
@@ -162,15 +170,7 @@ export function useCompositorTimelineBlockDrag({
         ),
       );
     },
-    [
-      canChangeRow,
-      event,
-      gridSteps,
-      instrumentId,
-      melodicRowDrag,
-      onUpdate,
-      subdivisionsPerGolpe,
-    ],
+    [canChangeRow, gridSteps, instrumentId, onUpdate, subdivisionsPerGolpe],
   );
 
   const handlePointerDown = useCallback(
@@ -182,23 +182,24 @@ export function useCompositorTimelineBlockDrag({
       pointerEvent.stopPropagation();
       pointerEvent.preventDefault();
 
+      const currentMelodicRowDrag = melodicRowDragRef.current;
       const rowsSnapshot =
-        canChangeRow && melodicRowDrag ? melodicRowDrag.rows : [];
+        canChangeRow && currentMelodicRowDrag ? currentMelodicRowDrag.rows : [];
       const originRowIndex =
-        canChangeRow && melodicRowDrag
+        canChangeRow && currentMelodicRowDrag
           ? rowsSnapshot.findIndex(
               (row) =>
                 row.id ===
                 getMelodicEventRowId(
                   event,
                   rowsSnapshot,
-                  melodicRowDrag.octaveExact,
+                  currentMelodicRowDrag.octaveExact,
                 ),
             )
           : -1;
       const primaryOctave =
-        canChangeRow && melodicRowDrag
-          ? getPrimaryOctave(melodicRowDrag.events)
+        canChangeRow && currentMelodicRowDrag
+          ? getPrimaryOctave(currentMelodicRowDrag.events)
           : 3;
 
       originRef.current = {
@@ -214,7 +215,7 @@ export function useCompositorTimelineBlockDrag({
         originRowIndex,
         primaryOctave,
         rowHeightPx:
-          melodicRowDrag?.rowHeightPx ?? COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+          currentMelodicRowDrag?.rowHeightPx ?? COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
       };
 
       removeListeners();
@@ -267,15 +268,7 @@ export function useCompositorTimelineBlockDrag({
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
     },
-    [
-      applyDrag,
-      canChangeRow,
-      disabled,
-      event,
-      melodicRowDrag,
-      onSelect,
-      removeListeners,
-    ],
+    [applyDrag, canChangeRow, disabled, event, onSelect, removeListeners],
   );
 
   return {

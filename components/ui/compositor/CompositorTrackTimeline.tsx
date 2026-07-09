@@ -30,8 +30,13 @@ import {
   COMPOSITOR_TIMELINE_STEP_MIN_PX,
   getDrumEventRowId,
   getMelodicEventRowId,
+  getVisibleMelodicOctaves,
   type CompositorTimelineEventPatch,
 } from "@/lib/compositor-timeline-layout";
+import {
+  buildMelodicAddPartial,
+  getMelodicRowIdForDraft,
+} from "@/lib/compositor-timeline-placement";
 import { resolveEventMelodicNote } from "@/lib/compositor-melodic-pitch";
 import type { MelodicRowDragContext } from "@/components/ui/compositor/useCompositorTimelineBlockDrag";
 import {
@@ -78,7 +83,11 @@ type CompositorTrackTimelineProps = {
   ) => void;
   onPlaceEvent?: (
     partial: Partial<CompositorTrackEvent>,
-    options?: { rowId?: string; octaveExact?: boolean },
+    options?: {
+      rowId?: string;
+      octaveExact?: boolean;
+      selectOnPlace?: boolean;
+    },
   ) => string | null;
   onRemoveEvent: (eventId: string) => void;
   onSelectTrack?: (instrumentId: CompositorInstrumentId) => void;
@@ -205,8 +214,8 @@ function MelodicTimeline({
   );
 
   const rows = useMemo(
-    () => buildMelodicTimelineRows(resolvedEvents, octaveExact),
-    [resolvedEvents, octaveExact],
+    () => buildMelodicTimelineRows(resolvedEvents, octaveExact, instrumentId),
+    [instrumentId, resolvedEvents, octaveExact],
   );
 
   const melodicRowDrag = useMemo(
@@ -238,7 +247,6 @@ function MelodicTimeline({
 
   const scrollRows = rows.map((row) => ({ id: row.id, label: row.label }));
   const trackWidthPx = gridSteps * COMPOSITOR_TIMELINE_STEP_MIN_PX;
-  const rowKindById = new Map(rows.map((row) => [row.id, row.kind]));
 
   return (
     <CompositorScrollableTimelineGrid
@@ -253,7 +261,6 @@ function MelodicTimeline({
       onClearSelection={() => onSelectEvent(null)}
       renderRowEvents={(row) => {
         const rowEvents = eventsByRow.get(row.id) ?? [];
-        const rowKind = rowKindById.get(row.id);
 
         return rowEvents.map((event) =>
           renderTimelineBlock({
@@ -264,7 +271,7 @@ function MelodicTimeline({
             trackWidthPx,
             selectedEventId,
             disabled,
-            showNoteLabel: rowKind === "overflow",
+            showNoteLabel: false,
             highlightEventId,
             melodicRowDrag,
             onSelectEvent,
@@ -423,9 +430,14 @@ export function CompositorTrackTimeline({
   const melodicRows = useMemo(
     () =>
       isMelodic
-        ? buildMelodicTimelineRows(resolvedMelodicEvents, octaveExact)
+        ? buildMelodicTimelineRows(resolvedMelodicEvents, octaveExact, instrumentId)
         : [],
-    [isMelodic, octaveExact, resolvedMelodicEvents],
+    [isMelodic, instrumentId, octaveExact, resolvedMelodicEvents],
+  );
+
+  const visibleMelodicOctaves = useMemo(
+    () => (isMelodic ? getVisibleMelodicOctaves(instrumentId) : []),
+    [instrumentId, isMelodic],
   );
 
   const selectedEvent = useMemo(
@@ -478,6 +490,19 @@ export function CompositorTrackTimeline({
       return;
     }
 
+    if (!visibleMelodicOctaves.includes(melodicDraft.octavaRelativa)) {
+      setMelodicDraft((current) => ({
+        ...current,
+        octavaRelativa: visibleMelodicOctaves[0] ?? current.octavaRelativa,
+      }));
+    }
+  }, [melodicDraft.octavaRelativa, placementMode, visibleMelodicOctaves]);
+
+  useEffect(() => {
+    if (placementMode !== "melodic") {
+      return;
+    }
+
     if (!selectedEventId) {
       setMelodicDraft(createDefaultMelodicDraft(instrumentId));
       return;
@@ -488,7 +513,7 @@ export function CompositorTrackTimeline({
     if (event) {
       setMelodicDraft(draftFromEvent(event, instrumentId));
     }
-  }, [instrumentId, placementMode, selectedEventId]);
+  }, [events, instrumentId, placementMode, selectedEventId]);
 
   useEffect(() => {
     if (placementMode !== "drum") {
@@ -530,11 +555,64 @@ export function CompositorTrackTimeline({
           nextDraft,
           instrumentId,
           piece.tonalidadComposicion,
-          selectedEvent.octavaRelativa,
+          nextDraft.octavaRelativa,
         ),
       );
     }
   }
+
+  const handleAddMelodicBlock = useCallback(() => {
+    if (!onPlaceEvent || disabled || trackAtCapacity) {
+      return;
+    }
+
+    const partial = buildMelodicAddPartial(
+      melodicDraft,
+      events,
+      instrumentId,
+      piece.tonalidadComposicion,
+      piece.subdivisionsPerGolpe,
+      gridSteps,
+    );
+    const rowId = getMelodicRowIdForDraft(
+      melodicDraft,
+      instrumentId,
+      piece.tonalidadComposicion,
+    );
+
+    if (!partial || !rowId) {
+      onPlaceEvent(
+        {
+          startStep: gridSteps,
+          durationSteps: Math.max(1, piece.subdivisionsPerGolpe),
+        },
+        {
+          rowId: rowId ?? melodicRows[0]?.id ?? "pitch-0-3",
+          octaveExact,
+          selectOnPlace: false,
+        },
+      );
+      return;
+    }
+
+    onPlaceEvent(partial, {
+      rowId,
+      octaveExact,
+      selectOnPlace: false,
+    });
+  }, [
+    disabled,
+    events,
+    gridSteps,
+    instrumentId,
+    melodicDraft,
+    melodicRows,
+    octaveExact,
+    onPlaceEvent,
+    piece.subdivisionsPerGolpe,
+    piece.tonalidadComposicion,
+    trackAtCapacity,
+  ]);
 
   function handleDrumDraftChange(nextDraft: CompositorDrumDraft) {
     setDrumDraft(nextDraft);
@@ -648,11 +726,12 @@ export function CompositorTrackTimeline({
             tonalidadComposicion={piece.tonalidadComposicion}
             modoTonalComposicion={piece.modoTonalComposicion}
             draft={melodicDraft}
+            visibleOctaves={visibleMelodicOctaves}
             mode={configMode}
             disabled={disabled || trackAtCapacity}
             onDraftChange={handleMelodicDraftChange}
             onExitEdit={() => onSelectEvent(null)}
-            onPointerDownDrag={palettePlacement.handlePointerDownMelodicDrag}
+            onAddBlock={handleAddMelodicBlock}
           />
         </div>
       ) : null}
@@ -831,7 +910,11 @@ export function CompositorMultiTrackTimeline({
       {visibleTracks.map((track) => {
           const isMelodic = compositorHasContenidoTab(track.instrumentId);
           const melodicRows = isMelodic
-            ? buildMelodicTimelineRows(track.events, octaveExact)
+            ? buildMelodicTimelineRows(
+                track.events,
+                octaveExact,
+                track.instrumentId,
+              )
             : buildDrumTimelineRows();
           const rowCount = Math.max(1, melodicRows.length);
           const heightPx = Math.min(96, Math.max(32, rowCount * 10));
@@ -892,7 +975,11 @@ export function CompositorMultiTrackTimeline({
                   let rowHeightPercent = 100;
 
                   if (isMelodic) {
-                    const rows = buildMelodicTimelineRows(track.events, octaveExact);
+                    const rows = buildMelodicTimelineRows(
+                      track.events,
+                      octaveExact,
+                      track.instrumentId,
+                    );
                     const rowId = getMelodicEventRowId(event, rows, octaveExact);
                     const rowIndex = rows.findIndex((row) => row.id === rowId);
                     const safeIndex = rowIndex === -1 ? 0 : rowIndex;

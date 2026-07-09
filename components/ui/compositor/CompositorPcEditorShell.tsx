@@ -80,6 +80,8 @@ type CompositorPcEditorShellProps = Pick<
   | "modoTonalComposicion"
   | "isPlaying"
   | "isPreviewingTrack"
+  | "previewingDrumPatternId"
+  | "drumPatternPreviewProgress"
   | "cycleProgress"
   | "tapTempoTapCount"
   | "onSetActiveTrackId"
@@ -96,6 +98,8 @@ type CompositorPcEditorShellProps = Pick<
   | "onRemoveTrackEvent"
   | "onTapTempo"
   | "onPreviewActiveTrack"
+  | "onPreviewDrumPattern"
+  | "onStopDrumPatternPreview"
   | "onStart"
   | "onStop"
 > & {
@@ -120,6 +124,8 @@ export function CompositorPcEditorShell({
   modoTonalComposicion,
   isPlaying,
   isPreviewingTrack,
+  previewingDrumPatternId,
+  drumPatternPreviewProgress,
   cycleProgress,
   tapTempoTapCount,
   disabled,
@@ -137,6 +143,8 @@ export function CompositorPcEditorShell({
   onRemoveTrackEvent,
   onTapTempo,
   onPreviewActiveTrack,
+  onPreviewDrumPattern,
+  onStopDrumPatternPreview,
   onStart,
   onStop,
   onRequestCycleGolpesChange,
@@ -358,8 +366,14 @@ export function CompositorPcEditorShell({
                 <div className="w-auto min-w-[8rem] max-w-[11rem]">
                   <CompositorDrumPatternPicker
                     activePatternId={activeDrumPatternId}
+                    previewingPatternId={previewingDrumPatternId}
+                    previewProgress={drumPatternPreviewProgress}
                     disabled={disabled}
                     onSelectPattern={onSelectDrumPattern}
+                    onPreviewPattern={(patternId) =>
+                      void onPreviewDrumPattern(patternId)
+                    }
+                    onStopPreview={onStopDrumPatternPreview}
                   />
                 </div>
               }

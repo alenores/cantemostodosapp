@@ -756,21 +756,8 @@ export function computeLineBeatTicks(
       continue;
     }
 
-    const endOffset = resolveCompasSegmentEndCharOffset(
-      sorted,
-      index,
-      options.contentEndOffset,
-      options.textLength,
-      options.lineTerminalCharOffset,
-    );
-    const endPx = resolveCompasSegmentEndPx(
-      sorted,
-      index,
-      getOffsetPx,
-      options.contentEndOffset,
-      options.textLength,
-      options.lineTerminalCharOffset,
-    );
+    const nextBarra = sorted[index + 1];
+    const endPx = nextBarra ? getOffsetPx(nextBarra.charOffset) : undefined;
 
     if (endPx === undefined || endPx <= startPx) {
       continue;
@@ -795,6 +782,88 @@ export type CompasMarker = {
   compasNumero?: number;
 };
 
+/** Espacio entre el renglón de letra y la fila de compás en previsualización (`mt-1.5`). */
+export const PREVIEW_COMPAS_ROW_GAP_PX = 6;
+
+/** Altura de la fila de golpes en previsualización (`h-4`). */
+export const PREVIEW_COMPAS_ROW_HEIGHT_PX = 16;
+
+/** Desplazamiento vertical del puntito del acorde respecto al baseline medido. */
+export const PREVIEW_CHORD_DOT_OFFSET_PX = 2;
+
+/** Diámetro del puntito del acorde en previsualización (`size-1`). */
+export const PREVIEW_CHORD_DOT_SIZE_PX = 4;
+
+/** Altura del puntito de inicio de compás en previsualización (`0.375rem`). */
+export const PREVIEW_MEASURE_MARKER_DOT_HEIGHT_PX = 6;
+
+/** Ajuste fino para que el tallo de compás toque el puntito del acorde. */
+export const PREVIEW_MEASURE_STEM_JOIN_NUDGE_PX = 2;
+
+export type PreviewCharPosition = {
+  bottom: number;
+};
+
+export function resolvePreviewChordDotJoinY(
+  charPositions: ReadonlyArray<PreviewCharPosition | undefined>,
+  acordes: ReadonlyArray<Pick<AcordePos, "charOffset">>,
+  textLength: number,
+): number {
+  const lyricBottoms = charPositions
+    .slice(0, Math.max(textLength, 1))
+    .map((position) => position?.bottom)
+    .filter((bottom): bottom is number => bottom !== undefined);
+
+  const textRowBottom =
+    lyricBottoms.length > 0 ? Math.max(...lyricBottoms) : 0;
+
+  const chordDotTops = acordes
+    .map((acorde) => charPositions[acorde.charOffset]?.bottom)
+    .filter((bottom): bottom is number => bottom !== undefined)
+    .map((bottom) => bottom + PREVIEW_CHORD_DOT_OFFSET_PX);
+
+  const chordDotTop =
+    chordDotTops.length > 0
+      ? Math.max(...chordDotTops)
+      : textRowBottom + PREVIEW_CHORD_DOT_OFFSET_PX;
+
+  return chordDotTop - PREVIEW_MEASURE_STEM_JOIN_NUDGE_PX;
+}
+
+export function computePreviewMeasureStemHeightPx(
+  charPositions: ReadonlyArray<PreviewCharPosition | undefined>,
+  acordes: ReadonlyArray<Pick<AcordePos, "charOffset">>,
+  textLength: number,
+  compasRowBottomPx?: number,
+): number {
+  const lyricBottoms = charPositions
+    .slice(0, Math.max(textLength, 1))
+    .map((position) => position?.bottom)
+    .filter((bottom): bottom is number => bottom !== undefined);
+
+  const textRowBottom =
+    lyricBottoms.length > 0 ? Math.max(...lyricBottoms) : 0;
+
+  const chordDotJoinY = resolvePreviewChordDotJoinY(
+    charPositions,
+    acordes,
+    textLength,
+  );
+
+  const compasMarkerBottom =
+    compasRowBottomPx ??
+    textRowBottom + PREVIEW_COMPAS_ROW_GAP_PX + PREVIEW_COMPAS_ROW_HEIGHT_PX;
+
+  return Math.ceil(
+    Math.max(
+      4,
+      compasMarkerBottom -
+        PREVIEW_MEASURE_MARKER_DOT_HEIGHT_PX -
+        chordDotJoinY,
+    ),
+  );
+}
+
 export function computeLineCompasMarkersPx(
   barras: BarraCompas[],
   getBeatCount: (barra: BarraCompas) => number,
@@ -811,10 +880,7 @@ export function computeLineCompasMarkersPx(
 
   const sorted = [...barras].sort((a, b) => a.charOffset - b.charOffset);
   const markers: CompasMarker[] = [];
-  const contentEndOffset = options?.contentEndOffset;
-  const textLength = options?.textLength ?? 0;
-  const appendTerminalMeasure = options?.appendTerminalMeasure ?? false;
-  const lineTerminalCharOffset = options?.lineTerminalCharOffset;
+  void options;
 
   for (let index = 0; index < sorted.length; index += 1) {
     const barra = sorted[index]!;
@@ -831,17 +897,8 @@ export function computeLineCompasMarkersPx(
       continue;
     }
 
-    const endPx =
-      sorted[index + 1] !== undefined || contentEndOffset !== undefined
-        ? resolveCompasSegmentEndPx(
-            sorted,
-            index,
-            getOffsetPx,
-            contentEndOffset,
-            textLength,
-            lineTerminalCharOffset,
-          )
-        : undefined;
+    const nextBarra = sorted[index + 1];
+    const endPx = nextBarra ? getOffsetPx(nextBarra.charOffset) : undefined;
 
     markers.push({
       kind: "measure",
@@ -849,7 +906,8 @@ export function computeLineCompasMarkersPx(
       intensidad: resolveIntensidad?.(barra, 0),
       cycleId: barra.cycleId ?? null,
       cycleStepIndex: 0,
-      compasNumero: barra.compasNumero,
+      // Solo hay ciclo real si existe un cierre (siguiente línea a la derecha)
+      compasNumero: nextBarra ? barra.compasNumero : undefined,
     });
 
     if (endPx === undefined || endPx <= startPx) {
@@ -867,40 +925,6 @@ export function computeLineCompasMarkersPx(
         cycleId: barra.cycleId ?? null,
         cycleStepIndex: beat,
       });
-    }
-  }
-
-  if (appendTerminalMeasure && contentEndOffset !== undefined) {
-    const lastIndex = sorted.length - 1;
-    const lastBarra = sorted[lastIndex]!;
-    const endPx = resolveCompasSegmentEndPx(
-      sorted,
-      lastIndex,
-      getOffsetPx,
-      contentEndOffset,
-      textLength,
-      lineTerminalCharOffset,
-    );
-
-    if (endPx !== undefined) {
-      const lastMarkerPx = markers[markers.length - 1]?.leftPx ?? null;
-      const alreadyAtEnd =
-        lastMarkerPx !== null && Math.abs(lastMarkerPx - endPx) < 1.5;
-
-      if (!alreadyAtEnd) {
-        const intensidad =
-          options?.terminalIntensidad ??
-          resolveIntensidad?.(lastBarra, 0) ??
-          "fuerte";
-
-        markers.push({
-          kind: "measure",
-          leftPx: endPx,
-          intensidad,
-          cycleId: lastBarra.cycleId ?? null,
-          cycleStepIndex: 0,
-        });
-      }
     }
   }
 

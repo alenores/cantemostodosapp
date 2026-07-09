@@ -1,6 +1,8 @@
 "use client";
 
-import LetraCifradoLecturaShell from "@/components/cifrado/LetraCifradoLecturaShell";
+import LetraCifradoLecturaShell, {
+  type LecturaCompasPlaybackState,
+} from "@/components/cifrado/LetraCifradoLecturaShell";
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import LetraExpandirFlotante from "@/components/salas/LetraExpandirFlotante";
 import LetraTexto from "@/components/salas/LetraTexto";
@@ -131,6 +133,11 @@ type CancionActivaSectionProps = {
   onExpand?: () => void;
   letraZoomFactor?: number;
   onLecturaZoomEligibleChange?: (eligible: boolean) => void;
+  compasesOcultos?: boolean;
+  onToggleCompasesOcultos?: () => void;
+  onLecturaCompasPlaybackStateChange?: (
+    state: LecturaCompasPlaybackState | null,
+  ) => void;
 };
 
 function LetraEmptySheet({ modoLectura }: { modoLectura: boolean }) {
@@ -164,6 +171,9 @@ export default function CancionActivaSection({
   onExpand,
   letraZoomFactor = 1,
   onLecturaZoomEligibleChange,
+  compasesOcultos = false,
+  onToggleCompasesOcultos,
+  onLecturaCompasPlaybackStateChange,
 }: CancionActivaSectionProps) {
   const letraScrollRefLocal = useRef<HTMLDivElement>(null);
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
@@ -367,6 +377,9 @@ export default function CancionActivaSection({
               scrollRef={letraScrollRef}
               scrollEndPadding={scrollEndPadding}
               letraZoomStyle={letraZoomStyle}
+              compasesOcultos={compasesOcultos}
+              onToggleCompasesOcultos={onToggleCompasesOcultos}
+              onCompasPlaybackStateChange={onLecturaCompasPlaybackStateChange}
             />
           ) : (
             <div

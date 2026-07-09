@@ -101,6 +101,8 @@ export const COMPOSITOR_LABEL_CAPAS_INSTRUMENTOS = "CAPAS (Instrumentos)";
 
 export const COMPOSITOR_LABEL_AGREGAR_BLOQUE = "Agregar bloque";
 
+export const COMPOSITOR_LABEL_OCTAVA = "Octava";
+
 export const COMPOSITOR_LABEL_AGREGAR_BLOQUE_NOTA = "Agregar bloque/nota";
 
 export const COMPOSITOR_LABEL_ESCUCHAR_CAPA = "Escuchar capa";
@@ -114,9 +116,15 @@ export const COMPOSITOR_LABEL_PLANTILLAS = "Plantillas";
 export const COMPOSITOR_LABEL_RITMOS_BATERIA = "Ritmos de batería";
 
 export const COMPOSITOR_HELP_RITMOS_BATERIA =
-  "Elegí un ritmo para cargarlo en la batería y editarlo en el gráfico.";
+  "Tocá play para escuchar tres ciclos. Elegí un ritmo para cargarlo en la batería.";
 
 export const COMPOSITOR_ARIA_MODAL_RITMOS_BATERIA = "Elegir plantilla de batería";
+
+export const COMPOSITOR_ARIA_PREVIEW_RITMO_BATERIA = (label: string) =>
+  `Escuchar tres ciclos de ${label}`;
+
+export const COMPOSITOR_ARIA_DETENER_PREVIEW_RITMO_BATERIA = (label: string) =>
+  `Detener vista previa de ${label}`;
 
 export const COMPOSITOR_CONFIRM_APLICAR_RITMO_BATERIA = (label: string) =>
   `¿Cargar el ritmo "${label}"? Se reemplazará la batería actual.`;
@@ -141,6 +149,9 @@ export const COMPOSITOR_CONFIRM_CYCLE_STRUCTURE_MESSAGE =
 
 export const COMPOSITOR_NOTICE_TRACK_AT_CAPACITY = (instrumentLabel: string) =>
   `Esta capa ya tiene el máximo de 24 bloques (${instrumentLabel}). Eliminá uno para agregar otro.`;
+
+export const COMPOSITOR_NOTICE_CYCLE_FULL =
+  "No hay más espacio en el ciclo para agregar bloques.";
 
 export const COMPOSITOR_NOTICE_CELL_OCCUPIED =
   "Esa celda ya tiene un bloque. Elegí otra posición.";

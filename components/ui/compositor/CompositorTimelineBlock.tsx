@@ -150,7 +150,7 @@ export function CompositorTimelineBlock({
       onPointerDown={handlePointerDown("move")}
       className={`absolute inset-y-0.5 touch-none rounded-md text-[9px] font-bold select-none ${blockClassName} ${
         conflictHighlight ? "compositor-timeline-block--conflict-focus ring-2 ring-[var(--tuner-lejos)]" : ""
-      } ${disabled ? "pointer-events-none opacity-50" : "cursor-grab"}`}
+      } ${disabled ? "pointer-events-none opacity-50" : isDragging ? "pointer-events-none cursor-grabbing" : "cursor-grab"}`}
       style={{
         left: `${leftPercent}%`,
         width: `${Math.max(widthPercent, minWidthPercent)}%`,

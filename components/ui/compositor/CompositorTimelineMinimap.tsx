@@ -88,6 +88,7 @@ export function CompositorTimelineMinimap({
           ),
         })),
         octaveExact,
+        instrumentId,
       )
     : buildDrumTimelineRows();
   const rowCount = Math.max(1, rows.length);

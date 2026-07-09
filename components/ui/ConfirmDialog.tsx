@@ -6,6 +6,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   deleteConfirm?: boolean;
+  scrollThrough?: boolean;
   zIndex?: number;
   onConfirm: () => void;
   onCancel: () => void;
@@ -17,6 +18,7 @@ export default function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   deleteConfirm = false,
+  scrollThrough = false,
   zIndex = 50,
   onConfirm,
   onCancel,
@@ -28,19 +30,30 @@ export default function ConfirmDialog({
   return (
     <div
       data-confirm-dialog=""
-      className="fixed inset-0 flex items-center justify-center px-4"
+      className={`fixed inset-0 flex items-center justify-center px-4${
+        scrollThrough ? " pointer-events-none" : ""
+      }`}
       style={{ zIndex }}
     >
-      <button
-        type="button"
-        aria-label="Cerrar diálogo"
-        className="absolute inset-0 bg-black/60"
-        onClick={onCancel}
-      />
+      {scrollThrough ? (
+        <div
+          className="pointer-events-none absolute inset-0 bg-black/60"
+          aria-hidden="true"
+        />
+      ) : (
+        <button
+          type="button"
+          aria-label="Cerrar diálogo"
+          className="absolute inset-0 bg-black/60"
+          onClick={onCancel}
+        />
+      )}
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-sm rounded-[12px] border border-border bg-bg-card p-5"
+        className={`relative z-10 w-full max-w-sm rounded-[12px] border border-border bg-bg-card p-5${
+          scrollThrough ? " pointer-events-auto" : ""
+        }`}
       >
         <p className="text-sm leading-6 text-text-primary">{message}</p>
         <div className="mt-5 flex gap-3">

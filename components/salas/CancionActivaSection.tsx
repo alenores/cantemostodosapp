@@ -13,6 +13,7 @@ import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
 import { useCifradoDetalle } from "@/hooks/useCifradoDetalle";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import {
+  getEmbedBottomClipPx,
   getEmbedTopClipPx,
   isCifraClubEmbed,
   resolveLetraContenido,
@@ -97,6 +98,10 @@ function CancionActivaTitulo({
   nombreRevealClass: string;
   tieneCifradoAvanzado?: boolean;
 }) {
+  if (!cancionNombre) {
+    return <div className="min-w-0 flex-1" aria-hidden="true" />;
+  }
+
   return (
     <div className="min-w-0 flex-1">
       <h2 className="flex min-w-0 items-center gap-1.5 text-xl font-bold leading-tight text-accent">
@@ -282,6 +287,11 @@ export default function CancionActivaSection({
   const embedTopClipPx =
     embedConRecorteInicial && !embedTopRevealed
       ? getEmbedTopClipPx(contenido.url)
+      : undefined;
+
+  const embedBottomClipPx =
+    showEmbed && contenido?.mode === "embed"
+      ? getEmbedBottomClipPx(contenido.url, modoLectura)
       : undefined;
 
   const nombreRevealKey =
@@ -513,6 +523,7 @@ export default function CancionActivaSection({
                       : undefined
                   }
                   initialScrollOffsetPx={embedTopClipPx}
+                  initialScrollBottomOffsetPx={embedBottomClipPx}
                   embedIframeRef={modoLectura ? embedIframeRef : undefined}
                   onRevealTop={
                     embedConRecorteInicial
@@ -526,13 +537,16 @@ export default function CancionActivaSection({
         </>
       ) : (
         <>
-          {!modoLectura && headerAction ? (
-            <div
-              className="flex shrink-0 items-start justify-end"
-              style={getControlHeaderVerticalPaddingStyle()}
-            >
-              {headerAction}
-            </div>
+          {!modoLectura ? (
+            <CancionActivaHeader
+              cancionNombre={null}
+              artista={null}
+              nombreRevealKey={nombreRevealKey}
+              nombreRevealClass={nombreRevealClass}
+              headerLeading={headerLeading}
+              headerAction={headerAction}
+              insetHorizontalInParent
+            />
           ) : null}
           <LetraEmptySheet modoLectura={modoLectura} />
         </>

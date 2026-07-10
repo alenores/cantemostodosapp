@@ -1,6 +1,5 @@
 import type {
   CompositorDrumSound,
-  CompositorGuitarArticulation,
   CompositorInstrumentId,
   CompositorPiece,
   CompositorSlotNote,
@@ -9,6 +8,7 @@ import {
   COMPOSITOR_CORE_DRUM_FILES,
   COMPOSITOR_DRUM_SAMPLES,
   COMPOSITOR_GUITAR_SAMPLES,
+  COMPOSITOR_PIANO_CORE_SAMPLE,
   COMPOSITOR_PIANO_SAMPLES,
   COMPOSITOR_SAMPLE_PACKS,
   COMPOSITOR_VIENTO_SAMPLES,
@@ -27,20 +27,23 @@ export type CompositorMultiSampleSet = {
   }>;
 };
 
+export type CompositorGuitarSampleBank = {
+  pua: CompositorMultiSampleSet | null;
+  dedo: CompositorMultiSampleSet | null;
+};
+
 export type CompositorSampleBank = {
   loadedPacks: Set<CompositorSamplePackId>;
   piano: CompositorMultiSampleSet | null;
   viento: CompositorMultiSampleSet | null;
-  guitar: Partial<
-    Record<Exclude<CompositorGuitarArticulation, "silencio">, AudioBuffer>
-  > | null;
+  guitar: CompositorGuitarSampleBank | null;
   drums: Partial<Record<CompositorDrumSound, AudioBuffer>> | null;
 };
 
 const MIN_PLAYBACK_RATE = 0.5;
 const MAX_PLAYBACK_RATE = 2;
 /** Incrementar al cambiar archivos de samples para invalidar caché en memoria. */
-const SAMPLE_BANK_VERSION = 2;
+const SAMPLE_BANK_VERSION = 4;
 
 let cachedBank: CompositorSampleBank | null = null;
 let cachedBankVersion = 0;
@@ -164,7 +167,7 @@ async function loadPackIntoBank(
         fetchSampleBuffer(audioContext, COMPOSITOR_CORE_DRUM_FILES.kick),
         fetchSampleBuffer(audioContext, COMPOSITOR_CORE_DRUM_FILES.snare),
         fetchSampleBuffer(audioContext, COMPOSITOR_CORE_DRUM_FILES.hihat),
-        fetchSampleBuffer(audioContext, COMPOSITOR_PIANO_SAMPLES[2]!.file),
+        fetchSampleBuffer(audioContext, COMPOSITOR_PIANO_CORE_SAMPLE.file),
       ]);
 
       bank.drums = {
@@ -174,7 +177,9 @@ async function loadPackIntoBank(
         hihat,
       };
       bank.piano = {
-        entries: [{ root: COMPOSITOR_PIANO_SAMPLES[2]!.root, buffer: pianoC4 }],
+        entries: [
+          { root: COMPOSITOR_PIANO_CORE_SAMPLE.root, buffer: pianoC4 },
+        ],
       };
       break;
     }
@@ -182,12 +187,11 @@ async function loadPackIntoBank(
       bank.piano = await loadMultiSampleSet(audioContext, COMPOSITOR_PIANO_SAMPLES);
       break;
     case "guitarra": {
-      const [pua, rasguido, dedo] = await Promise.all([
-        fetchSampleBuffer(audioContext, COMPOSITOR_GUITAR_SAMPLES.pua),
-        fetchSampleBuffer(audioContext, COMPOSITOR_GUITAR_SAMPLES.rasguido),
-        fetchSampleBuffer(audioContext, COMPOSITOR_GUITAR_SAMPLES.dedo),
+      const [pua, dedo] = await Promise.all([
+        loadMultiSampleSet(audioContext, COMPOSITOR_GUITAR_SAMPLES.pua),
+        loadMultiSampleSet(audioContext, COMPOSITOR_GUITAR_SAMPLES.dedo),
       ]);
-      bank.guitar = { pua, rasguido, dedo };
+      bank.guitar = { pua, dedo };
       break;
     }
     case "bateria": {

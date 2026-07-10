@@ -1,6 +1,7 @@
 import {
   getCompositorCycleDurationSeconds,
   getCompositorGridSteps,
+  getCompositorStepDurationSeconds,
   rescaleTrackEvents,
 } from "@/lib/compositor-timeline";
 import {
@@ -216,6 +217,7 @@ function normalizeEvent(
   instrumentId: CompositorInstrumentId,
   subdivisionsPerGolpe: number,
   tonalidadComposicion: NotaIndex,
+  stepDurationSeconds: number,
 ): CompositorTrackEvent {
   const noteOctave = clampTargetOctave(
     event.note?.octave ?? createVozTarget("C").octave,
@@ -273,6 +275,7 @@ function normalizeEvent(
     draft.durationSteps,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
   const maxStart = Math.max(0, gridSteps - durationSteps);
   const startStep = Math.max(
@@ -293,6 +296,7 @@ function normalizeTrackEvents(
   instrumentId: CompositorInstrumentId,
   subdivisionsPerGolpe: number,
   tonalidadComposicion: NotaIndex,
+  stepDurationSeconds: number,
 ): CompositorTrackEvent[] {
   const normalized = events
     .map((event) =>
@@ -302,6 +306,7 @@ function normalizeTrackEvents(
         instrumentId,
         subdivisionsPerGolpe,
         tonalidadComposicion,
+        stepDurationSeconds,
       ),
     )
     .sort((left, right) => left.startStep - right.startStep);
@@ -463,6 +468,11 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
     Math.min(8, Math.round(piece.subdivisionsPerGolpe)),
   );
   const gridSteps = cycleGolpes * subdivisionsPerGolpe;
+  const stepDurationSeconds = getCompositorStepDurationSeconds({
+    ...piece,
+    cycleGolpes,
+    subdivisionsPerGolpe,
+  });
 
   return {
     version: 2,
@@ -486,6 +496,7 @@ export function normalizeCompositorPiece(piece: CompositorPiece): CompositorPiec
           track.instrumentId,
           subdivisionsPerGolpe,
           piece.tonalidadComposicion ?? DEFAULT_TONALIDAD,
+          stepDurationSeconds,
         ),
       })),
     ),
@@ -686,6 +697,7 @@ export function addCompositorTrackEvent(
         instrumentId,
         piece.subdivisionsPerGolpe,
         piece.tonalidadComposicion,
+        getCompositorStepDurationSeconds(piece),
       ),
     };
   });
@@ -716,6 +728,7 @@ export function updateCompositorTrackEvent(
         instrumentId,
         piece.subdivisionsPerGolpe,
         piece.tonalidadComposicion,
+        getCompositorStepDurationSeconds(piece),
       ),
     };
   });

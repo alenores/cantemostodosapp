@@ -81,7 +81,7 @@ export function clampMelodicOctaveForInstrument(
   const minOctave =
     instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
   const maxOctave =
-    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 5 : minOctave + 1;
+    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 6 : minOctave + 1;
 
   return Math.max(minOctave, Math.min(maxOctave, Math.round(octave)));
 }

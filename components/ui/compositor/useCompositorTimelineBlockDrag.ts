@@ -36,6 +36,7 @@ type UseCompositorTimelineBlockDragOptions = {
   instrumentId: CompositorInstrumentId;
   gridSteps: number;
   subdivisionsPerGolpe: number;
+  stepDurationSeconds: number;
   disabled?: boolean;
   melodicRowDrag?: MelodicRowDragContext;
   onSelect: () => void;
@@ -47,6 +48,7 @@ export function useCompositorTimelineBlockDrag({
   instrumentId,
   gridSteps,
   subdivisionsPerGolpe,
+  stepDurationSeconds,
   disabled = false,
   melodicRowDrag,
   onSelect,
@@ -57,6 +59,9 @@ export function useCompositorTimelineBlockDrag({
 
   const eventRef = useRef(event);
   eventRef.current = event;
+
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
 
   const originRef = useRef({
     startStep: event.startStep,
@@ -83,6 +88,7 @@ export function useCompositorTimelineBlockDrag({
     event,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
 
   const canChangeRow =
@@ -99,7 +105,14 @@ export function useCompositorTimelineBlockDrag({
     listenersRef.current = null;
   }, []);
 
-  useEffect(() => removeListeners, [removeListeners]);
+  useEffect(
+    () => () => {
+      if (!originRef.current.active) {
+        removeListeners();
+      }
+    },
+    [removeListeners],
+  );
 
   const applyDrag = useCallback(
     (mode: TimelineBlockDragMode, deltaSteps: number, deltaRows: number) => {
@@ -109,7 +122,7 @@ export function useCompositorTimelineBlockDrag({
 
       if (mode === "move") {
         if (canChangeRow && currentMelodicRowDrag) {
-          onUpdate(
+          onUpdateRef.current(
             computeMovedEventPatch(
               instrumentId,
               currentEvent,
@@ -124,12 +137,13 @@ export function useCompositorTimelineBlockDrag({
               subdivisionsPerGolpe,
               origin.primaryOctave,
               currentMelodicRowDrag.tonalidadComposicion,
+              stepDurationSeconds,
             ),
           );
           return;
         }
 
-        onUpdate(
+        onUpdateRef.current(
           computeMovedEventSteps(
             instrumentId,
             currentEvent,
@@ -138,13 +152,14 @@ export function useCompositorTimelineBlockDrag({
             deltaSteps,
             gridSteps,
             subdivisionsPerGolpe,
+            stepDurationSeconds,
           ),
         );
         return;
       }
 
       if (mode === "resize-end") {
-        onUpdate(
+        onUpdateRef.current(
           computeResizedEndEventSteps(
             instrumentId,
             currentEvent,
@@ -153,12 +168,13 @@ export function useCompositorTimelineBlockDrag({
             deltaSteps,
             gridSteps,
             subdivisionsPerGolpe,
+            stepDurationSeconds,
           ),
         );
         return;
       }
 
-      onUpdate(
+      onUpdateRef.current(
         computeResizedStartEventSteps(
           instrumentId,
           currentEvent,
@@ -167,10 +183,11 @@ export function useCompositorTimelineBlockDrag({
           deltaSteps,
           gridSteps,
           subdivisionsPerGolpe,
+          stepDurationSeconds,
         ),
       );
     },
-    [canChangeRow, gridSteps, instrumentId, onUpdate, subdivisionsPerGolpe],
+    [canChangeRow, gridSteps, instrumentId, stepDurationSeconds, subdivisionsPerGolpe],
   );
 
   const handlePointerDown = useCallback(

@@ -76,8 +76,8 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       return (
         <div className="pointer-events-none flex items-center gap-3 rounded-xl bg-white px-3 py-3">
           <Play
-            className="pointer-events-none size-4 shrink-0 text-[#F4845F]"
-            fill="#F4845F"
+            className="pointer-events-none size-4 shrink-0 text-[var(--accent)]"
+            fill="var(--accent)"
             aria-hidden="true"
           />
           <div className="pointer-events-none min-w-0 flex-1">
@@ -91,7 +91,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
             ) : null}
           </div>
           <div
-            className="pointer-events-none cola-activa-eq shrink-0 rounded bg-[#F4845F]/15 px-2.5 py-1.5"
+            className="pointer-events-none cola-activa-eq shrink-0 rounded bg-[var(--accent)]/15 px-2.5 py-1.5"
             role="status"
             aria-label="Tocando"
           >

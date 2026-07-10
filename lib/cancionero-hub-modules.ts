@@ -39,7 +39,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     id: "cancionero",
     label: "Cancionero",
     icon: FileText,
-    iconColor: "#9AE0C8",
+    iconColor: "var(--cancionero-icon)",
     kind: "route",
     section: "canciones",
     href: "/canciones/cancionero",

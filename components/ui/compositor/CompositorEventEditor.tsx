@@ -28,6 +28,7 @@ import {
 import {
   durationStepsToSeconds,
   getCompositorGridSteps,
+  getCompositorStepDurationSeconds,
   stepToCycleOffsetSeconds,
 } from "@/lib/compositor-timeline";
 import { COMPAS_SLOT_CONTROLS_CLASS } from "@/lib/ritmo-compas-ui";
@@ -77,12 +78,14 @@ export function CompositorEventEditor({
   onUpdateEvent,
 }: CompositorEventEditorProps) {
   const gridSteps = getCompositorGridSteps(piece);
+  const stepDurationSeconds = getCompositorStepDurationSeconds(piece);
   const maxStart = Math.max(0, gridSteps - event.durationSteps);
   const maxDuration = getEventMaxDurationSteps(
     instrumentId,
     event,
     gridSteps,
     piece.subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
   const showSustento =
     editorMode !== "palette" && isSustentoEditable(instrumentId, event);
@@ -242,6 +245,7 @@ export function CompositorEventEditor({
                   event.durationSteps + 1,
                   gridSteps,
                   piece.subdivisionsPerGolpe,
+                  stepDurationSeconds,
                 ),
               })
             }
@@ -365,6 +369,7 @@ export function CompositorEventEditor({
                   event.durationSteps,
                   gridSteps,
                   piece.subdivisionsPerGolpe,
+                  stepDurationSeconds,
                 ),
               });
             }}

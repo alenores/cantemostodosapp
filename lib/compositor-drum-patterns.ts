@@ -45,7 +45,18 @@ export type CompositorDrumPatternId =
   | "afrobeat"
   | "dubstep"
   | "country"
-  | "rumba";
+  | "rumba"
+  | "cumbia-recta"
+  | "cumbia-cruzada"
+  | "ska-clasico"
+  | "merengue-denso"
+  | "rock-pop"
+  | "balada-suave"
+  | "reggaeton-dembow"
+  | "reggae-one-drop"
+  | "funk-groove"
+  | "chacarera-3"
+  | "cuarteto";
 
 export type CompositorDrumPattern = {
   id: CompositorDrumPatternId;
@@ -69,6 +80,45 @@ function eighthHiHatSteps(cycleGolpes: number): DrumHit[] {
 
   for (let step = 0; step < gridSteps; step += 2) {
     hits.push({ step, drumSound: "hihat", level: "medio" });
+  }
+
+  return hits;
+}
+
+/** Hi-hat en cada corchea; acentos opcionales en steps concretos. */
+function eighthHiHatStepsWithAccents(
+  cycleGolpes: number,
+  accentSteps: number[],
+  accentLevel: MetronomeBeatLevel = "medio",
+  baseLevel: MetronomeBeatLevel = "suave",
+): DrumHit[] {
+  const accentSet = new Set(accentSteps);
+  const gridSteps = cycleGolpes * COMPOSITOR_SUBDIVISIONS_PER_GOLPE;
+  const hits: DrumHit[] = [];
+
+  for (let step = 0; step < gridSteps; step += 2) {
+    hits.push({
+      step,
+      drumSound: "hihat",
+      level: accentSet.has(step) ? accentLevel : baseLevel,
+    });
+  }
+
+  return hits;
+}
+
+/** Hi-hat en corcheas con contratiempos (&) más fuertes que los tiempos. */
+function eighthHiHatOffbeatAccented(cycleGolpes: number): DrumHit[] {
+  const gridSteps = cycleGolpes * COMPOSITOR_SUBDIVISIONS_PER_GOLPE;
+  const hits: DrumHit[] = [];
+
+  for (let step = 0; step < gridSteps; step += 2) {
+    const isOffbeat = step % 4 === 2;
+    hits.push({
+      step,
+      drumSound: "hihat",
+      level: isOffbeat ? "fuerte" : "suave",
+    });
   }
 
   return hits;
@@ -709,6 +759,159 @@ export const COMPOSITOR_DRUM_PATTERNS: CompositorDrumPattern[] = [
       { step: 10, drumSound: "hihat", level: "suave" },
     ],
     3,
+  ),
+
+  // —— Validación de oído (tanda Claude) · no reemplazan las existentes ——
+  buildPattern(
+    "cumbia-recta",
+    "Cumbia (recta)",
+    "Bombo 1 y 3 · caja 2 y 4 · hi-hat en las 8 corcheas",
+    92,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 12, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatStepsWithAccents(CYCLE_GOLPES, [4, 12], "medio", "suave"),
+    ],
+  ),
+  buildPattern(
+    "cumbia-cruzada",
+    "Cumbia (cruzada)",
+    "Bombo y caja juntos en 1 y 3 · hi-hat en las 8 corcheas",
+    92,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 0, drumSound: "snare", level: "fuerte" },
+      { step: 8, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatStepsWithAccents(CYCLE_GOLPES, [0, 8], "medio", "suave"),
+    ],
+  ),
+  buildPattern(
+    "ska-clasico",
+    "Ska (clásico)",
+    "Kick-hihat-snare-hihat × 2 · cada corchea del compás",
+    150,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 2, drumSound: "hihat", level: "medio" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 6, drumSound: "hihat", level: "medio" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 10, drumSound: "hihat", level: "medio" },
+      { step: 12, drumSound: "snare", level: "fuerte" },
+      { step: 14, drumSound: "hihat", level: "medio" },
+    ],
+  ),
+  buildPattern(
+    "merengue-denso",
+    "Merengue (denso)",
+    "Bombo en cada negra · caja en 2 y 3& · hi-hat en corcheas",
+    160,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 4, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 12, drumSound: "kick", level: "fuerte" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 10, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatSteps(CYCLE_GOLPES),
+    ],
+  ),
+  buildPattern(
+    "rock-pop",
+    "Rock / Pop",
+    "Bombo 1 y 3 · caja 2 y 4 · hi-hat en las 8 corcheas",
+    100,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 12, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatSteps(CYCLE_GOLPES),
+    ],
+  ),
+  buildPattern(
+    "balada-suave",
+    "Balada (suave)",
+    "Como rock/pop · hi-hat solo en negras · intensidad baja",
+    68,
+    [
+      { step: 0, drumSound: "kick", level: "suave" },
+      { step: 8, drumSound: "kick", level: "suave" },
+      { step: 4, drumSound: "snare", level: "suave" },
+      { step: 12, drumSound: "snare", level: "suave" },
+      { step: 0, drumSound: "hihat", level: "suave" },
+      { step: 4, drumSound: "hihat", level: "suave" },
+      { step: 8, drumSound: "hihat", level: "suave" },
+      { step: 12, drumSound: "hihat", level: "suave" },
+    ],
+  ),
+  buildPattern(
+    "reggaeton-dembow",
+    "Reggaetón (dembow)",
+    "Bombo en 1 y 2& · caja en 2 y 4 · hi-hat en corcheas",
+    92,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 6, drumSound: "kick", level: "fuerte" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 12, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatSteps(CYCLE_GOLPES),
+    ],
+  ),
+  buildPattern(
+    "reggae-one-drop",
+    "Reggae (one drop)",
+    "Bombo y caja juntos solo en el 3 · hi-hat en corcheas",
+    74,
+    [
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatSteps(CYCLE_GOLPES),
+    ],
+  ),
+  buildPattern(
+    "funk-groove",
+    "Funk (groove)",
+    "Bombo 1, 3 y 3& · caja fuerte en 2 y 4 · hi-hat con & marcados",
+    96,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 10, drumSound: "kick", level: "medio" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 12, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatOffbeatAccented(CYCLE_GOLPES),
+    ],
+  ),
+  buildPattern(
+    "chacarera-3",
+    "Chacarera (3/4)",
+    "Bombo en 1 y 3 · aro en 1ª y 4ª corchea · hi-hat en corcheas",
+    108,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "fuerte" },
+      { step: 0, drumSound: "snare", level: "fuerte" },
+      { step: 6, drumSound: "snare", level: "medio" },
+      ...eighthHiHatSteps(3),
+    ],
+    3,
+  ),
+  buildPattern(
+    "cuarteto",
+    "Cuarteto cordobés",
+    "Bombo 1 y 3 · caja 2 y 4 · hi-hat con contratiempos marcados",
+    140,
+    [
+      { step: 0, drumSound: "kick", level: "fuerte" },
+      { step: 8, drumSound: "kick", level: "medio" },
+      { step: 4, drumSound: "snare", level: "fuerte" },
+      { step: 12, drumSound: "snare", level: "fuerte" },
+      ...eighthHiHatOffbeatAccented(CYCLE_GOLPES),
+    ],
   ),
 ];
 

@@ -3,6 +3,8 @@
 import type { CompositorPiece } from "@/lib/compositor";
 import {
   COMPOSITOR_TIMELINE_ROW_LABEL_WIDTH_PX,
+  COMPOSITOR_TIMELINE_RULER_HEIGHT_PX,
+  COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
   COMPOSITOR_TIMELINE_STEP_MIN_PX,
 } from "@/lib/compositor-timeline-layout";
 import type { CompositorTimelineDropCell } from "@/lib/compositor-timeline-placement";
@@ -129,6 +131,7 @@ export function CompositorScrollableTimelineGrid({
   rows,
   playheadProgress,
   renderRowEvents,
+  trackOverlay = null,
   disabled = false,
   onClearSelection,
   scrollContainerRef,
@@ -140,6 +143,7 @@ export function CompositorScrollableTimelineGrid({
   rows: CompositorScrollableTimelineRow[];
   playheadProgress: number | null;
   renderRowEvents: (row: CompositorScrollableTimelineRow) => ReactNode;
+  trackOverlay?: ReactNode;
   disabled?: boolean;
   onClearSelection?: () => void;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
@@ -216,6 +220,8 @@ export function CompositorScrollableTimelineGrid({
             </div>
           ))}
 
+          {trackOverlay}
+
           {playheadProgress != null ? (
             <Playhead playheadProgress={playheadProgress} gridSteps={gridSteps} />
           ) : null}
@@ -227,10 +233,10 @@ export function CompositorScrollableTimelineGrid({
               style={{
                 top: `${
                   rows.findIndex((row) => row.id === placementPreview.rowId) *
-                    32 +
-                  20
+                    COMPOSITOR_TIMELINE_ROW_HEIGHT_PX +
+                  COMPOSITOR_TIMELINE_RULER_HEIGHT_PX
                 }px`,
-                height: "32px",
+                height: `${COMPOSITOR_TIMELINE_ROW_HEIGHT_PX}px`,
                 left: `${previewLeftPercent}%`,
                 width: `${previewWidthPercent}%`,
               }}

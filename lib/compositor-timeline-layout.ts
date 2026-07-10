@@ -13,10 +13,15 @@ import {
   clampMelodicOctaveForInstrument,
   melodicPitchFromAbsoluteNote,
 } from "@/lib/compositor-melodic-pitch";
+import {
+  getInstrumentMaxSustainSeconds,
+  maxSustainSecondsToSteps,
+} from "@/lib/compositor-sample-sustain";
 
 
 export const COMPOSITOR_TIMELINE_STEP_MIN_PX = 28;
 export const COMPOSITOR_TIMELINE_ROW_HEIGHT_PX = 32;
+export const COMPOSITOR_TIMELINE_RULER_HEIGHT_PX = 20;
 export const COMPOSITOR_TIMELINE_ROW_LABEL_WIDTH_PX = 18;
 
 export const COMPOSITOR_DRUM_ROW_ORDER: CompositorDrumSound[] = [
@@ -101,7 +106,7 @@ export function getMelodicOctaveRange(instrumentId: CompositorInstrumentId): {
   const min =
     instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
   const max =
-    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 5 : min + 1;
+    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 6 : min + 1;
 
   return { min, max };
 }
@@ -278,6 +283,7 @@ export function getEventMaxDurationSteps(
   event: CompositorTrackEvent,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): number {
   const remaining = Math.max(1, gridSteps - event.startStep);
 
@@ -285,14 +291,12 @@ export function getEventMaxDurationSteps(
     return 1;
   }
 
-  if (
-    instrumentId === "guitarra" &&
-    event.guitarArticulation === "pua"
-  ) {
-    return Math.min(remaining, Math.max(1, subdivisionsPerGolpe));
-  }
+  const maxSeconds = getInstrumentMaxSustainSeconds(
+    instrumentId,
+    event.guitarArticulation,
+  );
 
-  return remaining;
+  return maxSustainSecondsToSteps(maxSeconds, stepDurationSeconds, remaining);
 }
 
 export function clampEventDurationSteps(
@@ -301,12 +305,14 @@ export function clampEventDurationSteps(
   durationSteps: number,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): number {
   const maxDuration = getEventMaxDurationSteps(
     instrumentId,
     event,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
 
   return Math.max(1, Math.min(maxDuration, Math.round(durationSteps)));
@@ -343,26 +349,26 @@ export function getSustentoHelpText(
   }
 
   if (instrumentId === "guitarra" && event.guitarArticulation === "pua") {
-    return "Con púa el ataque es corto: hasta un golpe de duración.";
+    return "Púa: ataque seco y brillante. El ancho sigue la cola de la cuerda.";
   }
 
   if (instrumentId === "guitarra" && event.guitarArticulation === "dedo") {
-    return "Con dedo el bloque puede sostenerse varios pasos del ciclo.";
+    return "Dedo: ataque suave y cálido. El ancho sigue la cola de la cuerda.";
   }
 
   if (instrumentId === "guitarra" && event.guitarArticulation === "bloque") {
-    return "Con acorde en bloque el sonido puede sostenerse varios pasos del ciclo.";
+    return "Bloque: todas las cuerdas del acorde juntas, como un golpe seco.";
   }
 
   if (instrumentId === "guitarra") {
-    return "Con rasguido el bloque puede durar varios pasos del ciclo.";
+    return "Rasguido: las cuerdas del acorde en abanico, una detrás de otra.";
   }
 
   if (instrumentId === "viento") {
-    return "Cuántos pasos sostiene esta nota en el ciclo.";
+    return "Cuánto tiempo sostiene el soplo: el ancho no puede pasar el aliento del sample.";
   }
 
-  return "Cuántos pasos suena este bloque en el ciclo.";
+  return "Cuánto tiempo suena el bloque: el ancho sigue la cola real del instrumento.";
 }
 
 export function clampCompositorNoteOctaves(
@@ -372,7 +378,7 @@ export function clampCompositorNoteOctaves(
   const minOctave =
     instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
   const maxOctave =
-    instrumentId === "viento" ? 5 : minOctave + 1;
+    instrumentId === "viento" ? 6 : minOctave + 1;
   const octave = Math.max(minOctave, Math.min(maxOctave, note.octave));
 
   return { ...note, octave };
@@ -383,6 +389,7 @@ export function canResizeEventSustento(
   event: CompositorTrackEvent,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): boolean {
   if (!isSustentoEditable(instrumentId, event)) {
     return false;
@@ -394,6 +401,7 @@ export function canResizeEventSustento(
       event,
       gridSteps,
       subdivisionsPerGolpe,
+      stepDurationSeconds,
     ) > 1
   );
 }
@@ -406,17 +414,28 @@ export function computeMovedEventSteps(
   deltaSteps: number,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): Pick<CompositorTrackEvent, "startStep" | "durationSteps"> {
+  /** Primero tope de sustento; si no, un bloque “demasiado ancho” no puede moverse. */
+  const movableDuration = clampEventDurationSteps(
+    instrumentId,
+    { ...event, startStep: 0 },
+    originDurationSteps,
+    gridSteps,
+    subdivisionsPerGolpe,
+    stepDurationSeconds,
+  );
   const startStep = Math.max(
     0,
-    Math.min(gridSteps - originDurationSteps, originStartStep + deltaSteps),
+    Math.min(gridSteps - movableDuration, originStartStep + deltaSteps),
   );
   const durationSteps = clampEventDurationSteps(
     instrumentId,
     { ...event, startStep },
-    originDurationSteps,
+    movableDuration,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
 
   return { startStep, durationSteps };
@@ -430,6 +449,7 @@ export function computeResizedEndEventSteps(
   deltaSteps: number,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): Pick<CompositorTrackEvent, "startStep" | "durationSteps"> {
   const durationSteps = clampEventDurationSteps(
     instrumentId,
@@ -437,6 +457,7 @@ export function computeResizedEndEventSteps(
     originDurationSteps + deltaSteps,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
 
   return {
@@ -453,6 +474,7 @@ export function computeResizedStartEventSteps(
   deltaSteps: number,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): Pick<CompositorTrackEvent, "startStep" | "durationSteps"> {
   const endStep = originStartStep + originDurationSteps;
   let startStep = Math.max(
@@ -465,6 +487,7 @@ export function computeResizedStartEventSteps(
     endStep - startStep,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
   startStep = Math.max(0, endStep - durationSteps);
 
@@ -499,7 +522,7 @@ function getSecondaryOctave(
   const minOctave =
     instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
   const maxOctave =
-    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 5 : minOctave + 1;
+    instrumentId === "guitarra" ? 4 : instrumentId === "viento" ? 6 : minOctave + 1;
   return primaryOctave === minOctave ? maxOctave : minOctave;
 }
 
@@ -605,6 +628,7 @@ export function computeMovedEventPatch(
   subdivisionsPerGolpe: number,
   primaryOctave: number,
   tonalidadComposicion: NotaIndex,
+  stepDurationSeconds: number,
 ): CompositorTimelineEventPatch {
   const timing = computeMovedEventSteps(
     instrumentId,
@@ -614,6 +638,7 @@ export function computeMovedEventPatch(
     deltaSteps,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
 
   if (
@@ -689,17 +714,27 @@ export function computeMovedEventPatchForMelodicCell(
   tonalidadComposicion: NotaIndex,
   gridSteps: number,
   subdivisionsPerGolpe: number,
+  stepDurationSeconds: number,
 ): CompositorTimelineEventPatch {
+  const movableDuration = clampEventDurationSteps(
+    instrumentId,
+    { ...event, startStep: 0 },
+    originDurationSteps,
+    gridSteps,
+    subdivisionsPerGolpe,
+    stepDurationSeconds,
+  );
   const startStep = Math.max(
     0,
-    Math.min(gridSteps - originDurationSteps, targetStartStep),
+    Math.min(gridSteps - movableDuration, targetStartStep),
   );
   const durationSteps = clampEventDurationSteps(
     instrumentId,
     { ...event, startStep },
-    originDurationSteps,
+    movableDuration,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
   );
 
   if (!isMelodicTimelineInstrument(instrumentId)) {

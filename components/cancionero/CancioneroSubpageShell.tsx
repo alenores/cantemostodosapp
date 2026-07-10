@@ -26,8 +26,8 @@ export default function CancioneroSubpageShell({
         <div className="app-page-container flex items-center gap-3">
           {!isDesktop ? (
             <TapLink
-              href="/"
-              ariaLabel="Volver al inicio"
+              href="/canciones"
+              ariaLabel="Volver al cancionero"
               className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
             >
               <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />

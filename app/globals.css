@@ -77,6 +77,19 @@
   --tuner-flat-sharp: #e05555;
   --tuner-lejos: var(--tuner-flat-sharp);
 
+  /* Destinos del hub de bienvenida (móvil) */
+  --accent-individual: #F4845F;
+  --accent-individual-dim: rgba(244, 132, 95, 0.14);
+  --accent-salas: #A78BFA;
+  --accent-salas-dim: rgba(167, 139, 250, 0.14);
+  --accent-practica: #6FA8DC;
+  --accent-practica-dim: rgba(111, 168, 220, 0.14);
+  --accent-cancionero: #5FC4A8;
+  --accent-cancionero-dim: rgba(95, 196, 168, 0.14);
+  --cancionero-icon: #9AE0C8;
+  --accent-afinador: var(--tuner-in-tune);
+  --accent-afinador-dim: rgba(84, 200, 100, 0.14);
+
   /* Herramientas — configuración (metrónomo, entrenador vocal, compositor UI) */
   --voz-config: #7b9ab8;
   --voz-config-dim: rgba(123, 154, 184, 0.12);
@@ -1571,6 +1584,68 @@ html.splash-active body {
 @media (min-width: 768px) {
   .app-hub-grid-destinos {
     gap: 14px;
+  }
+}
+
+/* Inicio — cascada de entrada y atención de títulos */
+@keyframes home-cascade-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes home-title-invite {
+  0%,
+  100% {
+    transform: scale(1);
+    letter-spacing: normal;
+    filter: brightness(1);
+  }
+
+  35% {
+    transform: scale(1.045);
+    letter-spacing: 0.02em;
+    filter: brightness(1.18);
+  }
+
+  70% {
+    transform: scale(1.02);
+    filter: brightness(1.08);
+  }
+}
+
+.home-cascade-item {
+  opacity: 0;
+  animation: home-cascade-in 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation-delay: var(--cascade-delay, 0ms);
+}
+
+.home-title-invite {
+  display: inline-block;
+  transform-origin: left center;
+  color: var(--home-title-accent, var(--text-primary));
+  animation: home-title-invite 2s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-cascade-item {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  .home-title-invite {
+    animation: none;
+    color: var(--text-primary);
+    filter: none;
+    transform: none;
+    letter-spacing: normal;
   }
 }
 

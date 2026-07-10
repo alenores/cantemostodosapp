@@ -1,7 +1,7 @@
 "use client";
 
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { Home, Music2, Users, WifiOff } from "lucide-react";
+import { Home, Library, MicVocal, Music2, Users, WifiOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TapLink } from "@/components/ui/TapFeedback";
@@ -22,17 +22,31 @@ const TABS: TabConfig[] = [
       pathname === "/individual" || pathname.startsWith("/individual/"),
   },
   {
+    href: "/salas",
+    label: "Salas",
+    icon: Users,
+    isActive: (pathname) =>
+      pathname === "/salas" || pathname.startsWith("/salas/"),
+  },
+  {
     href: "/",
     label: "Inicio",
     icon: Home,
     isActive: (pathname) => pathname === "/",
   },
   {
-    href: "/salas",
-    label: "Salas",
-    icon: Users,
+    href: "/practica",
+    label: "Práctica",
+    icon: MicVocal,
     isActive: (pathname) =>
-      pathname === "/salas" || pathname.startsWith("/salas/"),
+      pathname === "/practica" || pathname.startsWith("/practica/"),
+  },
+  {
+    href: "/canciones",
+    label: "Cancionero",
+    icon: Library,
+    isActive: (pathname) =>
+      pathname === "/canciones" || pathname.startsWith("/canciones/"),
   },
 ];
 
@@ -113,7 +127,7 @@ export default function AppFooter() {
               ariaLabel={
                 salasUnavailable ? "Salas no disponible sin conexión" : displayLabel
               }
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 ${tabColorClass}`}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 ${tabColorClass}`}
             >
               <span className="relative">
                 <Icon className={`size-5 ${salasUnavailable ? "opacity-50" : ""}`} aria-hidden="true" />
@@ -129,7 +143,7 @@ export default function AppFooter() {
                     style={{
                       top: -4,
                       right: -8,
-                      background: "#F4845F",
+                      background: "var(--accent)",
                     }}
                   >
                     {conectados}
@@ -139,8 +153,8 @@ export default function AppFooter() {
               <span
                 className={`w-full text-center font-medium ${
                   inSala
-                    ? "overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-accent"
-                    : "text-[10px]"
+                    ? "overflow-hidden text-ellipsis whitespace-nowrap text-[9px] text-accent"
+                    : "text-[9px]"
                 }`}
                 title={inSala && salaNombre ? salaNombre : undefined}
               >

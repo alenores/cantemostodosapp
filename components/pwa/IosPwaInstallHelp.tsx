@@ -257,8 +257,8 @@ function SafariInstallSteps() {
                     <rect x="3" y="3" width="7" height="7" rx="1" fill="#D4D4D8" />
                     <rect x="14" y="3" width="7" height="7" rx="1" fill="#D4D4D8" />
                     <rect x="3" y="14" width="7" height="7" rx="1" fill="#D4D4D8" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="#f4845f" strokeWidth="1.5" />
-                    <path d="M16 17h3M17.5 15.5v3" stroke="#f4845f" strokeWidth="1.5" strokeLinecap="round" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="var(--accent)" strokeWidth="1.5" />
+                    <path d="M16 17h3M17.5 15.5v3" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                   <span style={{ fontSize: 5.5, fontWeight: 600, color: "#1c1c1e", lineHeight: 1.2 }}>
                     Agregar a

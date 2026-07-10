@@ -3,6 +3,11 @@ import {
   type HubModuleSection,
 } from "@/lib/cancionero-hub-modules";
 import {
+  HUB_DESTINATION_AFINADOR_DESCRIPTION,
+  HUB_DESTINATION_CANCIONERO_DESCRIPTION,
+  HUB_DESTINATION_INDIVIDUAL_DESCRIPTION,
+  HUB_DESTINATION_PRACTICA_DESCRIPTION,
+  HUB_DESTINATION_SALAS_DESCRIPTION,
   HUB_SECTION_CANCIONES_LABEL,
   HUB_SECTION_HERRAMIENTAS_LABEL,
   HUB_SECTION_PRACTICA_LABEL,
@@ -48,7 +53,7 @@ export const PC_SIDEBAR_SECTIONS: PcSidebarSection[] = [
     type: "expandable",
     id: "canciones",
     label: HUB_SECTION_CANCIONES_LABEL,
-    description: "Cancionero, favoritas y editor",
+    description: HUB_DESTINATION_CANCIONERO_DESCRIPTION,
     icon: Library,
     items: CANCIONERO_HUB_MODULES.filter((module) => module.section === "canciones"),
   },
@@ -56,7 +61,7 @@ export const PC_SIDEBAR_SECTIONS: PcSidebarSection[] = [
     type: "link",
     id: "individual",
     label: "Individual",
-    description: "Cantar solo con Lista de canciones",
+    description: HUB_DESTINATION_INDIVIDUAL_DESCRIPTION,
     icon: Music2,
     href: "/individual",
     isActive: (pathname) =>
@@ -66,7 +71,7 @@ export const PC_SIDEBAR_SECTIONS: PcSidebarSection[] = [
     type: "link",
     id: "salas",
     label: "Salas",
-    description: "Cantar en grupo en tiempo real",
+    description: HUB_DESTINATION_SALAS_DESCRIPTION,
     icon: Users,
     href: "/salas",
     isActive: (pathname) =>
@@ -76,7 +81,7 @@ export const PC_SIDEBAR_SECTIONS: PcSidebarSection[] = [
     type: "expandable",
     id: "herramientas",
     label: HUB_SECTION_HERRAMIENTAS_LABEL,
-    description: "Afinador y utilidades",
+    description: HUB_DESTINATION_AFINADOR_DESCRIPTION,
     icon: Wrench,
     items: CANCIONERO_HUB_MODULES.filter(
       (module) => module.section === "herramientas",
@@ -86,7 +91,7 @@ export const PC_SIDEBAR_SECTIONS: PcSidebarSection[] = [
     type: "expandable",
     id: "practica",
     label: HUB_SECTION_PRACTICA_LABEL,
-    description: "Metrónomo, voz y compositor",
+    description: HUB_DESTINATION_PRACTICA_DESCRIPTION,
     icon: MicVocal,
     items: CANCIONERO_HUB_MODULES.filter((module) => module.section === "practica"),
   },

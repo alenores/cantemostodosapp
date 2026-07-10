@@ -32,23 +32,23 @@ function HomeScreenIllustration() {
       aria-hidden
     >
       <svg viewBox="0 0 200 240" className="h-[168px] w-full max-w-[180px]">
-        <rect x="24" y="8" width="152" height="224" rx="22" fill="#2a2a2a" stroke="#f4845f" strokeWidth="2" />
+        <rect x="24" y="8" width="152" height="224" rx="22" fill="#2a2a2a" stroke="var(--accent)" strokeWidth="2" />
         <rect x="36" y="22" width="128" height="18" rx="9" fill="#333" />
-        <circle cx="100" cy="31" r="2.5" fill="#f4845f" />
+        <circle cx="100" cy="31" r="2.5" fill="var(--accent)" />
         <rect x="44" y="56" width="28" height="28" rx="7" fill="#3a3a3a" />
         <rect x="86" y="56" width="28" height="28" rx="7" fill="#3a3a3a" />
         <rect x="128" y="56" width="28" height="28" rx="7" fill="#3a3a3a" />
         <rect x="44" y="96" width="28" height="28" rx="7" fill="#3a3a3a" />
         <g>
-          <rect x="82" y="92" width="36" height="36" rx="10" fill="#252525" stroke="#f4845f" strokeWidth="2.5" />
+          <rect x="82" y="92" width="36" height="36" rx="10" fill="#252525" stroke="var(--accent)" strokeWidth="2.5" />
           <rect x="88" y="98" width="24" height="24" rx="6" fill="#3a2a22" />
           <path
             d="M94 110h12M100 104v12"
-            stroke="#f4845f"
+            stroke="var(--accent)"
             strokeWidth="2"
             strokeLinecap="round"
           />
-          <circle cx="100" cy="110" r="18" fill="none" stroke="#f4845f" strokeWidth="1.5" strokeDasharray="3 4" />
+          <circle cx="100" cy="110" r="18" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="3 4" />
         </g>
         <rect x="128" y="96" width="28" height="28" rx="7" fill="#3a3a3a" />
         <rect x="44" y="136" width="28" height="28" rx="7" fill="#3a3a3a" />
@@ -58,7 +58,7 @@ function HomeScreenIllustration() {
           x="100"
           y="206"
           textAnchor="middle"
-          fill="#f4845f"
+          fill="var(--accent)"
           fontSize="11"
           fontWeight="600"
           fontFamily="Arial, Helvetica, sans-serif"

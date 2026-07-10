@@ -16,19 +16,118 @@ import {
   type CompositorScheduledSound,
 } from "@/lib/compositor-timeline";
 import {
-  getCompositorPlaybackRate,
   pickNearestMultiSample,
   type CompositorResolvedSample,
   type CompositorSampleBank,
 } from "@/lib/compositor-samples";
+import type { MetronomeBeatLevel } from "@/lib/metronomo";
+import { targetToFrequency } from "@/lib/voz";
 
 const COMPOSITOR_GUITAR_PUA_ROOT: CompositorSlotNote = { note: "E", octave: 2 };
 
-function getGuitarNotePlaybackRate(note: CompositorSlotNote): number {
-  return getCompositorPlaybackRate(note, COMPOSITOR_GUITAR_PUA_ROOT);
+function resolveGuitarPitchedSample(
+  note: CompositorSlotNote,
+  samples: CompositorSampleBank | null,
+  articulation: "pua" | "dedo" | "bloque",
+): CompositorResolvedSample | null {
+  const set =
+    articulation === "pua" ? samples?.guitar?.pua : samples?.guitar?.dedo;
+
+  return pickNearestMultiSample(note, set ?? null);
 }
-import type { MetronomeBeatLevel } from "@/lib/metronomo";
-import { targetToFrequency } from "@/lib/voz";
+
+type GuitarStringVoice = "pua" | "dedo" | "bloque" | "rasguido";
+
+/** Perfiles audibles: púa brillante/seca, dedo suave/cálido, acordes con cuerdas reales. */
+function getGuitarStringVoiceProfile(voice: GuitarStringVoice): {
+  gainScale: number;
+  attackSeconds: number;
+  lowpassHz: number;
+  highpassHz: number;
+} {
+  switch (voice) {
+    case "pua":
+      return {
+        gainScale: 0.7,
+        attackSeconds: 0.004,
+        lowpassHz: 12000,
+        highpassHz: 180,
+      };
+    case "dedo":
+      return {
+        gainScale: 0.48,
+        attackSeconds: 0.028,
+        lowpassHz: 4200,
+        highpassHz: 60,
+      };
+    case "bloque":
+      return {
+        gainScale: 0.38,
+        attackSeconds: 0.012,
+        lowpassHz: 6500,
+        highpassHz: 80,
+      };
+    case "rasguido":
+      return {
+        gainScale: 0.34,
+        attackSeconds: 0.008,
+        lowpassHz: 7800,
+        highpassHz: 100,
+      };
+    default:
+      return {
+        gainScale: 0.55,
+        attackSeconds: 0.01,
+        lowpassHz: 8000,
+        highpassHz: 80,
+      };
+  }
+}
+
+function scheduleGuitarStringSample(
+  audioContext: AudioContext,
+  time: number,
+  buffer: AudioBuffer,
+  peakGain: number,
+  playbackRate: number,
+  maxDuration: number,
+  voice: GuitarStringVoice,
+  bus?: AudioPlaybackBus | null,
+): void {
+  const profile = getGuitarStringVoiceProfile(voice);
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = playbackRate;
+
+  const highpass = audioContext.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = profile.highpassHz;
+  highpass.Q.value = 0.7;
+
+  const lowpass = audioContext.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = profile.lowpassHz;
+  lowpass.Q.value = 0.85;
+
+  const gainNode = audioContext.createGain();
+  const naturalDuration = buffer.duration / Math.max(playbackRate, 0.01);
+  const duration = Math.min(naturalDuration, maxDuration);
+  const attack = Math.min(profile.attackSeconds, duration * 0.35);
+  const safePeak = Math.max(peakGain * profile.gainScale, 0.0002);
+
+  gainNode.gain.setValueAtTime(0.0001, time);
+  gainNode.gain.exponentialRampToValueAtTime(safePeak, time + attack);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+  source.connect(highpass);
+  highpass.connect(lowpass);
+  lowpass.connect(gainNode);
+  gainNode.connect(bus?.output ?? audioContext.destination);
+  bus?.track(source);
+
+  source.start(time);
+  source.stop(time + duration + 0.03);
+}
 
 const LOOK_AHEAD_SECONDS = 0.35;
 const SCHEDULE_INTERVAL_MS = 25;
@@ -363,25 +462,28 @@ function scheduleGuitarChordNotes(
   }
 
   const duration = clampMelodicDuration(durationSeconds);
-  const strumDelays = [0, 0.012, 0.024, 0.036, 0.048];
-  const dedoBuffer = samples?.guitar?.dedo ?? null;
+  /** Rasguido: abanico audible; bloque: todas juntas. */
+  const strumDelays =
+    mode === "bloque"
+      ? notes.map(() => 0)
+      : [0, 0.022, 0.044, 0.066, 0.088, 0.11];
 
   for (let index = 0; index < notes.length; index += 1) {
     const note = notes[index]!;
     const delay =
-      mode === "bloque"
-        ? 0
-        : (strumDelays[index] ?? strumDelays[strumDelays.length - 1]!);
+      strumDelays[index] ?? strumDelays[strumDelays.length - 1] ?? 0;
     const noteTime = time + delay;
+    const resolved = resolveGuitarPitchedSample(note, samples, "dedo");
 
-    if (mode === "bloque" && dedoBuffer) {
-      scheduleSample(
+    if (resolved) {
+      scheduleGuitarStringSample(
         audioContext,
         noteTime,
-        dedoBuffer,
-        gain * 0.36,
-        getGuitarNotePlaybackRate(note),
+        resolved.buffer,
+        gain,
+        resolved.playbackRate,
         duration,
+        mode,
         bus,
       );
       continue;
@@ -420,41 +522,41 @@ function scheduleGuitarNote(
   }
 
   const duration = clampMelodicDuration(durationSeconds);
-  const guitarBuffer =
-    samples?.guitar?.[
-      articulation === "bloque" ? "dedo" : articulation
-    ] ?? null;
 
-  if (guitarBuffer) {
-    scheduleSample(
-      audioContext,
-      time,
-      guitarBuffer,
-      gain * (articulation === "rasguido" ? 0.58 : articulation === "dedo" || articulation === "bloque" ? 0.54 : 0.62),
-      articulation === "rasguido" || articulation === "dedo" ? 1 : getGuitarNotePlaybackRate(note),
-      duration,
-      bus,
-    );
-    return;
+  if (articulation === "rasguido" || articulation === "bloque") {
+    const resolved = resolveGuitarPitchedSample(note, samples, "dedo");
+
+    if (resolved) {
+      scheduleGuitarStringSample(
+        audioContext,
+        time,
+        resolved.buffer,
+        gain,
+        resolved.playbackRate,
+        duration,
+        articulation,
+        bus,
+      );
+      return;
+    }
   }
 
-  if (articulation === "rasguido") {
-    scheduleTone(
+  const voice: GuitarStringVoice = articulation === "dedo" ? "dedo" : "pua";
+  const resolved = resolveGuitarPitchedSample(
+    note,
+    samples,
+    articulation === "dedo" ? "dedo" : "pua",
+  );
+
+  if (resolved) {
+    scheduleGuitarStringSample(
       audioContext,
       time,
-      targetToFrequency(note),
-      gain * 0.42,
+      resolved.buffer,
+      gain,
+      resolved.playbackRate,
       duration,
-      "triangle",
-      bus,
-    );
-    scheduleTone(
-      audioContext,
-      time,
-      targetToFrequency(note) * 1.007,
-      gain * 0.18,
-      duration * 0.85,
-      "sine",
+      voice,
       bus,
     );
     return;
@@ -464,8 +566,8 @@ function scheduleGuitarNote(
     audioContext,
     time,
     targetToFrequency(note),
-    gain * 0.5,
-    Math.min(duration, 0.35),
+    gain * (voice === "dedo" ? 0.38 : 0.55),
+    Math.min(duration, voice === "dedo" ? 0.55 : 0.35),
     "triangle",
     bus,
   );

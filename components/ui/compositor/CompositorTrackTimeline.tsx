@@ -27,6 +27,8 @@ import { getInstrumentLabel, isCompositorCycleLayer } from "@/lib/compositor";
 import {
   buildDrumTimelineRows,
   buildMelodicTimelineRows,
+  COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+  COMPOSITOR_TIMELINE_RULER_HEIGHT_PX,
   COMPOSITOR_TIMELINE_STEP_MIN_PX,
   getDrumEventRowId,
   getMelodicEventRowId,
@@ -43,6 +45,7 @@ import {
   eventOverlapsStep,
   getCompositorCycleDurationSeconds,
   getCompositorGridSteps,
+  getCompositorStepDurationSeconds,
   stepToCycleOffsetSeconds,
 } from "@/lib/compositor-timeline";
 import type { NotaIndex } from "@/lib/cifrado";
@@ -115,6 +118,7 @@ function renderTimelineBlock({
   showNoteLabel,
   highlightEventId,
   melodicRowDrag,
+  positioning = "absolute",
   onSelectEvent,
   onUpdateEvent,
 }: {
@@ -128,6 +132,7 @@ function renderTimelineBlock({
   showNoteLabel: boolean;
   highlightEventId?: string | null;
   melodicRowDrag?: MelodicRowDragContext;
+  positioning?: "absolute" | "fill";
   onSelectEvent: (eventId: string | null) => void;
   onUpdateEvent: (
     eventId: string,
@@ -141,6 +146,7 @@ function renderTimelineBlock({
     trackWidthPx,
   );
   const startSeconds = stepToCycleOffsetSeconds(piece, event.startStep);
+  const stepDurationSeconds = getCompositorStepDurationSeconds(piece);
 
   return (
     <CompositorTimelineBlock
@@ -149,6 +155,7 @@ function renderTimelineBlock({
       instrumentId={instrumentId}
       gridSteps={gridSteps}
       subdivisionsPerGolpe={piece.subdivisionsPerGolpe}
+      stepDurationSeconds={stepDurationSeconds}
       isSelected={selectedEventId === event.id}
       conflictHighlight={highlightEventId === event.id}
       disabled={disabled}
@@ -156,6 +163,7 @@ function renderTimelineBlock({
       leftPercent={layout.leftPercent}
       widthPercent={layout.widthPercent}
       minWidthPercent={layout.minWidthPercent}
+      positioning={positioning}
       showNoteLabel={showNoteLabel}
       melodicRowDrag={melodicRowDrag}
       onSelect={() => onSelectEvent(event.id)}
@@ -228,25 +236,59 @@ function MelodicTimeline({
     [resolvedEvents, octaveExact, piece.tonalidadComposicion, rows],
   );
 
-  const eventsByRow = useMemo(() => {
-    const grouped = new Map<string, CompositorTrackEvent[]>();
-
-    for (const row of rows) {
-      grouped.set(row.id, []);
-    }
-
-    for (const event of resolvedEvents) {
-      const rowId = getMelodicEventRowId(event, rows, octaveExact);
-      const bucket = grouped.get(rowId) ?? [];
-      bucket.push(event);
-      grouped.set(rowId, bucket);
-    }
-
-    return grouped;
-  }, [resolvedEvents, octaveExact, rows]);
-
   const scrollRows = rows.map((row) => ({ id: row.id, label: row.label }));
   const trackWidthPx = gridSteps * COMPOSITOR_TIMELINE_STEP_MIN_PX;
+  const rowIndexById = useMemo(
+    () => new Map(rows.map((row, index) => [row.id, index])),
+    [rows],
+  );
+
+  const melodicBlocksOverlay = (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
+      style={{ top: `${COMPOSITOR_TIMELINE_RULER_HEIGHT_PX}px` }}
+    >
+      {resolvedEvents.map((event) => {
+        const rowId = getMelodicEventRowId(event, rows, octaveExact);
+        const rowIndex = rowIndexById.get(rowId) ?? 0;
+        const layout = getTimelineBlockLayout(
+          event.startStep,
+          event.durationSteps,
+          gridSteps,
+          trackWidthPx,
+        );
+
+        return (
+          <div
+            key={event.id}
+            className="pointer-events-auto absolute"
+            style={{
+              top: rowIndex * COMPOSITOR_TIMELINE_ROW_HEIGHT_PX + 2,
+              height: COMPOSITOR_TIMELINE_ROW_HEIGHT_PX - 4,
+              left: `${layout.leftPercent}%`,
+              width: `${Math.max(layout.widthPercent, layout.minWidthPercent)}%`,
+            }}
+          >
+            {renderTimelineBlock({
+              event,
+              instrumentId,
+              piece,
+              gridSteps,
+              trackWidthPx,
+              selectedEventId,
+              disabled,
+              showNoteLabel: false,
+              highlightEventId,
+              melodicRowDrag,
+              positioning: "fill",
+              onSelectEvent,
+              onUpdateEvent,
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <CompositorScrollableTimelineGrid
@@ -259,26 +301,8 @@ function MelodicTimeline({
       placementPreview={placementPreview}
       onPlacementTap={onPlacementTap}
       onClearSelection={() => onSelectEvent(null)}
-      renderRowEvents={(row) => {
-        const rowEvents = eventsByRow.get(row.id) ?? [];
-
-        return rowEvents.map((event) =>
-          renderTimelineBlock({
-            event,
-            instrumentId,
-            piece,
-            gridSteps,
-            trackWidthPx,
-            selectedEventId,
-            disabled,
-            showNoteLabel: false,
-            highlightEventId,
-            melodicRowDrag,
-            onSelectEvent,
-            onUpdateEvent,
-          }),
-        );
-      }}
+      trackOverlay={melodicBlocksOverlay}
+      renderRowEvents={() => null}
     />
   );
 }

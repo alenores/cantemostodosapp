@@ -135,7 +135,7 @@ Implementación: `updateSostenerRollingChartCents` en `lib/voz.ts`; historial de
 - **Nombre oficial**: Compositor.
 - **Rol**: armar ritmos y melodías propias del usuario (crear / experimentar), separado del Entrenador Vocal (practicar / evaluar).
 - **v2 (implementado)**: ciclo compartido + **línea de tiempo por capa** (eventos con posición, sustento, intensidad, nota y timbre); superposición entre capas; motor de audio por tiempo absoluto; guardado `compositor-piece-v2` (migra desde v1).
-- **Audio v3 (implementado)**: multi-sample piano (Salamander C2–C6), guitarra ampliada (púa/rasguido/dedo), batería ampliada (6 timbres), capa **viento** (flauta acústica C/E/A en octavas 4–5, tonejs-instruments); carga lazy por pack (`lib/compositor-sample-manifest.ts`, `lib/compositor-samples.ts`).
+- **Audio v3 (implementado)**: multi-sample piano densificado (Salamander cada 3ª menor C2–C6), guitarra multi-cuerda (Berklee open strings + rasguido), batería ampliada (6 timbres), capa **viento** (flauta C/E/A octavas 4–6); carga lazy por pack; tope de sustento por duración útil del sample (`lib/compositor-sample-sustain.ts`).
 
 #### Compositor ↔ Editor de canciones — plan aprobado (jul 2026)
 

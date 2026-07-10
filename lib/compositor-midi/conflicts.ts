@@ -42,7 +42,7 @@ function getMelodicOctaveBounds(instrumentId: CompositorInstrumentId): {
 } {
   const minOctave =
     instrumentId === "guitarra" ? 2 : instrumentId === "viento" ? 4 : 3;
-  const maxOctave = instrumentId === "viento" ? 5 : minOctave + 1;
+  const maxOctave = instrumentId === "viento" ? 6 : minOctave + 1;
   return { min: minOctave, max: maxOctave };
 }
 

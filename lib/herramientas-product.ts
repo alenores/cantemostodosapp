@@ -17,11 +17,33 @@ export const COMPOSITOR_VS_ENTRENADOR_NOTE =
 
 export const HUB_WELCOME_TITLE = "Bienvenid@";
 
-export const HUB_SECTION_DESTINOS_LABEL = "¿Cómo querés cantar?";
+export const HUB_SECTION_DESTINOS_LABEL = "¿Qué querés hacer?";
 export const HUB_DESTINATION_SALAS_LABEL = "Salas";
+export const HUB_DESTINATION_SALAS_DESCRIPTION =
+  "Cantar en grupo en tiempo real";
+export const HUB_DESTINATION_SALAS_HELP =
+  "Todos ven la misma canción al mismo tiempo, sin buscar por separado";
 export const HUB_DESTINATION_SALAS_CTA = "En grupo";
 export const HUB_DESTINATION_INDIVIDUAL_LABEL = "Individual";
+export const HUB_DESTINATION_INDIVIDUAL_DESCRIPTION =
+  "Cantar solo con Lista de canciones";
+export const HUB_DESTINATION_INDIVIDUAL_HELP =
+  "Buscá, guardá y armá tu propia lista para tocar a tu ritmo";
 export const HUB_DESTINATION_INDIVIDUAL_CTA = "Cantar solo";
+export const HUB_DESTINATION_PRACTICA_LABEL = "Práctica";
+export const HUB_DESTINATION_PRACTICA_DESCRIPTION =
+  "Metrónomo, voz y compositor";
+export const HUB_DESTINATION_PRACTICA_HELP =
+  "Herramientas para ensayar solo antes de tocar en grupo";
+export const HUB_DESTINATION_CANCIONERO_LABEL = "Cancionero";
+export const HUB_DESTINATION_CANCIONERO_DESCRIPTION =
+  "Cancionero, favoritas y editor";
+export const HUB_DESTINATION_CANCIONERO_HELP =
+  "Todas tus canciones guardadas, ordenadas y listas para usar";
+export const HUB_DESTINATION_AFINADOR_LABEL = "Afinador";
+export const HUB_DESTINATION_AFINADOR_DESCRIPTION = "Afinador y utilidades";
+export const HUB_DESTINATION_AFINADOR_HELP =
+  "Afiná tu instrumento antes de empezar a tocar";
 
 export const HUB_SECTION_CANCIONES_LABEL = "Canciones";
 export const HUB_SECTION_HERRAMIENTAS_LABEL = "Herramientas";

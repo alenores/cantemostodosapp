@@ -79,13 +79,15 @@ type CompositorTimelineBlockProps = {
   instrumentId: CompositorInstrumentId;
   gridSteps: number;
   subdivisionsPerGolpe: number;
+  stepDurationSeconds: number;
   isSelected: boolean;
   conflictHighlight?: boolean;
   disabled?: boolean;
   title: string;
-  leftPercent: number;
-  widthPercent: number;
-  minWidthPercent: number;
+  leftPercent?: number;
+  widthPercent?: number;
+  minWidthPercent?: number;
+  positioning?: "absolute" | "fill";
   showNoteLabel?: boolean;
   onSelect: () => void;
   onUpdateTiming: (patch: CompositorTimelineEventPatch) => void;
@@ -97,13 +99,15 @@ export function CompositorTimelineBlock({
   instrumentId,
   gridSteps,
   subdivisionsPerGolpe,
+  stepDurationSeconds,
   isSelected,
   conflictHighlight = false,
   disabled = false,
   title,
-  leftPercent,
-  widthPercent,
-  minWidthPercent,
+  leftPercent = 0,
+  widthPercent = 100,
+  minWidthPercent = 0,
+  positioning = "absolute",
   showNoteLabel = true,
   onSelect,
   onUpdateTiming,
@@ -122,6 +126,7 @@ export function CompositorTimelineBlock({
     instrumentId,
     gridSteps,
     subdivisionsPerGolpe,
+    stepDurationSeconds,
     disabled,
     melodicRowDrag,
     onSelect,
@@ -148,13 +153,21 @@ export function CompositorTimelineBlock({
       data-compositor-timeline-block=""
       data-event-id={event.id}
       onPointerDown={handlePointerDown("move")}
-      className={`absolute inset-y-0.5 touch-none rounded-md text-[9px] font-bold select-none ${blockClassName} ${
+      className={`touch-none rounded-md text-[9px] font-bold select-none ${blockClassName} ${
+        positioning === "fill"
+          ? "relative h-full w-full"
+          : "absolute inset-y-0.5"
+      } ${
         conflictHighlight ? "compositor-timeline-block--conflict-focus ring-2 ring-[var(--tuner-lejos)]" : ""
       } ${disabled ? "pointer-events-none opacity-50" : isDragging ? "pointer-events-none cursor-grabbing" : "cursor-grab"}`}
-      style={{
-        left: `${leftPercent}%`,
-        width: `${Math.max(widthPercent, minWidthPercent)}%`,
-      }}
+      style={
+        positioning === "fill"
+          ? undefined
+          : {
+              left: `${leftPercent}%`,
+              width: `${Math.max(widthPercent, minWidthPercent)}%`,
+            }
+      }
     >
       {isSelected && canResize && !disabled ? (
         <>

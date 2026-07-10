@@ -5,7 +5,7 @@ const ICONO_STYLE: Record<
   ResultadoIconoTipo,
   { sizeClass: string; color: string }
 > = {
-  cancionero: { sizeClass: "size-6", color: "#9AE0C8" },
+  cancionero: { sizeClass: "size-6", color: "var(--cancionero-icon)" },
   acordes: { sizeClass: "size-5", color: "#4A9388" },
   cifra: { sizeClass: "size-5", color: "var(--voz-config)" },
 };

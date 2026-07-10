@@ -13,7 +13,10 @@ type LetraViewerProps = {
   fill?: boolean;
   /** Recorte visual superior: simula un scroll inicial sin tocar el DOM del iframe. */
   initialScrollOffsetPx?: number;
-  /** @deprecated El recorte inferior no se aplica al iframe (rompe scroll). Reservado por compatibilidad. */
+  /**
+   * Recorte inferior (propagandas / botones flotantes): el iframe es más alto y
+   * el excedente queda debajo del overflow:hidden del marco.
+   */
   initialScrollBottomOffsetPx?: number;
   /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
   onRevealTop?: () => void;
@@ -41,16 +44,19 @@ function containerRadiusClass(
 
 function getIframeScrollSimulationStyle(
   topOffsetPx?: number,
+  bottomOffsetPx?: number,
   fillScaleX?: number,
 ): CSSProperties | undefined {
   const top = topOffsetPx && topOffsetPx > 0 ? topOffsetPx : 0;
+  const bottom = bottomOffsetPx && bottomOffsetPx > 0 ? bottomOffsetPx : 0;
   const scaleX =
     fillScaleX && fillScaleX > 1 && Number.isFinite(fillScaleX)
       ? fillScaleX
       : 1;
   const hasScale = scaleX > 1;
+  const overhang = top + bottom;
 
-  if (top === 0 && !hasScale) {
+  if (overhang === 0 && !hasScale) {
     return undefined;
   }
 
@@ -58,8 +64,11 @@ function getIframeScrollSimulationStyle(
     width: "100%",
   };
 
+  if (overhang > 0) {
+    style.height = `calc(100% + ${overhang}px)`;
+  }
+
   if (top > 0) {
-    style.height = `calc(100% + ${top}px)`;
     style.marginTop = `-${top}px`;
   }
 
@@ -70,6 +79,9 @@ function getIframeScrollSimulationStyle(
 
   return style;
 }
+
+/** TEMP diagnóstico: si el bug del scroll vuelve, este azul invade la letra. */
+const EMBED_SHELL_DIAGNOSTIC_BG = "#2563eb";
 
 type LetraIframeProps = {
   url: string;
@@ -92,11 +104,16 @@ function LetraIframe({
 }: LetraIframeProps) {
   const offsetStyle = getIframeScrollSimulationStyle(
     initialScrollOffsetPx,
+    initialScrollBottomOffsetPx,
     fillScaleX,
   );
   const topClipPx =
     initialScrollOffsetPx && initialScrollOffsetPx > 0
       ? initialScrollOffsetPx
+      : undefined;
+  const bottomClipPx =
+    initialScrollBottomOffsetPx && initialScrollBottomOffsetPx > 0
+      ? initialScrollBottomOffsetPx
       : undefined;
 
   return (
@@ -105,6 +122,7 @@ function LetraIframe({
       src={url}
       title={title}
       data-embed-top-clip-px={topClipPx}
+      data-embed-bottom-clip-px={bottomClipPx}
       className={offsetStyle ? "block h-full w-full border-0" : className}
       style={offsetStyle}
       sandbox="allow-scripts allow-same-origin"
@@ -149,8 +167,12 @@ function EmbedShell({
 }: EmbedShellProps) {
   return (
     <div
-      style={style}
-      className={`relative overflow-hidden bg-letra-bg ${className}`}
+      style={{
+        ...style,
+        // TEMP: azul diagnóstico del hueco de scroll (sacar cuando confirmemos OK).
+        backgroundColor: EMBED_SHELL_DIAGNOSTIC_BG,
+      }}
+      className={`relative overflow-hidden ${className}`}
     >
       {children}
       {onRevealTop ? (

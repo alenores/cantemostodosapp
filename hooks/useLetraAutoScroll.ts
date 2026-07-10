@@ -27,22 +27,33 @@ function elementHasScrollRange(el: HTMLDivElement): boolean {
   return el.scrollHeight - el.clientHeight > 1;
 }
 
-function readEmbedTopClipPx(iframe: HTMLIFrameElement): number {
-  const raw = iframe.dataset.embedTopClipPx;
+function readEmbedClipPx(
+  iframe: HTMLIFrameElement,
+  key: "embedTopClipPx" | "embedBottomClipPx",
+): number {
+  const raw = iframe.dataset[key];
   const parsed = raw ? Number(raw) : 0;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-/** Desplaza el iframe hacia arriba (mismo truco que el recorte superior). */
+/**
+ * Desplaza el iframe hacia arriba (mismo truco que el recorte superior).
+ * La altura debe crecer con el offset: si no, el fondo del marco (letra-bg)
+ * invade la zona visible al scrollear.
+ * El recorte inferior queda “colgando” debajo del overflow:hidden (tapa ads).
+ */
 export function applyEmbedVisualScroll(
   iframe: HTMLIFrameElement,
   extraPx: number,
   maxExtraPx: number = CIFRACLUB_EMBED_MAX_VISUAL_SCROLL_PX,
 ) {
-  const top = readEmbedTopClipPx(iframe);
+  const top = readEmbedClipPx(iframe, "embedTopClipPx");
+  const bottom = readEmbedClipPx(iframe, "embedBottomClipPx");
   const extra = Math.max(0, Math.min(extraPx, maxExtraPx));
+  const shift = top + extra;
+  const overhang = shift + bottom;
 
-  if (top === 0 && extra === 0) {
+  if (overhang === 0) {
     iframe.style.height = "";
     iframe.style.marginTop = "";
     iframe.style.width = "";
@@ -50,8 +61,8 @@ export function applyEmbedVisualScroll(
   }
 
   iframe.style.width = "100%";
-  iframe.style.height = top > 0 ? `calc(100% + ${top}px)` : "100%";
-  iframe.style.marginTop = `-${top + extra}px`;
+  iframe.style.height = `calc(100% + ${overhang}px)`;
+  iframe.style.marginTop = shift > 0 ? `-${shift}px` : "";
 }
 
 function resolveScrollListenerTarget(

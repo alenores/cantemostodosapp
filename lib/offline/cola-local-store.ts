@@ -129,6 +129,34 @@ export async function addColaLocalItem(
   return getColaLocalItems(salaId);
 }
 
+/** Pone la canción como activa; la activa actual pasa a tocada. */
+export async function verAhoraColaLocal(
+  salaId: number,
+  cancion: CancionInput,
+): Promise<ColaItem[]> {
+  const current = await getColaLocalItems(salaId);
+  const activa = current.find((item) => item.estado === "activa");
+
+  if (
+    activa &&
+    activa.nombre === cancion.nombre.trim() &&
+    (activa.url_letra ?? "") === (cancion.url_letra ?? "")
+  ) {
+    return current;
+  }
+
+  const beforeIds = new Set(current.map((item) => item.id));
+  await addColaLocalItem(salaId, cancion);
+  const after = await getColaLocalItems(salaId);
+  const nuevo = after.find((item) => !beforeIds.has(item.id));
+
+  if (!nuevo) {
+    return after;
+  }
+
+  return avanzarColaLocal(salaId, nuevo.id);
+}
+
 export async function persistColaLocalOrden(
   salaId: number,
   items: ColaItem[],

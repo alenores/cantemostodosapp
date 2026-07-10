@@ -71,10 +71,12 @@ export default function LecturaBottomControls({
     >
       {hasCompases ? (
         <div className="flex flex-col items-end gap-2 lg:hidden">
-          <LecturaCompasToggleIcon
-            compasesOcultos={compasesOcultos}
-            onToggle={() => onToggleCompasesOcultos?.()}
-          />
+          {!compasesOcultos ? (
+            <LecturaCompasToggleIcon
+              compasesOcultos={compasesOcultos}
+              onToggle={() => onToggleCompasesOcultos?.()}
+            />
+          ) : null}
 
           {showMobileCompasControls ? (
             <>

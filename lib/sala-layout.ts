@@ -50,6 +50,8 @@ export const SALA_LETRA_PRESENCE_GAP_PX = 10;
 /** Contorno del contenedor de letra en modo control (Individual y Salas). */
 export const CONTROL_LETRA_SHELL_CLASS =
   "overflow-hidden rounded-[12px] border-2 border-accent";
+/** Aire entre el borde inferior del contenedor de letra y la etiqueta de origen. */
+export const CONTROL_LETRA_ORIGEN_GAP_PX = 6;
 /** Solape de la letra en texto sobre la barra de cola (recupera altura visible). */
 export const LETRA_TEXT_COLA_OVERLAP_PX = 28;
 
@@ -200,6 +202,15 @@ export function getLecturaFixedRightCss(reservarColaLateral = false): string {
 
 export function getLecturaFabMenuTopCss(): string {
   return `calc(${LECTURA_TOP_CHROME_INSET_PX}px + env(safe-area-inset-top, 0px) + ${LECTURA_TOP_CHROME_HEIGHT_PX}px + ${LECTURA_FAB_MENU_GAP_PX}px)`;
+}
+
+/**
+ * Espacio al inicio del scroll de letra en modo lectura (móvil):
+ * deja la primera línea debajo del chip fijo; al scrollear sube con la letra.
+ * En `lg+` el chip está oculto — no aplicar (usar `lg:hidden` en el spacer).
+ */
+export function getLecturaLetraScrollStartPaddingCss(): string {
+  return getLecturaFabMenuTopCss();
 }
 
 export function getLecturaColaAvisoTopCss(): string {

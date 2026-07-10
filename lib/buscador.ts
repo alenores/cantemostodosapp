@@ -124,7 +124,7 @@ export function getColaItemIconoTipo(item: {
 
   const url = item.url_letra?.trim() ?? "";
 
-  if (!url) {
+  if (!url || parseCancioneroUrlId(url) != null) {
     return "cancionero";
   }
 
@@ -133,4 +133,41 @@ export function getColaItemIconoTipo(item: {
   }
 
   return "cifra";
+}
+
+export type CancionOrigenInfo = {
+  sitio: string;
+  url: string;
+  iconoTipo: ResultadoIconoTipo;
+};
+
+/** Origen visible bajo el contenedor de letra en modo control. */
+export function resolveCancionOrigen(item: {
+  url_letra?: string | null;
+  letra_texto?: string | null;
+}): CancionOrigenInfo | null {
+  const url = item.url_letra?.trim() ?? "";
+  const letra = item.letra_texto?.trim() ?? "";
+
+  if (!url && !letra) {
+    return null;
+  }
+
+  if (parseCancioneroUrlId(url) != null || letra) {
+    return { sitio: "cancionero", url, iconoTipo: "cancionero" };
+  }
+
+  try {
+    const sitio = extractSitio(url);
+    return {
+      sitio,
+      url,
+      iconoTipo: getColaItemIconoTipo({
+        url_letra: url,
+        letra_texto: item.letra_texto,
+      }),
+    };
+  } catch {
+    return { sitio: "web", url, iconoTipo: "cifra" };
+  }
 }

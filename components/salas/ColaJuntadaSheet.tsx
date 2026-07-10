@@ -1,6 +1,5 @@
 "use client";
 
-import ColaFilaFloatButton from "@/components/salas/ColaFilaFloatButton";
 import ColaJuntadaItem from "@/components/salas/ColaJuntadaItem";
 import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
@@ -57,7 +56,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Maximize2, SkipForward, Trash2, X } from "lucide-react";
+import { Maximize2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 
@@ -65,7 +64,6 @@ const COLA_MODAL_LAYER_Z = 100;
 
 const FLOAT_BTN_SECONDARY =
   "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
-const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
 const COLA_DRAG_DELETE_ID = "cola-drag-delete";
 
 const colaDragCollisionDetection: CollisionDetection = (args) => {
@@ -133,8 +131,6 @@ type ColaJuntadaSheetProps = {
   onRequestSiguiente?: (siguiente: () => void) => void;
   onExpand?: () => void;
   presentacionOculta?: boolean;
-  colaAviso?: string | null;
-  colaAvisoExiting?: boolean;
   onDragEnd?: () => void;
 };
 
@@ -212,8 +208,6 @@ export default function ColaJuntadaSheet({
   onRequestSiguiente,
   onExpand,
   presentacionOculta = false,
-  colaAviso = null,
-  colaAvisoExiting = false,
   onDragEnd,
 }: ColaJuntadaSheetProps) {
   const premiumIds = usePremiumCancioneroIds();
@@ -263,7 +257,6 @@ export default function ColaJuntadaSheet({
   );
 
   const pendientesCount = pendientes.length;
-  const tieneActiva = activaItem !== null;
 
   const activeDragItem = useMemo(
     () =>
@@ -694,7 +687,7 @@ export default function ColaJuntadaSheet({
         <aside className={COLA_SIDE_PANEL_CLASS}>{colaDndLayer}</aside>
       ) : null}
 
-      {!presentacionOculta && !colaSidePanelMode ? (
+      {!presentacionOculta && !colaSidePanelMode && onExpand ? (
         <div
           className="pointer-events-none fixed inset-x-0 z-30"
           style={{
@@ -704,38 +697,15 @@ export default function ColaJuntadaSheet({
           }}
         >
           <div className="pointer-events-auto absolute bottom-0 right-4 flex flex-col items-end gap-2">
-            {onExpand ? (
-              <TapButton
-                type="button"
-                aria-label="Expandir letra a pantalla completa"
-                onClick={onExpand}
-                className={`sala-expand-attention flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
-              >
-                <Maximize2 className="size-4 text-accent" aria-hidden="true" />
-                <span>Expandir</span>
-              </TapButton>
-            ) : null}
-
-            {tieneActiva ? (
-              <TapButton
-                type="button"
-                disabled={pendientesCount === 0}
-                onClick={() => void handleSiguiente()}
-                className={`flex items-center gap-2 px-4 py-2 text-sm ${FLOAT_BTN_SECONDARY} ${
-                  pendientesCount === 0 ? FLOAT_BTN_DISABLED : ""
-                }`}
-              >
-                <span>Siguiente</span>
-                <SkipForward className="size-4" aria-hidden="true" />
-              </TapButton>
-            ) : null}
-
-            <ColaFilaFloatButton
-              pendientesCount={pendientesCount}
-              colaAviso={colaAviso}
-              colaAvisoExiting={colaAvisoExiting}
-              onClick={openCola}
-            />
+            <TapButton
+              type="button"
+              aria-label="Expandir letra a pantalla completa"
+              onClick={onExpand}
+              className={`sala-expand-attention flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
+            >
+              <Maximize2 className="size-4 text-accent" aria-hidden="true" />
+              <span>Expandir</span>
+            </TapButton>
           </div>
         </div>
       ) : null}

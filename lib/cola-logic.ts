@@ -489,7 +489,7 @@ async function insertColaJuntadaRow(
     letraTexto: string | null;
     agregado: ColaAgregadoSnapshot | null;
   },
-): Promise<void> {
+): Promise<number> {
   const variants: Record<string, unknown>[] = [];
   const seen = new Set<string>();
 
@@ -534,18 +534,24 @@ async function insertColaJuntadaRow(
   let lastSchemaError: { message?: string; code?: string } | null = null;
 
   for (const row of variants) {
-    const { error } = await supabase.from("cola_juntada").insert(row);
+    const { data, error } = await supabase
+      .from("cola_juntada")
+      .insert(row)
+      .select("id")
+      .single();
 
-    if (!error) {
-      return;
+    if (!error && data?.id != null) {
+      return data.id as number;
     }
 
-    if (isMissingColumnError(error)) {
+    if (error && isMissingColumnError(error)) {
       lastSchemaError = error;
       continue;
     }
 
-    throw error;
+    if (error) {
+      throw error;
+    }
   }
 
   if (lastSchemaError) {
@@ -559,7 +565,7 @@ export async function agregarACola(
   supabase: SupabaseClient,
   salaId: number,
   cancion: CancionInput,
-): Promise<void> {
+): Promise<number> {
   const urlLetra = cancion.url_letra.trim();
 
   if (!urlLetra) {
@@ -582,7 +588,7 @@ export async function agregarACola(
   const agregado = await fetchColaAgregadoSnapshot(supabase);
   const letraTexto = cancion.letra_texto?.trim() || null;
 
-  await insertColaJuntadaRow(
+  return insertColaJuntadaRow(
     supabase,
     {
       sala_id: salaId,
@@ -597,6 +603,41 @@ export async function agregarACola(
       agregado,
     },
   );
+}
+
+/** Pone la canción como activa; la activa actual pasa a tocada. */
+export async function verAhoraEnCola(
+  supabase: SupabaseClient,
+  salaId: number,
+  cancion: CancionInput,
+): Promise<void> {
+  const urlLetra = cancion.url_letra.trim();
+
+  if (!urlLetra) {
+    throw new Error("La canción no tiene un link de letra válido.");
+  }
+
+  const { data: activa, error: activaError } = await supabase
+    .from("cola_juntada")
+    .select("id, nombre, url_letra")
+    .eq("sala_id", salaId)
+    .eq("estado", "activa")
+    .maybeSingle();
+
+  if (activaError) {
+    throw activaError;
+  }
+
+  if (
+    activa &&
+    activa.nombre === cancion.nombre.trim() &&
+    (activa.url_letra ?? "") === urlLetra
+  ) {
+    return;
+  }
+
+  const nuevoId = await agregarACola(supabase, salaId, cancion);
+  await avanzarCancion(supabase, salaId, nuevoId);
 }
 
 export async function agregarAGuardadas(

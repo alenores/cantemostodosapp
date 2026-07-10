@@ -3,6 +3,8 @@
 import CifradoLecturaSidePanel from "@/components/cifrado/CifradoLecturaSidePanel";
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import { useCifradoPlayback } from "@/hooks/useCifradoPlayback";
+import type { NotaIndex } from "@/lib/cifrado";
+import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import type { CancionCifradoDetalle } from "@/types";
 import { useEffect, type CSSProperties, type RefObject } from "react";
 
@@ -16,6 +18,12 @@ export type LecturaCompasPlaybackState = {
   increaseBpm: () => void;
 };
 
+export type LecturaTonalidadState = {
+  tonalidadIndex: NotaIndex;
+  notacion: NotacionAcordes;
+  setTonalidad: (next: NotaIndex) => void;
+};
+
 type LetraCifradoLecturaShellProps = {
   detalle: CancionCifradoDetalle;
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -24,6 +32,7 @@ type LetraCifradoLecturaShellProps = {
   compasesOcultos?: boolean;
   onToggleCompasesOcultos?: () => void;
   onCompasPlaybackStateChange?: (state: LecturaCompasPlaybackState | null) => void;
+  onTonalidadStateChange?: (state: LecturaTonalidadState | null) => void;
 };
 
 export default function LetraCifradoLecturaShell({
@@ -34,6 +43,7 @@ export default function LetraCifradoLecturaShell({
   compasesOcultos = false,
   onToggleCompasesOcultos,
   onCompasPlaybackStateChange,
+  onTonalidadStateChange,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
   const hasCompases = Boolean(compasConfig?.barras?.length);
@@ -82,6 +92,29 @@ export default function LetraCifradoLecturaShell({
     playback.playing,
   ]);
 
+  useEffect(() => {
+    if (!onTonalidadStateChange) {
+      return;
+    }
+
+    onTonalidadStateChange({
+      tonalidadIndex: playback.tonalidadIndex,
+      notacion: playback.notacion,
+      setTonalidad: playback.handleTonalidadChange,
+    });
+  }, [
+    onTonalidadStateChange,
+    playback.handleTonalidadChange,
+    playback.notacion,
+    playback.tonalidadIndex,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      onTonalidadStateChange?.(null);
+    };
+  }, [onTonalidadStateChange]);
+
   return (
     <div className="flex h-full min-h-0 min-w-0 w-full flex-col lg:flex-row">
       <CifradoLecturaSidePanel
@@ -103,11 +136,11 @@ export default function LetraCifradoLecturaShell({
         onTapTempo={playback.handleTapTempo}
       />
 
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-r-[12px]">
         <div
           ref={scrollRef}
           data-cancionero-letra-scroll=""
-          className="min-h-0 flex-1 touch-pan-y overscroll-y-contain overflow-y-auto bg-letra-bg lg:rounded-none lg:rounded-r-[12px]"
+          className="min-h-0 flex-1 touch-pan-y overscroll-y-contain overflow-y-auto bg-letra-bg"
           style={letraZoomStyle}
         >
         <LetraCifradoPanel

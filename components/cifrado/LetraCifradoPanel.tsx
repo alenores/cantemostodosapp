@@ -6,6 +6,7 @@ import { getIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import {
+  getLecturaLetraScrollStartPaddingCss,
   getLetraModoLecturaHorizontalPadding,
   getLetraModoLecturaHorizontalPaddingRight,
 } from "@/lib/sala-layout";
@@ -52,11 +53,18 @@ export default function LetraCifradoPanel({
 
   return (
     <div
-      className={`relative min-h-full w-full shrink-0 bg-letra-bg py-5 ${
-        modoLectura ? "" : "px-[18px]"
-      }`}
+      className={`relative min-h-full w-full shrink-0 bg-letra-bg ${
+        modoLectura ? "pb-5 pt-0 lg:pt-5" : "py-5"
+      } ${modoLectura ? "" : "px-[18px]"}`}
       style={{ paddingBottom: scrollEndPadding }}
     >
+      {modoLectura ? (
+        <div
+          aria-hidden
+          className="shrink-0 lg:hidden"
+          style={{ height: getLecturaLetraScrollStartPaddingCss() }}
+        />
+      ) : null}
       <div style={horizontalPaddingStyle}>
         <CifradoLyricsBlock
           letra={letra}

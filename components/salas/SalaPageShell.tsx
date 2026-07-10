@@ -1,8 +1,12 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
-import type { LecturaCompasPlaybackState } from "@/components/cifrado/LetraCifradoLecturaShell";
+import type {
+  LecturaCompasPlaybackState,
+  LecturaTonalidadState,
+} from "@/components/cifrado/LetraCifradoLecturaShell";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
+import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
@@ -42,10 +46,13 @@ import type { ColaItem, PresenceUsuario, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { LucideIcon } from "lucide-react";
 import {
+  AudioLines,
   ListMusic,
   ArrowLeft,
   Minimize2,
+  Music,
   Music2,
+  Search,
   SkipForward,
   SlidersHorizontal,
   Type,
@@ -130,12 +137,18 @@ type SalaModoLecturaOverlayProps = {
   fixedRightCss: string;
   menuCompacto?: boolean;
   showZoomOption?: boolean;
+  showTonoOption?: boolean;
+  hasCompases?: boolean;
+  compasesOcultos?: boolean;
   onCerrar: () => void;
   onContraer: () => void;
   onSiguiente: () => void;
   onCola: () => void;
+  onBuscar: () => void;
   onAfinador: () => void;
+  onActivarCompases?: () => void;
   onAbrirZoom?: () => void;
+  onAbrirTono?: () => void;
 };
 
 function SalaModoLecturaOverlay({
@@ -145,12 +158,18 @@ function SalaModoLecturaOverlay({
   fixedRightCss,
   menuCompacto = false,
   showZoomOption = false,
+  showTonoOption = false,
+  hasCompases = false,
+  compasesOcultos = false,
   onCerrar,
   onContraer,
   onSiguiente,
   onCola,
+  onBuscar,
   onAfinador,
+  onActivarCompases,
   onAbrirZoom,
+  onAbrirTono,
 }: SalaModoLecturaOverlayProps) {
   if (!abierto) {
     return null;
@@ -158,6 +177,7 @@ function SalaModoLecturaOverlay({
 
   const menuTop = getLecturaFabMenuTopCss();
   let cascadeIndex = 0;
+  const showActivarCompases = hasCompases && compasesOcultos;
 
   return (
     <>
@@ -189,6 +209,15 @@ function SalaModoLecturaOverlay({
             {!menuCompacto ? (
               <>
                 <SalaModoLecturaFabOption
+                  icon={Search}
+                  label="Buscar"
+                  cascadeIndex={cascadeIndex++}
+                  onClick={() => {
+                    onCerrar();
+                    onBuscar();
+                  }}
+                />
+                <SalaModoLecturaFabOption
                   icon={SkipForward}
                   label="Siguiente"
                   iconAfter
@@ -210,16 +239,30 @@ function SalaModoLecturaOverlay({
                 />
               </>
             ) : null}
-            <SalaModoLecturaFabOption
-              icon={Music2}
-              label="Afinador"
-              cascadeIndex={cascadeIndex++}
-              onClick={() => {
-                onCerrar();
-                onAfinador();
-              }}
-            />
           </>
+        ) : null}
+        {showActivarCompases ? (
+          <SalaModoLecturaFabOption
+            icon={Music2}
+            label="Activar compases"
+            cascadeIndex={cascadeIndex++}
+            onClick={() => {
+              onCerrar();
+              onActivarCompases?.();
+            }}
+          />
+        ) : null}
+        {showTonoOption ? (
+          <SalaModoLecturaFabOption
+            icon={Music}
+            label="Cambiar de tono"
+            cascadeIndex={cascadeIndex++}
+            onClick={() => {
+              onCerrar();
+              onAbrirTono?.();
+            }}
+            className="lg:hidden"
+          />
         ) : null}
         {showZoomOption ? (
           <SalaModoLecturaFabOption
@@ -231,6 +274,17 @@ function SalaModoLecturaOverlay({
               onAbrirZoom?.();
             }}
             className="lg:hidden"
+          />
+        ) : null}
+        {!collaborationDisabled ? (
+          <SalaModoLecturaFabOption
+            icon={AudioLines}
+            label="Afinador"
+            cascadeIndex={cascadeIndex++}
+            onClick={() => {
+              onCerrar();
+              onAfinador();
+            }}
           />
         ) : null}
       </div>
@@ -261,8 +315,11 @@ export default function SalaPageShell({
   const [lecturaZoomEligible, setLecturaZoomEligible] = useState(false);
   const [compasesOcultos, setCompasesOcultos] = useState(false);
   const [zoomPanelAbierto, setZoomPanelAbierto] = useState(false);
+  const [tonoPanelAbierto, setTonoPanelAbierto] = useState(false);
   const [lecturaCompasPlayback, setLecturaCompasPlayback] =
     useState<LecturaCompasPlaybackState | null>(null);
+  const [lecturaTonalidad, setLecturaTonalidad] =
+    useState<LecturaTonalidadState | null>(null);
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
@@ -349,12 +406,21 @@ export default function SalaPageShell({
   useEffect(() => {
     setCompasesOcultos(false);
     setLecturaCompasPlayback(null);
+    setLecturaTonalidad(null);
     setZoomPanelAbierto(false);
+    setTonoPanelAbierto(false);
   }, [cancionActivaScrollKey]);
 
   const handleLecturaCompasPlaybackStateChange = useCallback(
     (state: LecturaCompasPlaybackState | null) => {
       setLecturaCompasPlayback(state);
+    },
+    [],
+  );
+
+  const handleLecturaTonalidadStateChange = useCallback(
+    (state: LecturaTonalidadState | null) => {
+      setLecturaTonalidad(state);
     },
     [],
   );
@@ -400,14 +466,21 @@ export default function SalaPageShell({
   const salirModoLectura = useCallback(() => {
     setOverlayAbierto(false);
     setZoomPanelAbierto(false);
+    setTonoPanelAbierto(false);
     setAfinadorOpen(false);
     setCompasesOcultos(false);
     setLecturaCompasPlayback(null);
+    setLecturaTonalidad(null);
     setModoLectura(false);
     document.body.removeAttribute("data-modo-lectura");
   }, []);
 
   const handleModoLecturaBack = useCallback(() => {
+    if (tonoPanelAbierto) {
+      setTonoPanelAbierto(false);
+      return;
+    }
+
     if (zoomPanelAbierto) {
       setZoomPanelAbierto(false);
       return;
@@ -419,7 +492,7 @@ export default function SalaPageShell({
     }
 
     salirModoLectura();
-  }, [overlayAbierto, salirModoLectura, zoomPanelAbierto]);
+  }, [overlayAbierto, salirModoLectura, tonoPanelAbierto, zoomPanelAbierto]);
 
   useHardwareBack(modoLectura, handleModoLecturaBack);
 
@@ -790,10 +863,24 @@ export default function SalaPageShell({
               onLecturaCompasPlaybackStateChange={
                 handleLecturaCompasPlaybackStateChange
               }
+              onLecturaTonalidadStateChange={handleLecturaTonalidadStateChange}
               onExpand={
                 !modoLectura && cancionActiva && !disconnected
                   ? handleExpand
                   : undefined
+              }
+              controlFilaActions={
+                !modoLectura && !disconnected
+                  ? {
+                      pendientesCount,
+                      colaAviso,
+                      colaAvisoExiting,
+                      onOpenFila: () => openColaRef.current?.(),
+                      onSiguiente: () => void handleSiguienteRef.current?.(),
+                      siguienteDisabled: pendientesCount === 0,
+                      showSiguiente: Boolean(cancionActiva),
+                    }
+                  : null
               }
             />
           )}
@@ -823,8 +910,6 @@ export default function SalaPageShell({
           onRequestSiguiente={(siguiente) => {
             handleSiguienteRef.current = siguiente;
           }}
-          colaAviso={!modoLectura ? colaAviso : null}
-          colaAvisoExiting={colaAvisoExiting}
           onDragEnd={() => suppressColaRealtime(1500)}
         />
       </main>
@@ -841,6 +926,7 @@ export default function SalaPageShell({
             }
             onClick={() => {
               setZoomPanelAbierto(false);
+              setTonoPanelAbierto(false);
               setOverlayAbierto((open) => !open);
             }}
             className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP} ${
@@ -861,6 +947,21 @@ export default function SalaPageShell({
             )}
           </TapButton>
 
+          {!overlayAbierto ? (
+            <TapButton
+              type="button"
+              aria-label="Buscar"
+              onClick={() => setBuscadorOpen(true)}
+              className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP}`}
+              style={{
+                top: getLecturaFabMenuTopCss(),
+                right: lecturaFixedRightCss,
+              }}
+            >
+              <Search className="size-4 text-accent" aria-hidden="true" />
+            </TapButton>
+          ) : null}
+
           <SalaModoLecturaOverlay
             abierto={overlayAbierto}
             pendientesCount={pendientesCount}
@@ -868,12 +969,24 @@ export default function SalaPageShell({
             fixedRightCss={lecturaFixedRightCss}
             menuCompacto={lecturaConColaLateral}
             showZoomOption={lecturaZoomEligible}
+            showTonoOption={Boolean(lecturaTonalidad)}
+            hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
+            compasesOcultos={compasesOcultos}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
             onCola={() => openColaRef.current?.()}
+            onBuscar={() => setBuscadorOpen(true)}
             onAfinador={() => setAfinadorOpen(true)}
-            onAbrirZoom={() => setZoomPanelAbierto(true)}
+            onActivarCompases={() => setCompasesOcultos(false)}
+            onAbrirZoom={() => {
+              setTonoPanelAbierto(false);
+              setZoomPanelAbierto(true);
+            }}
+            onAbrirTono={() => {
+              setZoomPanelAbierto(false);
+              setTonoPanelAbierto(true);
+            }}
           />
 
           <LecturaZoomPanel
@@ -884,6 +997,16 @@ export default function SalaPageShell({
             onIncrease={increaseLetraZoom}
             onClose={() => setZoomPanelAbierto(false)}
           />
+
+          {lecturaTonalidad ? (
+            <LecturaTonoPanel
+              open={tonoPanelAbierto}
+              tonalidadIndex={lecturaTonalidad.tonalidadIndex}
+              notacion={lecturaTonalidad.notacion}
+              onTonalidadChange={lecturaTonalidad.setTonalidad}
+              onClose={() => setTonoPanelAbierto(false)}
+            />
+          ) : null}
 
           <LecturaBottomControls
             showZoom={lecturaZoomEligible}
@@ -932,6 +1055,7 @@ export default function SalaPageShell({
           salaId={salaId}
           onDataChange={loadColaCompleta}
           onColaAdded={handleColaAdded}
+          hasCancionActiva={colaItems.some((item) => item.estado === "activa")}
         />
       )}
 

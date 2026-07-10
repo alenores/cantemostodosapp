@@ -1,0 +1,29 @@
+---
+description: Frenar y avisar si el pedido del usuario no coincide con la app
+alwaysApply: true
+---
+
+# Verificar antes de cambiar
+
+Antes de editar, contrastá el pedido con lo que realmente hay en la app (código, chat actual y comportamiento).
+
+## Obligatorio: frenar y avisar (no tocar todavía)
+
+Si detectás cualquiera de esto, **no implementes**. Avisá en criollo y pedí confirmación:
+
+- El usuario dice que algo “estaba” / “se quitó” / “existía” y **no aparece** en el código ni en este chat.
+- El pedido parece de **otro chat** o de otra pantalla, no de lo que se está tocando ahora.
+- Cumplir el pedido **rompería** un arreglo reciente de este mismo chat.
+- Hay **contradicción** entre lo que pide y lo que muestra la app.
+
+## Cómo avisar
+
+- Corto, en listado, sin tecnicismos (salvo `#TECNICO`).
+- Decí qué viste vs qué pidió, y preguntá: ¿seguimos igual o era otra cosa?
+- Solo después de un “sí / dale / hacelo” explícito, implementá.
+
+## Qué no hacer
+
+- No “arreglar” inventando el elemento que el usuario cree que faltaba.
+- No deshacer trabajo bueno de este chat para satisfacer un recuerdo dudoso.
+- No asumir culpa del código si la evidencia dice que el pedido está equivocado.

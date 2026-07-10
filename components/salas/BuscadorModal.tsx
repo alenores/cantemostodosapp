@@ -7,9 +7,13 @@ import {
   CASCADE_STAGGER_MS,
 } from "@/components/cancionero/CancioneroListSkeleton";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
-import { SitioLetraBadge } from "@/components/salas/LetraFuenteSitioBadge";
+import LetraFuenteSitioBadge, {
+  SitioLetraBadge,
+} from "@/components/salas/LetraFuenteSitioBadge";
 import LetraTexto from "@/components/salas/LetraTexto";
-import LetraViewer from "@/components/salas/LetraViewer";
+import LetraViewer, {
+  LetraRevealTopControl,
+} from "@/components/salas/LetraViewer";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
@@ -47,6 +51,7 @@ import {
   addColaLocalItem,
   avanzarColaLocal,
   getColaLocalItems,
+  verAhoraColaLocal,
 } from "@/lib/offline/cola-local-store";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -89,6 +94,8 @@ type BuscadorModalProps = {
   hasActivaOPendiente?: boolean;
   onVerAhora?: (cancion: CancionInput) => Promise<void>;
   onAgregarALista?: (cancion: CancionInput) => Promise<void>;
+  /** Solo variant sala: hay canción activa (para confirmar Ver ahora). */
+  hasCancionActiva?: boolean;
 };
 
 type Pantalla = "busqueda" | "preview";
@@ -339,6 +346,7 @@ export default function BuscadorModal({
   hasActivaOPendiente = false,
   onVerAhora,
   onAgregarALista,
+  hasCancionActiva = false,
 }: BuscadorModalProps) {
   const isHome = variant === "home";
   const online = useOnlineStatus();
@@ -385,6 +393,7 @@ export default function BuscadorModal({
     cancion_guardada_id?: number | null;
     url_letra?: string | null;
   } | null>(null);
+  const [promptVerAhoraSala, setPromptVerAhoraSala] = useState(false);
   const [guardadoRecienteId, setGuardadoRecienteId] = useState<number | null>(
     null,
   );
@@ -425,6 +434,7 @@ export default function BuscadorModal({
     setLoadingMisCanciones(false);
     setPreviewEsMisCanciones(false);
     setPromptMisCanciones(null);
+    setPromptVerAhoraSala(false);
     setGuardadoRecienteId(null);
 
     if (localCascadeTimerRef.current !== undefined) {
@@ -490,6 +500,11 @@ export default function BuscadorModal({
   useHardwareBack(open, () => {
     if (fabGuardarAbierto) {
       setFabGuardarAbierto(false);
+      return;
+    }
+
+    if (promptVerAhoraSala) {
+      setPromptVerAhoraSala(false);
       return;
     }
 
@@ -727,6 +742,7 @@ export default function BuscadorModal({
     setConfirmacion(null);
     setFabGuardarAbierto(false);
     setEmbedTopRevealed(false);
+    setPromptVerAhoraSala(false);
     setError(null);
     pantallaRef.current = "preview";
     setPantalla("preview");
@@ -739,6 +755,7 @@ export default function BuscadorModal({
     setConfirmacion(null);
     setFabGuardarAbierto(false);
     setEmbedTopRevealed(false);
+    setPromptVerAhoraSala(false);
     setError(null);
   }
 
@@ -764,6 +781,70 @@ export default function BuscadorModal({
     }
   }
 
+  async function handleVerAhoraSala() {
+    if (!seleccionado || accionLoading || salaId == null) {
+      return;
+    }
+
+    setAccionLoading(true);
+    setError(null);
+    setPromptVerAhoraSala(false);
+
+    try {
+      if (!online) {
+        await verAhoraColaLocal(salaId, toCancionInput(seleccionado));
+        await onDataChange?.();
+        onColaAdded?.();
+        handleClose();
+        return;
+      }
+
+      const response = await fetch("/api/cola/ver-ahora", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          salaId,
+          cancion: toCancionInput(seleccionado),
+        }),
+      });
+
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Error al mostrar la canción");
+      }
+
+      await onDataChange?.();
+      onColaAdded?.();
+      handleClose();
+    } catch (actionError) {
+      setError(
+        formatDatabaseError(actionError, "Error al mostrar la canción"),
+      );
+    } finally {
+      setAccionLoading(false);
+    }
+  }
+
+  function handleVerAhoraTap() {
+    if (accionLoading) {
+      return;
+    }
+
+    if (isHome) {
+      void handleVerAhoraHome();
+      return;
+    }
+
+    if (hasCancionActiva) {
+      setPromptVerAhoraSala(true);
+      return;
+    }
+
+    void handleVerAhoraSala();
+  }
+
   async function handleAgregarAListaHome() {
     if (!seleccionado || accionLoading || !onAgregarALista) {
       return;
@@ -774,8 +855,7 @@ export default function BuscadorModal({
 
     try {
       await onAgregarALista(toCancionInput(seleccionado));
-      onColaAdded?.();
-      handleClose();
+      handleVolver();
     } catch (actionError) {
       setError(
         actionError instanceof Error
@@ -813,8 +893,7 @@ export default function BuscadorModal({
         }
 
         await onDataChange?.();
-        onColaAdded?.();
-        handleClose();
+        handleVolver();
         return;
       }
 
@@ -835,8 +914,7 @@ export default function BuscadorModal({
       }
 
       await onDataChange?.();
-      onColaAdded?.();
-      handleClose();
+      handleVolver();
     } catch (actionError) {
       setError(
         formatDatabaseError(actionError, "Error al agregar a la fila"),
@@ -1038,6 +1116,30 @@ export default function BuscadorModal({
     previewIframeConRecorteInicial && seleccionado
       ? getEmbedBottomClipPx(seleccionado.url)
       : undefined;
+
+  const previewIconoTipo = seleccionado
+    ? getResultadoIconoTipo(seleccionado)
+    : "cifra";
+
+  const previewMuestraPaginaWeb = Boolean(
+    seleccionado && !previewConLetraLocal,
+  );
+
+  const previewOrigenExplicacion = (() => {
+    if (!seleccionado || !previewMuestraPaginaWeb) {
+      return null;
+    }
+
+    if (esCifraSitio) {
+      return "Se muestra como página web de Cifra Club, con menús y elementos del sitio.";
+    }
+
+    if (esAcordesSitio) {
+      return "Se muestra como página web. Al guardar la letra completa se ve en hoja blanca.";
+    }
+
+    return "Se muestra como página web.";
+  })();
 
   function handleGuardarTap() {
     if (!seleccionado || guardarDeshabilitado || accionLoading) {
@@ -1315,71 +1417,92 @@ export default function BuscadorModal({
                 </div>
               </header>
 
-              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame px-3 pt-1.5 pb-0">
-                <p className="mb-1 shrink-0 text-xs font-semibold uppercase tracking-wide text-[#f8f8f8]">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame pt-1.5 pb-2">
+                <p className="mb-1 shrink-0 px-[10%] text-xs font-semibold uppercase tracking-wide text-[#f8f8f8]">
                   Previsualización
                 </p>
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  {previewConLetraLocal ? (
-                    <div className="min-h-0 flex-1 overflow-y-auto rounded-[12px] bg-letra-bg">
-                      <LetraTexto texto={seleccionado.letra!} />
-                    </div>
-                  ) : (
-                    <LetraViewer
-                      url={seleccionado.url}
-                      elevated
-                      fill
-                      initialScrollOffsetPx={previewEmbedOffsetPx}
-                      initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
-                      onRevealTop={
-                        previewIframeConRecorteInicial
-                          ? () => setEmbedTopRevealed(true)
-                          : undefined
-                      }
-                    />
-                  )}
-                </div>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="relative mx-[10%] h-[80%] min-h-0 overflow-hidden rounded-[12px] border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]">
+                    {!previewConLetraLocal && previewIframeConRecorteInicial ? (
+                      <LetraRevealTopControl
+                        onRevealTop={() => setEmbedTopRevealed(true)}
+                        className="top-2"
+                      />
+                    ) : null}
+                    {previewConLetraLocal ? (
+                      <div className="h-full min-h-0 overflow-y-auto bg-letra-bg">
+                        <LetraTexto texto={seleccionado.letra!} />
+                      </div>
+                    ) : (
+                      <LetraViewer
+                        url={seleccionado.url}
+                        fill
+                        initialScrollOffsetPx={previewEmbedOffsetPx}
+                        initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
+                      />
+                    )}
 
-                {fabGuardarAbierto && fabMuestraCancion && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label="Cerrar opciones de guardado"
-                      className="absolute inset-0 z-10"
-                      onClick={() => setFabGuardarAbierto(false)}
-                    />
-                    <div className="absolute bottom-4 right-3 z-20 flex flex-col gap-2">
-                      <TapButton
-                        aria-label={
-                          esLinkGuardadoPreview
-                            ? "Guardar canción"
-                            : "Guardar letra completa"
-                        }
-                        disabled={accionLoading}
-                        onClick={() => void handleGuardarLetraCompleta()}
-                        className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
-                      >
-                        <Bookmark className="size-4 shrink-0 text-accent" />
-                        {accionLoading
-                          ? "Cargando letra..."
-                          : esLinkGuardadoPreview
-                            ? "Guardar canción"
-                            : "Guardar letra completa"}
-                      </TapButton>
-                      {fabMuestraLink && (
-                        <TapButton
-                          aria-label="Guardar link"
-                          disabled={accionLoading}
-                          onClick={() => void handleGuardarLink()}
-                          className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
-                        >
-                          <Link2 className="size-4 shrink-0 text-accent" />
-                          Guardar link
-                        </TapButton>
+                    {fabGuardarAbierto && fabMuestraCancion && (
+                      <>
+                        <button
+                          type="button"
+                          aria-label="Cerrar opciones de guardado"
+                          className="absolute inset-0 z-10"
+                          onClick={() => setFabGuardarAbierto(false)}
+                        />
+                        <div className="absolute bottom-3 right-2 z-20 flex flex-col gap-2">
+                          <TapButton
+                            aria-label={
+                              esLinkGuardadoPreview
+                                ? "Guardar canción"
+                                : "Guardar letra completa"
+                            }
+                            disabled={accionLoading}
+                            onClick={() => void handleGuardarLetraCompleta()}
+                            className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
+                          >
+                            <Bookmark className="size-4 shrink-0 text-accent" />
+                            {accionLoading
+                              ? "Cargando letra..."
+                              : esLinkGuardadoPreview
+                                ? "Guardar canción"
+                                : "Guardar letra completa"}
+                          </TapButton>
+                          {fabMuestraLink && (
+                            <TapButton
+                              aria-label="Guardar link"
+                              disabled={accionLoading}
+                              onClick={() => void handleGuardarLink()}
+                              className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
+                            >
+                              <Link2 className="size-4 shrink-0 text-accent" />
+                              Guardar link
+                            </TapButton>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="mx-[10%] flex min-h-0 flex-1 flex-col justify-start gap-1 pt-2">
+                    <div className="flex items-center gap-2">
+                      <LetraFuenteIcon tipo={previewIconoTipo} compact />
+                      {esCancioneroPreview ? (
+                        <LetraFuenteSitioBadge variant="cancionero" />
+                      ) : (
+                        <SitioLetraBadge
+                          sitio={seleccionado.sitio}
+                          url={seleccionado.url}
+                        />
                       )}
                     </div>
-                  </>
-                )}
+                    {previewOrigenExplicacion ? (
+                      <p className="text-[11px] leading-snug text-[#f8f8f8]/85">
+                        {previewOrigenExplicacion}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
 
                 {confirmacion && (
                   <button
@@ -1428,24 +1551,28 @@ export default function BuscadorModal({
                   >
                     <button
                       type="button"
-                      disabled={accionLoading}
-                      onClick={() => void handleVerAhoraHome()}
+                      disabled={accionLoading || !hasActivaOPendiente}
+                      onClick={() => void handleAgregarAListaHome()}
                       className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-1 py-1 text-xs font-semibold text-white disabled:opacity-60"
                     >
-                      <Eye className="size-4 shrink-0" aria-hidden="true" />
-                      <span className="text-center leading-tight">Ver ahora</span>
+                      <ListPlus className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">
+                        Sumar a la lista
+                      </span>
                     </button>
 
                     <button
                       type="button"
-                      disabled={accionLoading || !hasActivaOPendiente}
-                      onClick={() => void handleAgregarAListaHome()}
-                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
+                      disabled={accionLoading}
+                      onClick={handleVerAhoraTap}
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] px-1 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                      style={{
+                        backgroundColor:
+                          "color-mix(in srgb, var(--accent) 48%, white)",
+                      }}
                     >
-                      <ListPlus className="size-4 shrink-0" aria-hidden="true" />
-                      <span className="text-center leading-tight">
-                        Agregar a la lista
-                      </span>
+                      <Eye className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">Ver ahora</span>
                     </button>
 
                     {!previewEsMisCanciones ? (
@@ -1461,24 +1588,35 @@ export default function BuscadorModal({
                     ) : null}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button"
                       disabled={accionLoading}
                       onClick={() => void handleAgregarACola()}
-                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-2 py-1 text-sm font-semibold text-white disabled:opacity-60"
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] bg-accent px-1 py-1 text-xs font-semibold text-white disabled:opacity-60"
                     >
                       <ListPlus className="size-4 shrink-0" aria-hidden="true" />
                       <span className="text-center leading-tight">
-                        {accionLoading ? "Sumando..." : "Sumar a fila"}
+                        Sumar a la lista
                       </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={accionLoading}
+                      onClick={handleVerAhoraTap}
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] px-1 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                      style={{ backgroundColor: "var(--tuner-flat-sharp)" }}
+                    >
+                      <Eye className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="text-center leading-tight">Ver ahora</span>
                     </button>
 
                     <button
                       type="button"
                       disabled={accionLoading || guardarDeshabilitado}
                       onClick={handleGuardarTap}
-                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-2 py-1 text-sm font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
+                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
                     >
                       <Bookmark className="size-4 shrink-0" aria-hidden="true" />
                       <span className="text-center leading-tight">Guardar</span>
@@ -1519,6 +1657,18 @@ export default function BuscadorModal({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={promptVerAhoraSala}
+        message="¿Ver esta canción ahora? Se va a quitar la canción activa que se está viendo."
+        confirmLabel="Sí, ver ahora"
+        cancelLabel="Cancelar"
+        zIndex={60}
+        onCancel={() => setPromptVerAhoraSala(false)}
+        onConfirm={() => {
+          void handleVerAhoraSala();
+        }}
+      />
 
       <ConfirmDialog
         open={promptMisCanciones !== null}

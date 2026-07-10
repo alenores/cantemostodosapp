@@ -176,12 +176,26 @@ export function SalaLetraSkeleton({
         </div>
       )}
 
-      <div
-        className={`relative flex min-h-0 flex-1 flex-col bg-letra-bg ${
-          showHeader ? "mt-2 overflow-hidden rounded-[12px]" : CONTROL_LETRA_SHELL_CLASS
-        }`}
-      >
-        <SalaLetraLinesSkeleton />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          className={`relative flex min-h-0 flex-1 flex-col bg-letra-bg ${
+            showHeader
+              ? "mt-2 overflow-hidden rounded-[12px]"
+              : CONTROL_LETRA_SHELL_CLASS
+          }`}
+        >
+          <SalaLetraLinesSkeleton />
+        </div>
+        {!showHeader ? (
+          <div
+            className="flex shrink-0 items-center gap-1.5"
+            style={{ paddingTop: 6 }}
+            aria-hidden="true"
+          >
+            <ShimmerBlock className="size-4 rounded-full" />
+            <ShimmerBlock className="h-3.5 w-16 rounded-full" delayMs={40} />
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import {
+  getLecturaLetraScrollStartPaddingCss,
   getLetraModoLecturaHorizontalPadding,
   getLetraModoLecturaHorizontalPaddingRight,
 } from "@/lib/sala-layout";
@@ -21,13 +22,16 @@ export default function LetraTexto({
   compactHorizontalPadding = false,
 }: LetraTextoProps) {
   const horizontalPaddingClass = compactHorizontalPadding ? "" : "px-[18px]";
+  const verticalPaddingClass = compactHorizontalPadding
+    ? "pb-5 pt-0 lg:pt-5"
+    : "py-5";
 
   return (
     <div
       className={
         edgeToEdge
-          ? `w-full shrink-0 bg-letra-bg py-5 text-letra-text whitespace-pre-wrap ${horizontalPaddingClass}${fillViewport ? " min-h-full" : ""}`
-          : `mt-4 w-full shrink-0 rounded-[12px] bg-letra-bg py-5 text-letra-text whitespace-pre-wrap ${horizontalPaddingClass}`
+          ? `w-full shrink-0 bg-letra-bg text-letra-text ${verticalPaddingClass} ${horizontalPaddingClass}${fillViewport ? " min-h-full" : ""}`
+          : `mt-4 w-full shrink-0 rounded-[12px] bg-letra-bg py-5 text-letra-text ${horizontalPaddingClass}`
       }
       style={{
         fontSize: "var(--letra-size)",
@@ -42,7 +46,14 @@ export default function LetraTexto({
           : {}),
       }}
     >
-      {texto}
+      {compactHorizontalPadding ? (
+        <div
+          aria-hidden
+          className="shrink-0 lg:hidden"
+          style={{ height: getLecturaLetraScrollStartPaddingCss() }}
+        />
+      ) : null}
+      <div className="whitespace-pre-wrap">{texto}</div>
     </div>
   );
 }

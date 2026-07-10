@@ -6,7 +6,9 @@ import LetraCifradoLecturaShell, {
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import LetraExpandirFlotante from "@/components/salas/LetraExpandirFlotante";
 import LetraTexto from "@/components/salas/LetraTexto";
-import LetraViewer from "@/components/salas/LetraViewer";
+import LetraViewer, {
+  LetraRevealTopControl,
+} from "@/components/salas/LetraViewer";
 import CifraClubEmbedBadge from "@/components/salas/CifraClubEmbedBadge";
 import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
 import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
@@ -27,6 +29,7 @@ import {
   getControlCantarHorizontalPaddingStyle,
   getControlHeaderPaddingStyle,
   getControlHeaderVerticalPaddingStyle,
+  getLecturaFabMenuTopCss,
   getLetraEmbedBottomPadding,
   getLetraSectionBottomPadding,
   getLetraSectionTextBottomPadding,
@@ -185,6 +188,7 @@ export default function CancionActivaSection({
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
   const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
+  const [embedReloadKey, setEmbedReloadKey] = useState(0);
 
   const hasCancion = Boolean(cancionNombre);
   const hasManualText = Boolean(letraTexto?.trim());
@@ -250,6 +254,7 @@ export default function CancionActivaSection({
 
   useEffect(() => {
     setEmbedTopRevealed(false);
+    setEmbedReloadKey(0);
   }, [urlLetra]);
 
   const needsExtract =
@@ -291,7 +296,7 @@ export default function CancionActivaSection({
 
   const embedBottomClipPx =
     showEmbed && contenido?.mode === "embed"
-      ? getEmbedBottomClipPx(contenido.url, modoLectura)
+      ? getEmbedBottomClipPx(contenido.url)
       : undefined;
 
   const nombreRevealKey =
@@ -509,6 +514,24 @@ export default function CancionActivaSection({
               {showCifraClubBadge ? (
                 <CifraClubEmbedBadge
                   placement={modoLectura ? "lectura" : "control"}
+                  onReload={() => setEmbedReloadKey((value) => value + 1)}
+                />
+              ) : null}
+              {embedConRecorteInicial ? (
+                <LetraRevealTopControl
+                  onRevealTop={() => setEmbedTopRevealed(true)}
+                  className={
+                    modoLectura
+                      ? ""
+                      : onExpand
+                        ? "top-2 lg:top-12"
+                        : "top-2"
+                  }
+                  style={
+                    modoLectura
+                      ? { top: getLecturaFabMenuTopCss() }
+                      : undefined
+                  }
                 />
               ) : null}
               <div className="absolute inset-0 min-h-0">
@@ -525,11 +548,8 @@ export default function CancionActivaSection({
                   initialScrollOffsetPx={embedTopClipPx}
                   initialScrollBottomOffsetPx={embedBottomClipPx}
                   embedIframeRef={embedIframeRef}
-                  onRevealTop={
-                    embedConRecorteInicial
-                      ? () => setEmbedTopRevealed(true)
-                      : undefined
-                  }
+                  reloadKey={embedReloadKey}
+                  hideReloadControl={showCifraClubBadge}
                 />
               </div>
             </div>

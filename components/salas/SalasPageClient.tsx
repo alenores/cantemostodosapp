@@ -32,11 +32,15 @@ export default function SalasPageClient({
 }: SalasPageClientProps) {
   const router = useRouter();
   const online = useOnlineStatus();
-  const { enterSala, registerSalaNames } = useSalasNavigation();
+  const { activeSalaId, enterSala, registerSalaNames } = useSalasNavigation();
   const [modalOpen, setModalOpen] = useState(false);
   const avisoMensaje = getPerfilAvisoMensaje(avisoInicial);
   const salaIds = useMemo(() => salas.map((sala) => sala.id), [salas]);
-  const presenceBySalaId = useSalasPresence(salaIds, online);
+  // Pausar al abrir una sala: mismo topic que SalaPageShell; si no, se reutiliza y se pierde el track.
+  const presenceBySalaId = useSalasPresence(
+    salaIds,
+    online && activeSalaId === null,
+  );
 
   useEffect(() => {
     registerSalaNames(

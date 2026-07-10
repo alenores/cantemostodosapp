@@ -3,7 +3,6 @@ import { isUsefulExtractedLetra } from "@/lib/letra-extract";
 import {
   ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX,
   ACORDESDCANCIONES_EMBED_TOP_CLIP_PX,
-  CIFRACLUB_EMBED_BOTTOM_CLIP_MODO_LECTURA_PX,
   CIFRACLUB_EMBED_BOTTOM_CLIP_PX,
   CIFRACLUB_EMBED_TOP_CLIP_PX,
 } from "@/lib/sala-layout";
@@ -78,17 +77,12 @@ export function getEmbedTopClipPx(url: string): number | undefined {
   return undefined;
 }
 
-/** Píxeles de recorte inferior según el sitio embebido. */
-export function getEmbedBottomClipPx(
-  url: string,
-  modoLectura = false,
-): number | undefined {
+/** Píxeles de recorte inferior según el sitio embebido (igual en control y lectura). */
+export function getEmbedBottomClipPx(url: string): number | undefined {
   const kind = getLetraSourceKind(url);
 
   if (kind === "cifraclub") {
-    return modoLectura
-      ? CIFRACLUB_EMBED_BOTTOM_CLIP_MODO_LECTURA_PX
-      : CIFRACLUB_EMBED_BOTTOM_CLIP_PX;
+    return CIFRACLUB_EMBED_BOTTOM_CLIP_PX;
   }
 
   if (kind === "acordesdcanciones") {

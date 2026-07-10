@@ -137,7 +137,8 @@ function HomeModoLecturaOverlay({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-40 cursor-default"
+        data-no-tap-feedback
+        className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none"
         aria-label="Cerrar menú de controles"
         onClick={onCerrar}
       />

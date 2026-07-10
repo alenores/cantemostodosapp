@@ -46,8 +46,9 @@ export default function CifraClubEmbedHelpModal({
     <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-8">
       <button
         type="button"
+        data-no-tap-feedback
         aria-label="Cerrar"
-        className="absolute inset-0 bg-black/55"
+        className="absolute inset-0 border-0 bg-black/55 outline-none"
         onClick={onClose}
       />
       <div

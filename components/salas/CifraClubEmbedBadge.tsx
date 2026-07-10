@@ -1,6 +1,7 @@
 "use client";
 
 import CifraClubEmbedHelpModal from "@/components/salas/CifraClubEmbedHelpModal";
+import { LetraEmbedReloadControl } from "@/components/salas/LetraViewer";
 import { TapButton } from "@/components/ui/TapFeedback";
 import {
   LECTURA_AUTO_SCROLL_BOTTOM_PX,
@@ -12,10 +13,12 @@ import { useState } from "react";
 type CifraClubEmbedBadgeProps = {
   /** control: margen superior izquierdo; lectura: margen inferior izquierdo. */
   placement?: "control" | "lectura";
+  onReload?: () => void;
 };
 
 export default function CifraClubEmbedBadge({
   placement = "control",
+  onReload,
 }: CifraClubEmbedBadgeProps) {
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -30,7 +33,7 @@ export default function CifraClubEmbedBadge({
   return (
     <>
       <div
-        className={`pointer-events-none absolute z-10 ${
+        className={`pointer-events-none absolute z-10 flex items-center gap-1.5 ${
           placement === "control" ? "left-4 top-2" : ""
         }`}
         style={wrapperStyle}
@@ -46,18 +49,33 @@ export default function CifraClubEmbedBadge({
             borderColor: "var(--voz-config-border)",
           }}
         >
-        <span
-          className="select-none text-[9px] font-semibold tracking-tight sm:text-[10px]"
-          style={{ color: "var(--voz-config)" }}
-        >
-          www.cifraclub.com
-        </span>
-        <HelpCircle
-          className="size-3 shrink-0 text-text-primary"
-          strokeWidth={2.75}
-          aria-hidden="true"
-        />
+          <span
+            className="select-none text-[9px] font-semibold tracking-tight sm:text-[10px]"
+            style={{ color: "var(--voz-config)" }}
+          >
+            www.cifraclub.com
+          </span>
+          <HelpCircle
+            className="size-3 shrink-0 text-text-primary"
+            strokeWidth={2.75}
+            aria-hidden="true"
+          />
         </TapButton>
+        {onReload ? (
+          <div
+            className="pointer-events-auto"
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, var(--bg-card) 78%, transparent)",
+              borderRadius: 9999,
+            }}
+          >
+            <LetraEmbedReloadControl
+              onReload={onReload}
+              className="border-[color:var(--voz-config-border)]"
+            />
+          </div>
+        ) : null}
       </div>
 
       <CifraClubEmbedHelpModal

@@ -230,10 +230,11 @@ export const ACORDESDCANCIONES_EMBED_TOP_CLIP_PX = 750;
 /** Tope del auto-scroll visual en embeds (marginTop acumulado, calibrar en móvil). */
 export const CIFRACLUB_EMBED_MAX_VISUAL_SCROLL_PX = 12000;
 
-/** Recorte inferior del iframe (propagandas y controles flotantes). Calibrar en móvil. */
-export const CIFRACLUB_EMBED_BOTTOM_CLIP_PX = 160;
-/** Recorte inferior extra en vista expandida (botones flotantes de Cifra Club). Calibrar en móvil. */
-export const CIFRACLUB_EMBED_BOTTOM_CLIP_MODO_LECTURA_PX = 260;
+/** Recorte inferior del iframe (propagandas y controles flotantes). Igual en control y lectura. */
+export const CIFRACLUB_EMBED_BOTTOM_CLIP_PX = 260;
+/** @deprecated Usar CIFRACLUB_EMBED_BOTTOM_CLIP_PX (mismo valor en ambos modos). */
+export const CIFRACLUB_EMBED_BOTTOM_CLIP_MODO_LECTURA_PX =
+  CIFRACLUB_EMBED_BOTTOM_CLIP_PX;
 export const ACORDESDCANCIONES_EMBED_BOTTOM_CLIP_PX = 160;
 
 /** @deprecated Usar CIFRACLUB_EMBED_BOTTOM_CLIP_PX */

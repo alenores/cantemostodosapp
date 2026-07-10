@@ -163,7 +163,8 @@ function SalaModoLecturaOverlay({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-40 cursor-default"
+        data-no-tap-feedback
+        className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none"
         aria-label="Cerrar menú de controles"
         onClick={onCerrar}
       />
@@ -605,8 +606,40 @@ export default function SalaPageShell({
           console.log("[cola] status:", status, err?.message ?? "");
         });
 
+      const presenceTopic = `presence-sala-${salaId}`;
+      const stalePresence = supabase
+        .getChannels()
+        .find((channel) => channel.topic === `realtime:${presenceTopic}`);
+
+      if (stalePresence) {
+        await supabase.removeChannel(stalePresence);
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      async function trackPresence(channel: RealtimeChannel) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user || cancelled) {
+          return;
+        }
+
+        await channel.track({
+          user_id: user.id,
+          nombre:
+            user.user_metadata?.nombre ??
+            user.email?.split("@")[0] ??
+            "Usuario",
+          avatar_url: user.user_metadata?.avatar_url ?? null,
+        });
+      }
+
       presenceChannel = supabase
-        .channel(`presence-sala-${salaId}`)
+        .channel(presenceTopic)
         .on("presence", { event: "sync" }, () => {
           if (!presenceChannel) {
             return;
@@ -614,25 +647,12 @@ export default function SalaPageShell({
 
           setPresenceUsuarios(parsePresenceState(presenceChannel.presenceState()));
         })
-        .subscribe(async (status) => {
+        .subscribe((status) => {
           if (status !== "SUBSCRIBED" || !presenceChannel) {
             return;
           }
 
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-
-          if (user) {
-            await presenceChannel.track({
-              user_id: user.id,
-              nombre:
-                user.user_metadata?.nombre ??
-                user.email?.split("@")[0] ??
-                "Usuario",
-              avatar_url: user.user_metadata?.avatar_url ?? null,
-            });
-          }
+          void trackPresence(presenceChannel);
         });
     }
 

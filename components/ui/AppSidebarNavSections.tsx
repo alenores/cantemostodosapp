@@ -52,16 +52,8 @@ function SidebarLinkSection({
   const displayLabel = inSala && salaNombre ? salaNombre : label;
   const showBadge = isSalasTab && conectados > 0 && online;
 
-  return (
-    <TapLink
-      href={href}
-      ariaLabel={
-        salasUnavailable
-          ? "Salas no disponible sin conexión"
-          : `${displayLabel}: ${description}`
-      }
-      className={`group relative flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${sectionHeaderClass(active, salasUnavailable)}`}
-    >
+  const content = (
+    <>
       {active ? (
         <span
           className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-accent"
@@ -98,6 +90,29 @@ function SidebarLinkSection({
         </span>
         <span className="block truncate text-[11px] opacity-70">{description}</span>
       </span>
+    </>
+  );
+
+  if (salasUnavailable) {
+    return (
+      <span
+        role="link"
+        aria-disabled="true"
+        aria-label="Salas no disponible sin conexión"
+        className={`group relative flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-3 ${sectionHeaderClass(active, true)}`}
+      >
+        {content}
+      </span>
+    );
+  }
+
+  return (
+    <TapLink
+      href={href}
+      ariaLabel={`${displayLabel}: ${description}`}
+      className={`group relative flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${sectionHeaderClass(active, false)}`}
+    >
+      {content}
     </TapLink>
   );
 }

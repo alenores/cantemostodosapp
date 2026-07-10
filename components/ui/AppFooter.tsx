@@ -120,17 +120,13 @@ export default function AppFooter() {
               ? "text-accent"
               : "text-text-muted";
 
-          return (
-            <TapLink
-              key={href}
-              href={href}
-              ariaLabel={
-                salasUnavailable ? "Salas no disponible sin conexión" : displayLabel
-              }
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 ${tabColorClass}`}
-            >
+          const content = (
+            <>
               <span className="relative">
-                <Icon className={`size-5 ${salasUnavailable ? "opacity-50" : ""}`} aria-hidden="true" />
+                <Icon
+                  className={`size-5 ${salasUnavailable ? "opacity-50" : ""}`}
+                  aria-hidden="true"
+                />
                 {salasUnavailable ? (
                   <WifiOff
                     className="absolute -right-1.5 -top-1 size-3 text-text-faint"
@@ -160,6 +156,31 @@ export default function AppFooter() {
               >
                 {displayLabel}
               </span>
+            </>
+          );
+
+          if (salasUnavailable) {
+            return (
+              <span
+                key={href}
+                role="link"
+                aria-disabled="true"
+                aria-label="Salas no disponible sin conexión"
+                className={`flex min-w-0 flex-1 cursor-not-allowed flex-col items-center justify-center gap-0.5 px-0.5 ${tabColorClass}`}
+              >
+                {content}
+              </span>
+            );
+          }
+
+          return (
+            <TapLink
+              key={href}
+              href={href}
+              ariaLabel={displayLabel}
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 ${tabColorClass}`}
+            >
+              {content}
             </TapLink>
           );
         })}

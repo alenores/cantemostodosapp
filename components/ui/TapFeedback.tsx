@@ -6,10 +6,8 @@ import { Loader2 } from "lucide-react";
 import {
   Suspense,
   type ButtonHTMLAttributes,
-  type MouseEvent,
   type ReactNode,
 } from "react";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 type TapButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -59,23 +57,11 @@ export function TapLink({
   className = "",
   ariaLabel,
 }: TapLinkProps) {
-  const online = useOnlineStatus();
-
-  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (online) {
-      return;
-    }
-
-    event.preventDefault();
-  }
-
   return (
     <Link
       href={href}
-      prefetch={online}
       aria-label={ariaLabel}
       className={`relative ${className}`.trim()}
-      onClick={handleClick}
     >
       <Suspense fallback={children}>
         <TapLinkContent>{children}</TapLinkContent>

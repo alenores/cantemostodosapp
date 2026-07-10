@@ -19,6 +19,8 @@ type SalaRef = {
 };
 
 type SalasNavigationContextValue = {
+  /** Sala abierta (ruta u optimista). El listado debe pausar presence para no pisar el canal. */
+  activeSalaId: number | null;
   enterSala: (sala: SalaRef) => void;
   registerSalaNames: (salas: SalaRef[]) => void;
 };
@@ -141,10 +143,11 @@ export default function SalasRouteCoordinator({
 
   const navigationValue = useMemo(
     () => ({
+      activeSalaId: shellSala?.id ?? null,
       enterSala,
       registerSalaNames,
     }),
-    [enterSala, registerSalaNames],
+    [enterSala, registerSalaNames, shellSala?.id],
   );
 
   return (

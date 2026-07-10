@@ -6,9 +6,9 @@ import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 type HubModuleCardProps = {
+  moduleId: string;
   label: string;
   icon: LucideIcon;
-  iconColor?: string;
   ariaLabel: string;
   onClick: () => void;
   disabled?: boolean;
@@ -18,9 +18,9 @@ type HubModuleCardProps = {
 };
 
 export default function HubModuleCard({
+  moduleId,
   label,
   icon: Icon,
-  iconColor,
   ariaLabel,
   onClick,
   disabled = false,
@@ -33,7 +33,8 @@ export default function HubModuleCard({
       aria-label={ariaLabel}
       onClick={onClick}
       disabled={disabled || pending}
-      className="relative flex min-h-full flex-1 flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4 transition-[border-color,background-color,transform] duration-200 disabled:opacity-40 lg:gap-3 lg:px-4 lg:py-5 lg:hover:border-accent/30 lg:hover:bg-bg-card"
+      data-hub-accent={moduleId}
+      className="hub-module-card relative flex min-h-full flex-1 flex-col items-center gap-[10px] rounded-[14px] px-3 py-4 transition-[border-color,background-color,box-shadow,transform] duration-200 disabled:opacity-40 lg:gap-3 lg:px-4 lg:py-5"
     >
       {badge ? (
         <span className="absolute right-2 top-2 rounded-full bg-bg-cola-sheet px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-text-muted">
@@ -50,11 +51,9 @@ export default function HubModuleCard({
       )}
       <p className="text-center text-[13px] font-bold text-text-primary">{label}</p>
       <div className="flex flex-1 items-center justify-center">
-        <Icon
-          className="size-16 lg:size-[4.5rem]"
-          style={{ color: iconColor ?? "var(--accent)" }}
-          aria-hidden="true"
-        />
+        <span className="hub-module-card__icon-wrap" aria-hidden="true">
+          <Icon className="hub-module-card__icon" />
+        </span>
       </div>
       {cta}
     </TapButton>

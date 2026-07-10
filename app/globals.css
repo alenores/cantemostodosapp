@@ -90,6 +90,17 @@
   --accent-afinador: var(--tuner-in-tune);
   --accent-afinador-dim: rgba(84, 200, 100, 0.14);
 
+  /* Hubs Cancionero / Práctica (móvil) */
+  --accent-editor: #D9A441;
+  --accent-editor-dim: rgba(217, 164, 65, 0.14);
+  --accent-metronomo: #C9A94F;
+  --accent-metronomo-dim: rgba(201, 169, 79, 0.14);
+  --accent-vocal: #C97C93;
+  --accent-vocal-dim: rgba(201, 124, 147, 0.14);
+  --accent-compositor: #5FA8BD;
+  --accent-compositor-dim: rgba(95, 168, 189, 0.14);
+  --text-on-light: #1a1a1a;
+
   /* Herramientas — configuración (metrónomo, entrenador vocal, compositor UI) */
   --voz-config: #7b9ab8;
   --voz-config-dim: rgba(123, 154, 184, 0.12);
@@ -1647,6 +1658,97 @@ html.splash-active body {
     transform: none;
     letter-spacing: normal;
   }
+}
+
+/* Hub modules — Cancionero / Práctica */
+.hub-module-card {
+  background: var(--bg-card);
+  border: 1px solid var(--hub-accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--hub-accent) 15%, transparent),
+    0 4px 14px color-mix(in srgb, var(--hub-accent) 10%, transparent);
+}
+
+.hub-module-card[data-hub-accent="cancionero"] {
+  --hub-accent: var(--accent-cancionero);
+  --hub-accent-dim: var(--accent-cancionero-dim);
+}
+
+.hub-module-card[data-hub-accent="mis-canciones"] {
+  --hub-accent: var(--accent);
+  --hub-accent-dim: var(--accent-dim);
+}
+
+.hub-module-card[data-hub-accent="editor-canciones"] {
+  --hub-accent: var(--accent-editor);
+  --hub-accent-dim: var(--accent-editor-dim);
+}
+
+.hub-module-card[data-hub-accent="afinador"] {
+  --hub-accent: var(--accent-afinador);
+  --hub-accent-dim: var(--accent-afinador-dim);
+}
+
+.hub-module-card[data-hub-accent="metronomo"] {
+  --hub-accent: var(--accent-metronomo);
+  --hub-accent-dim: var(--accent-metronomo-dim);
+}
+
+.hub-module-card[data-hub-accent="entrenador-vocal"] {
+  --hub-accent: var(--accent-vocal);
+  --hub-accent-dim: var(--accent-vocal-dim);
+}
+
+.hub-module-card[data-hub-accent="compositor"] {
+  --hub-accent: var(--accent-compositor);
+  --hub-accent-dim: var(--accent-compositor-dim);
+}
+
+.hub-module-card__icon-wrap {
+  display: flex;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: var(--hub-accent-dim);
+}
+
+.hub-module-card__icon {
+  width: 24px;
+  height: 24px;
+  color: var(--hub-accent);
+}
+
+.hub-module-card__cta {
+  width: 100%;
+  border-radius: 0.5rem;
+  padding: 9px 12px;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.hub-module-card__cta--soft {
+  background: var(--hub-accent-dim);
+  color: var(--hub-accent);
+}
+
+.hub-module-card__cta--solid {
+  background: var(--hub-accent);
+}
+
+.hub-module-card__cta--text-white {
+  color: var(--letra-bg);
+}
+
+.hub-module-card__cta--text-on-light {
+  color: var(--text-on-light);
+}
+
+.hub-module-card__cta--text-accent {
+  color: var(--hub-accent);
 }
 
 /* Listados en columnas */

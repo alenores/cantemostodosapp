@@ -107,7 +107,7 @@ export default function HomeHubDestinations({
   }
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-3 pb-3">
       <h2
         className="home-cascade-item text-center text-xl font-extrabold text-text-primary"
         style={{ ["--cascade-delay" as string]: `${cascadeDelays.welcome}ms` }}
@@ -200,9 +200,7 @@ export default function HomeHubDestinations({
           cascadeDelayMs={cascadeDelays.cards[3]}
           titleInviteActive={titleInviteIndex === 3}
         />
-      </div>
 
-      <div className="mt-2 flex flex-col gap-3">
         <HomeDestinationCard
           label={HUB_DESTINATION_AFINADOR_LABEL}
           description={HUB_DESTINATION_AFINADOR_DESCRIPTION}

@@ -61,16 +61,12 @@ function getIframeScrollSimulationStyle(
   }
 
   const style: CSSProperties = {
+    position: "absolute",
+    left: 0,
     width: "100%",
+    top: top > 0 ? `-${top}px` : 0,
+    height: overhang > 0 ? `calc(100% + ${overhang}px)` : "100%",
   };
-
-  if (overhang > 0) {
-    style.height = `calc(100% + ${overhang}px)`;
-  }
-
-  if (top > 0) {
-    style.marginTop = `-${top}px`;
-  }
 
   if (hasScale) {
     style.transform = `scaleX(${scaleX})`;
@@ -79,9 +75,6 @@ function getIframeScrollSimulationStyle(
 
   return style;
 }
-
-/** TEMP diagnóstico: si el bug del scroll vuelve, este azul invade la letra. */
-const EMBED_SHELL_DIAGNOSTIC_BG = "#2563eb";
 
 type LetraIframeProps = {
   url: string;
@@ -123,7 +116,7 @@ function LetraIframe({
       title={title}
       data-embed-top-clip-px={topClipPx}
       data-embed-bottom-clip-px={bottomClipPx}
-      className={offsetStyle ? "block h-full w-full border-0" : className}
+      className={offsetStyle ? "absolute border-0" : className}
       style={offsetStyle}
       sandbox="allow-scripts allow-same-origin"
       referrerPolicy="no-referrer-when-downgrade"
@@ -167,12 +160,8 @@ function EmbedShell({
 }: EmbedShellProps) {
   return (
     <div
-      style={{
-        ...style,
-        // TEMP: azul diagnóstico del hueco de scroll (sacar cuando confirmemos OK).
-        backgroundColor: EMBED_SHELL_DIAGNOSTIC_BG,
-      }}
-      className={`relative overflow-hidden ${className}`}
+      style={style}
+      className={`relative overflow-hidden bg-letra-bg ${className}`}
     >
       {children}
       {onRevealTop ? (

@@ -524,7 +524,7 @@ export default function CancionActivaSection({
                   }
                   initialScrollOffsetPx={embedTopClipPx}
                   initialScrollBottomOffsetPx={embedBottomClipPx}
-                  embedIframeRef={modoLectura ? embedIframeRef : undefined}
+                  embedIframeRef={embedIframeRef}
                   onRevealTop={
                     embedConRecorteInicial
                       ? () => setEmbedTopRevealed(true)

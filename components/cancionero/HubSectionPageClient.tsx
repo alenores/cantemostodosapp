@@ -197,10 +197,19 @@ export default function HubSectionPageClient({
   function renderModuleCard(
     module: (typeof CANCIONERO_HUB_MODULES)[number],
   ) {
-    const ctaClassName =
-      module.ctaVariant === "accent"
-        ? "w-full rounded-lg bg-accent px-3 py-[9px] text-center text-sm font-bold text-white"
-        : "w-full rounded-lg bg-[#3A3A3A] px-3 py-[9px] text-center text-sm text-white";
+    const ctaToneClass =
+      module.ctaTextTone === "white"
+        ? "hub-module-card__cta--text-white"
+        : module.ctaTextTone === "on-light"
+          ? "hub-module-card__cta--text-on-light"
+          : "hub-module-card__cta--text-accent";
+
+    const ctaModeClass =
+      module.ctaMode === "soft"
+        ? "hub-module-card__cta--soft"
+        : "hub-module-card__cta--solid";
+
+    const ctaClassName = `hub-module-card__cta ${ctaModeClass} ${ctaToneClass}`;
 
     const ctaContent =
       module.id === "cancionero" ? (
@@ -214,15 +223,15 @@ export default function HubSectionPageClient({
           <span className="font-normal opacity-70">({favoritasCount})</span>
         </div>
       ) : (
-        <span className={ctaClassName}>{module.ctaLabel}</span>
+        <div className={ctaClassName}>{module.ctaLabel}</div>
       );
 
     return (
       <HubModuleCard
         key={module.id}
+        moduleId={module.id}
         label={module.label}
         icon={module.icon}
-        iconColor={module.iconColor}
         ariaLabel={getModuleAriaLabel(module.kind, module.label)}
         onClick={() => handleModuleClick(module.id, module.href)}
         pending={pendingModuleId === module.id}

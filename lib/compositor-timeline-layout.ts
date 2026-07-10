@@ -349,19 +349,19 @@ export function getSustentoHelpText(
   }
 
   if (instrumentId === "guitarra" && event.guitarArticulation === "pua") {
-    return "Púa: ataque seco y brillante. El ancho sigue la cola de la cuerda.";
+    return "Púa: ataque seco y brillante, bien marcado.";
   }
 
   if (instrumentId === "guitarra" && event.guitarArticulation === "dedo") {
-    return "Dedo: ataque suave y cálido. El ancho sigue la cola de la cuerda.";
+    return "Dedo: ataque suave y cálido, bien redondo.";
   }
 
   if (instrumentId === "guitarra" && event.guitarArticulation === "bloque") {
-    return "Bloque: todas las cuerdas del acorde juntas, como un golpe seco.";
+    return "Bloque: todas las cuerdas juntas, golpe seco.";
   }
 
   if (instrumentId === "guitarra") {
-    return "Rasguido: las cuerdas del acorde en abanico, una detrás de otra.";
+    return "Rasguido: abanico claro, una cuerda detrás de otra.";
   }
 
   if (instrumentId === "viento") {

@@ -38,9 +38,8 @@ function readEmbedClipPx(
 
 /**
  * Desplaza el iframe hacia arriba (mismo truco que el recorte superior).
- * La altura debe crecer con el offset: si no, el fondo del marco (letra-bg)
- * invade la zona visible al scrollear.
- * El recorte inferior queda “colgando” debajo del overflow:hidden (tapa ads).
+ * Posición absoluta + height que crece con el offset: si no, el fondo del marco
+ * invade la zona visible. El recorte inferior cuelga debajo del overflow:hidden.
  */
 export function applyEmbedVisualScroll(
   iframe: HTMLIFrameElement,
@@ -54,15 +53,21 @@ export function applyEmbedVisualScroll(
   const overhang = shift + bottom;
 
   if (overhang === 0) {
+    iframe.style.position = "";
+    iframe.style.left = "";
+    iframe.style.top = "";
     iframe.style.height = "";
     iframe.style.marginTop = "";
     iframe.style.width = "";
     return;
   }
 
+  iframe.style.position = "absolute";
+  iframe.style.left = "0";
   iframe.style.width = "100%";
+  iframe.style.marginTop = "";
+  iframe.style.top = shift > 0 ? `-${shift}px` : "0";
   iframe.style.height = `calc(100% + ${overhang}px)`;
-  iframe.style.marginTop = shift > 0 ? `-${shift}px` : "";
 }
 
 function resolveScrollListenerTarget(
@@ -145,9 +150,14 @@ export function useLetraAutoScroll(
 
   useEffect(() => {
     if (!enabled) {
+      autoScrollOffsetRef.current = 0;
       setAutoScrollLevel(0);
+      const iframe = embedIframeRef?.current;
+      if (iframe) {
+        applyEmbedVisualScroll(iframe, 0);
+      }
     }
-  }, [enabled]);
+  }, [embedIframeRef, enabled]);
 
   useEffect(() => {
     reset();

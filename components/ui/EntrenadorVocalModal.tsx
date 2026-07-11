@@ -342,7 +342,7 @@ export default function EntrenadorVocalModal({
             className={
               isDesktop
                 ? "flex min-h-0 flex-1 flex-col"
-                : "flex min-h-0 flex-1 flex-col px-3 py-4"
+                : "flex min-h-0 flex-1 flex-col py-4"
             }
           >
             {micStarting ? <MicConnectingPanel /> : null}

@@ -5,7 +5,6 @@ import ColaJuntadaItem, {
 } from "@/components/salas/ColaJuntadaItem";
 import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
-import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
@@ -25,7 +24,6 @@ import {
   COLA_MODAL_TOP_INSET_PX,
   COLA_SHEET_EXIT_MS,
   getColaModalBottomCss,
-  getSalaFloatControlsBottomCss,
 } from "@/lib/sala-layout";
 import {
   DndContext,
@@ -49,7 +47,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Maximize2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -61,8 +58,6 @@ import {
 import { createPortal } from "react-dom";
 
 const COLA_MODAL_LAYER_Z = 100;
-const FLOAT_BTN_SECONDARY =
-  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
 const COLA_DRAG_DELETE_ID = "cola-drag-delete";
 
 const colaDragCollisionDetection: CollisionDetection = (args) => {
@@ -133,7 +128,6 @@ function ColaDragDeleteZone({ visible, highlighted }: ColaDragDeleteZoneProps) {
 type ColaIndividualSheetProps = {
   items: ColaIndividualRow[];
   onOpenBuscador: () => void;
-  onExpand?: () => void;
   presentacionOculta?: boolean;
   onRequestOpen?: (open: () => void) => void;
   onRequestSiguiente?: (siguiente: () => void) => void;
@@ -198,7 +192,6 @@ function SortableColaIndividualRow({
 export default function ColaIndividualSheet({
   items,
   onOpenBuscador,
-  onExpand,
   presentacionOculta = false,
   onRequestOpen,
   onRequestSiguiente,
@@ -384,7 +377,6 @@ export default function ColaIndividualSheet({
     setNombreRevealGeneration((generation) => generation + 1);
   };
 
-  const floatingBottom = getSalaFloatControlsBottomCss(false);
   const modalBottom = getColaModalBottomCss();
   const listaVacia = sortedItems.length === 0;
 
@@ -592,25 +584,6 @@ export default function ColaIndividualSheet({
     <>
       {colaSidePanelMode ? (
         <aside className={COLA_SIDE_PANEL_CLASS}>{colaDndLayer}</aside>
-      ) : null}
-
-      {!presentacionOculta && !colaSidePanelMode && onExpand ? (
-        <div
-          className="pointer-events-none fixed inset-x-0 z-30"
-          style={{ bottom: floatingBottom, height: 0, overflow: "visible" }}
-        >
-          <div className="pointer-events-auto absolute bottom-0 right-4 flex flex-col items-end gap-2">
-            <TapButton
-              type="button"
-              aria-label="Expandir letra a pantalla completa"
-              onClick={onExpand}
-              className={`sala-expand-attention flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
-            >
-              <Maximize2 className="size-4 text-accent" aria-hidden="true" />
-              <span>Expandir</span>
-            </TapButton>
-          </div>
-        </div>
       ) : null}
 
       {colaSheetLayer}

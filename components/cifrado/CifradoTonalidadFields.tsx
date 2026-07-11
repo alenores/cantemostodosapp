@@ -18,6 +18,7 @@ export type CifradoTonalidadFieldsProps = {
   layout?: "stacked" | "inline";
   showModoTonal?: boolean;
   requireSelection?: boolean;
+  inputClassName?: string;
   onTonalidadChange: (next: NotaIndex) => void;
   onModoTonalChange: (next: ModoTonal) => void;
 };
@@ -30,13 +31,14 @@ export function CifradoTonalidadFields({
   layout = "stacked",
   showModoTonal = true,
   requireSelection = false,
+  inputClassName = CIFRADO_CONTROLS_INPUT_CLASS,
   onTonalidadChange,
   onModoTonalChange,
 }: CifradoTonalidadFieldsProps) {
   const selectClassName =
     layout === "inline"
-      ? `${CIFRADO_CONTROLS_INPUT_CLASS} !min-h-9 !w-auto !min-w-[5.5rem]`
-      : `${CIFRADO_CONTROLS_INPUT_CLASS} !w-full`;
+      ? `${inputClassName} !min-h-9 !w-auto !min-w-[5.5rem]`
+      : `${inputClassName} !w-full`;
 
   const containerClassName =
     layout === "inline"

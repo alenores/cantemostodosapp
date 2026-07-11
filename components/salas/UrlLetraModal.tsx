@@ -1,7 +1,9 @@
 "use client";
 
+import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
 import LetraViewer from "@/components/salas/LetraViewer";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
   getEmbedBottomClipPx,
@@ -24,10 +26,12 @@ export default function UrlLetraModal({
   titulo,
   onClose,
 }: UrlLetraModalProps) {
-  const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
+  const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
+  const { showAcordesPrimeraVezHint, dismissAcordesPrimeraVezHint } =
+    useAcordesEmbedPrimeraVez(open ? url : null);
 
   useHardwareBack(open, () => {
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
     onClose();
   });
 
@@ -37,12 +41,22 @@ export default function UrlLetraModal({
 
   const embedConRecorteInicial = shouldApplyEmbedInitialOffset(url);
   const embedTopClipPx =
-    embedConRecorteInicial && !embedTopRevealed
+    embedConRecorteInicial && !embedFullRevealed
       ? getEmbedTopClipPx(url)
       : undefined;
-  const embedBottomClipPx = embedConRecorteInicial
-    ? getEmbedBottomClipPx(url)
-    : undefined;
+  const embedBottomClipPx =
+    embedConRecorteInicial &&
+    !embedFullRevealed &&
+    !showAcordesPrimeraVezHint
+      ? getEmbedBottomClipPx(url)
+      : undefined;
+
+  function handleRevealEmbedFull() {
+    if (!embedFullRevealed && showAcordesPrimeraVezHint) {
+      dismissAcordesPrimeraVezHint();
+    }
+    setEmbedFullRevealed((current) => !current);
+  }
 
   return (
     <div className="fixed inset-0 z-[300] flex flex-col bg-bg-app">
@@ -53,7 +67,7 @@ export default function UrlLetraModal({
         <TapButton
           aria-label="Cerrar letra"
           onClick={() => {
-            setEmbedTopRevealed(false);
+            setEmbedFullRevealed(false);
             onClose();
           }}
           className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
@@ -61,7 +75,10 @@ export default function UrlLetraModal({
           <X className="size-5 text-text-primary" aria-hidden="true" />
         </TapButton>
       </header>
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {showAcordesPrimeraVezHint ? (
+          <AcordesEmbedPrimeraVezHint onDismiss={dismissAcordesPrimeraVezHint} />
+        ) : null}
         <LetraViewer
           url={url}
           title={titulo}
@@ -69,10 +86,9 @@ export default function UrlLetraModal({
           edgeToEdge
           initialScrollOffsetPx={embedTopClipPx}
           initialScrollBottomOffsetPx={embedBottomClipPx}
-          onRevealTop={
-            embedConRecorteInicial && !embedTopRevealed
-              ? () => setEmbedTopRevealed(true)
-              : undefined
+          revealExpanded={embedFullRevealed}
+          onRevealFull={
+            embedConRecorteInicial ? handleRevealEmbedFull : undefined
           }
         />
       </div>

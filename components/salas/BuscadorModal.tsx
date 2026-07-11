@@ -6,13 +6,14 @@ import {
   CASCADE_MAX_DELAY_MS,
   CASCADE_STAGGER_MS,
 } from "@/components/cancionero/CancioneroListSkeleton";
+import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import LetraFuenteSitioBadge, {
   SitioLetraBadge,
 } from "@/components/salas/LetraFuenteSitioBadge";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer, {
-  LetraRevealTopControl,
+  LetraRevealFullControl,
 } from "@/components/salas/LetraViewer";
 import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -30,6 +31,7 @@ import {
   getEmbedTopClipPx,
   shouldApplyEmbedInitialOffset,
 } from "@/lib/letra-display";
+import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
@@ -375,7 +377,7 @@ export default function BuscadorModal({
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionGuardado>(null);
   const [fabGuardarAbierto, setFabGuardarAbierto] = useState(false);
-  const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
+  const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
   const [guardarLetraModal, setGuardarLetraModal] =
     useState<GuardarLetraModalState | null>(null);
   const [cancionesCancionero, setCancionesCancionero] = useState<
@@ -424,7 +426,7 @@ export default function BuscadorModal({
     setBusquedaRealizada(false);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
     setGuardarLetraModal(null);
     setCancionesCancionero([]);
     setLocalCascadeActive(false);
@@ -741,7 +743,7 @@ export default function BuscadorModal({
     setPreviewEsMisCanciones(isHome && fuenteHome === "mis_canciones");
     setConfirmacion(null);
     setFabGuardarAbierto(false);
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
     setPromptVerAhoraSala(false);
     setError(null);
     pantallaRef.current = "preview";
@@ -754,7 +756,7 @@ export default function BuscadorModal({
     setSeleccionado(null);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
     setPromptVerAhoraSala(false);
     setError(null);
   }
@@ -1108,14 +1110,29 @@ export default function BuscadorModal({
   );
 
   const previewEmbedOffsetPx =
-    previewIframeConRecorteInicial && !embedTopRevealed && seleccionado
+    previewIframeConRecorteInicial && !embedFullRevealed && seleccionado
       ? getEmbedTopClipPx(seleccionado.url)
       : undefined;
 
+  const previewEmbedUrl =
+    previewIframeConRecorteInicial && seleccionado ? seleccionado.url : null;
+  const { showAcordesPrimeraVezHint, dismissAcordesPrimeraVezHint } =
+    useAcordesEmbedPrimeraVez(previewEmbedUrl);
+
   const previewEmbedBottomClipPx =
-    previewIframeConRecorteInicial && seleccionado
+    previewIframeConRecorteInicial &&
+    seleccionado &&
+    !embedFullRevealed &&
+    !showAcordesPrimeraVezHint
       ? getEmbedBottomClipPx(seleccionado.url)
       : undefined;
+
+  function handleRevealEmbedFull() {
+    if (!embedFullRevealed && showAcordesPrimeraVezHint) {
+      dismissAcordesPrimeraVezHint();
+    }
+    setEmbedFullRevealed((current) => !current);
+  }
 
   const previewIconoTipo = seleccionado
     ? getResultadoIconoTipo(seleccionado)
@@ -1424,9 +1441,15 @@ export default function BuscadorModal({
                 <div className="flex min-h-0 flex-1 flex-col">
                   <div className="relative mx-[10%] h-[80%] min-h-0 overflow-hidden rounded-[12px] border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]">
                     {!previewConLetraLocal && previewIframeConRecorteInicial ? (
-                      <LetraRevealTopControl
-                        onRevealTop={() => setEmbedTopRevealed(true)}
+                      <LetraRevealFullControl
+                        onRevealFull={handleRevealEmbedFull}
+                        expanded={embedFullRevealed}
                         className="top-2"
+                      />
+                    ) : null}
+                    {showAcordesPrimeraVezHint ? (
+                      <AcordesEmbedPrimeraVezHint
+                        onDismiss={dismissAcordesPrimeraVezHint}
                       />
                     ) : null}
                     {previewConLetraLocal ? (

@@ -14,8 +14,15 @@ import {
 } from "@/components/cifrado/CifradoEditorHelpModal";
 import { CifradoLineMergePicker } from "@/components/cifrado/CifradoLineMergePicker";
 import { CifradoUnlockIcon } from "@/components/cifrado/CifradoUnlockIcon";
-import { CifradoIngresoTonalidadInferModal } from "@/components/cifrado/CifradoIngresoTonalidadInferModal";
+import {
+  CifradoIngresoTonalidadInferModal,
+  type PasteIngresoConfirmResult,
+} from "@/components/cifrado/CifradoIngresoTonalidadInferModal";
 import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFields";
+import {
+  AcordeLabel,
+  formatAcordeAriaLabel,
+} from "@/components/cifrado/AcordeLabel";
 import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
 import {
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
@@ -78,7 +85,6 @@ import {
   deleteCifradoLine,
   deleteCompasLine,
   findAcordeAt,
-  formatAcorde,
   findNearestCharOffset,
   getCompasCycleGolpes,
   getLineContentEndOffset,
@@ -136,11 +142,10 @@ import {
 } from "@/lib/notacion-acordes";
 import { createClient } from "@/lib/supabase/client";
 import {
-  formatTonalidadDetectLabelTitle,
+  analyzePasteIngreso,
   getPrimerAcordeOrdenado,
   parseLetraTradicional,
-  splitTonalidadLineFromText,
-  type TonalidadLineDetectResult,
+  type PasteIngresoAnalysis,
 } from "@/lib/cifrado-import";
 import {
   inferTonalidadFromAcordes,
@@ -331,7 +336,11 @@ type ChordPickerProps = {
   tonalidadIndex: NotaIndex;
   modoTonal: ModoTonal;
   notacion: NotacionAcordes;
-  onApply: (noteIndex: NotaIndex, modifier: Modificador) => void;
+  onApply: (
+    noteIndex: NotaIndex,
+    modifier: Modificador,
+    bassNoteIndex?: NotaIndex,
+  ) => void;
   onRemove: () => void;
   onClose: () => void;
 };
@@ -352,13 +361,25 @@ function ChordPicker({
   const [modifier, setModifier] = useState<Modificador | null>(
     existing ? existing.modifier : null,
   );
+  const [bassNoteIndex, setBassNoteIndex] = useState<NotaIndex | null>(
+    existing?.bassNoteIndex ?? null,
+  );
+  const [bassEnabled, setBassEnabled] = useState(
+    existing?.bassNoteIndex !== undefined,
+  );
   const panelRef = useRef<HTMLDivElement>(null);
-  const canApply = noteIndex !== null && modifier !== null;
+  const canApply =
+    noteIndex !== null &&
+    modifier !== null &&
+    (!bassEnabled || bassNoteIndex !== null);
 
   useEffect(() => {
     setNoteIndex(existing ? existing.noteIndex : null);
     setModifier(existing ? existing.modifier : null);
+    setBassNoteIndex(existing?.bassNoteIndex ?? null);
+    setBassEnabled(existing?.bassNoteIndex !== undefined);
   }, [
+    existing?.bassNoteIndex,
     existing?.charOffset,
     existing?.lineIndex,
     existing?.modifier,
@@ -400,7 +421,7 @@ function ChordPicker({
   return (
     <div
       ref={panelRef}
-      className="fixed z-[70] w-72 rounded-[12px] border border-border bg-bg-card p-3 shadow-xl"
+      className="fixed z-[70] max-h-[min(32rem,calc(100vh-1rem))] w-72 overflow-y-auto rounded-[12px] border border-border bg-bg-card p-3 shadow-xl"
       style={{ left: state.x, top: state.y }}
       role="dialog"
       aria-label="Selector de acorde"
@@ -450,12 +471,93 @@ function ChordPicker({
         ))}
       </div>
 
+      <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5">
+        <span className="text-xs font-medium text-text-muted">
+          ¿Bajo en otra nota?
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={bassEnabled}
+          onClick={() => {
+            setBassEnabled((current) => {
+              const next = !current;
+
+              if (!next) {
+                setBassNoteIndex(null);
+              }
+
+              return next;
+            });
+          }}
+          className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
+            bassEnabled
+              ? "border border-text-secondary bg-bg-dark"
+              : "border border-border bg-bg-darker"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 size-3 rounded-full bg-white transition-transform ${
+              bassEnabled ? "left-3.5" : "left-0.5"
+            }`}
+          />
+        </button>
+      </label>
+
+      {bassEnabled ? (
+        <>
+          <p className="mb-2 mt-3 text-xs font-medium text-text-muted">Bajo</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {NOTA_INDICES.map((index) => {
+              const isSelected = bassNoteIndex === index;
+
+              return (
+                <button
+                  key={`bass-${index}`}
+                  type="button"
+                  onClick={() => setBassNoteIndex(index)}
+                  className={`rounded-lg px-2 py-1.5 text-xs ${
+                    isSelected
+                      ? `${CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS} font-semibold`
+                      : "bg-bg-dark/50 font-normal text-text-muted"
+                  }`}
+                >
+                  {getNotaLabel(index, notacion)}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+
+      {noteIndex !== null && modifier !== null ? (
+        <p className="mt-3 text-center text-sm font-bold text-text-primary">
+          <AcordeLabel
+            noteIndex={noteIndex}
+            modifier={modifier}
+            bassNoteIndex={
+              bassEnabled && bassNoteIndex !== null
+                ? bassNoteIndex
+                : undefined
+            }
+            notacion={notacion}
+            className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
+          />
+        </p>
+      ) : null}
+
       <div className="mt-3 flex gap-2">
         <TapButton
           type="button"
           onClick={() => {
             if (noteIndex !== null && modifier !== null) {
-              onApply(noteIndex, modifier);
+              onApply(
+                noteIndex,
+                modifier,
+                bassEnabled && bassNoteIndex !== null
+                  ? bassNoteIndex
+                  : undefined,
+              );
             }
           }}
           disabled={!canApply}
@@ -1335,7 +1437,7 @@ function CifradoLineEditor({
       >
         <div ref={textRowRef} className="relative">
         <div
-          className={`flex w-full items-baseline pt-4 font-mono text-sm text-letra-text ${
+          className={`flex w-full items-baseline pt-5 font-mono text-sm text-letra-text ${
             textEditable ? "select-text" : ""
           }`}
         >
@@ -1441,7 +1543,13 @@ function CifradoLineEditor({
                 className={`absolute whitespace-nowrap rounded px-0.5 text-xs font-bold leading-none ${CIFRADO_EDITOR_ACORDE_TEXT_CLASS}`}
                 style={{ top: 4, left: 0 }}
               >
-                {formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}
+                <AcordeLabel
+                  noteIndex={acorde.noteIndex}
+                  modifier={acorde.modifier}
+                  bassNoteIndex={acorde.bassNoteIndex}
+                  notacion={notacion}
+                  className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
+                />
               </span>
               <span
                 className={`absolute w-px ${
@@ -1476,7 +1584,7 @@ function CifradoLineEditor({
               <button
                 key={`chord-handle-${acorde.lineIndex}-${acorde.charOffset}`}
                 type="button"
-                aria-label={`${formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}. Arrastrá para mover o tocá para editar.`}
+                aria-label={`${formatAcordeAriaLabel(acorde.noteIndex, acorde.modifier, notacion, acorde.bassNoteIndex)}. Arrastrá para mover o tocá para editar.`}
                 className="absolute z-20 h-5 w-6 cursor-col-resize touch-none border-0 bg-transparent p-0"
                 style={{ left: position.left, top: 4 }}
                 onPointerDown={(event) => {
@@ -1952,7 +2060,13 @@ function CifradoPreviewLine({
               className={`absolute whitespace-nowrap rounded px-0.5 text-xs font-bold leading-none ${CIFRADO_EDITOR_ACORDE_TEXT_CLASS}`}
               style={{ top: 4, left: 0 }}
             >
-              {formatAcorde(acorde.noteIndex, acorde.modifier, notacion)}
+              <AcordeLabel
+                noteIndex={acorde.noteIndex}
+                modifier={acorde.modifier}
+                bassNoteIndex={acorde.bassNoteIndex}
+                notacion={notacion}
+                className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
+              />
             </span>
             <span
               className="absolute w-px bg-accent/50"
@@ -2235,15 +2349,14 @@ export default function CifradoEditor({
   const [ingresoModoTonal, setIngresoModoTonal] = useState<ModoTonal | null>(
     null,
   );
-  const [tonalidadSugeridaOpen, setTonalidadSugeridaOpen] = useState(false);
-  const [tonalidadSugerida, setTonalidadSugerida] =
-    useState<TonalidadLineDetectResult | null>(null);
-  const [tonalidadInferOpen, setTonalidadInferOpen] = useState(false);
   const [tonalidadInferResult, setTonalidadInferResult] =
     useState<TonalidadInferResult | null>(null);
-  const lastTonalidadDetectLineRef = useRef<string | null>(null);
-  const lastChordInferTextRef = useRef<string | null>(null);
-  const chordInferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pasteProposeOpen, setPasteProposeOpen] = useState(false);
+  const [pasteAnalysis, setPasteAnalysis] = useState<PasteIngresoAnalysis | null>(
+    null,
+  );
+  const lastPasteProposeSignatureRef = useRef<string | null>(null);
+  const pasteProposeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -2350,10 +2463,7 @@ export default function CifradoEditor({
       };
     }
 
-    const { textWithoutTonalidadLine } = splitTonalidadLineFromText(
-      draftPasteTraditional,
-    );
-    const previewText = textWithoutTonalidadLine.trim();
+    const previewText = draftPasteTraditional.trim();
     const draftLines = splitLyricsLines(previewText);
 
     return {
@@ -2520,16 +2630,14 @@ export default function CifradoEditor({
       setModoTonal(DEFAULT_MODO_TONAL);
       setIngresoTonalidadIndex(null);
       setIngresoModoTonal(null);
-      setTonalidadSugeridaOpen(false);
-      setTonalidadSugerida(null);
-      setTonalidadInferOpen(false);
+      setPasteProposeOpen(false);
+      setPasteAnalysis(null);
       setTonalidadInferResult(null);
-      lastTonalidadDetectLineRef.current = null;
-      lastChordInferTextRef.current = null;
+      lastPasteProposeSignatureRef.current = null;
 
-      if (chordInferTimerRef.current) {
-        clearTimeout(chordInferTimerRef.current);
-        chordInferTimerRef.current = null;
+      if (pasteProposeTimerRef.current) {
+        clearTimeout(pasteProposeTimerRef.current);
+        pasteProposeTimerRef.current = null;
       }
       setPreviewOpen(false);
       setPicker(null);
@@ -2585,16 +2693,14 @@ export default function CifradoEditor({
       setModoTonal(session.modo_tonal_default ?? DEFAULT_MODO_TONAL);
       setIngresoTonalidadIndex(session.tonalidad_default ?? DEFAULT_TONALIDAD);
       setIngresoModoTonal(session.modo_tonal_default ?? DEFAULT_MODO_TONAL);
-      setTonalidadSugeridaOpen(false);
-      setTonalidadSugerida(null);
-      setTonalidadInferOpen(false);
+      setPasteProposeOpen(false);
+      setPasteAnalysis(null);
       setTonalidadInferResult(null);
-      lastTonalidadDetectLineRef.current = null;
-      lastChordInferTextRef.current = null;
+      lastPasteProposeSignatureRef.current = null;
 
-      if (chordInferTimerRef.current) {
-        clearTimeout(chordInferTimerRef.current);
-        chordInferTimerRef.current = null;
+      if (pasteProposeTimerRef.current) {
+        clearTimeout(pasteProposeTimerRef.current);
+        pasteProposeTimerRef.current = null;
       }
       setPhase(session.skipIngreso ? "cifrado" : "ingreso");
       setModoInsercion("acordes");
@@ -2624,9 +2730,10 @@ export default function CifradoEditor({
     setModoTonal(DEFAULT_MODO_TONAL);
     setIngresoTonalidadIndex(null);
     setIngresoModoTonal(null);
-    setTonalidadSugeridaOpen(false);
-    setTonalidadSugerida(null);
-    lastTonalidadDetectLineRef.current = null;
+    setPasteProposeOpen(false);
+    setPasteAnalysis(null);
+    setTonalidadInferResult(null);
+    lastPasteProposeSignatureRef.current = null;
     setPreviewOpen(false);
     setPicker(null);
     setLoading(false);
@@ -2817,107 +2924,84 @@ export default function CifradoEditor({
     setModoTonal(ingresoModoTonal);
   }
 
-  function clearChordInferTimer() {
-    if (chordInferTimerRef.current) {
-      clearTimeout(chordInferTimerRef.current);
-      chordInferTimerRef.current = null;
+  function clearPasteProposeTimer() {
+    if (pasteProposeTimerRef.current) {
+      clearTimeout(pasteProposeTimerRef.current);
+      pasteProposeTimerRef.current = null;
     }
   }
 
-  function maybeInferTonalidadFromAcordes(value: string) {
-    const { textWithoutTonalidadLine, tonalidad: lineTonalidad } =
-      splitTonalidadLineFromText(value);
+  function runPasteIngresoAnalysis(value: string) {
+    const trimmed = value.trim();
 
-    if (lineTonalidad) {
-      setTonalidadInferOpen(false);
+    if (!trimmed) {
+      setPasteProposeOpen(false);
+      setPasteAnalysis(null);
       setTonalidadInferResult(null);
       return;
     }
 
-    const textToAnalyze = textWithoutTonalidadLine.trim();
-
-    if (!textToAnalyze) {
+    if (trimmed === lastPasteProposeSignatureRef.current) {
       return;
     }
 
-    if (textToAnalyze === lastChordInferTextRef.current) {
-      return;
-    }
+    lastPasteProposeSignatureRef.current = trimmed;
 
-    const imported = parseLetraTradicional(textToAnalyze);
+    const analysis = analyzePasteIngreso(trimmed);
+    const textForChords = analysis.textKeptIfEliminate.trim() || trimmed;
+    const imported = parseLetraTradicional(textForChords);
     const primerAcorde = getPrimerAcordeOrdenado(imported.cifrado.acordes);
-    const inference = inferTonalidadFromAcordes(
-      imported.cifrado.acordes,
-      primerAcorde,
-    );
+    const inference = analysis.tonalidadFromLine
+      ? null
+      : inferTonalidadFromAcordes(imported.cifrado.acordes, primerAcorde);
 
-    lastChordInferTextRef.current = textToAnalyze;
+    const hasChordProposal = Boolean(inference && inference.candidates.length > 0);
+    const shouldOpen = analysis.hasMetadataProposal || hasChordProposal;
 
-    if (!inference) {
-      setTonalidadInferOpen(false);
-      setTonalidadInferResult(null);
-      return;
-    }
-
+    setPasteAnalysis(analysis);
     setTonalidadInferResult(inference);
-    setTonalidadInferOpen(true);
+    setPasteProposeOpen(shouldOpen);
   }
 
-  function scheduleChordTonalidadInfer(value: string) {
-    clearChordInferTimer();
-    chordInferTimerRef.current = setTimeout(() => {
-      chordInferTimerRef.current = null;
-      maybeInferTonalidadFromAcordes(value);
+  function schedulePasteIngresoAnalysis(value: string) {
+    clearPasteProposeTimer();
+    pasteProposeTimerRef.current = setTimeout(() => {
+      pasteProposeTimerRef.current = null;
+      runPasteIngresoAnalysis(value);
     }, 450);
   }
 
-  function handleSelectInferredTonalidad(tonalidad: TonalidadLineDetectResult) {
-    setIngresoTonalidadIndex(tonalidad.tonalidadIndex);
-    setIngresoModoTonal(tonalidad.modoTonal);
-    setTonalidadInferOpen(false);
-  }
+  function handleConfirmPasteIngreso(result: PasteIngresoConfirmResult) {
+    if (result.tonalidad) {
+      setIngresoTonalidadIndex(result.tonalidad.tonalidadIndex);
+      setIngresoModoTonal(result.tonalidad.modoTonal);
+    }
 
-  function handleDismissInferredTonalidad() {
-    setTonalidadInferOpen(false);
+    if (result.nombre) {
+      setNombre(result.nombre);
+    }
+
+    if (result.artista) {
+      setArtista(result.artista);
+    }
+
+    if (result.eliminate && pasteAnalysis?.textKeptIfEliminate !== undefined) {
+      const kept = pasteAnalysis.textKeptIfEliminate;
+      setDraftPasteTraditional(kept);
+      lastPasteProposeSignatureRef.current = kept.trim() || null;
+    }
+
+    setPasteProposeOpen(false);
   }
 
   function handleDraftPasteTraditionalChange(value: string) {
-    const split = splitTonalidadLineFromText(value);
-    const cleanedValue = split.tonalidad
-      ? split.textWithoutTonalidadLine.trim()
-      : value;
-
-    setDraftPasteTraditional(cleanedValue);
+    setDraftPasteTraditional(value);
 
     if (error) {
       setError(null);
     }
 
-    const detectSignature = split.tonalidad
-      ? `${split.tonalidad.tonalidadIndex}:${split.tonalidad.modoTonal}:${cleanedValue}`
-      : null;
-
-    if (
-      split.tonalidad &&
-      detectSignature &&
-      detectSignature !== lastTonalidadDetectLineRef.current
-    ) {
-      lastTonalidadDetectLineRef.current = detectSignature;
-      lastChordInferTextRef.current = cleanedValue;
-      clearChordInferTimer();
-      setTonalidadInferOpen(false);
-      setTonalidadInferResult(null);
-      setIngresoTonalidadIndex(split.tonalidad.tonalidadIndex);
-      setIngresoModoTonal(split.tonalidad.modoTonal);
-      setTonalidadSugerida(split.tonalidad);
-      setTonalidadSugeridaOpen(true);
-      return;
-    }
-
-    if (!split.tonalidad) {
-      lastTonalidadDetectLineRef.current = null;
-      scheduleChordTonalidadInfer(cleanedValue);
-    }
+    schedulePasteIngresoAnalysis(value);
   }
 
   function applyImportedCifrado(
@@ -2981,16 +3065,8 @@ export default function CifradoEditor({
       return;
     }
 
-    const { textWithoutTonalidadLine } = splitTonalidadLineFromText(trimmed);
-    const textToImport = textWithoutTonalidadLine.trim();
-
-    if (!textToImport) {
-      setError("Pegá la letra con acordes antes de continuar.");
-      return;
-    }
-
     commitIngresoTonalidad();
-    const imported = parseLetraTradicional(textToImport);
+    const imported = parseLetraTradicional(trimmed);
     applyImportedCifrado(imported.letra, imported.cifrado, {
       warnings: imported.warnings,
     });
@@ -3374,12 +3450,16 @@ export default function CifradoEditor({
     rect: DOMRect,
   ) {
     const x = Math.min(rect.left, window.innerWidth - 300);
-    const y = Math.min(rect.bottom + 8, window.innerHeight - 280);
+    const y = Math.min(rect.bottom + 8, window.innerHeight - 320);
 
     setPicker({ lineIndex, charOffset, x, y });
   }
 
-  function handleApplyAcorde(noteIndex: NotaIndex, modifier: Modificador) {
+  function handleApplyAcorde(
+    noteIndex: NotaIndex,
+    modifier: Modificador,
+    bassNoteIndex?: NotaIndex,
+  ) {
     if (!picker) {
       return;
     }
@@ -3390,6 +3470,7 @@ export default function CifradoEditor({
         charOffset: picker.charOffset,
         noteIndex,
         modifier,
+        ...(bassNoteIndex !== undefined ? { bassNoteIndex } : {}),
       }),
     );
     setPicker(null);
@@ -4795,31 +4876,15 @@ export default function CifradoEditor({
         onClose={() => setEditorHelpOpen(false)}
       />
 
-      <ConfirmDialog
-        open={tonalidadSugeridaOpen && tonalidadSugerida !== null}
-        message={
-          tonalidadSugerida
-            ? `Tono detectado: "${formatTonalidadDetectLabelTitle(tonalidadSugerida)}"`
-            : ""
-        }
-        confirmLabel="Usar sugerencia"
-        cancelLabel="Elegir manualmente"
-        zIndex={70}
-        onConfirm={() => setTonalidadSugeridaOpen(false)}
-        onCancel={() => {
-          setIngresoTonalidadIndex(null);
-          setIngresoModoTonal(null);
-          setTonalidadSugeridaOpen(false);
-        }}
-      />
-
       <CifradoIngresoTonalidadInferModal
-        open={tonalidadInferOpen}
+        open={pasteProposeOpen}
+        analysis={pasteAnalysis}
         candidates={tonalidadInferResult?.candidates ?? []}
         multipleTonalidades={tonalidadInferResult?.multipleTonalidades ?? false}
+        notacion={notacion}
         zIndex={70}
-        onSelect={handleSelectInferredTonalidad}
-        onDismiss={handleDismissInferredTonalidad}
+        onConfirm={handleConfirmPasteIngreso}
+        onDismiss={() => setPasteProposeOpen(false)}
       />
 
       <ConfirmDialog

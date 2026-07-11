@@ -899,11 +899,6 @@ export default function SalaPageShell({
           onItemsReordered={handleColaItemsReordered}
           onOpenBuscador={handleOpenBuscador}
           presentacionOculta={lecturaPantallaCompleta}
-          onExpand={
-            !modoLectura && cancionActiva && !disconnected
-              ? () => setModoLectura(true)
-              : undefined
-          }
           onRequestOpen={(open) => {
             openColaRef.current = open;
           }}

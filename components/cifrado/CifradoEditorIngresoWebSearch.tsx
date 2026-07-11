@@ -1,5 +1,6 @@
 "use client";
 
+import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
 import { BuscadorInternetPendingSkeleton } from "@/components/cancionero/CancioneroListSkeleton";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import { SitioLetraBadge } from "@/components/salas/LetraFuenteSitioBadge";
@@ -16,6 +17,7 @@ import {
   getEmbedTopClipPx,
   shouldApplyEmbedInitialOffset,
 } from "@/lib/letra-display";
+import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
 import type { ResultadoBusqueda } from "@/types";
 import { ArrowLeft, Music, Search } from "lucide-react";
 import { FormEvent, useMemo, useRef, useState } from "react";
@@ -98,7 +100,7 @@ export default function CifradoEditorIngresoWebSearch({
   const [loading, setLoading] = useState(false);
   const [importando, setImportando] = useState(false);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
-  const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
+  const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
 
   const seleccionadoDisplay = useMemo(() => {
     if (!seleccionado) {
@@ -115,15 +117,32 @@ export default function CifradoEditorIngresoWebSearch({
     seleccionado && shouldApplyEmbedInitialOffset(seleccionado.url),
   );
 
+  const { showAcordesPrimeraVezHint, dismissAcordesPrimeraVezHint } =
+    useAcordesEmbedPrimeraVez(
+      previewIframeConRecorteInicial && seleccionado
+        ? seleccionado.url
+        : null,
+    );
+
   const previewEmbedOffsetPx =
-    previewIframeConRecorteInicial && !embedTopRevealed && seleccionado
+    previewIframeConRecorteInicial && !embedFullRevealed && seleccionado
       ? getEmbedTopClipPx(seleccionado.url)
       : undefined;
 
   const previewEmbedBottomClipPx =
-    previewIframeConRecorteInicial && seleccionado
+    previewIframeConRecorteInicial &&
+    seleccionado &&
+    !embedFullRevealed &&
+    !showAcordesPrimeraVezHint
       ? getEmbedBottomClipPx(seleccionado.url)
       : undefined;
+
+  function handleRevealEmbedFull() {
+    if (!embedFullRevealed && showAcordesPrimeraVezHint) {
+      dismissAcordesPrimeraVezHint();
+    }
+    setEmbedFullRevealed((current) => !current);
+  }
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault();
@@ -174,14 +193,14 @@ export default function CifradoEditorIngresoWebSearch({
 
   function handleSelectResultado(resultado: ResultadoBusqueda) {
     setSeleccionado(resultado);
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
     setPantalla("preview");
   }
 
   function handleVolver() {
     setPantalla("busqueda");
     setSeleccionado(null);
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
   }
 
   async function handleUsarCancion() {
@@ -259,15 +278,21 @@ export default function CifradoEditorIngresoWebSearch({
         </p>
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-preview-frame">
+          {showAcordesPrimeraVezHint ? (
+            <AcordesEmbedPrimeraVezHint
+              onDismiss={dismissAcordesPrimeraVezHint}
+            />
+          ) : null}
           <LetraViewer
             url={seleccionado.url}
             elevated
             fill
             initialScrollOffsetPx={previewEmbedOffsetPx}
             initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
-            onRevealTop={
+            revealExpanded={embedFullRevealed}
+            onRevealFull={
               previewIframeConRecorteInicial
-                ? () => setEmbedTopRevealed(true)
+                ? handleRevealEmbedFull
                 : undefined
             }
           />

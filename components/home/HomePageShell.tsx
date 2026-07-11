@@ -515,11 +515,6 @@ export default function HomePageShell() {
           items={cola.items}
           onOpenBuscador={() => setBuscadorOpen(true)}
           presentacionOculta={lecturaPantallaCompleta}
-          onExpand={
-            !modoLectura && cola.cancionActiva
-              ? () => setModoLectura(true)
-              : undefined
-          }
           onRequestOpen={(open) => {
             openColaRef.current = open;
           }}

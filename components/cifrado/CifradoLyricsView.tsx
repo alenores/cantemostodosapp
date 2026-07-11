@@ -17,16 +17,14 @@ import {
   type CompasMarker,
   type TipoCompas,
 } from "@/lib/cifrado";
+import { AcordeLabel } from "@/components/cifrado/AcordeLabel";
 import {
   CIFRADO_LINE_LANE_CONTAINER_CLASS,
   CIFRADO_LINE_LANE_SLOT_CLASS,
 } from "@/components/cifrado/cifrado-controls-ui";
 import { getBarraBeatCount } from "@/lib/cifrado-barra-cycles";
 import { getBarraIntensidad } from "@/lib/cifrado-intensidad";
-import {
-  formatAcordeNotacion,
-  type NotacionAcordes,
-} from "@/lib/notacion-acordes";
+import { type NotacionAcordes } from "@/lib/notacion-acordes";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import {
@@ -448,7 +446,13 @@ export function CifradoLyricsLine({
               }`}
               style={{ top: letraSheet ? 0 : compact ? 2 : 4, left: 0 }}
             >
-              {formatAcordeNotacion(acorde.noteIndex, acorde.modifier, notacion)}
+              <AcordeLabel
+                noteIndex={acorde.noteIndex}
+                modifier={acorde.modifier}
+                bassNoteIndex={acorde.bassNoteIndex}
+                notacion={notacion}
+                className="text-accent"
+              />
             </span>
             <span
               className="absolute w-px bg-accent/50"

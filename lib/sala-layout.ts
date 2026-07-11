@@ -50,8 +50,12 @@ export const SALA_LETRA_PRESENCE_GAP_PX = 10;
 /** Contorno del contenedor de letra en modo control (Individual y Salas). */
 export const CONTROL_LETRA_SHELL_CLASS =
   "overflow-hidden rounded-[12px] border-2 border-accent";
+/** Inset horizontal del contenedor de letra en modo control (cada lado). */
+export const CONTROL_LETRA_HORIZONTAL_INSET = "5%";
 /** Aire entre el borde inferior del contenedor de letra y la etiqueta de origen. */
 export const CONTROL_LETRA_ORIGEN_GAP_PX = 6;
+/** Separador bajo origen/acciones (antes de presencia / pie). */
+export const CONTROL_LETRA_SEPARATOR_GAP_PX = 4;
 /** Solape de la letra en texto sobre la barra de cola (recupera altura visible). */
 export const LETRA_TEXT_COLA_OVERLAP_PX = 28;
 

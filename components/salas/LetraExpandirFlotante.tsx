@@ -7,12 +7,12 @@ type LetraExpandirFlotanteProps = {
   onExpand: () => void;
 };
 
-/** Botón Expandir flotante en el margen superior derecho del contenedor de letra (escritorio). */
+/** Botón Expandir al medio abajo, dentro del contenedor de letra (modo control). */
 export default function LetraExpandirFlotante({
   onExpand,
 }: LetraExpandirFlotanteProps) {
   return (
-    <div className="pointer-events-none absolute right-4 top-2 z-10 hidden lg:block">
+    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
       <TapButton
         type="button"
         aria-label="Expandir letra a pantalla completa"

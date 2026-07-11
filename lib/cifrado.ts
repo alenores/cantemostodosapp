@@ -86,6 +86,8 @@ export type AcordePos = {
   charOffset: number;
   noteIndex: NotaIndex;
   modifier: Modificador;
+  /** Nota del bajo (derecha del /). Sin modificador propio. */
+  bassNoteIndex?: NotaIndex;
 };
 
 // Una barra de compás posicionada (solo modo avanzado)
@@ -1019,6 +1021,13 @@ export function transponerCifrado(
     acordes: cifrado.acordes.map((acorde) => ({
       ...acorde,
       noteIndex: normalizeNotaIndex(acorde.noteIndex + semitonos),
+      ...(acorde.bassNoteIndex !== undefined
+        ? {
+            bassNoteIndex: normalizeNotaIndex(
+              acorde.bassNoteIndex + semitonos,
+            ),
+          }
+        : {}),
     })),
   };
 }
@@ -1027,8 +1036,15 @@ export function formatAcorde(
   noteIndex: NotaIndex,
   modifier: Modificador,
   notacion: NotacionAcordes = "es",
+  bassNoteIndex?: NotaIndex,
 ): string {
-  return formatAcordeNotacion(noteIndex, modifier, notacion);
+  const root = formatAcordeNotacion(noteIndex, modifier, notacion);
+
+  if (bassNoteIndex === undefined) {
+    return root;
+  }
+
+  return `${root}/${formatAcordeNotacion(bassNoteIndex, "", notacion)}`;
 }
 
 export function createEmptyCifrado(): CifradoData {
@@ -1195,6 +1211,43 @@ export function moveAcorde(
 
   return upsertAcorde(next, {
     ...acorde,
+    charOffset: toOffset,
+  });
+}
+
+/**
+ * Mueve un acorde; si el destino ya tiene otro, los intercambia
+ * (no borra el que estaba).
+ */
+export function moveAcordeSwap(
+  cifrado: CifradoData,
+  lineIndex: number,
+  fromOffset: number,
+  toOffset: number,
+): CifradoData {
+  if (fromOffset === toOffset) {
+    return cifrado;
+  }
+
+  const moving = findAcordeAt(cifrado.acordes, lineIndex, fromOffset);
+
+  if (!moving) {
+    return cifrado;
+  }
+
+  const occupant = findAcordeAt(cifrado.acordes, lineIndex, toOffset);
+  let next = removeAcordeAt(cifrado, lineIndex, fromOffset);
+
+  if (occupant) {
+    next = removeAcordeAt(next, lineIndex, toOffset);
+    next = upsertAcorde(next, {
+      ...occupant,
+      charOffset: fromOffset,
+    });
+  }
+
+  return upsertAcorde(next, {
+    ...moving,
     charOffset: toOffset,
   });
 }

@@ -7,8 +7,9 @@ import LetraCifradoLecturaShell, {
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import LetraExpandirFlotante from "@/components/salas/LetraExpandirFlotante";
 import LetraTexto from "@/components/salas/LetraTexto";
+import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
 import LetraViewer, {
-  LetraRevealTopControl,
+  LetraRevealFullControl,
 } from "@/components/salas/LetraViewer";
 import CifraClubEmbedBadge from "@/components/salas/CifraClubEmbedBadge";
 import CancionOrigenEtiqueta, {
@@ -16,6 +17,7 @@ import CancionOrigenEtiqueta, {
 } from "@/components/salas/CancionOrigenEtiqueta";
 import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
 import { SalaLetraLinesSkeleton } from "@/components/salas/SalasSkeletons";
+import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
 import { useCifradoDetalle } from "@/hooks/useCifradoDetalle";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import {
@@ -29,6 +31,8 @@ import {
 import { parseCancioneroUrlId } from "@/lib/cancionero-url";
 import {
   CONTROL_LETRA_SHELL_CLASS,
+  CONTROL_LETRA_HORIZONTAL_INSET,
+  CONTROL_LETRA_SEPARATOR_GAP_PX,
   CIFRACLUB_EMBED_FILL_SCALE_X,
   getControlCantarHorizontalPaddingStyle,
   getControlHeaderPaddingStyle,
@@ -57,6 +61,7 @@ function ControlLetraShell({
   letraTexto,
   premium = false,
   filaActions = null,
+  onExpand,
   className = "",
 }: {
   children: ReactNode;
@@ -64,20 +69,36 @@ function ControlLetraShell({
   letraTexto?: string | null;
   premium?: boolean;
   filaActions?: ControlLetraFilaActions | null;
+  onExpand?: () => void;
   className?: string;
 }) {
   return (
-    <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${className}`}>
+    <div
+      className={`flex min-h-0 min-w-0 flex-1 flex-col ${className}`}
+      style={{
+        marginLeft: CONTROL_LETRA_HORIZONTAL_INSET,
+        marginRight: CONTROL_LETRA_HORIZONTAL_INSET,
+      }}
+    >
       <div
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${CONTROL_LETRA_SHELL_CLASS}`}
       >
         {children}
+        {onExpand ? <LetraExpandirFlotante onExpand={onExpand} /> : null}
       </div>
       <CancionOrigenEtiqueta
         urlLetra={urlLetra}
         letraTexto={letraTexto}
         premium={premium}
         filaActions={filaActions}
+      />
+      <div
+        className="shrink-0 border-t border-border/80"
+        style={{
+          marginTop: CONTROL_LETRA_SEPARATOR_GAP_PX,
+          marginBottom: CONTROL_LETRA_SEPARATOR_GAP_PX,
+        }}
+        aria-hidden="true"
       />
     </div>
   );
@@ -191,9 +212,11 @@ type CancionActivaSectionProps = {
 function LetraEmptySheet({
   modoLectura,
   filaActions = null,
+  onExpand,
 }: {
   modoLectura: boolean;
   filaActions?: ControlLetraFilaActions | null;
+  onExpand?: () => void;
 }) {
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${modoLectura ? "" : ""}`}>
@@ -207,7 +230,7 @@ function LetraEmptySheet({
           </p>
         </div>
       ) : (
-        <ControlLetraShell filaActions={filaActions}>
+        <ControlLetraShell filaActions={filaActions} onExpand={onExpand}>
           <div
             className="flex min-h-0 flex-1 items-center justify-center bg-letra-bg"
             style={{ minHeight: "min(52vh, 420px)" }}
@@ -247,7 +270,7 @@ export default function CancionActivaSection({
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
-  const [embedTopRevealed, setEmbedTopRevealed] = useState(false);
+  const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
   const [embedReloadKey, setEmbedReloadKey] = useState(0);
 
   const hasCancion = Boolean(cancionNombre);
@@ -313,7 +336,7 @@ export default function CancionActivaSection({
   }, [hasManualText, hasUrl, urlLetra]);
 
   useEffect(() => {
-    setEmbedTopRevealed(false);
+    setEmbedFullRevealed(false);
     setEmbedReloadKey(0);
   }, [urlLetra]);
 
@@ -349,15 +372,30 @@ export default function CancionActivaSection({
     contenido?.mode === "embed" &&
     isCifraClubEmbed(contenido.url);
 
+  const embedUrl =
+    showEmbed && contenido?.mode === "embed" ? contenido.url : null;
+  const { showAcordesPrimeraVezHint, dismissAcordesPrimeraVezHint } =
+    useAcordesEmbedPrimeraVez(embedUrl);
+
   const embedTopClipPx =
-    embedConRecorteInicial && !embedTopRevealed
+    embedConRecorteInicial && !embedFullRevealed
       ? getEmbedTopClipPx(contenido.url)
       : undefined;
 
   const embedBottomClipPx =
-    showEmbed && contenido?.mode === "embed"
+    showEmbed &&
+    contenido?.mode === "embed" &&
+    !embedFullRevealed &&
+    !showAcordesPrimeraVezHint
       ? getEmbedBottomClipPx(contenido.url)
       : undefined;
+
+  function handleRevealEmbedFull() {
+    if (!embedFullRevealed && showAcordesPrimeraVezHint) {
+      dismissAcordesPrimeraVezHint();
+    }
+    setEmbedFullRevealed((current) => !current);
+  }
 
   const nombreRevealKey =
     nombreRevealGeneration > 0
@@ -518,8 +556,8 @@ export default function CancionActivaSection({
               letraTexto={letraTexto}
               premium={showCifradoAvanzado}
               filaActions={resolvedFilaActions}
+              onExpand={onExpand}
             >
-              {onExpand ? <LetraExpandirFlotante onExpand={onExpand} /> : null}
               <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[12px]">
                 <div
                   ref={letraScrollRef}
@@ -616,6 +654,7 @@ export default function CancionActivaSection({
                 urlLetra={urlLetra}
                 letraTexto={letraTexto}
                 filaActions={resolvedFilaActions}
+                onExpand={onExpand}
               >
                 <div
                   className="relative min-h-0 flex-1 bg-letra-bg"
@@ -650,9 +689,15 @@ export default function CancionActivaSection({
                   />
                 ) : null}
                 {embedConRecorteInicial ? (
-                  <LetraRevealTopControl
-                    onRevealTop={() => setEmbedTopRevealed(true)}
+                  <LetraRevealFullControl
+                    onRevealFull={handleRevealEmbedFull}
+                    expanded={embedFullRevealed}
                     style={{ top: getLecturaFabMenuTopCss() }}
+                  />
+                ) : null}
+                {showAcordesPrimeraVezHint ? (
+                  <AcordesEmbedPrimeraVezHint
+                    onDismiss={dismissAcordesPrimeraVezHint}
                   />
                 ) : null}
                 <div className="absolute inset-0 min-h-0">
@@ -679,10 +724,8 @@ export default function CancionActivaSection({
                 urlLetra={urlLetra}
                 letraTexto={letraTexto}
                 filaActions={resolvedFilaActions}
+                onExpand={onExpand}
               >
-                {onExpand ? (
-                  <LetraExpandirFlotante onExpand={onExpand} />
-                ) : null}
                 {showCifraClubBadge ? (
                   <CifraClubEmbedBadge
                     placement="control"
@@ -690,9 +733,15 @@ export default function CancionActivaSection({
                   />
                 ) : null}
                 {embedConRecorteInicial ? (
-                  <LetraRevealTopControl
-                    onRevealTop={() => setEmbedTopRevealed(true)}
-                    className={onExpand ? "top-2 lg:top-12" : "top-2"}
+                  <LetraRevealFullControl
+                    onRevealFull={handleRevealEmbedFull}
+                    expanded={embedFullRevealed}
+                    className="top-2"
+                  />
+                ) : null}
+                {showAcordesPrimeraVezHint ? (
+                  <AcordesEmbedPrimeraVezHint
+                    onDismiss={dismissAcordesPrimeraVezHint}
                   />
                 ) : null}
                 <div className="absolute inset-0 min-h-0">
@@ -732,6 +781,7 @@ export default function CancionActivaSection({
           <LetraEmptySheet
             modoLectura={modoLectura}
             filaActions={resolvedFilaActions}
+            onExpand={onExpand}
           />
         </>
       )}

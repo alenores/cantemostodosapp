@@ -16,8 +16,9 @@ export type TonalidadLineDetectResult = {
   modoTonal: ModoTonal;
 };
 
+/** Prefijos: Tono/Key/tonalidad (separador opcional); ono:/no: (separador requerido). */
 const TONALIDAD_LABEL_PREFIX_PATTERN =
-  /^(?:(?:t)?ono|(?:t)?onalidad|clave|key)\s*[:\-–]?\s*/i;
+  /^(?:(?:tono|tonalidad|clave|key)\s*[:\-–]?|(?:ono|no)\s*[:\-–])\s*/i;
 
 const MODO_MENOR_WORDS = /\b(menor|minor|min)\b/i;
 const MODO_MAYOR_WORDS = /\b(mayor|major|maj)\b/i;
@@ -122,6 +123,9 @@ function parseChordLinePair(
       charOffset: clampCharOffset(start, lyricLine),
       noteIndex: parsed.noteIndex,
       modifier: parsed.modifier,
+      ...(parsed.bassNoteIndex !== undefined
+        ? { bassNoteIndex: parsed.bassNoteIndex }
+        : {}),
     });
   }
 
@@ -305,11 +309,24 @@ export function getPrimerAcordeOrdenado(
   )[0] ?? null;
 }
 
-export function splitTonalidadLineFromText(text: string): {
-  textWithoutTonalidadLine: string;
-  tonalidad: TonalidadLineDetectResult | null;
-} {
-  const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+export type PasteIngresoAnalysis = {
+  tonalidadFromLine: TonalidadLineDetectResult | null;
+  suggestedNombre: string;
+  suggestedArtista: string;
+  textToEliminate: string;
+  textKeptIfEliminate: string;
+  hasMetadataProposal: boolean;
+};
+
+type TonalidadAnchor = {
+  tonalidad: TonalidadLineDetectResult;
+  keepFromLine: number;
+  stripCharsOnKeepLine?: number;
+  /** Líneas antes de la etiqueta de tono (candidatos título/artista). */
+  preambleEndExclusive: number;
+};
+
+function findTonalidadAnchor(rawLines: string[]): TonalidadAnchor | null {
   const firstNonEmptyIndex = rawLines.findIndex((line) => line.trim().length > 0);
 
   if (firstNonEmptyIndex >= 0) {
@@ -318,55 +335,199 @@ export function splitTonalidadLineFromText(text: string): {
 
     if (tonalidad) {
       return {
-        textWithoutTonalidadLine: buildStrippedText(
-          rawLines,
-          firstNonEmptyIndex + 1,
-        ),
         tonalidad,
+        keepFromLine: firstNonEmptyIndex + 1,
+        preambleEndExclusive: firstNonEmptyIndex,
       };
     }
   }
 
   const chordLocation = findFirstChordInLines(rawLines);
-  const scanBeforeLine =
-    chordLocation?.lineIndex ?? rawLines.length;
+  const scanBeforeLine = chordLocation?.lineIndex ?? rawLines.length;
 
   for (let lineIndex = 0; lineIndex < scanBeforeLine; lineIndex += 1) {
     const tonalidad = parseTonalidadLine(rawLines[lineIndex] ?? "");
 
     if (tonalidad) {
       return {
-        textWithoutTonalidadLine: buildStrippedText(rawLines, lineIndex + 1),
         tonalidad,
+        keepFromLine: lineIndex + 1,
+        preambleEndExclusive: lineIndex,
       };
     }
   }
 
   if (!chordLocation) {
-    return {
-      textWithoutTonalidadLine: text,
-      tonalidad: null,
-    };
+    return null;
   }
 
   const chordLine = rawLines[chordLocation.lineIndex] ?? "";
   const prefix = chordLine.slice(0, chordLocation.charStart).trim();
   const tonalidadFromPrefix = parseTonalidadLine(prefix);
 
-  if (tonalidadFromPrefix) {
+  if (!tonalidadFromPrefix) {
+    return null;
+  }
+
+  return {
+    tonalidad: tonalidadFromPrefix,
+    keepFromLine: chordLocation.lineIndex,
+    stripCharsOnKeepLine: chordLocation.charStart,
+    preambleEndExclusive: chordLocation.lineIndex,
+  };
+}
+
+function collectTitleArtistCandidates(preambleLines: readonly string[]): {
+  nombre: string;
+  artista: string;
+} {
+  const candidates = preambleLines
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) {
+        return false;
+      }
+
+      if (isTonalidadLabelLine(line) || isChordLine(line) || isLikelySectionLine(line)) {
+        return false;
+      }
+
+      return true;
+    });
+
+  return {
+    nombre: candidates[0] ?? "",
+    artista: candidates[1] ?? "",
+  };
+}
+
+function buildEliminateText(
+  rawLines: readonly string[],
+  keepFromLine: number,
+  stripCharsOnKeepLine?: number,
+): string {
+  const before = rawLines.slice(0, keepFromLine);
+
+  if (stripCharsOnKeepLine === undefined) {
+    return before.join("\n").trim();
+  }
+
+  const prefix = (rawLines[keepFromLine] ?? "")
+    .slice(0, stripCharsOnKeepLine)
+    .trimEnd();
+
+  return [...before, prefix].join("\n").trim();
+}
+
+/**
+ * Analiza un pegado tradicional sin modificar el texto.
+ * Propone tono explícito, título/artista y el bloque a eliminar (confirmación aparte).
+ */
+export function analyzePasteIngreso(text: string): PasteIngresoAnalysis {
+  const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+  const anchor = findTonalidadAnchor(rawLines);
+
+  if (anchor) {
+    const preambleLines = rawLines.slice(0, anchor.preambleEndExclusive);
+    const { nombre, artista } = collectTitleArtistCandidates(preambleLines);
+    const textToEliminate = buildEliminateText(
+      rawLines,
+      anchor.keepFromLine,
+      anchor.stripCharsOnKeepLine,
+    );
+    const textKeptIfEliminate = buildStrippedText(
+      rawLines,
+      anchor.keepFromLine,
+      anchor.stripCharsOnKeepLine,
+    ).trim();
+
     return {
-      textWithoutTonalidadLine: buildStrippedText(
-        rawLines,
-        chordLocation.lineIndex,
-        chordLocation.charStart,
+      tonalidadFromLine: anchor.tonalidad,
+      suggestedNombre: nombre,
+      suggestedArtista: artista,
+      textToEliminate,
+      textKeptIfEliminate,
+      hasMetadataProposal: Boolean(
+        textToEliminate || nombre || artista || anchor.tonalidad,
       ),
-      tonalidad: tonalidadFromPrefix,
+    };
+  }
+
+  const chordLocation = findFirstChordInLines(rawLines);
+
+  if (!chordLocation) {
+    return {
+      tonalidadFromLine: null,
+      suggestedNombre: "",
+      suggestedArtista: "",
+      textToEliminate: "",
+      textKeptIfEliminate: text,
+      hasMetadataProposal: false,
+    };
+  }
+
+  const preambleLines = rawLines.slice(0, chordLocation.lineIndex);
+  const prefix = (rawLines[chordLocation.lineIndex] ?? "")
+    .slice(0, chordLocation.charStart)
+    .trim();
+  const hasPreamble = preambleLines.some((line) => line.trim().length > 0);
+  const stripChars =
+    prefix.length > 0 ? chordLocation.charStart : undefined;
+
+  if (!hasPreamble && stripChars === undefined) {
+    return {
+      tonalidadFromLine: null,
+      suggestedNombre: "",
+      suggestedArtista: "",
+      textToEliminate: "",
+      textKeptIfEliminate: text,
+      hasMetadataProposal: false,
+    };
+  }
+
+  const { nombre, artista } = collectTitleArtistCandidates(preambleLines);
+  const textToEliminate = buildEliminateText(
+    rawLines,
+    chordLocation.lineIndex,
+    stripChars,
+  );
+  const textKeptIfEliminate = buildStrippedText(
+    rawLines,
+    chordLocation.lineIndex,
+    stripChars,
+  ).trim();
+
+  return {
+    tonalidadFromLine: null,
+    suggestedNombre: nombre,
+    suggestedArtista: artista,
+    textToEliminate,
+    textKeptIfEliminate,
+    hasMetadataProposal: Boolean(textToEliminate || nombre || artista),
+  };
+}
+
+export function splitTonalidadLineFromText(text: string): {
+  textWithoutTonalidadLine: string;
+  tonalidad: TonalidadLineDetectResult | null;
+} {
+  const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+  const anchor = findTonalidadAnchor(rawLines);
+
+  if (!anchor) {
+    return {
+      textWithoutTonalidadLine: text,
+      tonalidad: null,
     };
   }
 
   return {
-    textWithoutTonalidadLine: text,
-    tonalidad: null,
+    textWithoutTonalidadLine: buildStrippedText(
+      rawLines,
+      anchor.keepFromLine,
+      anchor.stripCharsOnKeepLine,
+    ),
+    tonalidad: anchor.tonalidad,
   };
 }
 

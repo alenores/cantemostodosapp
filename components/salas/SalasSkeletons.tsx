@@ -1,5 +1,6 @@
 import {
   APP_FOOTER_HEIGHT_PX,
+  CONTROL_LETRA_HORIZONTAL_INSET,
   CONTROL_LETRA_SHELL_CLASS,
   getControlCantarHorizontalPaddingStyle,
   getControlHeaderPaddingStyle,
@@ -176,7 +177,13 @@ export function SalaLetraSkeleton({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        style={{
+          marginLeft: CONTROL_LETRA_HORIZONTAL_INSET,
+          marginRight: CONTROL_LETRA_HORIZONTAL_INSET,
+        }}
+      >
         <div
           className={`relative flex min-h-0 flex-1 flex-col bg-letra-bg ${
             showHeader

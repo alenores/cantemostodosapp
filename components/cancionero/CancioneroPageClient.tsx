@@ -244,6 +244,12 @@ export default function CancioneroPageClient({
       return;
     }
 
+    // Celular: pantalla nueva del editor. PC: modal del editor actual (sin tocar).
+    if (!isDesktop) {
+      navigateWithProgress("/canciones/editor?desde=cancionero");
+      return;
+    }
+
     setEditorSession(null);
     setEditorOpen(true);
   }
@@ -293,6 +299,12 @@ export default function CancioneroPageClient({
 
   function handleEditar(cancion: CancionCancionero) {
     if (!online || !usuarioLogueado || !esCancionDelUsuario(cancion, usuarioId)) {
+      return;
+    }
+
+    // Celular: pantalla nueva del editor. PC: modal del editor actual (sin tocar).
+    if (!isDesktop) {
+      navigateWithProgress("/canciones/editor?desde=cancionero");
       return;
     }
 

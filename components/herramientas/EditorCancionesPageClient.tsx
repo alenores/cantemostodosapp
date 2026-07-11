@@ -1,6 +1,8 @@
 "use client";
 
+import CifradoEditorMobile from "@/components/cifrado/CifradoEditorMobile";
 import CifradoEditor from "@/components/ui/CifradoEditor";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { dispatchCancioneroSyncFinished } from "@/lib/offline/cancionero-events";
 import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
@@ -12,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 export default function EditorCancionesPageClient() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const isDesktop = useIsDesktop();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const online = typeof navigator !== "undefined" ? navigator.onLine : true;
 
@@ -42,23 +45,27 @@ export default function EditorCancionesPageClient() {
 
   return (
     <div className="tool-page-layout flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
-      <CifradoEditor
-        open
-        presentation="page"
-        isLoggedIn
-        onClose={() => {}}
-        onSaved={async () => {
-          if (online) {
-            try {
-              await syncCancioneroLocal(supabase, { force: true });
-            } catch {
-              // La sync automática cubrirá el refresco.
+      {isDesktop ? (
+        <CifradoEditor
+          open
+          presentation="page"
+          isLoggedIn
+          onClose={() => {}}
+          onSaved={async () => {
+            if (online) {
+              try {
+                await syncCancioneroLocal(supabase, { force: true });
+              } catch {
+                // La sync automática cubrirá el refresco.
+              }
             }
-          }
 
-          dispatchCancioneroSyncFinished();
-        }}
-      />
+            dispatchCancioneroSyncFinished();
+          }}
+        />
+      ) : (
+        <CifradoEditorMobile />
+      )}
     </div>
   );
 }

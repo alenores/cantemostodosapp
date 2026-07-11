@@ -161,12 +161,40 @@ function matchNoteRoot(token: string): { index: NotaIndex; rest: string } | null
 export type ParsedAcorde = {
   noteIndex: NotaIndex;
   modifier: Modificador;
+  bassNoteIndex?: NotaIndex;
 };
 
-export function parseAcordeToken(token: string): ParsedAcorde | null {
+/** Solo nota (sin modificador): lado derecho de un acorde con /. */
+export function parseBassNoteToken(token: string): NotaIndex | null {
   const trimmed = token.trim();
 
-  if (!trimmed || trimmed.length > 16) {
+  if (!trimmed || trimmed.length > 8) {
+    return null;
+  }
+
+  if (/^[^a-zA-Z0-9#b+-]+$/.test(trimmed)) {
+    return null;
+  }
+
+  const root = matchNoteRoot(trimmed);
+
+  if (!root) {
+    return null;
+  }
+
+  const modifier = parseModifierSuffix(root.rest);
+
+  if (modifier !== "") {
+    return null;
+  }
+
+  return normalizeNotaIndex(root.index);
+}
+
+function parseAcordeCore(token: string): ParsedAcorde | null {
+  const trimmed = token.trim();
+
+  if (!trimmed) {
     return null;
   }
 
@@ -190,6 +218,43 @@ export function parseAcordeToken(token: string): ParsedAcorde | null {
     noteIndex: normalizeNotaIndex(root.index),
     modifier,
   };
+}
+
+export function parseAcordeToken(token: string): ParsedAcorde | null {
+  const trimmed = token.trim();
+
+  if (!trimmed || trimmed.length > 24) {
+    return null;
+  }
+
+  if (/^[^a-zA-Z0-9#b+\/+-]+$/.test(trimmed)) {
+    return null;
+  }
+
+  const slashIndex = trimmed.indexOf("/");
+
+  if (slashIndex !== -1) {
+    const left = trimmed.slice(0, slashIndex);
+    const right = trimmed.slice(slashIndex + 1);
+
+    if (!left || !right) {
+      return null;
+    }
+
+    const chord = parseAcordeCore(left);
+    const bassNoteIndex = parseBassNoteToken(right);
+
+    if (!chord || bassNoteIndex === null) {
+      return null;
+    }
+
+    return {
+      ...chord,
+      bassNoteIndex,
+    };
+  }
+
+  return parseAcordeCore(trimmed);
 }
 
 export function getNotaLabel(

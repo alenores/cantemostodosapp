@@ -1,7 +1,7 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
-import { ChevronUp, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import {
   useEffect,
   useState,
@@ -30,7 +30,11 @@ type LetraViewerProps = {
    * el excedente queda debajo del overflow:hidden del marco.
    */
   initialScrollBottomOffsetPx?: number;
-  /** Muestra flecha superior derecha para quitar el recorte (Cifra Club activa). */
+  /** Alterna página completa / recortes (flechas superior derecha). */
+  onRevealFull?: () => void;
+  /** true = sin recortes; las flechas apuntan hacia adentro. */
+  revealExpanded?: boolean;
+  /** @deprecated Usar onRevealFull. */
   onRevealTop?: () => void;
   /** Clase extra para posicionar el control de revelar (p. ej. cuando hay badge). */
   revealControlClassName?: string;
@@ -149,6 +153,67 @@ function LetraIframe({
   );
 }
 
+export function LetraRevealFullControl({
+  onRevealFull,
+  expanded = false,
+  className = "top-2",
+  style,
+}: {
+  onRevealFull: () => void;
+  /** true = página completa; flechas hacia adentro (volver a recortar). */
+  expanded?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <TapButton
+      type="button"
+      aria-label={
+        expanded ? "Volver a recortar la página" : "Ver página completa"
+      }
+      aria-pressed={expanded}
+      onClick={onRevealFull}
+      style={{
+        color: "var(--voz-config)",
+        borderColor: "var(--voz-config-border)",
+        backgroundColor:
+          "color-mix(in srgb, var(--bg-card) 78%, transparent)",
+        ...style,
+      }}
+      className={`absolute right-2 z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
+    >
+      {expanded ? (
+        <>
+          <ChevronDown
+            className="size-3.5"
+            strokeWidth={2.75}
+            aria-hidden="true"
+          />
+          <ChevronUp
+            className="size-3.5 -mt-1"
+            strokeWidth={2.75}
+            aria-hidden="true"
+          />
+        </>
+      ) : (
+        <>
+          <ChevronUp
+            className="size-3.5"
+            strokeWidth={2.75}
+            aria-hidden="true"
+          />
+          <ChevronDown
+            className="size-3.5 -mt-1"
+            strokeWidth={2.75}
+            aria-hidden="true"
+          />
+        </>
+      )}
+    </TapButton>
+  );
+}
+
+/** @deprecated Usar LetraRevealFullControl. */
 export function LetraRevealTopControl({
   onRevealTop,
   className = "top-2",
@@ -159,15 +224,11 @@ export function LetraRevealTopControl({
   style?: CSSProperties;
 }) {
   return (
-    <TapButton
-      type="button"
-      aria-label="Ver inicio de la página"
-      onClick={onRevealTop}
+    <LetraRevealFullControl
+      onRevealFull={onRevealTop}
+      className={className}
       style={style}
-      className={`absolute right-2 z-20 flex size-7 items-center justify-center bg-transparent p-0 ${className}`}
-    >
-      <ChevronUp className="size-4 text-[#c4c4c4]" aria-hidden="true" />
-    </TapButton>
+    />
   );
 }
 
@@ -227,7 +288,8 @@ function EmbedLoadErrorBanner({ onReload }: { onReload: () => void }) {
 type EmbedShellProps = {
   className: string;
   style?: CSSProperties;
-  onRevealTop?: () => void;
+  onRevealFull?: () => void;
+  revealExpanded?: boolean;
   revealControlClassName?: string;
   showReloadControl?: boolean;
   onReload?: () => void;
@@ -236,13 +298,14 @@ type EmbedShellProps = {
 };
 
 /**
- * La flecha va fuera del contenedor del iframe: en móvil el iframe puede
- * pintarse encima de hermanos directos y hacerla desaparecer al cargar.
+ * Las flechas van fuera del contenedor del iframe: en móvil el iframe puede
+ * pintarse encima de hermanos directos y hacerlas desaparecer al cargar.
  */
 function EmbedShell({
   className,
   style,
-  onRevealTop,
+  onRevealFull,
+  revealExpanded = false,
   revealControlClassName,
   showReloadControl,
   onReload,
@@ -263,9 +326,10 @@ function EmbedShell({
           <LetraEmbedReloadControl onReload={onReload} />
         </div>
       ) : null}
-      {onRevealTop ? (
-        <LetraRevealTopControl
-          onRevealTop={onRevealTop}
+      {onRevealFull ? (
+        <LetraRevealFullControl
+          onRevealFull={onRevealFull}
+          expanded={revealExpanded}
           className={revealControlClassName}
         />
       ) : null}
@@ -283,7 +347,9 @@ export default function LetraViewer({
   fill = false,
   initialScrollOffsetPx,
   initialScrollBottomOffsetPx,
+  onRevealFull,
   onRevealTop,
+  revealExpanded = false,
   revealControlClassName,
   embedIframeRef,
   fillScaleX,
@@ -293,6 +359,7 @@ export default function LetraViewer({
   const [localReloadKey, setLocalReloadKey] = useState(0);
   const [loadStatus, setLoadStatus] = useState<EmbedLoadStatus>("loading");
   const frameKey = `${url}::${reloadKey}::${localReloadKey}`;
+  const revealFull = onRevealFull ?? onRevealTop;
 
   useEffect(() => {
     setLoadStatus("loading");
@@ -335,7 +402,8 @@ export default function LetraViewer({
   if (fill) {
     return (
       <EmbedShell
-        onRevealTop={onRevealTop}
+        onRevealFull={revealFull}
+        revealExpanded={revealExpanded}
         revealControlClassName={revealControlClassName}
         showReloadControl={showReloadControl}
         onReload={handleReload}
@@ -352,7 +420,8 @@ export default function LetraViewer({
   return (
     <EmbedShell
       style={containerStyle}
-      onRevealTop={onRevealTop}
+      onRevealFull={revealFull}
+      revealExpanded={revealExpanded}
       revealControlClassName={revealControlClassName}
       showReloadControl={showReloadControl}
       onReload={handleReload}

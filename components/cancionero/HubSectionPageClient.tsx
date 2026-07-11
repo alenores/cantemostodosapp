@@ -156,6 +156,14 @@ export default function HubSectionPageClient({
     }
 
     if (moduleDef.kind === "editor-canciones") {
+      // Celular: pantalla nueva del editor. PC: modal del editor actual (sin tocar).
+      if (!isDesktop && href) {
+        setPendingModuleId(moduleId);
+        const separator = href.includes("?") ? "&" : "?";
+        navigateWithProgress(`${href}${separator}desde=hub`);
+        return;
+      }
+
       mountToolsLayer();
       setEditorOpen(true);
       return;

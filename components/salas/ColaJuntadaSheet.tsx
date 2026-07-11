@@ -3,7 +3,6 @@
 import ColaJuntadaItem from "@/components/salas/ColaJuntadaItem";
 import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
-import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
@@ -30,7 +29,6 @@ import {
   COLA_MODAL_TOP_INSET_PX,
   COLA_SHEET_EXIT_MS,
   getColaModalBottomCss,
-  getSalaFloatControlsBottomCss,
 } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import type { ColaItem } from "@/types";
@@ -56,14 +54,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Maximize2, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 
 const COLA_MODAL_LAYER_Z = 100;
-
-const FLOAT_BTN_SECONDARY =
-  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
 const COLA_DRAG_DELETE_ID = "cola-drag-delete";
 
 const colaDragCollisionDetection: CollisionDetection = (args) => {
@@ -129,7 +124,6 @@ type ColaJuntadaSheetProps = {
   onSettledOpenChange?: (open: boolean) => void;
   onRequestOpen?: (open: () => void) => void;
   onRequestSiguiente?: (siguiente: () => void) => void;
-  onExpand?: () => void;
   presentacionOculta?: boolean;
   onDragEnd?: () => void;
 };
@@ -206,7 +200,6 @@ export default function ColaJuntadaSheet({
   onSettledOpenChange,
   onRequestOpen,
   onRequestSiguiente,
-  onExpand,
   presentacionOculta = false,
   onDragEnd,
 }: ColaJuntadaSheetProps) {
@@ -478,7 +471,6 @@ export default function ColaJuntadaSheet({
     setNombreRevealGeneration((generation) => generation + 1);
   };
 
-  const floatingBottom = getSalaFloatControlsBottomCss(presenceBarVisible);
   const modalBottom = getColaModalBottomCss();
 
   const listaVacia = sortedItems.length === 0;
@@ -685,29 +677,6 @@ export default function ColaJuntadaSheet({
     <>
       {colaSidePanelMode ? (
         <aside className={COLA_SIDE_PANEL_CLASS}>{colaDndLayer}</aside>
-      ) : null}
-
-      {!presentacionOculta && !colaSidePanelMode && onExpand ? (
-        <div
-          className="pointer-events-none fixed inset-x-0 z-30"
-          style={{
-            bottom: floatingBottom,
-            height: 0,
-            overflow: "visible",
-          }}
-        >
-          <div className="pointer-events-auto absolute bottom-0 right-4 flex flex-col items-end gap-2">
-            <TapButton
-              type="button"
-              aria-label="Expandir letra a pantalla completa"
-              onClick={onExpand}
-              className={`sala-expand-attention flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY}`}
-            >
-              <Maximize2 className="size-4 text-accent" aria-hidden="true" />
-              <span>Expandir</span>
-            </TapButton>
-          </div>
-        </div>
       ) : null}
 
       {colaSheetLayer}

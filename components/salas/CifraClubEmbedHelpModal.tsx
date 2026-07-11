@@ -99,6 +99,13 @@ export default function CifraClubEmbedHelpModal({
           </p>
 
           <p className="text-[13px] leading-relaxed text-text-muted">
+            Las flechas azules (arriba a la derecha) muestran la{" "}
+            <span className="font-bold text-text-primary">página completa</span>{" "}
+            (inicio y pie). Útil si necesitás ver menús, cookies u otros
+            elementos del sitio.
+          </p>
+
+          <p className="text-[13px] leading-relaxed text-text-muted">
             Para ver la letra en{" "}
             <span className="font-bold text-text-primary">hoja blanca</span>, en el
             buscador elegí canciones con estos iconos:

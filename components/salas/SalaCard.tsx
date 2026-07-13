@@ -2,24 +2,32 @@
 
 import PresenceAvatarStack from "@/components/salas/PresenceAvatarStack";
 import { TapButton } from "@/components/ui/TapFeedback";
-import type { PresenceUsuario, Sala } from "@/types";
+import type { PresenceUsuario, Sala, SalaMiembro } from "@/types";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type SalaCardProps = {
   sala: Pick<Sala, "id" | "nombre" | "descripcion">;
   disabled?: boolean;
-  usuariosActivos?: PresenceUsuario[];
+  miembros?: SalaMiembro[];
   onOpen: (sala: Pick<Sala, "id" | "nombre" | "descripcion">) => void;
 };
 
 export default function SalaCard({
   sala,
   disabled = false,
-  usuariosActivos = [],
+  miembros = [],
   onOpen,
 }: SalaCardProps) {
   const [pending, setPending] = useState(false);
+
+  const avatares = useMemo((): PresenceUsuario[] => {
+    return miembros.map((m) => ({
+      user_id: m.user_id,
+      nombre: m.nombre,
+      avatar_url: m.avatar_url,
+    }));
+  }, [miembros]);
 
   function handleOpen() {
     if (pending || disabled) {
@@ -35,8 +43,8 @@ export default function SalaCard({
       aria-label={
         disabled
           ? `${sala.nombre} no disponible sin conexión`
-          : usuariosActivos.length > 0
-            ? `Abrir ${sala.nombre}, ${usuariosActivos.length} en la sala`
+          : avatares.length > 0
+            ? `Abrir ${sala.nombre}, ${avatares.length} miembros`
             : `Abrir ${sala.nombre}`
       }
       onClick={handleOpen}
@@ -59,16 +67,17 @@ export default function SalaCard({
           <p className="truncate text-sm text-text-muted">{sala.descripcion}</p>
         )}
       </div>
-      {usuariosActivos.length > 0 ? (
+      {avatares.length > 0 ? (
         <div className="flex shrink-0 flex-col items-end gap-1">
           <PresenceAvatarStack
-            usuarios={usuariosActivos}
+            usuarios={avatares}
             maxVisible={3}
             sizeClassName="size-6"
             borderClassName="border-bg-card"
           />
           <span className="text-[10px] text-text-muted">
-            {usuariosActivos.length} en la sala
+            {avatares.length}{" "}
+            {avatares.length === 1 ? "miembro" : "miembros"}
           </span>
         </div>
       ) : null}

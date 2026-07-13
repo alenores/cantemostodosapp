@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
@@ -23,13 +23,12 @@ export async function generateMetadata({
     .from("salas")
     .select("nombre")
     .eq("id", salaId)
-    .eq("visible", true)
-    .single();
+    .maybeSingle();
 
   return {
     title: sala?.nombre
       ? `${sala.nombre} | CantemosTodosApp`
-      : "Sala no encontrada | CantemosTodosApp",
+      : "Sala | CantemosTodosApp",
   };
 }
 
@@ -38,7 +37,7 @@ export default async function SalaPage({ params }: SalasPageProps) {
   const salaId = Number(id);
 
   if (Number.isNaN(salaId)) {
-    notFound();
+    redirect("/salas?aviso=sin-acceso-sala");
   }
 
   const supabase = await createClient();
@@ -51,15 +50,15 @@ export default async function SalaPage({ params }: SalasPageProps) {
     redirect("/auth/login");
   }
 
-  const { data: sala, error } = await supabase
+  // RLS: solo miembros ven la fila. Si no hay fila → no pertenece.
+  const { data: sala } = await supabase
     .from("salas")
     .select("id, nombre")
     .eq("id", salaId)
-    .eq("visible", true)
-    .single();
+    .maybeSingle();
 
-  if (error || !sala) {
-    notFound();
+  if (!sala) {
+    redirect("/salas?aviso=sin-acceso-sala");
   }
 
   return null;

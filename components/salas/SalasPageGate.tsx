@@ -114,7 +114,6 @@ export default function SalasPageGate({
       const { data: salas, error: salasError } = await supabase
         .from("salas")
         .select("id, nombre, descripcion")
-        .eq("visible", true)
         .order("nombre");
 
       if (cancelled) {

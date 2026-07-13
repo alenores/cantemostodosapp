@@ -9,8 +9,8 @@ import { useSalasNavigation } from "@/components/salas/SalasRouteCoordinator";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { useSalasPresence } from "@/hooks/useSalasPresence";
-import type { Sala, UsuarioActivo } from "@/types";
+import { fetchMiembrosSalas } from "@/lib/sala-miembros";
+import type { Sala, SalaMiembro, UsuarioActivo } from "@/types";
 import { Plus, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -32,15 +32,13 @@ export default function SalasPageClient({
 }: SalasPageClientProps) {
   const router = useRouter();
   const online = useOnlineStatus();
-  const { activeSalaId, enterSala, registerSalaNames } = useSalasNavigation();
+  const { enterSala, registerSalaNames } = useSalasNavigation();
   const [modalOpen, setModalOpen] = useState(false);
+  const [miembrosBySala, setMiembrosBySala] = useState<
+    Record<number, SalaMiembro[]>
+  >({});
   const avisoMensaje = getPerfilAvisoMensaje(avisoInicial);
   const salaIds = useMemo(() => salas.map((sala) => sala.id), [salas]);
-  // Pausar al abrir una sala: mismo topic que SalaPageShell; si no, se reutiliza y se pierde el track.
-  const presenceBySalaId = useSalasPresence(
-    salaIds,
-    online && activeSalaId === null,
-  );
 
   useEffect(() => {
     registerSalaNames(
@@ -50,6 +48,29 @@ export default function SalasPageClient({
       })),
     );
   }, [registerSalaNames, salas]);
+
+  useEffect(() => {
+    if (!online || salaIds.length === 0) {
+      setMiembrosBySala({});
+      return;
+    }
+
+    let cancelled = false;
+
+    void fetchMiembrosSalas(salaIds)
+      .then((bySala) => {
+        if (!cancelled) {
+          setMiembrosBySala(bySala);
+        }
+      })
+      .catch((err) => {
+        console.warn("[salas] miembros:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [online, salaIds]);
 
   function openSala(sala: Pick<Sala, "id" | "nombre" | "descripcion">) {
     if (!online) {
@@ -99,7 +120,7 @@ export default function SalasPageClient({
             <Plus className="size-2.5" strokeWidth={2.5} aria-hidden="true" />
           </TapButton>
           <p className="text-xs font-medium uppercase tracking-widest text-text-faint">
-            Salas disponibles
+            Mis salas
           </p>
         </div>
 
@@ -114,14 +135,15 @@ export default function SalasPageClient({
                 key={sala.id}
                 sala={sala}
                 disabled={!online}
-                usuariosActivos={presenceBySalaId[sala.id] ?? []}
+                miembros={miembrosBySala[sala.id] ?? []}
                 onOpen={openSala}
               />
             ))}
           </div>
         ) : (
           <p className="text-sm text-text-muted">
-            No hay salas disponibles. Creá la primera con el botón +.
+            Todavía no tenés salas. Creá una con el botón + o pedí que te
+            inviten con el QR.
           </p>
         )}
         </div>

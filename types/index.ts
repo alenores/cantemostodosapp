@@ -4,6 +4,16 @@ export type Sala = {
   descripcion: string | null;
   visible: boolean;
   created_at: string;
+  creado_por?: string | null;
+  invite_token?: string | null;
+};
+
+export type SalaMiembro = {
+  sala_id: number;
+  user_id: string;
+  rol: "owner" | "member";
+  nombre: string;
+  avatar_url: string | null;
 };
 
 import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";

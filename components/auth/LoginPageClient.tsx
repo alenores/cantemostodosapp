@@ -8,8 +8,8 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
@@ -17,10 +17,22 @@ const inputClassName =
 const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
 
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
+    return "/";
+  }
+  return raw;
+}
+
 export default function LoginPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const startNavigation = useStartNavigation();
   const online = useOnlineStatus();
+  const nextPath = useMemo(
+    () => safeNextPath(searchParams.get("next")),
+    [searchParams],
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,7 +55,7 @@ export default function LoginPageClient() {
 
       if (session && online) {
         startNavigation();
-        router.replace("/");
+        router.replace(nextPath);
         return;
       }
 
@@ -56,7 +68,7 @@ export default function LoginPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [online, router, startNavigation]);
+  }, [nextPath, online, router, startNavigation]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,7 +97,7 @@ export default function LoginPageClient() {
     router.refresh();
     void warmOfflineCache();
     startNavigation();
-    router.push("/");
+    router.push(nextPath);
   }
 
   function handleContinueOffline() {

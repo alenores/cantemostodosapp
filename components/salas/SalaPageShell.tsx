@@ -13,6 +13,7 @@ import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
+import SalaInviteQrModal from "@/components/salas/SalaInviteQrModal";
 import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -24,6 +25,7 @@ import {
   getColaItemIdFromSesion,
   type CancionActivaData,
 } from "@/lib/sala-data";
+import { fetchMiembrosSalas } from "@/lib/sala-miembros";
 import {
   COLA_AVISO_EXIT_MS,
   COLA_AVISO_SHOW_DELAY_MS,
@@ -42,7 +44,7 @@ import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
 import { useLetraZoom } from "@/hooks/useLetraZoom";
 import { parsePresenceState } from "@/lib/presence";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
-import type { ColaItem, PresenceUsuario, SesionSala } from "@/types";
+import type { ColaItem, PresenceUsuario, SalaMiembro, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -376,6 +378,9 @@ export default function SalaPageShell({
   const [presenceUsuarios, setPresenceUsuarios] = useState<PresenceUsuario[]>(
     [],
   );
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [miembros, setMiembros] = useState<SalaMiembro[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const pendientesCount = useMemo(
     () => colaItems.filter((item) => item.estado === "pendiente").length,
@@ -425,8 +430,10 @@ export default function SalaPageShell({
     [],
   );
 
-  const presenceBarVisible =
-    !modoLectura && online && presenceUsuarios.length > 0;
+  const presenceBarVisible = !modoLectura && online;
+  const isOwner = miembros.some(
+    (m) => m.user_id === currentUserId && m.rol === "owner",
+  );
 
   const handleLeaveSala = useCallback(() => {
     navigateWithProgress("/salas");
@@ -526,6 +533,39 @@ export default function SalaPageShell({
       document.body.removeAttribute("data-sala-conectados");
     };
   }, [presenceUsuarios]);
+
+  const reloadMiembros = useCallback(async () => {
+    try {
+      const bySala = await fetchMiembrosSalas([salaId]);
+      setMiembros(bySala[salaId] ?? []);
+    } catch (err) {
+      console.warn("[sala] no se pudieron cargar miembros:", err);
+    }
+  }, [salaId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (cancelled) {
+        return;
+      }
+      setCurrentUserId(user?.id ?? null);
+      await reloadMiembros();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadMiembros]);
+
+  useHardwareBack(inviteOpen, () => {
+    setInviteOpen(false);
+  });
 
   const handleColaItemsReordered = useCallback((items: ColaItem[]) => {
     console.log(
@@ -841,7 +881,7 @@ export default function SalaPageShell({
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {colaBootstrapping && !modoLectura ? (
-            <SalaColaBootstrapSkeleton />
+            <SalaColaBootstrapSkeleton showBack />
           ) : (
             <CancionActivaSection
               cancionNombre={cancionActiva?.nombre ?? null}
@@ -886,7 +926,10 @@ export default function SalaPageShell({
           )}
 
           {presenceBarVisible ? (
-            <SalaPresenceBar usuarios={presenceUsuarios} />
+            <SalaPresenceBar
+              usuarios={presenceUsuarios}
+              onOpenInvite={() => setInviteOpen(true)}
+            />
           ) : null}
         </div>
 
@@ -911,6 +954,32 @@ export default function SalaPageShell({
 
       {modoLectura ? (
         <>
+          <div
+            className="fixed z-50 hidden flex-col items-end gap-2 lg:flex"
+            style={{
+              top: getLecturaTopChromeTopCss(),
+              right: lecturaFixedRightCss,
+            }}
+          >
+            <TapButton
+              type="button"
+              aria-label="Contraer"
+              onClick={salirModoLectura}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
+            >
+              <Minimize2 className="size-4 shrink-0 text-accent" aria-hidden="true" />
+              <span className="text-text-primary">Contraer</span>
+            </TapButton>
+            <TapButton
+              type="button"
+              aria-label="Afinador"
+              onClick={() => setAfinadorOpen(true)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
+            >
+              <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
+              <span className="text-text-primary">Afinador</span>
+            </TapButton>
+          </div>
 
           <TapButton
             type="button"
@@ -924,7 +993,7 @@ export default function SalaPageShell({
               setTonoPanelAbierto(false);
               setOverlayAbierto((open) => !open);
             }}
-            className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP} ${
+            className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP} ${
               overlayAbierto ? "border-accent/45" : ""
             }`}
             style={{
@@ -947,7 +1016,7 @@ export default function SalaPageShell({
               type="button"
               aria-label="Buscar"
               onClick={() => setBuscadorOpen(true)}
-              className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP}`}
+              className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
               style={{
                 top: getLecturaFabMenuTopCss(),
                 right: lecturaFixedRightCss,
@@ -1053,6 +1122,21 @@ export default function SalaPageShell({
           hasCancionActiva={colaItems.some((item) => item.estado === "activa")}
         />
       )}
+
+      {currentUserId ? (
+        <SalaInviteQrModal
+          open={inviteOpen}
+          salaId={salaId}
+          salaNombre={salaNombre}
+          isOwner={isOwner}
+          userId={currentUserId}
+          miembros={miembros}
+          onClose={() => setInviteOpen(false)}
+          onMiembrosChange={() => {
+            void reloadMiembros();
+          }}
+        />
+      ) : null}
 
       <AppReadyMarker />
     </div>

@@ -108,10 +108,14 @@ export default function SalasRouteCoordinator({
       .from("salas")
       .select("nombre")
       .eq("id", routeSalaId)
-      .eq("visible", true)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        if (cancelled || !data?.nombre) {
+        if (cancelled) {
+          return;
+        }
+
+        if (!data?.nombre) {
+          router.replace("/salas?aviso=sin-acceso-sala");
           return;
         }
 
@@ -124,7 +128,7 @@ export default function SalasRouteCoordinator({
     return () => {
       cancelled = true;
     };
-  }, [nombreById, routeSalaId]);
+  }, [nombreById, routeSalaId, router]);
 
   const shellSala = useMemo((): SalaRef | null => {
     if (optimisticSala && (!routeSalaId || routeSalaId === optimisticSala.id)) {

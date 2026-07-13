@@ -31,10 +31,10 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
     );
   }
 
+  // RLS filtra: solo salas propias o donde el usuario es miembro.
   const { data: salas, error: salasError } = await supabase
     .from("salas")
     .select("id, nombre, descripcion")
-    .eq("visible", true)
     .order("nombre");
 
   return (

@@ -34,10 +34,21 @@ export default function CrearSalaModal({
     setError(null);
 
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Tenés que iniciar sesión para crear una sala.");
+      setLoading(false);
+      return;
+    }
+
     const { error: insertError } = await supabase.from("salas").insert({
       nombre: nombre.trim(),
       descripcion: descripcion.trim() || null,
       visible: true,
+      creado_por: user.id,
     });
 
     setLoading(false);

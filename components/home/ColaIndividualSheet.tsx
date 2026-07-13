@@ -5,10 +5,12 @@ import ColaJuntadaItem, {
 } from "@/components/salas/ColaJuntadaItem";
 import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
+import { useColaAleatorio } from "@/hooks/useColaAleatorio";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import type { ColaIndividualRow } from "@/hooks/useColaIndividual";
+import type { CancionInput } from "@/lib/cola-logic";
 import { triggerHaptic } from "@/lib/haptic";
 import { isColaItemPremium } from "@/lib/buscador";
 import {
@@ -136,6 +138,7 @@ type ColaIndividualSheetProps = {
   onDeleteItem: (id: number) => Promise<void>;
   onVolverAPendiente: (id: number) => Promise<void>;
   onReorder: (activeId: number, overId: number) => Promise<void>;
+  onAgregarALista: (cancion: CancionInput) => Promise<void>;
 };
 
 type SortableRowProps = {
@@ -200,6 +203,7 @@ export default function ColaIndividualSheet({
   onDeleteItem,
   onVolverAPendiente,
   onReorder,
+  onAgregarALista,
 }: ColaIndividualSheetProps) {
   const premiumIds = usePremiumCancioneroIds();
   const colaSidePanelMode = useColaSidePanel() && !presentacionOculta;
@@ -239,6 +243,12 @@ export default function ColaIndividualSheet({
   );
 
   const pendientesCount = pendientes.length;
+
+  const { aleatorioActivo, toggleAleatorio, apagarAleatorio } = useColaAleatorio({
+    items: sortedItems,
+    pendientesCount,
+    onAgregar: onAgregarALista,
+  });
 
   const activeDragItem = useMemo(
     () =>
@@ -471,9 +481,11 @@ export default function ColaIndividualSheet({
       >
         <ColaPanelHeader
           pendientesCount={pendientesCount}
+          aleatorioActivo={aleatorioActivo}
           onDeleteAll={() => setShowDeleteAllDialog(true)}
           onSiguiente={() => void handleSiguiente()}
           onAdd={handleOpenBuscador}
+          onAleatorio={() => void toggleAleatorio()}
           onClose={onClose}
         />
         {renderColaListBody()}
@@ -596,6 +608,7 @@ export default function ColaIndividualSheet({
         onCancel={() => setShowDeleteAllDialog(false)}
         onConfirm={() => {
           setShowDeleteAllDialog(false);
+          apagarAleatorio();
           void onDeleteAll();
         }}
       />

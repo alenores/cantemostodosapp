@@ -1,5 +1,5 @@
-import { HerramientasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
+import { HomeWelcomeLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 
-export default function HerramientasLoading() {
-  return <HerramientasLoadingSkeleton />;
+export default function Loading() {
+  return <HomeWelcomeLoadingSkeleton />;
 }

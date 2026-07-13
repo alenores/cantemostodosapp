@@ -88,7 +88,7 @@ export default function CancionOrigenEtiqueta({
               aria-label="Siguiente canción"
               disabled={filaActions.siguienteDisabled}
               onClick={filaActions.onSiguiente}
-              className={`flex size-10 items-center justify-center lg:hidden ${CONTROL_ACCION_BTN} ${
+              className={`flex size-9 items-center justify-center lg:hidden ${CONTROL_ACCION_BTN} ${
                 filaActions.siguienteDisabled
                   ? "pointer-events-none opacity-40"
                   : ""

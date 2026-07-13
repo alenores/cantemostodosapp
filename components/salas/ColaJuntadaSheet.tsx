@@ -3,16 +3,19 @@
 import ColaJuntadaItem from "@/components/salas/ColaJuntadaItem";
 import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
+import { useColaAleatorio } from "@/hooks/useColaAleatorio";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import {
+  agregarACola,
   applyOrdenUpdates,
   deleteColaCompleta,
   deleteColaItem,
   finalizarCancionActiva,
   getColaVariant,
   reorderColaByDrag,
+  type CancionInput,
 } from "@/lib/cola-logic";
 import { isColaItemPremium } from "@/lib/buscador";
 import { triggerHaptic } from "@/lib/haptic";
@@ -251,6 +254,21 @@ export default function ColaJuntadaSheet({
 
   const pendientesCount = pendientes.length;
 
+  const handleAgregarAleatorio = useCallback(
+    async (cancion: CancionInput) => {
+      const supabase = createClient();
+      await agregarACola(supabase, salaId, cancion, { marcaAleatorio: true });
+      await onColaChange();
+    },
+    [onColaChange, salaId],
+  );
+
+  const { aleatorioActivo, toggleAleatorio, apagarAleatorio } = useColaAleatorio({
+    items: sortedItems,
+    pendientesCount,
+    onAgregar: handleAgregarAleatorio,
+  });
+
   const activeDragItem = useMemo(
     () =>
       activeDragId === null
@@ -344,6 +362,7 @@ export default function ColaJuntadaSheet({
 
   async function handleConfirmDeleteAll() {
     const supabase = createClient();
+    apagarAleatorio();
     await deleteColaCompleta(supabase, salaId);
     setShowDeleteAllDialog(false);
     await onColaChange();
@@ -566,9 +585,11 @@ export default function ColaJuntadaSheet({
       >
         <ColaPanelHeader
           pendientesCount={pendientesCount}
+          aleatorioActivo={aleatorioActivo}
           onDeleteAll={() => setShowDeleteAllDialog(true)}
           onSiguiente={() => void handleSiguiente()}
           onAdd={handleOpenBuscador}
+          onAleatorio={() => void toggleAleatorio()}
           onClose={onClose}
         />
         {renderColaListBody()}

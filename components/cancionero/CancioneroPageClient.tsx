@@ -6,9 +6,9 @@ import CancioneroListSkeleton, {
   CASCADE_MAX_DELAY_MS,
   CASCADE_STAGGER_MS,
 } from "@/components/cancionero/CancioneroListSkeleton";
+import CancioneroModoLectura from "@/components/cancionero/CancioneroModoLectura";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
-import CifradoViewerModal from "@/components/cifrado/CifradoViewerModal";
 import AddButton from "@/components/ui/AddButton";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -74,7 +74,7 @@ export default function CancioneroPageClient({
   const [cifradoDetalle, setCifradoDetalle] =
     useState<CancionCifradoDetalle | null>(null);
   const [cifradoLoading, setCifradoLoading] = useState(false);
-  const [cifradoViewerOpen, setCifradoViewerOpen] = useState(false);
+  const [modoLectura, setModoLectura] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorSession, setEditorSession] = useState<CifradoEditorSession | null>(
     null,
@@ -488,12 +488,8 @@ export default function CancioneroPageClient({
     navigateWithProgress("/canciones/favoritas");
   }
 
-  useHardwareBack(cifradoViewerOpen, () => {
-    setCifradoViewerOpen(false);
-  });
-
   useHardwareBack(
-    cancionViendo !== null && !editorOpen && !cifradoViewerOpen,
+    cancionViendo !== null && !editorOpen && !modoLectura,
     () => {
       setCancionViendo(null);
     },
@@ -514,7 +510,7 @@ export default function CancioneroPageClient({
       <AppReadyMarker />
       <CancioneroSubpageShell
         title="Cancionero"
-        modalOpen={cancionViendo !== null || editorOpen || cifradoViewerOpen}
+        modalOpen={cancionViendo !== null || editorOpen || modoLectura}
         headerAction={
           <AddButton
             ariaLabel={
@@ -659,7 +655,7 @@ export default function CancioneroPageClient({
       />
 
       <CancioneroVerModal
-        open={cancionViendo !== null && !cifradoViewerOpen}
+        open={cancionViendo !== null && !modoLectura}
         cancion={cancionViendo}
         cifradoDetalle={cifradoDetalle}
         cifradoLoading={cifradoLoading}
@@ -680,7 +676,7 @@ export default function CancioneroPageClient({
         }}
         onAnterior={() => handleNavigateCancion(-1)}
         onSiguiente={() => handleNavigateCancion(1)}
-        onExpand={() => setCifradoViewerOpen(true)}
+        onExpand={() => setModoLectura(true)}
         tieneAnterior={cancionViendoIndex > 0}
         tieneSiguiente={
           cancionViendoIndex >= 0 &&
@@ -688,12 +684,24 @@ export default function CancioneroPageClient({
         }
       />
 
-      <CifradoViewerModal
-        open={cifradoViewerOpen}
-        cancion={cancionViendo}
-        cifradoDetalle={cifradoDetalle}
-        onClose={() => setCifradoViewerOpen(false)}
-      />
+      {cancionViendo ? (
+        <CancioneroModoLectura
+          open={modoLectura}
+          cancion={cancionViendo}
+          cifradoDetalle={cifradoDetalle}
+          cifradoLoading={cifradoLoading}
+          items={cancionesFiltradas}
+          onSelectCancion={setCancionViendo}
+          onAnterior={() => handleNavigateCancion(-1)}
+          onSiguiente={() => handleNavigateCancion(1)}
+          tieneAnterior={cancionViendoIndex > 0}
+          tieneSiguiente={
+            cancionViendoIndex >= 0 &&
+            cancionViendoIndex < cancionesFiltradas.length - 1
+          }
+          onContraer={() => setModoLectura(false)}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={cancionAEliminar !== null}

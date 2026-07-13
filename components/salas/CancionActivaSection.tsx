@@ -30,20 +30,20 @@ import {
 } from "@/lib/letra-display";
 import { parseCancioneroUrlId } from "@/lib/cancionero-url";
 import {
+  CIFRACLUB_EMBED_FILL_SCALE_X,
   CONTROL_LETRA_SHELL_CLASS,
   CONTROL_LETRA_HORIZONTAL_INSET,
   CONTROL_LETRA_SEPARATOR_GAP_PX,
-  CIFRACLUB_EMBED_FILL_SCALE_X,
   getControlCantarHorizontalPaddingStyle,
   getControlHeaderPaddingStyle,
   getControlHeaderVerticalPaddingStyle,
-  getLecturaFabMenuTopCss,
   getLetraEmbedBottomPadding,
   getLetraSectionBottomPadding,
   getLetraSectionTextBottomPadding,
   getLetraTextScrollEndPadding,
+  LECTURA_AUTO_SCROLL_BOTTOM_PX,
+  LECTURA_TOP_CHROME_SIDE_PX,
 } from "@/lib/sala-layout";
-import { Star } from "lucide-react";
 import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
   useEffect,
@@ -111,7 +111,6 @@ function CancionActivaHeader({
   nombreRevealClass,
   headerLeading,
   headerAction,
-  tieneCifradoAvanzado = false,
   insetHorizontalInParent = false,
 }: {
   cancionNombre: string | null;
@@ -120,7 +119,6 @@ function CancionActivaHeader({
   nombreRevealClass: string;
   headerLeading?: ReactNode;
   headerAction?: ReactNode;
-  tieneCifradoAvanzado?: boolean;
   insetHorizontalInParent?: boolean;
 }) {
   return (
@@ -138,7 +136,6 @@ function CancionActivaHeader({
         artista={artista}
         nombreRevealKey={nombreRevealKey}
         nombreRevealClass={nombreRevealClass}
-        tieneCifradoAvanzado={tieneCifradoAvanzado}
       />
       {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
     </header>
@@ -150,13 +147,11 @@ function CancionActivaTitulo({
   artista,
   nombreRevealKey,
   nombreRevealClass,
-  tieneCifradoAvanzado = false,
 }: {
   cancionNombre: string | null;
   artista: string | null;
   nombreRevealKey: string;
   nombreRevealClass: string;
-  tieneCifradoAvanzado?: boolean;
 }) {
   if (!cancionNombre) {
     return <div className="min-w-0 flex-1" aria-hidden="true" />;
@@ -164,13 +159,7 @@ function CancionActivaTitulo({
 
   return (
     <div className="min-w-0 flex-1">
-      <h2 className="flex min-w-0 items-center gap-1.5 text-xl font-bold leading-tight text-accent">
-        {tieneCifradoAvanzado ? (
-          <Star
-            className="size-3.5 shrink-0 fill-[var(--tuner-cerca)] text-[var(--tuner-cerca)]"
-            aria-hidden="true"
-          />
-        ) : null}
+      <h2 className="text-xl font-bold leading-tight text-accent">
         <span key={nombreRevealKey} className={`${nombreRevealClass} truncate`}>
           {cancionNombre}
         </span>
@@ -483,7 +472,6 @@ export default function CancionActivaSection({
             nombreRevealClass={nombreRevealClass}
             headerLeading={headerLeading}
             headerAction={headerAction}
-            tieneCifradoAvanzado={showCifradoAvanzado}
             insetHorizontalInParent
           />
         ) : null}
@@ -682,18 +670,30 @@ export default function CancionActivaSection({
           {showEmbed && contenido.mode === "embed" &&
             (modoLectura ? (
               <div className="relative min-h-0 w-full flex-1">
-                {showCifraClubBadge ? (
-                  <CifraClubEmbedBadge
-                    placement="lectura"
-                    onReload={() => setEmbedReloadKey((value) => value + 1)}
-                  />
-                ) : null}
-                {embedConRecorteInicial ? (
-                  <LetraRevealFullControl
-                    onRevealFull={handleRevealEmbedFull}
-                    expanded={embedFullRevealed}
-                    style={{ top: getLecturaFabMenuTopCss() }}
-                  />
+                {embedConRecorteInicial || showCifraClubBadge ? (
+                  <div
+                    className="pointer-events-none absolute z-20 flex items-center gap-1.5"
+                    style={{
+                      left: `max(${LECTURA_TOP_CHROME_SIDE_PX}px, env(safe-area-inset-left, 0px))`,
+                      bottom: `calc(${LECTURA_AUTO_SCROLL_BOTTOM_PX}px + env(safe-area-inset-bottom, 0px))`,
+                    }}
+                  >
+                    {embedConRecorteInicial ? (
+                      <LetraRevealFullControl
+                        onRevealFull={handleRevealEmbedFull}
+                        expanded={embedFullRevealed}
+                        className="pointer-events-auto relative"
+                      />
+                    ) : null}
+                    {showCifraClubBadge ? (
+                      <CifraClubEmbedBadge
+                        placement="inline"
+                        onReload={() =>
+                          setEmbedReloadKey((value) => value + 1)
+                        }
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
                 {showAcordesPrimeraVezHint ? (
                   <AcordesEmbedPrimeraVezHint
@@ -736,7 +736,7 @@ export default function CancionActivaSection({
                   <LetraRevealFullControl
                     onRevealFull={handleRevealEmbedFull}
                     expanded={embedFullRevealed}
-                    className="top-2"
+                    className="absolute right-2 top-2"
                   />
                 ) : null}
                 {showAcordesPrimeraVezHint ? (

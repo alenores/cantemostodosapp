@@ -1,12 +1,11 @@
 import {
   APP_FOOTER_HEIGHT_PX,
   CONTROL_LETRA_HORIZONTAL_INSET,
+  CONTROL_LETRA_ORIGEN_GAP_PX,
   CONTROL_LETRA_SHELL_CLASS,
   getControlCantarHorizontalPaddingStyle,
-  getControlHeaderPaddingStyle,
   getControlHeaderVerticalPaddingStyle,
   getLetraSectionTextBottomPadding,
-  getSalaFloatControlsBottomCss,
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
 
@@ -44,6 +43,14 @@ const LETRA_LINE_WIDTHS = [
   "w-[76%]",
 ] as const;
 
+const HOME_DESTINATION_LAYOUTS = [
+  { label: "w-[38%]", description: "w-[72%]", help: "w-[58%]" },
+  { label: "w-[34%]", description: "w-[68%]", help: "w-[52%]" },
+  { label: "w-[28%]", description: "w-[64%]", help: "w-[48%]" },
+  { label: "w-[36%]", description: "w-[70%]", help: "w-[54%]" },
+  { label: "w-[32%]", description: "w-[66%]", help: "w-[50%]" },
+] as const;
+
 function ShimmerBlock({
   className = "",
   delayMs = 0,
@@ -59,6 +66,73 @@ function ShimmerBlock({
       style={delayMs > 0 ? { animationDelay: `${delayMs}ms` } : undefined}
       aria-hidden="true"
     />
+  );
+}
+
+/** Replica visual de AppTopHeader (accent). */
+export function AppTopHeaderSkeleton() {
+  return (
+    <header className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 py-3 lg:hidden">
+      <div className="app-page-container flex w-full min-w-0 items-center gap-2.5">
+        <div
+          className="size-8 shrink-0 animate-pulse rounded-lg bg-bg-darker/25"
+          aria-hidden="true"
+        />
+        <div
+          className="h-6 flex-1 animate-pulse rounded-lg bg-bg-darker/25"
+          aria-hidden="true"
+        />
+        <div className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1">
+          <div
+            className="h-4 w-16 animate-pulse rounded-md bg-bg-darker/25"
+            aria-hidden="true"
+          />
+          <div
+            className="size-8 shrink-0 animate-pulse rounded-full bg-bg-darker/25"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function HomeDestinationCardSkeleton({
+  labelWidth,
+  descriptionWidth,
+  helpWidth,
+  delayMs = 0,
+}: {
+  labelWidth: string;
+  descriptionWidth: string;
+  helpWidth: string;
+  delayMs?: number;
+}) {
+  return (
+    <div
+      className="relative flex w-full items-center gap-3 rounded-2xl border border-border bg-bg-card px-4 py-5"
+      aria-hidden="true"
+    >
+      <ShimmerBlock className="size-[46px] shrink-0 rounded-xl" delayMs={delayMs} />
+      <div className="min-w-0 flex-1 space-y-2">
+        <ShimmerBlock className={`h-[17px] ${labelWidth}`} delayMs={delayMs + 30} />
+        <ShimmerBlock className={`h-[13px] ${descriptionWidth}`} delayMs={delayMs + 60} />
+        <ShimmerBlock className={`h-[12px] ${helpWidth}`} delayMs={delayMs + 90} />
+      </div>
+    </div>
+  );
+}
+
+function HubModuleCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
+  return (
+    <div
+      className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
+      aria-hidden="true"
+    >
+      <ShimmerBlock className="h-[13px] w-[72%]" delayMs={delayMs} />
+      <ShimmerBlock className="size-16 rounded-xl" delayMs={delayMs + 40} />
+      <ShimmerBlock className="h-[34px] w-full rounded-lg" delayMs={delayMs + 80} />
+    </div>
   );
 }
 
@@ -80,7 +154,7 @@ function SalaCardSkeleton({
         <ShimmerBlock className={`h-4 ${titleWidth}`} delayMs={delayMs} />
         <ShimmerBlock className={`h-3 ${subtitleWidth}`} delayMs={delayMs + 50} />
       </div>
-      <ShimmerBlock className="size-5 shrink-0 rounded-full" delayMs={delayMs + 90} />
+      <ShimmerBlock className="size-5 shrink-0 rounded-md" delayMs={delayMs + 90} />
     </div>
   );
 }
@@ -94,34 +168,17 @@ function SalasSectionLabelSkeleton() {
   );
 }
 
-function SalasHeaderSkeleton() {
-  return (
-    <header className="border-b border-border bg-bg-dark px-4 py-3">
-      <div className="flex items-center gap-2.5">
-        <ShimmerBlock className="size-8 shrink-0 rounded-lg" />
-        <ShimmerBlock className="h-6 flex-1 rounded-lg" />
-        <div className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1">
-          <ShimmerBlock className="h-4 w-16 rounded-md" delayMs={40} />
-          <ShimmerBlock className="size-8 shrink-0 rounded-full" delayMs={60} />
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function HerramientasHubCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
+function SalasFooterSpacer() {
   return (
     <div
-      className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
+      className="shrink-0"
+      style={{ height: `calc(${APP_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))` }}
       aria-hidden="true"
-    >
-      <ShimmerBlock className="h-[13px] w-[72%]" delayMs={delayMs} />
-      <ShimmerBlock className="size-16 rounded-xl" delayMs={delayMs + 40} />
-      <ShimmerBlock className="h-[34px] w-full rounded-lg" delayMs={delayMs + 80} />
-    </div>
+    />
   );
 }
 
+/** Líneas shimmer al cargar letra/cifrado de una canción activa. */
 export function SalaLetraLinesSkeleton() {
   return (
     <div
@@ -140,42 +197,54 @@ export function SalaLetraLinesSkeleton() {
   );
 }
 
-export function SalaLetraSkeleton({
-  showHeader = true,
+function ControlFilaButtonSkeleton() {
+  return (
+    <div
+      className="flex shrink-0 items-center justify-end"
+      style={{ paddingTop: CONTROL_LETRA_ORIGEN_GAP_PX }}
+      aria-hidden="true"
+    >
+      <div className="flex items-center gap-2 rounded-2xl border border-accent/50 bg-bg-dark px-4 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+        <ShimmerBlock className="size-4 rounded-md" />
+        <ShimmerBlock className="h-4 w-14 rounded-md" delayMs={40} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shell modo control (Individual / Sala): header con buscar (+ back opcional),
+ * panel de letra vacío y botón Fila inline — alineado a CancionActivaSection vacío.
+ */
+export function ControlModeShellSkeleton({
+  showBack = false,
 }: {
-  showHeader?: boolean;
-  compact?: boolean;
+  showBack?: boolean;
 }) {
   return (
     <section
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala pt-0"
       style={{
         ...getControlCantarHorizontalPaddingStyle(),
-        ...(showHeader
-          ? {}
-          : { paddingBottom: getLetraSectionTextBottomPadding() }),
+        paddingBottom: getLetraSectionTextBottomPadding(),
       }}
       role="status"
       aria-live="polite"
-      aria-label="Cargando letra"
+      aria-label="Cargando"
     >
-      {showHeader ? (
-        <header
-          className="shrink-0 border-b border-border bg-bg-sala"
-          style={getControlHeaderPaddingStyle()}
-        >
-          <ShimmerBlock className="h-6 w-[58%] rounded-md" />
-          <ShimmerBlock className="mt-1.5 h-[13px] w-[34%] rounded-md" delayMs={50} />
-        </header>
-      ) : (
-        <div
-          className="shrink-0 space-y-1.5"
-          style={getControlHeaderVerticalPaddingStyle()}
-        >
-          <ShimmerBlock className="h-6 w-[58%] rounded-md" />
-          <ShimmerBlock className="mt-0.5 h-[13px] w-[34%] rounded-md" delayMs={50} />
+      <header
+        className="flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala"
+        style={getControlHeaderVerticalPaddingStyle()}
+      >
+        {showBack ? (
+          <ShimmerBlock className="size-9 shrink-0 rounded-full" />
+        ) : null}
+        <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
+          <ShimmerBlock className="h-5 w-[48%] rounded-md" delayMs={30} />
+          <ShimmerBlock className="h-3 w-[28%] rounded-md" delayMs={60} />
         </div>
-      )}
+        <ShimmerBlock className="size-9 shrink-0 rounded-full" delayMs={40} />
+      </header>
 
       <div
         className="flex min-h-0 flex-1 flex-col"
@@ -185,60 +254,42 @@ export function SalaLetraSkeleton({
         }}
       >
         <div
-          className={`relative flex min-h-0 flex-1 flex-col bg-letra-bg ${
-            showHeader
-              ? "mt-2 overflow-hidden rounded-[12px]"
-              : CONTROL_LETRA_SHELL_CLASS
-          }`}
+          className={`relative flex min-h-0 flex-1 flex-col bg-letra-bg ${CONTROL_LETRA_SHELL_CLASS}`}
         >
-          <SalaLetraLinesSkeleton />
-        </div>
-        {!showHeader ? (
-          <div
-            className="flex shrink-0 items-center gap-1.5"
-            style={{ paddingTop: 6 }}
-            aria-hidden="true"
-          >
-            <ShimmerBlock className="size-4 rounded-full" />
-            <ShimmerBlock className="h-3.5 w-16 rounded-full" delayMs={40} />
+          <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+            <div className="flex w-full max-w-[16rem] flex-col items-center gap-2">
+              <ShimmerBlock
+                variant="letra"
+                className="h-3 w-[88%]"
+                delayMs={80}
+              />
+              <ShimmerBlock
+                variant="letra"
+                className="h-3 w-[72%]"
+                delayMs={120}
+              />
+            </div>
           </div>
-        ) : null}
+        </div>
+        <ControlFilaButtonSkeleton />
       </div>
     </section>
   );
 }
 
-function SalaFloatingControlsSkeleton() {
-  const floatingBottom = getSalaFloatControlsBottomCss(false);
-
-  return (
-    <div
-      className="pointer-events-none fixed inset-x-0 z-30"
-      style={{ bottom: floatingBottom, height: 0, overflow: "visible" }}
-      aria-hidden="true"
-    >
-      <div className="pointer-events-none absolute bottom-0 right-4">
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-bg-dark px-4 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
-          <ShimmerBlock className="size-4 rounded-md" />
-          <ShimmerBlock className="h-4 w-14 rounded-md" delayMs={40} />
-        </div>
-      </div>
-    </div>
-  );
+/** @deprecated Usar ControlModeShellSkeleton — se mantiene por imports legacy. */
+export function SalaLetraSkeleton({
+  showHeader = true,
+}: {
+  showHeader?: boolean;
+  compact?: boolean;
+}) {
+  void showHeader;
+  return <ControlModeShellSkeleton />;
 }
 
-function SalasFooterSpacer() {
-  return (
-    <div
-      className="shrink-0"
-      style={{ height: `calc(${APP_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))` }}
-      aria-hidden="true"
-    />
-  );
-}
-
-/** Skeleton del hub Home — pantalla de bienvenida. */
-export function HerramientasHubSkeleton() {
+/** Skeleton del home de bienvenida (`/` + HomeHubDestinations). */
+export function HomeWelcomeSkeleton() {
   return (
     <div
       className="flex min-h-full flex-1 flex-col bg-bg-app"
@@ -246,41 +297,61 @@ export function HerramientasHubSkeleton() {
       aria-live="polite"
       aria-label="Cargando inicio"
     >
-      <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
-        <ShimmerBlock className="h-7 w-[42%] rounded-md" />
-        <ShimmerBlock className="h-3 w-[48%] rounded-md" delayMs={40} />
+      <AppTopHeaderSkeleton />
+      <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-col gap-3 lg:gap-4">
+          <div className="flex flex-col items-center gap-3">
+            <ShimmerBlock className="h-7 w-[42%] rounded-md" />
+            <ShimmerBlock className="h-5 w-[36%] rounded-md" delayMs={40} />
+          </div>
 
-        <div className="grid grid-cols-2 gap-[10px]">
-          <HerramientasHubCardSkeleton />
-          <HerramientasHubCardSkeleton delayMs={60} />
-        </div>
-
-        <ShimmerBlock className="mt-1 h-3 w-[28%] rounded-md" delayMs={80} />
-
-        <div className="grid grid-cols-2 gap-[10px]">
-          <HerramientasHubCardSkeleton delayMs={100} />
-          <HerramientasHubCardSkeleton delayMs={140} />
-        </div>
-
-        <ShimmerBlock className="h-3 w-[32%] rounded-md" delayMs={160} />
-
-        <div className="grid grid-cols-2 gap-[10px]">
-          <HerramientasHubCardSkeleton delayMs={180} />
-        </div>
-
-        <ShimmerBlock className="h-3 w-[24%] rounded-md" delayMs={200} />
-
-        <div className="grid grid-cols-2 gap-[10px]">
-          <HerramientasHubCardSkeleton delayMs={220} />
-          <HerramientasHubCardSkeleton delayMs={240} />
-          <HerramientasHubCardSkeleton delayMs={260} />
+          <div className="flex flex-col gap-3">
+            {HOME_DESTINATION_LAYOUTS.map((layout, index) => (
+              <HomeDestinationCardSkeleton
+                key={index}
+                labelWidth={layout.label}
+                descriptionWidth={layout.description}
+                helpWidth={layout.help}
+                delayMs={index * 70}
+              />
+            ))}
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-/** Skeleton inline del Home mientras carga la cola inicial. */
+/**
+ * Skeleton del hub de sección (`/canciones`, `/practica`).
+ * Sin AppTopHeader: lo aporta el layout de la ruta.
+ */
+export function HubSectionSkeleton({ cardCount = 3 }: { cardCount?: number }) {
+  return (
+    <div
+      className="relative flex min-h-full flex-1 flex-col bg-bg-app"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando sección"
+    >
+      <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-col gap-3 lg:gap-4">
+          <ShimmerBlock className="h-7 w-[36%] rounded-md" />
+          <div className="app-hub-grid">
+            {Array.from({ length: cardCount }, (_, index) => (
+              <HubModuleCardSkeleton key={index} delayMs={index * 70} />
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/** @deprecated Alias histórico — el home real es HomeWelcomeSkeleton. */
+export const HerramientasHubSkeleton = HomeWelcomeSkeleton;
+
+/** Skeleton de navegación a /individual — modo control vacío. */
 export function HomePageSkeleton() {
   return (
     <div
@@ -295,14 +366,7 @@ export function HomePageSkeleton() {
         style={{ paddingBottom: getSalaMainFooterPaddingCss() }}
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <SalaLetraSkeleton showHeader={false} />
-        </div>
-        <div
-          className="pointer-events-none fixed inset-x-2 z-20"
-          style={{ bottom: getSalaMainFooterPaddingCss() }}
-          aria-hidden="true"
-        >
-          <ShimmerBlock className="h-[66px] w-full rounded-[16px]" />
+          <ControlModeShellSkeleton />
         </div>
       </main>
       <SalasFooterSpacer />
@@ -319,27 +383,29 @@ export function SalasPageSkeleton() {
       aria-live="polite"
       aria-label="Cargando salas"
     >
-      <SalasHeaderSkeleton />
+      <AppTopHeaderSkeleton />
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-6 pb-24">
-        <SalasSectionLabelSkeleton />
+      <main className="app-page-main flex flex-1 flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-1 flex-col gap-3 lg:gap-4">
+          <SalasSectionLabelSkeleton />
 
-        <div className="flex flex-col gap-3">
-          {CARD_LAYOUTS.map((layout, index) => (
-            <SalaCardSkeleton
-              key={index}
-              titleWidth={layout.title}
-              subtitleWidth={layout.subtitle}
-              delayMs={index * 80}
-            />
-          ))}
+          <div className="app-list-grid">
+            {CARD_LAYOUTS.map((layout, index) => (
+              <SalaCardSkeleton
+                key={index}
+                titleWidth={layout.title}
+                subtitleWidth={layout.subtitle}
+                delayMs={index * 80}
+              />
+            ))}
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-/** Skeleton de navegación a /salas/[id] — replica SalaPageShell en modo control. */
+/** Skeleton de navegación a /salas/[id] — modo control con back. */
 export function SalaPageSkeleton() {
   return (
     <div
@@ -354,21 +420,23 @@ export function SalaPageSkeleton() {
         style={{ paddingBottom: getSalaMainFooterPaddingCss() }}
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <SalaLetraSkeleton showHeader={false} />
+          <ControlModeShellSkeleton showBack />
         </div>
       </main>
-
-      <SalaFloatingControlsSkeleton />
       <SalasFooterSpacer />
     </div>
   );
 }
 
-/** Skeleton inline mientras la cola inicial se sincroniza en SalaPageShell. */
-export function SalaColaBootstrapSkeleton() {
+/** Skeleton inline mientras la cola inicial se sincroniza. */
+export function SalaColaBootstrapSkeleton({
+  showBack = false,
+}: {
+  showBack?: boolean;
+}) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <SalaLetraSkeleton showHeader={false} />
+      <ControlModeShellSkeleton showBack={showBack} />
     </div>
   );
 }

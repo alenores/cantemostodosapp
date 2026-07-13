@@ -156,7 +156,7 @@ function LetraIframe({
 export function LetraRevealFullControl({
   onRevealFull,
   expanded = false,
-  className = "top-2",
+  className = "absolute right-2 top-2",
   style,
 }: {
   onRevealFull: () => void;
@@ -180,7 +180,7 @@ export function LetraRevealFullControl({
           "color-mix(in srgb, var(--bg-card) 78%, transparent)",
         ...style,
       }}
-      className={`absolute right-2 z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
+      className={`z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
     >
       {expanded ? (
         <>
@@ -216,7 +216,7 @@ export function LetraRevealFullControl({
 /** @deprecated Usar LetraRevealFullControl. */
 export function LetraRevealTopControl({
   onRevealTop,
-  className = "top-2",
+  className = "absolute right-2 top-2",
   style,
 }: {
   onRevealTop: () => void;
@@ -330,7 +330,7 @@ function EmbedShell({
         <LetraRevealFullControl
           onRevealFull={onRevealFull}
           expanded={revealExpanded}
-          className={revealControlClassName}
+          className={revealControlClassName ?? "absolute right-2 top-2"}
         />
       ) : null}
     </div>

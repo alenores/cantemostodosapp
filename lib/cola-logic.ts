@@ -1,6 +1,10 @@
 import type { ColaItem } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  COLA_AGREGADO_ALEATORIO_AVATAR,
+  COLA_AGREGADO_ALEATORIO_NOMBRE,
+} from "@/lib/cola-aleatorio";
+import {
   isMissingColumnError,
 } from "@/lib/supabase/errors";
 import {
@@ -565,6 +569,7 @@ export async function agregarACola(
   supabase: SupabaseClient,
   salaId: number,
   cancion: CancionInput,
+  options?: { marcaAleatorio?: boolean },
 ): Promise<number> {
   const urlLetra = cancion.url_letra.trim();
 
@@ -585,7 +590,13 @@ export async function agregarACola(
   }
 
   const nextOrden = (lastItem?.orden ?? 0) + 1;
-  const agregado = await fetchColaAgregadoSnapshot(supabase);
+  const agregado: ColaAgregadoSnapshot | null = options?.marcaAleatorio
+    ? {
+        agregado_por: null,
+        agregado_nombre: COLA_AGREGADO_ALEATORIO_NOMBRE,
+        agregado_avatar_url: COLA_AGREGADO_ALEATORIO_AVATAR,
+      }
+    : await fetchColaAgregadoSnapshot(supabase);
   const letraTexto = cancion.letra_texto?.trim() || null;
 
   return insertColaJuntadaRow(

@@ -559,7 +559,7 @@ export default function MisCancionesPageClient() {
         }
       >
         {loading ? (
-          <CancioneroListSkeleton includeSearch cardCount={5} />
+          <CancioneroListSkeleton includeSearch cardCount={5} trailing="listPlus" />
         ) : (
           <>
             <div className="relative">

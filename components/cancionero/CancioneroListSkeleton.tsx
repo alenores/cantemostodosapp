@@ -11,20 +11,24 @@ const CARD_LAYOUTS = [
 export const CASCADE_STAGGER_MS = 58;
 export const CASCADE_MAX_DELAY_MS = 720;
 
+type CardTrailing = "bookmark" | "listPlus" | "none";
+
 type CancioneroCardSkeletonProps = {
   titleWidth: string;
   artistWidth: string;
   shimmerDelayMs: number;
+  trailing?: CardTrailing;
 };
 
 export function CancioneroCardSkeleton({
   titleWidth,
   artistWidth,
   shimmerDelayMs,
+  trailing = "bookmark",
 }: CancioneroCardSkeletonProps) {
   return (
     <div
-      className="rounded-[12px] border border-border-card bg-bg-card px-3 py-3"
+      className="rounded-[12px] border border-border-card bg-bg-card px-3 py-2.5"
       aria-hidden="true"
     >
       <div className="flex items-center gap-3">
@@ -42,10 +46,18 @@ export function CancioneroCardSkeleton({
             style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
           />
         </div>
-        <div
-          className="cancionero-skeleton-shimmer size-3.5 shrink-0 rounded-full ring-1 ring-border"
-          style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
-        />
+        {trailing === "bookmark" ? (
+          <div
+            className="cancionero-skeleton-shimmer size-3 shrink-0 rounded-sm"
+            style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
+          />
+        ) : null}
+        {trailing === "listPlus" ? (
+          <div
+            className="cancionero-skeleton-shimmer size-10 shrink-0 rounded-full border border-border"
+            style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -53,10 +65,10 @@ export function CancioneroCardSkeleton({
 
 function SectionLabelSkeleton() {
   return (
-    <div
-      className="cancionero-skeleton-shimmer mb-2 h-3 w-28 rounded-md"
-      aria-hidden="true"
-    />
+    <div className="mb-2 flex items-center gap-1.5" aria-hidden="true">
+      <div className="cancionero-skeleton-shimmer size-3.5 shrink-0 rounded-sm" />
+      <div className="cancionero-skeleton-shimmer h-2.5 w-28 rounded-md" />
+    </div>
   );
 }
 
@@ -75,6 +87,7 @@ export function BuscadorSearchSkeleton({ cardCount = 5 }: { cardCount?: number }
           titleWidth={layout.title}
           artistWidth={layout.artist}
           shimmerDelayMs={index * 90}
+          trailing="none"
         />
       ))}
     </div>
@@ -90,6 +103,7 @@ export function BuscadorInternetPendingSkeleton({ cardCount = 2 }: { cardCount?:
           titleWidth={layout.title}
           artistWidth={layout.artist}
           shimmerDelayMs={index * 90}
+          trailing="none"
         />
       ))}
     </div>
@@ -110,33 +124,16 @@ export function SearchFieldSkeleton() {
   );
 }
 
-function CancioneroSkeletonHeader() {
-  return (
-    <div
-      className="flex items-center justify-center gap-1 py-1"
-      aria-hidden="true"
-    >
-      {[0, 1, 2, 3, 4].map((index) => (
-        <span
-          key={index}
-          className="cancionero-skeleton-eq-bar w-1 rounded-full"
-          style={{ animationDelay: `${index * 0.14}s` }}
-        />
-      ))}
-    </div>
-  );
-}
-
 type CancioneroListSkeletonProps = {
   includeSearch?: boolean;
   cardCount?: number;
-  showHeader?: boolean;
+  trailing?: CardTrailing;
 };
 
 export default function CancioneroListSkeleton({
   includeSearch = true,
   cardCount = 7,
-  showHeader = false,
+  trailing = "bookmark",
 }: CancioneroListSkeletonProps) {
   return (
     <div
@@ -145,15 +142,15 @@ export default function CancioneroListSkeleton({
       aria-live="polite"
       aria-label="Cargando canciones guardadas"
     >
-      {showHeader ? <CancioneroSkeletonHeader /> : null}
       {includeSearch ? <SearchFieldSkeleton /> : null}
-      <div className="flex flex-col gap-3">
+      <div className="app-list-grid">
         {CARD_LAYOUTS.slice(0, cardCount).map((layout, index) => (
           <CancioneroCardSkeleton
             key={index}
             titleWidth={layout.title}
             artistWidth={layout.artist}
             shimmerDelayMs={index * 90}
+            trailing={trailing}
           />
         ))}
       </div>
@@ -161,7 +158,16 @@ export default function CancioneroListSkeleton({
   );
 }
 
-export function CancioneroPageSkeleton() {
+type CancioneroPageSkeletonProps = {
+  trailing?: CardTrailing;
+  cardCount?: number;
+};
+
+/** Shell de subpágina Cancionero / Favoritas (CancioneroSubpageShell). */
+export function CancioneroPageSkeleton({
+  trailing = "bookmark",
+  cardCount = 6,
+}: CancioneroPageSkeletonProps = {}) {
   return (
     <div
       className="flex min-h-full flex-1 flex-col bg-bg-app"
@@ -169,8 +175,8 @@ export function CancioneroPageSkeleton() {
       aria-live="polite"
       aria-label="Cargando cancionero"
     >
-      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3">
-        <div className="flex items-center gap-3">
+      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3 lg:px-8">
+        <div className="app-page-container flex items-center gap-3">
           <div
             className="cancionero-skeleton-shimmer size-11 shrink-0 rounded-full"
             aria-hidden="true"
@@ -180,27 +186,34 @@ export function CancioneroPageSkeleton() {
             aria-hidden="true"
           />
           <div
-            className="cancionero-skeleton-shimmer size-11 shrink-0 rounded-full"
+            className="cancionero-skeleton-shimmer size-10 shrink-0 rounded-full"
             aria-hidden="true"
           />
         </div>
       </header>
 
-      <main className="flex flex-col gap-3 px-4 py-4 pb-24">
-        <SearchFieldSkeleton />
-        <div className="flex flex-col gap-3">
-          {CARD_LAYOUTS.map((layout, index) => (
-            <CancioneroCardSkeleton
-              key={index}
-              titleWidth={layout.title}
-              artistWidth={layout.artist}
-              shimmerDelayMs={index * 90}
-            />
-          ))}
+      <main className="app-page-main flex flex-col gap-3 px-4 py-4 pb-24 lg:px-8 lg:py-6">
+        <div className="app-page-container flex flex-col gap-3 lg:gap-4">
+          <SearchFieldSkeleton />
+          <div className="app-list-grid">
+            {CARD_LAYOUTS.slice(0, cardCount).map((layout, index) => (
+              <CancioneroCardSkeleton
+                key={index}
+                titleWidth={layout.title}
+                artistWidth={layout.artist}
+                shimmerDelayMs={index * 90}
+                trailing={trailing}
+              />
+            ))}
+          </div>
         </div>
       </main>
     </div>
   );
+}
+
+export function FavoritasPageSkeleton() {
+  return <CancioneroPageSkeleton trailing="listPlus" cardCount={5} />;
 }
 
 export const CancioneroSubpageSkeleton = CancioneroPageSkeleton;

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UsuarioActivo } from "@/types";
 
 export type ColaAgregadoSnapshot = {
-  agregado_por: string;
+  agregado_por: string | null;
   agregado_nombre: string;
   agregado_avatar_url: string | null;
 };

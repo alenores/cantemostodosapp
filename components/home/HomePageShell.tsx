@@ -526,11 +526,38 @@ export default function HomePageShell() {
           onDeleteItem={cola.eliminarItem}
           onVolverAPendiente={cola.volverAPendiente}
           onReorder={cola.reordenarPendientes}
+          onAgregarALista={cola.agregarALista}
         />
       </main>
 
       {modoLectura ? (
         <>
+          <div
+            className="fixed z-50 hidden flex-col items-end gap-2 lg:flex"
+            style={{
+              top: getLecturaTopChromeTopCss(),
+              right: lecturaFixedRightCss,
+            }}
+          >
+            <TapButton
+              type="button"
+              aria-label="Contraer"
+              onClick={salirModoLectura}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
+            >
+              <Minimize2 className="size-4 shrink-0 text-accent" aria-hidden="true" />
+              <span className="text-text-primary">Contraer</span>
+            </TapButton>
+            <TapButton
+              type="button"
+              aria-label="Afinador"
+              onClick={() => setAfinadorOpen(true)}
+              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
+            >
+              <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
+              <span className="text-text-primary">Afinador</span>
+            </TapButton>
+          </div>
 
           <TapButton
             type="button"
@@ -544,7 +571,7 @@ export default function HomePageShell() {
               setTonoPanelAbierto(false);
               setOverlayAbierto((open) => !open);
             }}
-            className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP} ${
+            className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP} ${
               overlayAbierto ? "border-accent/45" : ""
             }`}
             style={{
@@ -567,7 +594,7 @@ export default function HomePageShell() {
               type="button"
               aria-label="Buscar"
               onClick={() => setBuscadorOpen(true)}
-              className={`fixed z-50 flex size-9 items-center justify-center ${LECTURA_TOP_CHIP}`}
+              className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
               style={{
                 top: getLecturaFabMenuTopCss(),
                 right: lecturaFixedRightCss,

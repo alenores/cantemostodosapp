@@ -11,8 +11,8 @@ import { HelpCircle } from "lucide-react";
 import { useState } from "react";
 
 type CifraClubEmbedBadgeProps = {
-  /** control: margen superior izquierdo; lectura: margen inferior izquierdo. */
-  placement?: "control" | "lectura";
+  /** control: margen superior izquierdo; lectura/inline: sin absolute propio (el padre posiciona). */
+  placement?: "control" | "lectura" | "inline";
   onReload?: () => void;
 };
 
@@ -30,12 +30,15 @@ export default function CifraClubEmbedBadge({
         }
       : undefined;
 
+  const absoluteLectura = placement === "lectura";
+  const controlPlacement = placement === "control";
+
   return (
     <>
       <div
-        className={`pointer-events-none absolute z-10 flex items-center gap-1.5 ${
-          placement === "control" ? "left-4 top-2" : ""
-        }`}
+        className={`pointer-events-none z-10 flex items-center gap-1.5 ${
+          controlPlacement ? "absolute left-4 top-2" : ""
+        } ${absoluteLectura ? "absolute" : ""}`}
         style={wrapperStyle}
       >
         <TapButton

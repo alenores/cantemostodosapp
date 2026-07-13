@@ -3,8 +3,9 @@
 import UserAvatar from "@/components/perfil/UserAvatar";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import { getColaItemIconoTipo } from "@/lib/buscador";
+import { isColaAgregadoAleatorio } from "@/lib/cola-aleatorio";
 import type { ColaItem } from "@/types";
-import { Check, GripVertical, Play } from "lucide-react";
+import { Check, GripVertical, Play, Shuffle } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
@@ -119,9 +120,12 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       url_letra: item.url_letra ?? "",
       letra_texto: item.letra_texto,
     });
+    const esAgregadoAleatorio = isColaAgregadoAleatorio(item);
     const showAvatar =
       showAgregadoAvatar &&
-      (Boolean(item.agregado_avatar_url) || Boolean(item.agregado_nombre));
+      (esAgregadoAleatorio ||
+        Boolean(item.agregado_avatar_url) ||
+        Boolean(item.agregado_nombre));
 
     return (
       <div
@@ -138,18 +142,30 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
           <div
             className="pointer-events-none absolute right-2.5 top-2.5 z-10"
             aria-label={
-              item.agregado_nombre
-                ? `Agregada por ${item.agregado_nombre}`
-                : "Agregada por usuario desconocido"
+              esAgregadoAleatorio
+                ? "Agregada por aleatorio"
+                : item.agregado_nombre
+                  ? `Agregada por ${item.agregado_nombre}`
+                  : "Agregada por usuario desconocido"
             }
-            title={item.agregado_nombre ?? undefined}
+            title={
+              esAgregadoAleatorio
+                ? "Aleatorio"
+                : (item.agregado_nombre ?? undefined)
+            }
           >
-            <UserAvatar
-              nombre={item.agregado_nombre ?? ""}
-              email=""
-              avatarUrl={item.agregado_avatar_url ?? null}
-              size={22}
-            />
+            {esAgregadoAleatorio ? (
+              <span className="flex size-[22px] items-center justify-center rounded-full bg-accent/15 text-accent">
+                <Shuffle className="size-3" aria-hidden="true" />
+              </span>
+            ) : (
+              <UserAvatar
+                nombre={item.agregado_nombre ?? ""}
+                email=""
+                avatarUrl={item.agregado_avatar_url ?? null}
+                size={22}
+              />
+            )}
           </div>
         ) : null}
 

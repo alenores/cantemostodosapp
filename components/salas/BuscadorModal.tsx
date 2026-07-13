@@ -1444,7 +1444,7 @@ export default function BuscadorModal({
                       <LetraRevealFullControl
                         onRevealFull={handleRevealEmbedFull}
                         expanded={embedFullRevealed}
-                        className="top-2"
+                        className="absolute right-2 top-2"
                       />
                     ) : null}
                     {showAcordesPrimeraVezHint ? (

@@ -14,7 +14,7 @@ const LISTEN_CONTROL_CONTAINER_CLASS =
 type CompositorListenViewProps = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   bpm: number;
   tonalidadComposicion: NotaIndex;
   modoTonalComposicion: ModoTonal;
@@ -34,7 +34,7 @@ type CompositorListenViewProps = {
 export function CompositorListenView({
   piece,
   activeTrackId,
-  selectedEventId,
+  selectedEventIds,
   bpm,
   tonalidadComposicion,
   modoTonalComposicion,
@@ -56,7 +56,7 @@ export function CompositorListenView({
 
   const timelineProps = {
     piece,
-    selectedEventId,
+    selectedEventIds,
     activeTrackId,
     octaveExact: true as const,
     onlyCycleLayers: true,

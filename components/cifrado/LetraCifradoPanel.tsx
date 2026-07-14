@@ -21,6 +21,7 @@ type LetraCifradoPanelProps = {
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   activePlaybackLineIndex?: number | null;
   showCompas?: boolean;
+  showAcordes?: boolean;
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
   onLineRef?: (lineIndex: number, element: HTMLDivElement | null) => void;
 };
@@ -34,6 +35,7 @@ export default function LetraCifradoPanel({
   activeBeatAnchors = [],
   activePlaybackLineIndex = null,
   showCompas,
+  showAcordes = true,
   onMarkersReady,
   onLineRef,
 }: LetraCifradoPanelProps) {
@@ -76,6 +78,7 @@ export default function LetraCifradoPanel({
             compasConfig ? getIntensidadPlantilla(compasConfig) : []
           }
           showCompas={showCompasMarcadores}
+          showAcordes={showAcordes}
           activeBeatAnchors={activeBeatAnchors}
           activePlaybackLineIndex={activePlaybackLineIndex}
           onMarkersReady={onMarkersReady}

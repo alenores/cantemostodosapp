@@ -123,15 +123,24 @@ function HomeDestinationCardSkeleton({
   );
 }
 
+/** Replica visual de HubModuleCard (label → icon wrap 52px → CTA). */
 function HubModuleCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
   return (
     <div
-      className="flex flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-dark px-3 py-4"
+      className="relative flex min-h-full flex-1 flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-card px-3 py-4 lg:gap-3 lg:px-4 lg:py-5"
       aria-hidden="true"
     >
-      <ShimmerBlock className="h-[13px] w-[72%]" delayMs={delayMs} />
-      <ShimmerBlock className="size-16 rounded-xl" delayMs={delayMs + 40} />
-      <ShimmerBlock className="h-[34px] w-full rounded-lg" delayMs={delayMs + 80} />
+      <ShimmerBlock className="h-[13px] w-[58%]" delayMs={delayMs} />
+      <div className="flex flex-1 items-center justify-center">
+        <ShimmerBlock
+          className="size-[52px] shrink-0 rounded-[13px]"
+          delayMs={delayMs + 40}
+        />
+      </div>
+      <ShimmerBlock
+        className="h-[38px] w-full rounded-lg"
+        delayMs={delayMs + 80}
+      />
     </div>
   );
 }
@@ -147,23 +156,35 @@ function SalaCardSkeleton({
 }) {
   return (
     <div
-      className="flex min-h-11 items-center gap-3 rounded-[12px] border border-border bg-bg-card px-4 py-3"
+      className="flex min-h-[4.25rem] items-stretch gap-2 rounded-2xl border border-border bg-bg-card p-1.5"
       aria-hidden="true"
     >
-      <div className="min-w-0 flex-1 space-y-2">
-        <ShimmerBlock className={`h-4 ${titleWidth}`} delayMs={delayMs} />
-        <ShimmerBlock className={`h-3 ${subtitleWidth}`} delayMs={delayMs + 50} />
+      <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] px-3 py-2.5">
+        <ShimmerBlock className="size-10 shrink-0 rounded-xl" delayMs={delayMs} />
+        <div className="min-w-0 flex-1 space-y-2">
+          <ShimmerBlock className={`h-4 ${titleWidth}`} delayMs={delayMs + 40} />
+          <ShimmerBlock
+            className={`h-3 ${subtitleWidth}`}
+            delayMs={delayMs + 70}
+          />
+        </div>
       </div>
-      <ShimmerBlock className="size-5 shrink-0 rounded-md" delayMs={delayMs + 90} />
+      <div className="flex w-[4.75rem] shrink-0 flex-col items-center justify-center gap-1.5 rounded-[14px] border border-border/80 bg-bg-app/60 px-1.5 py-2">
+        <ShimmerBlock className="size-6 rounded-full" delayMs={delayMs + 90} />
+        <ShimmerBlock className="h-2.5 w-10" delayMs={delayMs + 110} />
+      </div>
     </div>
   );
 }
 
 function SalasSectionLabelSkeleton() {
   return (
-    <div className="flex items-center gap-1.5" aria-hidden="true">
-      <ShimmerBlock className="size-[18px] rounded-full" />
-      <ShimmerBlock className="h-3 w-32" delayMs={30} />
+    <div className="flex items-start justify-between gap-3" aria-hidden="true">
+      <div className="min-w-0 flex-1 space-y-2">
+        <ShimmerBlock className="h-7 w-28" />
+        <ShimmerBlock className="h-3 w-[70%]" delayMs={40} />
+      </div>
+      <ShimmerBlock className="mt-1 size-[18px] shrink-0 rounded-full" delayMs={40} />
     </div>
   );
 }
@@ -325,6 +346,7 @@ export function HomeWelcomeSkeleton() {
 /**
  * Skeleton del hub de sección (`/canciones`, `/practica`).
  * Sin AppTopHeader: lo aporta el layout de la ruta.
+ * Replica HubSectionPageClient: título text-xl + app-hub-grid de HubModuleCard.
  */
 export function HubSectionSkeleton({ cardCount = 3 }: { cardCount?: number }) {
   return (
@@ -336,7 +358,7 @@ export function HubSectionSkeleton({ cardCount = 3 }: { cardCount?: number }) {
     >
       <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-          <ShimmerBlock className="h-7 w-[36%] rounded-md" />
+          <ShimmerBlock className="h-5 w-[7.5rem] rounded-md" />
           <div className="app-hub-grid">
             {Array.from({ length: cardCount }, (_, index) => (
               <HubModuleCardSkeleton key={index} delayMs={index * 70} />
@@ -385,8 +407,8 @@ export function SalasPageSkeleton() {
     >
       <AppTopHeaderSkeleton />
 
-      <main className="app-page-main flex flex-1 flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
-        <div className="app-page-container flex flex-1 flex-col gap-3 lg:gap-4">
+      <main className="app-page-main flex flex-1 flex-col gap-4 px-4 py-6 pb-24 lg:gap-5 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-1 flex-col gap-4 lg:gap-5">
           <SalasSectionLabelSkeleton />
 
           <div className="app-list-grid">

@@ -18,6 +18,7 @@ import { Eye, EyeOff, Pause, Play } from "lucide-react";
 type CifradoLecturaSidePanelProps = {
   hasCompases?: boolean;
   compasesOcultos?: boolean;
+  acordesOcultos?: boolean;
   playing: boolean;
   canPlay: boolean;
   notacion: NotacionAcordes;
@@ -27,6 +28,7 @@ type CifradoLecturaSidePanelProps = {
   tapCount: number;
   onTogglePlayback: () => void;
   onToggleCompasesOcultos?: () => void;
+  onToggleAcordesOcultos?: () => void;
   onNotacionChange: (next: NotacionAcordes) => void;
   onTonalidadChange: (next: NotaIndex) => void;
   onModoTonalChange: (next: ModoTonal) => void;
@@ -41,6 +43,7 @@ export function getLecturaPremiumRailWidthCss(): string {
 export default function CifradoLecturaSidePanel({
   hasCompases = false,
   compasesOcultos = false,
+  acordesOcultos = false,
   playing,
   canPlay,
   notacion,
@@ -50,6 +53,7 @@ export default function CifradoLecturaSidePanel({
   tapCount,
   onTogglePlayback,
   onToggleCompasesOcultos,
+  onToggleAcordesOcultos,
   onNotacionChange,
   onTonalidadChange,
   onModoTonalChange,
@@ -57,6 +61,21 @@ export default function CifradoLecturaSidePanel({
   onTapTempo,
 }: CifradoLecturaSidePanelProps) {
   const showTonalidad = notacion !== "numero";
+
+  const ocultarAcordesButton = (
+    <TapButton
+      type="button"
+      onClick={onToggleAcordesOcultos}
+      className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+    >
+      {acordesOcultos ? (
+        <Eye className="size-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <EyeOff className="size-4 shrink-0" aria-hidden="true" />
+      )}
+      {acordesOcultos ? "Mostrar acordes" : "Ocultar acordes"}
+    </TapButton>
+  );
 
   return (
     <aside
@@ -108,6 +127,8 @@ export default function CifradoLecturaSidePanel({
               {compasesOcultos ? "Mostrar compases" : "Ocultar compases"}
             </TapButton>
 
+            {ocultarAcordesButton}
+
             <div>
               <label
                 className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
@@ -144,7 +165,13 @@ export default function CifradoLecturaSidePanel({
             />
           </div>
         ) : (
-          <CifradoNotacionToggle notacion={notacion} onChange={onNotacionChange} />
+          <div className="space-y-3">
+            {ocultarAcordesButton}
+            <CifradoNotacionToggle
+              notacion={notacion}
+              onChange={onNotacionChange}
+            />
+          </div>
         )}
       </div>
     </aside>

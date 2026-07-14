@@ -57,6 +57,7 @@ export type CompositorDrumSound =
 export type CompositorGuitarArticulation =
   | "pua"
   | "rasguido"
+  | "rasguidoArriba"
   | "bloque"
   | "dedo"
   | "silencio";
@@ -64,7 +65,11 @@ export type CompositorGuitarArticulation =
 export function isGuitarChordArticulation(
   articulation: CompositorGuitarArticulation,
 ): boolean {
-  return articulation === "rasguido" || articulation === "bloque";
+  return (
+    articulation === "rasguido" ||
+    articulation === "rasguidoArriba" ||
+    articulation === "bloque"
+  );
 }
 
 export type CompositorSlotNote = VozTarget;
@@ -80,7 +85,7 @@ export type CompositorTrackEvent = {
   octavaRelativa: number;
   /**
    * Modificador para reproducir/interpretar este evento como acorde.
-   * - Guitarra: aplica cuando `guitarArticulation` es rasguido o bloque.
+   * - Guitarra: aplica cuando `guitarArticulation` es rasguido, rasguidoArriba o bloque.
    * - Piano: aplica cuando `pianoHarmonyMode === "acorde"`.
    * - Viento: se ignora (solo notas).
    */
@@ -161,7 +166,8 @@ export const COMPOSITOR_DRUM_SOUND_OPTIONS = [
 
 export const COMPOSITOR_GUITAR_ARTICULATION_OPTIONS = [
   { id: "pua" as const, label: "Púa" },
-  { id: "rasguido" as const, label: "Rasguido" },
+  { id: "rasguido" as const, label: "Rasguido ↓" },
+  { id: "rasguidoArriba" as const, label: "Rasguido ↑" },
   { id: "bloque" as const, label: "Bloque" },
   { id: "dedo" as const, label: "Dedo" },
   { id: "silencio" as const, label: "Silencio" },

@@ -32,7 +32,7 @@ export const HUB_DESTINATION_INDIVIDUAL_HELP =
 export const HUB_DESTINATION_INDIVIDUAL_CTA = "Cantar solo";
 export const HUB_DESTINATION_PRACTICA_LABEL = "Práctica";
 export const HUB_DESTINATION_PRACTICA_DESCRIPTION =
-  "Metrónomo, voz y compositor";
+  "Metrónomo, voz, compositor y entrenador";
 export const HUB_DESTINATION_PRACTICA_HELP =
   "Herramientas para ensayar solo antes de tocar en grupo";
 export const HUB_DESTINATION_CANCIONERO_LABEL = "Cancionero";

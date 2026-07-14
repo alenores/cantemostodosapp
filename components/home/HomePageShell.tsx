@@ -31,6 +31,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import {
   AudioLines,
+  Eye,
+  EyeOff,
   ListMusic,
   Minimize2,
   Music,
@@ -111,8 +113,10 @@ type HomeModoLecturaOverlayProps = {
   menuCompacto?: boolean;
   showZoomOption?: boolean;
   showTonoOption?: boolean;
+  showAcordesOption?: boolean;
   hasCompases?: boolean;
   compasesOcultos?: boolean;
+  acordesOcultos?: boolean;
   onCerrar: () => void;
   onContraer: () => void;
   onSiguiente: () => void;
@@ -120,6 +124,7 @@ type HomeModoLecturaOverlayProps = {
   onBuscar: () => void;
   onAfinador: () => void;
   onActivarCompases?: () => void;
+  onToggleAcordesOcultos?: () => void;
   onAbrirZoom?: () => void;
   onAbrirTono?: () => void;
 };
@@ -131,8 +136,10 @@ function HomeModoLecturaOverlay({
   menuCompacto = false,
   showZoomOption = false,
   showTonoOption = false,
+  showAcordesOption = false,
   hasCompases = false,
   compasesOcultos = false,
+  acordesOcultos = false,
   onCerrar,
   onContraer,
   onSiguiente,
@@ -140,6 +147,7 @@ function HomeModoLecturaOverlay({
   onBuscar,
   onAfinador,
   onActivarCompases,
+  onToggleAcordesOcultos,
   onAbrirZoom,
   onAbrirTono,
 }: HomeModoLecturaOverlayProps) {
@@ -219,6 +227,17 @@ function HomeModoLecturaOverlay({
             }}
           />
         ) : null}
+        {showAcordesOption ? (
+          <HomeModoLecturaFabOption
+            icon={acordesOcultos ? Eye : EyeOff}
+            label={acordesOcultos ? "Mostrar acordes" : "Ocultar acordes"}
+            cascadeIndex={cascadeIndex++}
+            onClick={() => {
+              onCerrar();
+              onToggleAcordesOcultos?.();
+            }}
+          />
+        ) : null}
         {showTonoOption ? (
           <HomeModoLecturaFabOption
             icon={Music}
@@ -277,6 +296,7 @@ export default function HomePageShell() {
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [lecturaZoomEligible, setLecturaZoomEligible] = useState(false);
   const [compasesOcultos, setCompasesOcultos] = useState(false);
+  const [acordesOcultos, setAcordesOcultos] = useState(false);
   const [zoomPanelAbierto, setZoomPanelAbierto] = useState(false);
   const [tonoPanelAbierto, setTonoPanelAbierto] = useState(false);
   const [lecturaCompasPlayback, setLecturaCompasPlayback] =
@@ -314,6 +334,7 @@ export default function HomePageShell() {
 
   useEffect(() => {
     setCompasesOcultos(false);
+    setAcordesOcultos(false);
     setLecturaCompasPlayback(null);
     setLecturaTonalidad(null);
     setZoomPanelAbierto(false);
@@ -370,6 +391,7 @@ export default function HomePageShell() {
     setTonoPanelAbierto(false);
     setAfinadorOpen(false);
     setCompasesOcultos(false);
+    setAcordesOcultos(false);
     setLecturaCompasPlayback(null);
     setLecturaTonalidad(null);
     setModoLectura(false);
@@ -486,6 +508,10 @@ export default function HomePageShell() {
               compasesOcultos={compasesOcultos}
               onToggleCompasesOcultos={() =>
                 setCompasesOcultos((ocultos) => !ocultos)
+              }
+              acordesOcultos={acordesOcultos}
+              onToggleAcordesOcultos={() =>
+                setAcordesOcultos((ocultos) => !ocultos)
               }
               onLecturaCompasPlaybackStateChange={
                 handleLecturaCompasPlaybackStateChange
@@ -611,8 +637,10 @@ export default function HomePageShell() {
             menuCompacto={lecturaConColaLateral}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
+            showAcordesOption={Boolean(lecturaTonalidad)}
             hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
             compasesOcultos={compasesOcultos}
+            acordesOcultos={acordesOcultos}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
             onSiguiente={() => void handleSiguienteRef.current?.()}
@@ -620,6 +648,9 @@ export default function HomePageShell() {
             onBuscar={() => setBuscadorOpen(true)}
             onAfinador={() => setAfinadorOpen(true)}
             onActivarCompases={() => setCompasesOcultos(false)}
+            onToggleAcordesOcultos={() =>
+              setAcordesOcultos((ocultos) => !ocultos)
+            }
             onAbrirZoom={() => {
               setTonoPanelAbierto(false);
               setZoomPanelAbierto(true);

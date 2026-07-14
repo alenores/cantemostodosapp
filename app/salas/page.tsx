@@ -34,7 +34,7 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
   // RLS filtra: solo salas propias o donde el usuario es miembro.
   const { data: salas, error: salasError } = await supabase
     .from("salas")
-    .select("id, nombre, descripcion")
+    .select("id, nombre, descripcion, avatar_url")
     .order("nombre");
 
   return (

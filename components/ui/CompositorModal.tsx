@@ -56,7 +56,9 @@ export default function CompositorModal({
   piece,
   activeTrackId,
   activeDrumPatternId,
-  selectedEventId,
+  activeMelodicPatternId,
+  activeMelodicPatternInstrumentId,
+  selectedEventIds,
   cycleGolpes,
   cycleBeatDurations,
   bpm,
@@ -65,11 +67,13 @@ export default function CompositorModal({
   isPreviewingCrop,
   previewingDrumPatternId,
   drumPatternPreviewProgress,
+  previewingMelodicPatternId,
+  melodicPatternPreviewProgress,
   cycleProgress,
   tapTempoTapCount,
   samplesLoading,
   setActiveTrackId,
-  setSelectedEventId,
+  setSelectedEventIds,
   setBpm,
   setCycleGolpes,
   setCycleBeatDurationAtSlot,
@@ -79,7 +83,8 @@ export default function CompositorModal({
   setModoTonalComposicion,
   placeTrackEvent,
   updateTrackEvent,
-  removeTrackEvent,
+  updateTrackEvents,
+  removeTrackEvents,
   toggleTrack,
   toggleListenTrack,
   resetListenPlaybackLayers,
@@ -89,11 +94,14 @@ export default function CompositorModal({
   previewActiveTrack,
   previewDrumPattern,
   stopDrumPatternPreview,
+  previewMelodicPattern,
+  stopMelodicPatternPreview,
   previewPieceOnce,
   previewPieceTrackOnce,
   stop,
   resetPiece,
   applyDrumPattern,
+  applyMelodicPattern,
   isPieceModifiedFromBaseline,
   discardCycleChanges,
   savedCycles,
@@ -539,7 +547,7 @@ export default function CompositorModal({
             editorOpen && isDesktop
               ? "overflow-hidden px-4 py-2 lg:px-5 lg:py-2"
               : editorOpen
-                ? `overflow-hidden ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-2`
+                ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-2`
                 : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4 lg:py-5`
           }`}
         >
@@ -548,8 +556,10 @@ export default function CompositorModal({
               piece={piece}
               activeTrackId={activeTrackId}
               activeDrumPatternId={activeDrumPatternId}
+              activeMelodicPatternId={activeMelodicPatternId}
+              activeMelodicPatternInstrumentId={activeMelodicPatternInstrumentId}
               isPieceModifiedFromBaseline={isPieceModifiedFromBaseline}
-              selectedEventId={selectedEventId}
+              selectedEventIds={selectedEventIds}
               cycleGolpes={cycleGolpes}
               cycleBeatDurations={cycleBeatDurations}
               bpm={bpm}
@@ -559,6 +569,8 @@ export default function CompositorModal({
               isPreviewingTrack={isPreviewingTrack}
               previewingDrumPatternId={previewingDrumPatternId}
               drumPatternPreviewProgress={drumPatternPreviewProgress}
+              previewingMelodicPatternId={previewingMelodicPatternId}
+              melodicPatternPreviewProgress={melodicPatternPreviewProgress}
               cycleProgress={cycleProgress}
               tapTempoTapCount={tapTempoTapCount}
               samplesLoading={samplesLoading}
@@ -570,7 +582,7 @@ export default function CompositorModal({
               cycleName={draftCycleName}
               onCycleNameChange={setDraftCycleName}
               onSetActiveTrackId={setActiveTrackId}
-              onSetSelectedEventId={setSelectedEventId}
+              onSetSelectedEventIds={setSelectedEventIds}
               onToggleTrack={toggleTrack}
               onToggleListenTrack={toggleListenTrack}
               onEnterListen={resetListenPlaybackLayers}
@@ -582,7 +594,8 @@ export default function CompositorModal({
               onSetModoTonalComposicion={setModoTonalComposicion}
               onPlaceTrackEvent={placeTrackEvent}
               onUpdateTrackEvent={updateTrackEvent}
-              onRemoveTrackEvent={removeTrackEvent}
+              onUpdateTrackEvents={updateTrackEvents}
+              onRemoveTrackEvents={removeTrackEvents}
               onTapTempo={tapTempo}
               onStart={() => void start()}
               onPreviewActiveTrack={() => void previewActiveTrack()}
@@ -590,9 +603,14 @@ export default function CompositorModal({
                 void previewDrumPattern(patternId)
               }
               onStopDrumPatternPreview={stopDrumPatternPreview}
+              onPreviewMelodicPattern={(patternId, instrumentId) =>
+                void previewMelodicPattern(patternId, instrumentId)
+              }
+              onStopMelodicPatternPreview={stopMelodicPatternPreview}
               onStop={stop}
               onReset={resetPiece}
               onApplyDrumPattern={applyDrumPattern}
+              onApplyMelodicPattern={applyMelodicPattern}
               onSaveCurrentCycle={saveCurrentCycle}
               onUpdateActiveCycle={updateActiveCycle}
               onDiscardChanges={handleDiscardCycleChanges}
@@ -657,7 +675,7 @@ export default function CompositorModal({
               listeningCycleId={listeningCycleId}
               playbackPiece={piece}
               activeTrackId={activeTrackId}
-              selectedEventId={selectedEventId}
+              selectedEventIds={selectedEventIds}
               bpm={bpm}
               tonalidadComposicion={tonalidadComposicion}
               modoTonalComposicion={modoTonalComposicion}

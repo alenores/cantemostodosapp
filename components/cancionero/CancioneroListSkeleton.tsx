@@ -26,29 +26,44 @@ export function CancioneroCardSkeleton({
   shimmerDelayMs,
   trailing = "bookmark",
 }: CancioneroCardSkeletonProps) {
+  // CancioneroItemCard vs MisCanciones (Favoritas) usan layouts distintos.
+  const isFavoritas = trailing === "listPlus";
+
   return (
     <div
-      className="rounded-[12px] border border-border-card bg-bg-card px-3 py-2.5"
+      className={`rounded-[12px] border border-border-card bg-bg-card px-3 ${
+        isFavoritas ? "py-3" : "py-2.5"
+      }`}
       aria-hidden="true"
     >
-      <div className="flex items-center gap-3">
+      <div
+        className={`flex ${
+          isFavoritas ? "items-center gap-3" : "items-end gap-2.5"
+        }`}
+      >
         <div
-          className="cancionero-skeleton-shimmer size-6 shrink-0 rounded-md border border-border"
+          className="cancionero-skeleton-shimmer size-6 shrink-0 rounded-md"
           style={{ animationDelay: `${shimmerDelayMs}ms` }}
         />
-        <div className="min-w-0 flex-1 space-y-2">
+        <div
+          className={`min-w-0 flex-1 space-y-1.5 ${
+            isFavoritas ? "" : "pb-px"
+          }`}
+        >
           <div
             className={`cancionero-skeleton-shimmer h-[17px] rounded-md ${titleWidth}`}
             style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
           />
           <div
-            className={`cancionero-skeleton-shimmer h-[14px] rounded-md ${artistWidth}`}
+            className={`cancionero-skeleton-shimmer rounded-md ${
+              isFavoritas ? "h-[14px]" : "h-[13px]"
+            } ${artistWidth}`}
             style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
           />
         </div>
         {trailing === "bookmark" ? (
           <div
-            className="cancionero-skeleton-shimmer size-3 shrink-0 rounded-sm"
+            className="cancionero-skeleton-shimmer mb-px size-3 shrink-0 self-end rounded-sm"
             style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
           />
         ) : null}

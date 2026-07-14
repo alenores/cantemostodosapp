@@ -190,6 +190,8 @@ type CancionActivaSectionProps = {
   onLecturaZoomEligibleChange?: (eligible: boolean) => void;
   compasesOcultos?: boolean;
   onToggleCompasesOcultos?: () => void;
+  acordesOcultos?: boolean;
+  onToggleAcordesOcultos?: () => void;
   onLecturaCompasPlaybackStateChange?: (
     state: LecturaCompasPlaybackState | null,
   ) => void;
@@ -252,6 +254,8 @@ export default function CancionActivaSection({
   onLecturaZoomEligibleChange,
   compasesOcultos = false,
   onToggleCompasesOcultos,
+  acordesOcultos = false,
+  onToggleAcordesOcultos,
   onLecturaCompasPlaybackStateChange,
   onLecturaTonalidadStateChange,
 }: CancionActivaSectionProps) {
@@ -491,6 +495,8 @@ export default function CancionActivaSection({
                   letraZoomStyle={letraZoomStyle}
                   compasesOcultos={compasesOcultos}
                   onToggleCompasesOcultos={onToggleCompasesOcultos}
+                  acordesOcultos={acordesOcultos}
+                  onToggleAcordesOcultos={onToggleAcordesOcultos}
                   onCompasPlaybackStateChange={
                     onLecturaCompasPlaybackStateChange
                   }

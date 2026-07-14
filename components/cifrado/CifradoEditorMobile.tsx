@@ -13,7 +13,10 @@ import {
   type MobileModoInsercion,
 } from "@/components/cifrado/CifradoMobileEditableLines";
 import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFields";
-import { splitLyricsLines } from "@/components/cifrado/CifradoLyricsView";
+import {
+  CifradoLyricsBlock,
+  splitLyricsLines,
+} from "@/components/cifrado/CifradoLyricsView";
 import {
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
@@ -24,10 +27,15 @@ import {
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { buildIntensidadForGolpes } from "@/lib/cifrado-barra-cycles";
 import {
+  clampBpm,
+  computeTapBpm,
   createEmptyCifrado,
   createDefaultCompasConfig,
+  DEFAULT_BPM,
+  DEFAULT_TONALIDAD,
   findAcordeAt,
   getCompasCycleGolpes,
   isCharOffsetInsideCompasCycle,
@@ -43,10 +51,12 @@ import {
   type Modificador,
   type NotaIndex,
 } from "@/lib/cifrado";
+import { getNotaLabel } from "@/lib/notacion-acordes";
 import {
   cycleIntensidadSlot,
   getBarraIntensidad,
   getIntensidadPlantilla,
+  normalizeCompasConfig,
   resizeCompasConfigCycleGolpes,
   updateBarraIntensidad,
 } from "@/lib/cifrado-intensidad";
@@ -61,7 +71,12 @@ import {
   inferTonalidadFromAcordes,
   type TonalidadInferResult,
 } from "@/lib/cifrado-tonalidad-infer";
-import { ArrowLeft, X } from "lucide-react";
+import type {
+  CifradoEditorPersistFn,
+  CifradoEditorSession,
+  CifradoSaveResult,
+} from "@/lib/cifrado-editor-session";
+import { ArrowLeft, Eye, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -78,11 +93,27 @@ const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 const textareaClassName =
   "min-h-[220px] w-full flex-1 resize-none rounded-[10px] border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
 
+type CifradoEditorMobileProps = {
+  session?: CifradoEditorSession | null;
+  isLoggedIn?: boolean;
+  backHref?: string;
+  backAriaLabel?: string;
+  onPersist?: CifradoEditorPersistFn;
+  onSaved?: (result?: CifradoSaveResult) => void;
+};
+
 /**
  * Editor de canciones solo para celular.
  * Separado del de PC.
  */
-export default function CifradoEditorMobile() {
+export default function CifradoEditorMobile({
+  session = null,
+  isLoggedIn = false,
+  backHref,
+  backAriaLabel = "Volver",
+  onPersist,
+  onSaved,
+}: CifradoEditorMobileProps = {}) {
   const searchParams = useSearchParams();
   const desdeCancionero = searchParams.get("desde") === "cancionero";
   const [phase, setPhase] = useState<MobilePhase>("ingreso");
@@ -99,6 +130,10 @@ export default function CifradoEditorMobile() {
     createDefaultCompasConfig,
   );
   const [error, setError] = useState<string | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [dragTarget, setDragTarget] = useState<PickerTarget | null>(null);
   const [dragOrigin, setDragOrigin] = useState<PickerTarget | null>(null);
@@ -122,6 +157,32 @@ export default function CifradoEditorMobile() {
   const dragOriginRef = useRef<PickerTarget | null>(null);
   const barDragTargetRef = useRef<PickerTarget | null>(null);
   const barDragOriginRef = useRef<PickerTarget | null>(null);
+  const editingCancionIdRef = useRef<number | undefined>(undefined);
+  const tapTimestampsRef = useRef<number[]>([]);
+  const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    editingCancionIdRef.current = session.cancionId;
+    setNombre(session.nombre);
+    setArtista(session.artista);
+    setLyricsText(session.letra);
+    setDraftLyrics(session.letra);
+    setCifrado(session.cifrado ?? createEmptyCifrado());
+    setCompasConfig(
+      normalizeCompasConfig({
+        ...(session.compas_config ?? createDefaultCompasConfig()),
+        bpm: session.bpm_default ?? session.compas_config?.bpm ?? DEFAULT_BPM,
+      }),
+    );
+    setTonalidadIndex(session.tonalidad_default ?? DEFAULT_TONALIDAD);
+    setModoTonal(session.modo_tonal_default ?? DEFAULT_MODO_TONAL);
+    setPhase(session.skipIngreso ? "cifrado" : "ingreso");
+    setError(null);
+  }, [session]);
 
   const tonalidadLista = tonalidadIndex !== null && modoTonal !== null;
   const pickerExisting = pickerTarget
@@ -158,8 +219,16 @@ export default function CifradoEditorMobile() {
       if (pasteProposeTimerRef.current) {
         clearTimeout(pasteProposeTimerRef.current);
       }
+
+      if (tapResetTimerRef.current) {
+        clearTimeout(tapResetTimerRef.current);
+      }
     };
   }, []);
+
+  const tonalidadLabel =
+    tonalidadIndex !== null ? getNotaLabel(tonalidadIndex, "es") : "—";
+  const modoLabel = modoTonal === "menor" ? "menor" : "mayor";
 
   function clearError() {
     if (error) {
@@ -201,6 +270,110 @@ export default function CifradoEditorMobile() {
     setModoInsercion("acordes");
     setError(null);
     setPhase("cifrado");
+  }
+
+  function handleSetBpm(nextBpm: number) {
+    setCompasConfig((current) => ({ ...current, bpm: clampBpm(nextBpm) }));
+  }
+
+  function handleTapTempo() {
+    const now = performance.now();
+    const recentTaps = tapTimestampsRef.current.filter(
+      (timestamp) => now - timestamp < 3000,
+    );
+
+    recentTaps.push(now);
+    tapTimestampsRef.current = recentTaps;
+    setTapCount(recentTaps.length);
+
+    if (tapResetTimerRef.current !== null) {
+      clearTimeout(tapResetTimerRef.current);
+    }
+
+    tapResetTimerRef.current = setTimeout(() => {
+      tapTimestampsRef.current = [];
+      setTapCount(0);
+      tapResetTimerRef.current = null;
+    }, 3000);
+
+    const nextBpm = computeTapBpm(recentTaps, now);
+
+    if (nextBpm !== null) {
+      setCompasConfig((current) => ({ ...current, bpm: nextBpm }));
+    }
+  }
+
+  async function handleSave() {
+    if (!onPersist) {
+      return;
+    }
+
+    if (!isLoggedIn) {
+      setError("Iniciá sesión para guardar.");
+      return;
+    }
+
+    if (phase !== "cifrado") {
+      setError("Aplicá la letra y empezá a cifrar antes de guardar.");
+      return;
+    }
+
+    if (!nombre.trim()) {
+      setError("Completá el nombre de la canción.");
+      return;
+    }
+
+    if (!lyricsText.trim()) {
+      setError("La letra no puede estar vacía.");
+      return;
+    }
+
+    if (tonalidadIndex === null || modoTonal === null) {
+      setError("Completá la tonalidad.");
+      return;
+    }
+
+    setSaveLoading(true);
+    setError(null);
+
+    try {
+      const clampedBpm = Math.max(
+        40,
+        Math.min(240, compasConfig.bpm || DEFAULT_BPM),
+      );
+      const editingId = editingCancionIdRef.current ?? session?.cancionId;
+      const savedId = await onPersist(editingId, {
+        nombre: nombre.trim(),
+        artista: artista.trim() || null,
+        letra: lyricsText,
+        cifrado,
+        compas_config: normalizeCompasConfig({
+          ...compasConfig,
+          bpm: clampedBpm,
+          barrasVersion: 2 as const,
+        }),
+        tonalidad_default: tonalidadIndex,
+        modo_tonal_default: modoTonal,
+        bpm_default: clampedBpm,
+      });
+
+      editingCancionIdRef.current = savedId;
+      onSaved?.({
+        id: savedId,
+        nombre: nombre.trim(),
+        artista: artista.trim() || null,
+        letra: lyricsText,
+        tiene_cifrado_avanzado: true,
+      });
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "No se pudo guardar la canción",
+      );
+    } finally {
+      setSaveLoading(false);
+    }
   }
 
   function closeChordPicker() {
@@ -661,9 +834,17 @@ export default function CifradoEditorMobile() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
       <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
-        {desdeCancionero ? (
+        {backHref ? (
+          <TapLink
+            href={backHref}
+            ariaLabel={backAriaLabel}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+          >
+            <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+          </TapLink>
+        ) : desdeCancionero ? (
           <TapLink
             href="/canciones/cancionero"
             ariaLabel="Volver al cancionero"
@@ -675,7 +856,18 @@ export default function CifradoEditorMobile() {
         <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
           Editor
         </h1>
-        {!desdeCancionero ? (
+        {onPersist && phase === "cifrado" ? (
+          <TapButton
+            type="button"
+            aria-label="Guardar"
+            disabled={saveLoading}
+            onClick={() => void handleSave()}
+            className={`shrink-0 px-3 py-2 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+          >
+            {saveLoading ? "…" : "Guardar"}
+          </TapButton>
+        ) : null}
+        {!backHref && !desdeCancionero ? (
           <TapLink
             href="/canciones"
             ariaLabel="Cerrar"
@@ -870,12 +1062,46 @@ export default function CifradoEditorMobile() {
         </main>
       ) : (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-            <p className="min-w-0 flex-1 truncate text-sm text-text-muted">
-              {nombre.trim() || "Sin nombre"}
-              {artista.trim() ? ` · ${artista.trim()}` : ""}
-            </p>
+          <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setConfigOpen(true)}
+              className="flex min-w-0 flex-1 flex-col items-start text-left"
+            >
+              <span className="w-full truncate text-sm font-semibold text-text-primary">
+                {nombre.trim() || "Sin nombre"}
+                {artista.trim() ? ` · ${artista.trim()}` : ""}
+              </span>
+              <span className="text-xs text-text-muted">
+                {tonalidadLabel} {modoLabel} · {compasConfig.bpm} BPM
+              </span>
+            </button>
+            <TapButton
+              type="button"
+              aria-label="Datos y ajustes de la canción"
+              onClick={() => setConfigOpen(true)}
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
+            >
+              <SlidersHorizontal className="size-5" aria-hidden="true" />
+            </TapButton>
+            <TapButton
+              type="button"
+              aria-label="Vista previa"
+              onClick={() => setPreviewOpen(true)}
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
+            >
+              <Eye className="size-5" aria-hidden="true" />
+            </TapButton>
           </div>
+
+          {error ? (
+            <p
+              className="shrink-0 px-4 py-2 text-sm font-medium text-red-400"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
 
           <div
             className={`relative min-h-0 flex-1 overflow-y-auto ${CIFRADO_EDITOR_SHEET_BG_CLASS}`}
@@ -956,6 +1182,162 @@ export default function CifradoEditorMobile() {
           onStartDrag={handleStartDragAcorde}
           onClose={closeChordPicker}
         />
+      ) : null}
+
+      {configOpen && phase === "cifrado" ? (
+        <div className="absolute inset-0 z-[60] flex flex-col bg-bg-app">
+          <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
+            <TapButton
+              type="button"
+              aria-label="Volver a cifrar"
+              onClick={() => setConfigOpen(false)}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <ArrowLeft
+                className="size-5 text-text-primary"
+                aria-hidden="true"
+              />
+            </TapButton>
+            <h2 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
+              Datos y ajustes
+            </h2>
+            <TapButton
+              type="button"
+              onClick={() => setConfigOpen(false)}
+              className={`shrink-0 px-4 py-2 text-sm font-bold ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+            >
+              Listo
+            </TapButton>
+          </header>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 pb-28">
+            <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                Datos de la canción
+              </p>
+              <label className={labelClassName} htmlFor="cifrado-mobile-cfg-nombre">
+                Nombre
+              </label>
+              <input
+                id="cifrado-mobile-cfg-nombre"
+                value={nombre}
+                onChange={(event) => {
+                  setNombre(event.target.value);
+                  clearError();
+                }}
+                className={CIFRADO_CONTROLS_INPUT_CLASS}
+                placeholder="Nombre de la canción"
+              />
+              <label
+                className={`${labelClassName} mt-3`}
+                htmlFor="cifrado-mobile-cfg-artista"
+              >
+                Artista
+              </label>
+              <input
+                id="cifrado-mobile-cfg-artista"
+                value={artista}
+                onChange={(event) => setArtista(event.target.value)}
+                className={CIFRADO_CONTROLS_INPUT_CLASS}
+                placeholder="Artista"
+              />
+            </div>
+
+            <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
+              <CifradoTonalidadFields
+                idPrefix="cifrado-mobile-cfg"
+                notacion="es"
+                tonalidadIndex={tonalidadIndex}
+                modoTonal={modoTonal}
+                requireSelection
+                onTonalidadChange={(next) => {
+                  setTonalidadIndex(next);
+                  clearError();
+                }}
+                onModoTonalChange={(next) => {
+                  setModoTonal(next);
+                  clearError();
+                }}
+              />
+            </div>
+
+            <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+              <label
+                className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                htmlFor="cifrado-mobile-cfg-bpm"
+              >
+                Tempo (BPM)
+              </label>
+              <div className="flex items-stretch gap-2">
+                <ToolNumericStepper
+                  value={compasConfig.bpm}
+                  density="compact"
+                  inputId="cifrado-mobile-cfg-bpm"
+                  min={40}
+                  max={240}
+                  decrementDisabled={compasConfig.bpm <= 40}
+                  incrementDisabled={compasConfig.bpm >= 240}
+                  decrementAriaLabel="Reducir BPM"
+                  incrementAriaLabel="Aumentar BPM"
+                  onDecrement={() => handleSetBpm(compasConfig.bpm - 1)}
+                  onIncrement={() => handleSetBpm(compasConfig.bpm + 1)}
+                  onSetValue={handleSetBpm}
+                  className="min-w-0 flex-1"
+                />
+                <TapButton
+                  type="button"
+                  onClick={handleTapTempo}
+                  className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                >
+                  Tap{tapCount > 0 ? ` (${tapCount})` : ""}
+                </TapButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewOpen && phase === "cifrado" ? (
+        <div className="absolute inset-0 z-[60] flex flex-col bg-bg-app">
+          <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
+            <TapButton
+              type="button"
+              aria-label="Cerrar vista previa"
+              onClick={() => setPreviewOpen(false)}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <ArrowLeft
+                className="size-5 text-text-primary"
+                aria-hidden="true"
+              />
+            </TapButton>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-extrabold text-text-primary">
+                {nombre.trim() || "Sin nombre"}
+              </p>
+              <p className="truncate text-xs text-text-muted">
+                {artista.trim() ? `${artista.trim()} · ` : ""}
+                {tonalidadLabel} {modoLabel} · {compasConfig.bpm} BPM
+              </p>
+            </div>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-letra-bg px-4 py-5">
+            <CifradoLyricsBlock
+              letra={lyricsText}
+              acordes={cifrado.acordes}
+              barras={compasConfig.barras}
+              tipoCompas={compasConfig.tipoCompas}
+              intensidadPlantilla={getIntensidadPlantilla(compasConfig)}
+              lineTerminalOffsets={compasConfig.lineTerminalOffsets}
+              showCompas
+              showAcordes
+              notacion="es"
+              letraSheet
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   );

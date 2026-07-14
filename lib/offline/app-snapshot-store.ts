@@ -7,7 +7,7 @@ import type { Sala, UsuarioActivo } from "@/types";
 
 export type AppSnapshotPayload = {
   usuario: UsuarioActivo;
-  salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+  salas: Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">[];
   cancioneroTotal?: number;
 };
 

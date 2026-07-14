@@ -23,7 +23,7 @@ type CompositorCyclesLibraryProps = {
   listeningCycleId: string | null;
   playbackPiece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   bpm: number;
   tonalidadComposicion: NotaIndex;
   modoTonalComposicion: ModoTonal;
@@ -54,7 +54,7 @@ export function CompositorCyclesLibrary({
   listeningCycleId,
   playbackPiece,
   activeTrackId,
-  selectedEventId,
+  selectedEventIds,
   bpm,
   tonalidadComposicion,
   modoTonalComposicion,
@@ -154,7 +154,7 @@ export function CompositorCyclesLibrary({
             isPlaybackActive={listeningCycleId === cycle.id}
             piece={playbackPiece}
             activeTrackId={activeTrackId}
-            selectedEventId={selectedEventId}
+            selectedEventIds={selectedEventIds}
             bpm={bpm}
             tonalidadComposicion={tonalidadComposicion}
             modoTonalComposicion={modoTonalComposicion}

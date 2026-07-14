@@ -31,6 +31,8 @@ type LetraCifradoLecturaShellProps = {
   letraZoomStyle?: CSSProperties;
   compasesOcultos?: boolean;
   onToggleCompasesOcultos?: () => void;
+  acordesOcultos?: boolean;
+  onToggleAcordesOcultos?: () => void;
   onCompasPlaybackStateChange?: (state: LecturaCompasPlaybackState | null) => void;
   onTonalidadStateChange?: (state: LecturaTonalidadState | null) => void;
 };
@@ -42,12 +44,15 @@ export default function LetraCifradoLecturaShell({
   letraZoomStyle,
   compasesOcultos = false,
   onToggleCompasesOcultos,
+  acordesOcultos = false,
+  onToggleAcordesOcultos,
   onCompasPlaybackStateChange,
   onTonalidadStateChange,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
   const hasCompases = Boolean(compasConfig?.barras?.length);
   const showCompasMarcadores = hasCompases && !compasesOcultos;
+  const showAcordes = !acordesOcultos;
 
   const playback = useCifradoPlayback({
     detalle,
@@ -120,6 +125,7 @@ export default function LetraCifradoLecturaShell({
       <CifradoLecturaSidePanel
         hasCompases={hasCompases}
         compasesOcultos={compasesOcultos}
+        acordesOcultos={acordesOcultos}
         playing={playback.playing}
         canPlay={playback.canPlay}
         notacion={playback.notacion}
@@ -129,6 +135,7 @@ export default function LetraCifradoLecturaShell({
         tapCount={playback.tapCount}
         onTogglePlayback={playback.handleTogglePlayback}
         onToggleCompasesOcultos={onToggleCompasesOcultos}
+        onToggleAcordesOcultos={onToggleAcordesOcultos}
         onNotacionChange={playback.handleNotacionChange}
         onTonalidadChange={playback.handleTonalidadChange}
         onModoTonalChange={playback.handleModoTonalChange}
@@ -152,6 +159,7 @@ export default function LetraCifradoLecturaShell({
           activeBeatAnchors={playback.activeBeatAnchors}
           activePlaybackLineIndex={playback.activePlaybackLineIndex}
           showCompas={showCompasMarcadores}
+          showAcordes={showAcordes}
           onMarkersReady={hasCompases ? playback.handleMarkersReady : undefined}
           onLineRef={hasCompases ? playback.handleLineRef : undefined}
         />

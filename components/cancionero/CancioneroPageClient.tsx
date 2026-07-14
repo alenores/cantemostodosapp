@@ -304,7 +304,9 @@ export default function CancioneroPageClient({
 
     // Celular: pantalla nueva del editor. PC: modal del editor actual (sin tocar).
     if (!isDesktop) {
-      navigateWithProgress("/canciones/editor?desde=cancionero");
+      navigateWithProgress(
+        `/canciones/editor?id=${cancion.id}&desde=cancionero`,
+      );
       return;
     }
 

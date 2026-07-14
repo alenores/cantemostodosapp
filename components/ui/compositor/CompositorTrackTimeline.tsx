@@ -1,5 +1,6 @@
 "use client";
 
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { CompositorCapasTabs } from "@/components/ui/compositor/CompositorCapasStrip";
 import { CompositorMelodicInstrumentSelect } from "@/components/ui/compositor/CompositorMelodicInstrumentSelect";
 import { CompositorDrumEditPanel } from "@/components/ui/compositor/CompositorDrumEditPanel";
@@ -23,7 +24,12 @@ import type {
   CompositorPiece,
   CompositorTrackEvent,
 } from "@/lib/compositor";
-import { getInstrumentLabel, isCompositorCycleLayer } from "@/lib/compositor";
+import {
+  COMPOSITOR_MAX_EVENTS_PER_TRACK,
+  getInstrumentLabel,
+  isCompositorCycleLayer,
+  isGuitarChordArticulation,
+} from "@/lib/compositor";
 import {
   buildDrumTimelineRows,
   buildMelodicTimelineRows,
@@ -39,23 +45,27 @@ import {
   buildMelodicAddPartial,
   getMelodicRowIdForDraft,
 } from "@/lib/compositor-timeline-placement";
+import { eventsIntersectMarquee } from "@/lib/compositor-timeline-multi-select";
 import { resolveEventMelodicNote } from "@/lib/compositor-melodic-pitch";
 import type { MelodicRowDragContext } from "@/components/ui/compositor/useCompositorTimelineBlockDrag";
 import {
-  eventOverlapsStep,
   getCompositorCycleDurationSeconds,
   getCompositorGridSteps,
   getCompositorStepDurationSeconds,
   stepToCycleOffsetSeconds,
+  eventOverlapsStep,
 } from "@/lib/compositor-timeline";
 import type { NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
+  COMPOSITOR_CONFIRM_DELETE_BLOCKS_MESSAGE,
   COMPOSITOR_LABEL_ESCUCHAR_CAPA,
 } from "@/lib/ritmo-terminologia";
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  applyGuitarHarmonyMode,
+  applyPianoHarmonyMode,
   createDefaultMelodicDraft,
   draftFromEvent,
   draftToEventPatch,
@@ -72,17 +82,20 @@ type CompositorTrackTimelineProps = {
   piece: CompositorPiece;
   instrumentId: CompositorInstrumentId;
   events: CompositorTrackEvent[];
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   cycleProgress: number | null;
   octaveExact: boolean;
   disabled?: boolean;
   trackAtCapacity?: boolean;
   isPreviewingTrack?: boolean;
   previewDisabled?: boolean;
-  onSelectEvent: (eventId: string | null) => void;
+  onSelectEventIds: (eventIds: string[]) => void;
   onUpdateEvent: (
     eventId: string,
-    patch: CompositorTimelineEventPatch,
+    patch: Partial<CompositorTrackEvent>,
+  ) => void;
+  onUpdateEvents: (
+    updates: { eventId: string; patch: Partial<CompositorTrackEvent> }[],
   ) => void;
   onPlaceEvent?: (
     partial: Partial<CompositorTrackEvent>,
@@ -92,7 +105,7 @@ type CompositorTrackTimelineProps = {
       selectOnPlace?: boolean;
     },
   ) => string | null;
-  onRemoveEvent: (eventId: string) => void;
+  onRemoveEvents: (eventIds: string[]) => void;
   onSelectTrack?: (instrumentId: CompositorInstrumentId) => void;
   onPreviewTrack?: () => void;
   capasMode?: "all" | "melodic" | "none";
@@ -113,31 +126,36 @@ function renderTimelineBlock({
   piece,
   gridSteps,
   trackWidthPx,
-  selectedEventId,
+  selectedEventIds,
+  trackEvents,
+  moveRejected,
   disabled,
   showNoteLabel,
   highlightEventId,
   melodicRowDrag,
   positioning = "absolute",
   onSelectEvent,
-  onUpdateEvent,
+  onUpdateEvents,
+  onMoveRejectedChange,
 }: {
   event: CompositorTrackEvent;
   instrumentId: CompositorInstrumentId;
   piece: CompositorPiece;
   gridSteps: number;
   trackWidthPx: number;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
+  trackEvents: CompositorTrackEvent[];
+  moveRejected: boolean;
   disabled: boolean;
   showNoteLabel: boolean;
   highlightEventId?: string | null;
   melodicRowDrag?: MelodicRowDragContext;
   positioning?: "absolute" | "fill";
-  onSelectEvent: (eventId: string | null) => void;
-  onUpdateEvent: (
-    eventId: string,
-    patch: CompositorTimelineEventPatch,
+  onSelectEvent: (eventId: string, options?: { additive?: boolean }) => void;
+  onUpdateEvents: (
+    updates: { id: string; patch: CompositorTimelineEventPatch }[],
   ) => void;
+  onMoveRejectedChange: (rejected: boolean) => void;
 }) {
   const layout = getTimelineBlockLayout(
     event.startStep,
@@ -156,7 +174,8 @@ function renderTimelineBlock({
       gridSteps={gridSteps}
       subdivisionsPerGolpe={piece.subdivisionsPerGolpe}
       stepDurationSeconds={stepDurationSeconds}
-      isSelected={selectedEventId === event.id}
+      isSelected={selectedEventIds.includes(event.id)}
+      moveRejected={moveRejected}
       conflictHighlight={highlightEventId === event.id}
       disabled={disabled}
       title={`Paso ${event.startStep + 1} · ${startSeconds.toFixed(1)} s`}
@@ -165,9 +184,12 @@ function renderTimelineBlock({
       minWidthPercent={layout.minWidthPercent}
       positioning={positioning}
       showNoteLabel={showNoteLabel}
+      selectedEventIds={selectedEventIds}
+      trackEvents={trackEvents}
       melodicRowDrag={melodicRowDrag}
-      onSelect={() => onSelectEvent(event.id)}
-      onUpdateTiming={(patch) => onUpdateEvent(event.id, patch)}
+      onSelect={(options) => onSelectEvent(event.id, options)}
+      onUpdateEvents={onUpdateEvents}
+      onMoveRejectedChange={onMoveRejectedChange}
     />
   );
 }
@@ -176,37 +198,47 @@ function MelodicTimeline({
   piece,
   instrumentId,
   events,
-  selectedEventId,
+  selectedEventIds,
   playheadProgress,
   gridSteps,
   octaveExact,
   disabled,
   highlightEventId,
+  moveRejected,
   scrollContainerRef,
   placementPreview,
-  onPlacementTap,
   onSelectEvent,
-  onUpdateEvent,
+  onUpdateEvents,
+  onMoveRejectedChange,
+  onMarqueeSelect,
+  onClearSelection,
 }: {
   piece: CompositorPiece;
   instrumentId: CompositorInstrumentId;
   events: CompositorTrackEvent[];
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   playheadProgress: number | null;
   gridSteps: number;
   octaveExact: boolean;
   disabled: boolean;
   highlightEventId?: string | null;
+  moveRejected: boolean;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   placementPreview: ReturnType<
     typeof useCompositorPalettePlacement
   >["placementPreview"];
-  onPlacementTap: (clientX: number, clientY: number) => boolean;
-  onSelectEvent: (eventId: string | null) => void;
-  onUpdateEvent: (
-    eventId: string,
-    patch: CompositorTimelineEventPatch,
+  onSelectEvent: (eventId: string, options?: { additive?: boolean }) => void;
+  onUpdateEvents: (
+    updates: { id: string; patch: CompositorTimelineEventPatch }[],
   ) => void;
+  onMoveRejectedChange: (rejected: boolean) => void;
+  onMarqueeSelect: (bounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }) => void;
+  onClearSelection: () => void;
 }) {
   const resolvedEvents = useMemo(
     () =>
@@ -275,14 +307,17 @@ function MelodicTimeline({
               piece,
               gridSteps,
               trackWidthPx,
-              selectedEventId,
+              selectedEventIds,
+              trackEvents: resolvedEvents,
+              moveRejected,
               disabled,
               showNoteLabel: false,
               highlightEventId,
               melodicRowDrag,
               positioning: "fill",
               onSelectEvent,
-              onUpdateEvent,
+              onUpdateEvents,
+              onMoveRejectedChange,
             })}
           </div>
         );
@@ -299,8 +334,8 @@ function MelodicTimeline({
       disabled={disabled}
       scrollContainerRef={scrollContainerRef}
       placementPreview={placementPreview}
-      onPlacementTap={onPlacementTap}
-      onClearSelection={() => onSelectEvent(null)}
+      onClearSelection={onClearSelection}
+      onMarqueeSelect={onMarqueeSelect}
       trackOverlay={melodicBlocksOverlay}
       renderRowEvents={() => null}
     />
@@ -310,34 +345,44 @@ function MelodicTimeline({
 function DrumTimeline({
   piece,
   events,
-  selectedEventId,
+  selectedEventIds,
   playheadProgress,
   gridSteps,
   disabled,
   highlightEventId,
+  moveRejected,
   scrollContainerRef,
   placementPreview,
-  onPlacementTap,
   onSelectEvent,
-  onUpdateEvent,
+  onUpdateEvents,
+  onMoveRejectedChange,
+  onMarqueeSelect,
+  onClearSelection,
 }: {
   piece: CompositorPiece;
   events: CompositorTrackEvent[];
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   playheadProgress: number | null;
   gridSteps: number;
   disabled: boolean;
   highlightEventId?: string | null;
+  moveRejected: boolean;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   placementPreview: ReturnType<
     typeof useCompositorPalettePlacement
   >["placementPreview"];
-  onPlacementTap: (clientX: number, clientY: number) => boolean;
-  onSelectEvent: (eventId: string | null) => void;
-  onUpdateEvent: (
-    eventId: string,
-    patch: CompositorTimelineEventPatch,
+  onSelectEvent: (eventId: string, options?: { additive?: boolean }) => void;
+  onUpdateEvents: (
+    updates: { id: string; patch: CompositorTimelineEventPatch }[],
   ) => void;
+  onMoveRejectedChange: (rejected: boolean) => void;
+  onMarqueeSelect: (bounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }) => void;
+  onClearSelection: () => void;
 }) {
   const rows = buildDrumTimelineRows();
   const eventsByRow = useMemo(() => {
@@ -369,8 +414,8 @@ function DrumTimeline({
       disabled={disabled}
       scrollContainerRef={scrollContainerRef}
       placementPreview={placementPreview}
-      onPlacementTap={onPlacementTap}
-      onClearSelection={() => onSelectEvent(null)}
+      onClearSelection={onClearSelection}
+      onMarqueeSelect={onMarqueeSelect}
       renderRowEvents={(row) => {
         const rowEvents = eventsByRow.get(row.id) ?? [];
 
@@ -381,12 +426,15 @@ function DrumTimeline({
             piece,
             gridSteps,
             trackWidthPx,
-            selectedEventId,
+            selectedEventIds,
+            trackEvents: events,
+            moveRejected,
             disabled,
             showNoteLabel: false,
             highlightEventId,
             onSelectEvent,
-            onUpdateEvent,
+            onUpdateEvents,
+            onMoveRejectedChange,
           }),
         );
       }}
@@ -398,17 +446,18 @@ export function CompositorTrackTimeline({
   piece,
   instrumentId,
   events,
-  selectedEventId,
+  selectedEventIds,
   cycleProgress,
   octaveExact,
   disabled = false,
   trackAtCapacity = false,
   isPreviewingTrack = false,
   previewDisabled = false,
-  onSelectEvent,
+  onSelectEventIds,
   onUpdateEvent,
+  onUpdateEvents,
   onPlaceEvent,
-  onRemoveEvent,
+  onRemoveEvents,
   onSelectTrack,
   onPreviewTrack,
   capasMode = "all",
@@ -423,6 +472,8 @@ export function CompositorTrackTimeline({
   configHeaderTrailing,
 }: CompositorTrackTimelineProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [moveRejected, setMoveRejected] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const gridSteps = getCompositorGridSteps(piece);
   const cycleSeconds = getCompositorCycleDurationSeconds(piece);
   const playheadProgress =
@@ -430,11 +481,26 @@ export function CompositorTrackTimeline({
       ? null
       : Math.max(0, Math.min(1, cycleProgress));
 
-  const hasSelectedEvent = selectedEventId != null;
+  const hasSelectedEvent = selectedEventIds.length > 0;
+  const isMassSelection = selectedEventIds.length > 1;
   const canRemoveSelected = hasSelectedEvent && !disabled;
   const showCapasTabs = onSelectTrack && capasMode !== "none";
   const isMelodic = compositorHasContenidoTab(instrumentId);
   const usesPalette = placementMode != null && onPlaceEvent != null;
+
+  const selectedEvents = useMemo(
+    () => events.filter((event) => selectedEventIds.includes(event.id)),
+    [events, selectedEventIds],
+  );
+
+  const selectedEvent =
+    selectedEventIds.length === 1
+      ? (events.find((event) => event.id === selectedEventIds[0]) ?? null)
+      : null;
+
+  const sharedIntensidad =
+    selectedEvents.length > 0 &&
+    selectedEvents.every((event) => event.level === selectedEvents[0]!.level);
 
   const resolvedMelodicEvents = useMemo(
     () =>
@@ -464,11 +530,6 @@ export function CompositorTrackTimeline({
     [instrumentId, isMelodic],
   );
 
-  const selectedEvent = useMemo(
-    () => events.find((event) => event.id === selectedEventId) ?? null,
-    [events, selectedEventId],
-  );
-
   const [melodicDraft, setMelodicDraft] = useState<CompositorMelodicDraft>(() =>
     createDefaultMelodicDraft(instrumentId),
   );
@@ -477,14 +538,104 @@ export function CompositorTrackTimeline({
     createDefaultDrumDraft(),
   );
 
-  const configMode = selectedEvent ? "edit" : "create";
+  const configMode = isMassSelection
+    ? "mass"
+    : selectedEvent
+      ? "edit"
+      : "create";
 
   const clearBlockSelection = useCallback(() => {
-    onSelectEvent(null);
-  }, [onSelectEvent]);
+    onSelectEventIds([]);
+  }, [onSelectEventIds]);
+
+  const handleSelectEvent = useCallback(
+    (eventId: string, options?: { additive?: boolean }) => {
+      if (options?.additive) {
+        onSelectEventIds(
+          selectedEventIds.includes(eventId)
+            ? selectedEventIds.filter((id) => id !== eventId)
+            : [...selectedEventIds, eventId],
+        );
+        return;
+      }
+
+      onSelectEventIds([eventId]);
+    },
+    [onSelectEventIds, selectedEventIds],
+  );
+
+  const handleUpdateEventsFromDrag = useCallback(
+    (updates: { id: string; patch: CompositorTimelineEventPatch }[]) => {
+      onUpdateEvents(
+        updates.map((entry) => ({
+          eventId: entry.id,
+          patch: entry.patch,
+        })),
+      );
+    },
+    [onUpdateEvents],
+  );
+
+  const handleMarqueeSelect = useCallback(
+    (bounds: { left: number; top: number; right: number; bottom: number }) => {
+      const trackEl = scrollContainerRef.current?.querySelector(
+        "[data-compositor-timeline-track]",
+      ) as HTMLElement | null;
+
+      if (!trackEl) {
+        return;
+      }
+
+      const trackRect = trackEl.getBoundingClientRect();
+
+      if (isMelodic) {
+        const ids = eventsIntersectMarquee(
+          resolvedMelodicEvents,
+          melodicRows.length,
+          (event) => {
+            const rowId = getMelodicEventRowId(
+              event,
+              melodicRows,
+              octaveExact,
+            );
+            return melodicRows.findIndex((row) => row.id === rowId);
+          },
+          bounds,
+          trackRect,
+          COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+          COMPOSITOR_TIMELINE_RULER_HEIGHT_PX,
+          COMPOSITOR_TIMELINE_STEP_MIN_PX,
+        );
+        onSelectEventIds(ids);
+        return;
+      }
+
+      const drumRows = buildDrumTimelineRows();
+      const ids = eventsIntersectMarquee(
+        events,
+        drumRows.length,
+        (event) =>
+          drumRows.findIndex((row) => row.id === getDrumEventRowId(event)),
+        bounds,
+        trackRect,
+        COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+        COMPOSITOR_TIMELINE_RULER_HEIGHT_PX,
+        COMPOSITOR_TIMELINE_STEP_MIN_PX,
+      );
+      onSelectEventIds(ids);
+    },
+    [
+      events,
+      isMelodic,
+      melodicRows,
+      octaveExact,
+      onSelectEventIds,
+      resolvedMelodicEvents,
+    ],
+  );
 
   useEffect(() => {
-    if (!usesPalette || disabled || selectedEventId == null) {
+    if (!usesPalette || disabled || selectedEventIds.length === 0) {
       return;
     }
 
@@ -499,6 +650,10 @@ export function CompositorTrackTimeline({
         return;
       }
 
+      if (target.closest("[data-compositor-timeline-track]")) {
+        return;
+      }
+
       clearBlockSelection();
     }
 
@@ -507,7 +662,36 @@ export function CompositorTrackTimeline({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [clearBlockSelection, disabled, selectedEventId, usesPalette]);
+  }, [clearBlockSelection, disabled, selectedEventIds.length, usesPalette]);
+
+  useEffect(() => {
+    if (disabled || selectedEventIds.length === 0) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Delete" && event.key !== "Backspace") {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setDeleteConfirmOpen(true);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [disabled, selectedEventIds.length]);
 
   useEffect(() => {
     if (placementMode !== "melodic") {
@@ -527,34 +711,60 @@ export function CompositorTrackTimeline({
       return;
     }
 
-    if (!selectedEventId) {
+    if (selectedEventIds.length === 0) {
       setMelodicDraft(createDefaultMelodicDraft(instrumentId));
       return;
     }
 
-    const event = events.find((entry) => entry.id === selectedEventId);
-
-    if (event) {
-      setMelodicDraft(draftFromEvent(event, instrumentId));
+    if (selectedEventIds.length === 1 && selectedEvent) {
+      setMelodicDraft(draftFromEvent(selectedEvent, instrumentId));
+      return;
     }
-  }, [events, instrumentId, placementMode, selectedEventId]);
+
+    if (selectedEvents.length === 0) {
+      return;
+    }
+
+    const first = draftFromEvent(selectedEvents[0]!, instrumentId);
+    setMelodicDraft({
+      ...first,
+      level: sharedIntensidad ? first.level : first.level,
+    });
+  }, [
+    events,
+    instrumentId,
+    placementMode,
+    selectedEvent,
+    selectedEventIds.length,
+    selectedEvents,
+    sharedIntensidad,
+  ]);
 
   useEffect(() => {
     if (placementMode !== "drum") {
       return;
     }
 
-    if (!selectedEventId) {
+    if (selectedEventIds.length === 0) {
       setDrumDraft(createDefaultDrumDraft());
       return;
     }
 
-    const event = events.find((entry) => entry.id === selectedEventId);
-
-    if (event) {
-      setDrumDraft(drumDraftFromEvent(event));
+    if (selectedEventIds.length === 1 && selectedEvent) {
+      setDrumDraft(drumDraftFromEvent(selectedEvent));
+      return;
     }
-  }, [events, placementMode, selectedEventId]);
+
+    if (selectedEvents[0]) {
+      setDrumDraft(drumDraftFromEvent(selectedEvents[0]));
+    }
+  }, [
+    events,
+    placementMode,
+    selectedEvent,
+    selectedEventIds.length,
+    selectedEvents,
+  ]);
 
   const palettePlacement = useCompositorPalettePlacement({
     disabled: disabled || !usesPalette || trackAtCapacity,
@@ -572,7 +782,81 @@ export function CompositorTrackTimeline({
   function handleMelodicDraftChange(nextDraft: CompositorMelodicDraft) {
     setMelodicDraft(nextDraft);
 
-    if (selectedEvent && placementMode === "melodic") {
+    if (placementMode !== "melodic") {
+      return;
+    }
+
+    if (isMassSelection) {
+      const updates = selectedEventIds.flatMap((eventId) => {
+        const event = events.find((entry) => entry.id === eventId);
+
+        if (!event) {
+          return [];
+        }
+
+        let merged = draftFromEvent(event, instrumentId);
+
+        if (instrumentId === "piano") {
+          if (nextDraft.pianoHarmonyMode !== merged.pianoHarmonyMode) {
+            merged = applyPianoHarmonyMode(
+              merged,
+              nextDraft.pianoHarmonyMode,
+              piece.tonalidadComposicion,
+              piece.modoTonalComposicion,
+            );
+          } else {
+            merged = {
+              ...merged,
+              pianoHarmonyMode: nextDraft.pianoHarmonyMode,
+            };
+          }
+        }
+
+        if (instrumentId === "guitarra") {
+          const nextIsChord = isGuitarChordArticulation(
+            nextDraft.guitarArticulation,
+          );
+          const baseIsChord = isGuitarChordArticulation(
+            merged.guitarArticulation,
+          );
+
+          if (nextIsChord !== baseIsChord) {
+            merged = applyGuitarHarmonyMode(
+              merged,
+              nextIsChord ? "acorde" : "nota",
+              piece.tonalidadComposicion,
+              piece.modoTonalComposicion,
+            );
+          }
+
+          merged = {
+            ...merged,
+            guitarArticulation: nextDraft.guitarArticulation,
+          };
+        }
+
+        if (sharedIntensidad) {
+          merged = { ...merged, level: nextDraft.level };
+        }
+
+        return [
+          {
+            eventId,
+            patch: draftToEventPatch(
+              merged,
+              instrumentId,
+              piece.tonalidadComposicion,
+              merged.octavaRelativa,
+            ),
+          },
+        ];
+      });
+
+      onUpdateEvents(updates);
+      return;
+    }
+
+    if (selectedEvent) {
       onUpdateEvent(
         selectedEvent.id,
         draftToEventPatch(
@@ -585,45 +869,70 @@ export function CompositorTrackTimeline({
     }
   }
 
-  const handleAddMelodicBlock = useCallback(() => {
+  const handleAddMelodicBlock = useCallback((count = 1) => {
     if (!onPlaceEvent || disabled || trackAtCapacity) {
       return;
     }
 
-    const partial = buildMelodicAddPartial(
-      melodicDraft,
-      events,
-      instrumentId,
-      piece.tonalidadComposicion,
-      piece.subdivisionsPerGolpe,
-      gridSteps,
-    );
+    const times = Math.min(10, Math.max(1, Math.floor(count)));
+    let workingEvents = events;
     const rowId = getMelodicRowIdForDraft(
       melodicDraft,
       instrumentId,
       piece.tonalidadComposicion,
     );
 
-    if (!partial || !rowId) {
-      onPlaceEvent(
-        {
-          startStep: gridSteps,
-          durationSteps: Math.max(1, piece.subdivisionsPerGolpe),
-        },
-        {
-          rowId: rowId ?? melodicRows[0]?.id ?? "pitch-0-3",
-          octaveExact,
-          selectOnPlace: false,
-        },
-      );
-      return;
-    }
+    for (let index = 0; index < times; index += 1) {
+      if (workingEvents.length >= COMPOSITOR_MAX_EVENTS_PER_TRACK) {
+        break;
+      }
 
-    onPlaceEvent(partial, {
-      rowId,
-      octaveExact,
-      selectOnPlace: false,
-    });
+      const partial = buildMelodicAddPartial(
+        melodicDraft,
+        workingEvents,
+        instrumentId,
+        piece.tonalidadComposicion,
+        piece.subdivisionsPerGolpe,
+        gridSteps,
+      );
+
+      if (!partial || !rowId) {
+        if (index === 0) {
+          onPlaceEvent(
+            {
+              startStep: gridSteps,
+              durationSteps: Math.max(1, piece.subdivisionsPerGolpe),
+            },
+            {
+              rowId: rowId ?? melodicRows[0]?.id ?? "pitch-0-3",
+              octaveExact,
+              selectOnPlace: false,
+            },
+          );
+        }
+        break;
+      }
+
+      const placedId = onPlaceEvent(partial, {
+        rowId,
+        octaveExact,
+        selectOnPlace: false,
+      });
+
+      if (!placedId) {
+        break;
+      }
+
+      workingEvents = [
+        ...workingEvents,
+        {
+          id: placedId,
+          startStep: partial.startStep ?? 0,
+          durationSteps:
+            partial.durationSteps ?? Math.max(1, piece.subdivisionsPerGolpe),
+        } as CompositorTrackEvent,
+      ];
+    }
   }, [
     disabled,
     events,
@@ -641,7 +950,25 @@ export function CompositorTrackTimeline({
   function handleDrumDraftChange(nextDraft: CompositorDrumDraft) {
     setDrumDraft(nextDraft);
 
-    if (selectedEvent && placementMode === "drum") {
+    if (placementMode !== "drum") {
+      return;
+    }
+
+    if (isMassSelection) {
+      if (!sharedIntensidad) {
+        return;
+      }
+
+      onUpdateEvents(
+        selectedEventIds.map((eventId) => ({
+          eventId,
+          patch: { level: nextDraft.level },
+        })),
+      );
+      return;
+    }
+
+    if (selectedEvent) {
       onUpdateEvent(selectedEvent.id, drumDraftToEventPatch(nextDraft));
     }
   }
@@ -649,21 +976,27 @@ export function CompositorTrackTimeline({
   const timelineCommonProps = {
     disabled,
     highlightEventId,
+    moveRejected,
     scrollContainerRef,
     placementPreview: usesPalette ? palettePlacement.placementPreview : null,
-    onPlacementTap: usesPalette
-      ? palettePlacement.handleTimelineTapPlace
-      : () => false,
     playheadProgress,
     gridSteps,
-    onSelectEvent,
-    onUpdateEvent,
+    onSelectEvent: handleSelectEvent,
+    onUpdateEvents: handleUpdateEventsFromDrag,
+    onMoveRejectedChange: setMoveRejected,
+    onMarqueeSelect: handleMarqueeSelect,
+    onClearSelection: clearBlockSelection,
   };
 
   function handleRemoveSelected() {
-    if (selectedEventId) {
-      onRemoveEvent(selectedEventId);
+    if (selectedEventIds.length > 0) {
+      setDeleteConfirmOpen(true);
     }
+  }
+
+  function confirmRemoveSelected() {
+    onRemoveEvents(selectedEventIds);
+    setDeleteConfirmOpen(false);
   }
 
   const removeSelectedButton = hasSelectedEvent ? (
@@ -673,7 +1006,7 @@ export function CompositorTrackTimeline({
       onClick={handleRemoveSelected}
       data-compositor-edit-surface=""
       className="flex shrink-0 items-center justify-center rounded-md border border-[color-mix(in_srgb,#e85d4a_32%,var(--border))] bg-[color-mix(in_srgb,#e85d4a_10%,var(--bg-dark))] p-1.5 text-[#e85d4a] disabled:opacity-40"
-      aria-label="Eliminar bloque seleccionado"
+      aria-label="Eliminar bloques seleccionados"
     >
       <Trash2 className="size-3.5" aria-hidden="true" />
     </TapButton>
@@ -705,10 +1038,15 @@ export function CompositorTrackTimeline({
           <CompositorDrumEditPanel
             draft={drumDraft}
             mode={configMode}
+            massFields={{ showIntensidad: sharedIntensidad }}
             disabled={disabled || (configMode === "create" && !!trackAtCapacity)}
             onDraftChange={handleDrumDraftChange}
-            onExitEdit={() => onSelectEvent(null)}
-            onPointerDownDrag={palettePlacement.handlePointerDownDrumDrag}
+            onExitEdit={clearBlockSelection}
+            onPointerDownDrag={
+              configMode === "create"
+                ? palettePlacement.handlePointerDownDrumDrag
+                : undefined
+            }
           />
         </div>
       ) : null}
@@ -752,10 +1090,18 @@ export function CompositorTrackTimeline({
             draft={melodicDraft}
             visibleOctaves={visibleMelodicOctaves}
             mode={configMode}
+            massFields={{
+              showTipo:
+                instrumentId === "piano" || instrumentId === "guitarra",
+              showGuitarAttack: instrumentId === "guitarra",
+              showIntensidad: sharedIntensidad,
+            }}
             disabled={disabled || trackAtCapacity}
             onDraftChange={handleMelodicDraftChange}
-            onExitEdit={() => onSelectEvent(null)}
-            onAddBlock={handleAddMelodicBlock}
+            onExitEdit={clearBlockSelection}
+            onAddBlock={
+              configMode === "create" ? handleAddMelodicBlock : undefined
+            }
           />
         </div>
       ) : null}
@@ -775,7 +1121,7 @@ export function CompositorTrackTimeline({
             piece={piece}
             instrumentId={instrumentId}
             events={events}
-            selectedEventId={selectedEventId}
+            selectedEventIds={selectedEventIds}
             octaveExact={octaveExact}
             {...timelineCommonProps}
           />
@@ -783,11 +1129,22 @@ export function CompositorTrackTimeline({
           <DrumTimeline
             piece={piece}
             events={events}
-            selectedEventId={selectedEventId}
+            selectedEventIds={selectedEventIds}
             {...timelineCommonProps}
           />
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        message={COMPOSITOR_CONFIRM_DELETE_BLOCKS_MESSAGE(
+          selectedEventIds.length,
+        )}
+        confirmLabel="Eliminar"
+        deleteConfirm
+        onConfirm={confirmRemoveSelected}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
     </>
   );
 
@@ -893,7 +1250,7 @@ export function CompositorTrackTimeline({
 
 export function CompositorMultiTrackTimeline({
   piece,
-  selectedEventId,
+  selectedEventIds,
   activeTrackId,
   cycleProgress,
   octaveExact,
@@ -903,7 +1260,7 @@ export function CompositorMultiTrackTimeline({
   onToggleTrack,
 }: {
   piece: CompositorPiece;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   activeTrackId: CompositorInstrumentId;
   cycleProgress: number | null;
   octaveExact: boolean;
@@ -993,7 +1350,8 @@ export function CompositorMultiTrackTimeline({
                   const widthPercent = (event.durationSteps / gridSteps) * 100;
                   const isActiveLayer =
                     track.instrumentId === activeTrackId &&
-                    (selectedEventId == null || selectedEventId === event.id);
+                    (selectedEventIds.length === 0 ||
+                      selectedEventIds.includes(event.id));
 
                   let topPercent = 0;
                   let rowHeightPercent = 100;

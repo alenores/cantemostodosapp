@@ -1,34 +1,37 @@
 "use client";
 
-import type { NotaIndex } from "@/lib/cifrado";
 import type { CompositorInstrumentId, CompositorTrackEvent } from "@/lib/compositor";
 import {
   canResizeEventSustento,
-  computeMovedEventPatch,
-  computeMovedEventSteps,
-  computeResizedEndEventSteps,
-  computeResizedStartEventSteps,
-  COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
-  getMelodicEventRowId,
   getPrimaryOctave,
   isMelodicTimelineInstrument,
   pixelDeltaToRowDelta,
   pixelDeltaToStepDelta,
-  type CompositorMelodicRow,
+  COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
   type CompositorTimelineEventPatch,
 } from "@/lib/compositor-timeline-layout";
+import {
+  buildGroupDragOrigins,
+  buildGroupMovePatches,
+  buildGroupResizePatches,
+  buildOriginRestorePatches,
+  isGroupMoveLegal,
+  isGroupResizeLegal,
+  selectedEventsShareDuration,
+  type GroupDragMelodicContext,
+  type GroupDragMemberOrigin,
+} from "@/lib/compositor-timeline-multi-select";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const DRAG_THRESHOLD_PX = 6;
 
 export type TimelineBlockDragMode = "move" | "resize-start" | "resize-end";
-
-export type MelodicRowDragContext = {
-  rows: CompositorMelodicRow[];
-  octaveExact: boolean;
-  events: CompositorTrackEvent[];
-  tonalidadComposicion: NotaIndex;
+export type MelodicRowDragContext = GroupDragMelodicContext & {
   rowHeightPx?: number;
+};
+
+type SelectOptions = {
+  additive?: boolean;
 };
 
 type UseCompositorTimelineBlockDragOptions = {
@@ -38,9 +41,15 @@ type UseCompositorTimelineBlockDragOptions = {
   subdivisionsPerGolpe: number;
   stepDurationSeconds: number;
   disabled?: boolean;
+  selectedEventIds: string[];
+  trackEvents: CompositorTrackEvent[];
   melodicRowDrag?: MelodicRowDragContext;
-  onSelect: () => void;
-  onUpdate: (patch: CompositorTimelineEventPatch) => void;
+  moveRejected: boolean;
+  onMoveRejectedChange: (rejected: boolean) => void;
+  onSelect: (options?: SelectOptions) => void;
+  onUpdateEvents: (
+    updates: { id: string; patch: CompositorTimelineEventPatch }[],
+  ) => void;
 };
 
 export function useCompositorTimelineBlockDrag({
@@ -50,9 +59,13 @@ export function useCompositorTimelineBlockDrag({
   subdivisionsPerGolpe,
   stepDurationSeconds,
   disabled = false,
+  selectedEventIds,
+  trackEvents,
   melodicRowDrag,
+  moveRejected,
+  onMoveRejectedChange,
   onSelect,
-  onUpdate,
+  onUpdateEvents,
 }: UseCompositorTimelineBlockDragOptions) {
   const melodicRowDragRef = useRef(melodicRowDrag);
   melodicRowDragRef.current = melodicRowDrag;
@@ -60,36 +73,52 @@ export function useCompositorTimelineBlockDrag({
   const eventRef = useRef(event);
   eventRef.current = event;
 
-  const onUpdateRef = useRef(onUpdate);
-  onUpdateRef.current = onUpdate;
+  const trackEventsRef = useRef(trackEvents);
+  trackEventsRef.current = trackEvents;
+
+  const selectedEventIdsRef = useRef(selectedEventIds);
+  selectedEventIdsRef.current = selectedEventIds;
+
+  const onUpdateEventsRef = useRef(onUpdateEvents);
+  onUpdateEventsRef.current = onUpdateEvents;
+
+  const onMoveRejectedChangeRef = useRef(onMoveRejectedChange);
+  onMoveRejectedChangeRef.current = onMoveRejectedChange;
+
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
 
   const originRef = useRef({
-    startStep: event.startStep,
-    durationSteps: event.durationSteps,
-    note: event.note,
     pointerX: 0,
     pointerY: 0,
     mode: "move" as TimelineBlockDragMode,
     active: false,
     moved: false,
-    rowsSnapshot: [] as CompositorMelodicRow[],
-    originRowIndex: -1,
+    dragEventIds: [] as string[],
+    members: [] as GroupDragMemberOrigin[],
     primaryOctave: 3,
     rowHeightPx: COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+    lastLegal: true,
   });
+
   const listenersRef = useRef<{
     move: (ev: PointerEvent) => void;
     up: (ev: PointerEvent) => void;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const canResize = canResizeEventSustento(
-    instrumentId,
-    event,
-    gridSteps,
-    subdivisionsPerGolpe,
-    stepDurationSeconds,
-  );
+  const dragIdsForResize = selectedEventIds.includes(event.id)
+    ? selectedEventIds
+    : [event.id];
+
+  const canResize =
+    canResizeEventSustento(
+      instrumentId,
+      event,
+      gridSteps,
+      subdivisionsPerGolpe,
+      stepDurationSeconds,
+    ) && selectedEventsShareDuration(trackEvents, dragIdsForResize);
 
   const canChangeRow =
     melodicRowDrag != null && isMelodicTimelineInstrument(instrumentId);
@@ -114,82 +143,6 @@ export function useCompositorTimelineBlockDrag({
     [removeListeners],
   );
 
-  const applyDrag = useCallback(
-    (mode: TimelineBlockDragMode, deltaSteps: number, deltaRows: number) => {
-      const origin = originRef.current;
-      const currentEvent = eventRef.current;
-      const currentMelodicRowDrag = melodicRowDragRef.current;
-
-      if (mode === "move") {
-        if (canChangeRow && currentMelodicRowDrag) {
-          onUpdateRef.current(
-            computeMovedEventPatch(
-              instrumentId,
-              currentEvent,
-              origin.startStep,
-              origin.durationSteps,
-              origin.note,
-              origin.rowsSnapshot,
-              origin.originRowIndex,
-              deltaSteps,
-              deltaRows,
-              gridSteps,
-              subdivisionsPerGolpe,
-              origin.primaryOctave,
-              currentMelodicRowDrag.tonalidadComposicion,
-              stepDurationSeconds,
-            ),
-          );
-          return;
-        }
-
-        onUpdateRef.current(
-          computeMovedEventSteps(
-            instrumentId,
-            currentEvent,
-            origin.startStep,
-            origin.durationSteps,
-            deltaSteps,
-            gridSteps,
-            subdivisionsPerGolpe,
-            stepDurationSeconds,
-          ),
-        );
-        return;
-      }
-
-      if (mode === "resize-end") {
-        onUpdateRef.current(
-          computeResizedEndEventSteps(
-            instrumentId,
-            currentEvent,
-            origin.startStep,
-            origin.durationSteps,
-            deltaSteps,
-            gridSteps,
-            subdivisionsPerGolpe,
-            stepDurationSeconds,
-          ),
-        );
-        return;
-      }
-
-      onUpdateRef.current(
-        computeResizedStartEventSteps(
-          instrumentId,
-          currentEvent,
-          origin.startStep,
-          origin.durationSteps,
-          deltaSteps,
-          gridSteps,
-          subdivisionsPerGolpe,
-          stepDurationSeconds,
-        ),
-      );
-    },
-    [canChangeRow, gridSteps, instrumentId, stepDurationSeconds, subdivisionsPerGolpe],
-  );
-
   const handlePointerDown = useCallback(
     (mode: TimelineBlockDragMode) => (pointerEvent: React.PointerEvent) => {
       if (disabled) {
@@ -199,43 +152,61 @@ export function useCompositorTimelineBlockDrag({
       pointerEvent.stopPropagation();
       pointerEvent.preventDefault();
 
-      const currentMelodicRowDrag = melodicRowDragRef.current;
-      const rowsSnapshot =
-        canChangeRow && currentMelodicRowDrag ? currentMelodicRowDrag.rows : [];
-      const originRowIndex =
-        canChangeRow && currentMelodicRowDrag
-          ? rowsSnapshot.findIndex(
-              (row) =>
-                row.id ===
-                getMelodicEventRowId(
-                  event,
-                  rowsSnapshot,
-                  currentMelodicRowDrag.octaveExact,
-                ),
-            )
-          : -1;
-      const primaryOctave =
-        canChangeRow && currentMelodicRowDrag
-          ? getPrimaryOctave(currentMelodicRowDrag.events)
-          : 3;
+      const additive = pointerEvent.ctrlKey || pointerEvent.metaKey;
+
+      if (additive && mode === "move") {
+        onSelectRef.current({ additive: true });
+        return;
+      }
+
+      const currentSelected = selectedEventIdsRef.current;
+      const alreadyInSelection = currentSelected.includes(event.id);
+      const dragEventIds =
+        alreadyInSelection && currentSelected.length > 0
+          ? [...currentSelected]
+          : [event.id];
+
+      if (!alreadyInSelection) {
+        onSelectRef.current({ additive: false });
+      }
+
+      const currentMelodic = melodicRowDragRef.current;
+      const members = buildGroupDragOrigins(
+        trackEventsRef.current,
+        dragEventIds,
+        currentMelodic,
+      );
+
+      if (members.length === 0) {
+        return;
+      }
+
+      if (mode !== "move") {
+        if (
+          !selectedEventsShareDuration(trackEventsRef.current, dragEventIds)
+        ) {
+          return;
+        }
+      }
 
       originRef.current = {
-        startStep: event.startStep,
-        durationSteps: event.durationSteps,
-        note: event.note,
         pointerX: pointerEvent.clientX,
         pointerY: pointerEvent.clientY,
         mode,
         active: false,
         moved: false,
-        rowsSnapshot,
-        originRowIndex,
-        primaryOctave,
+        dragEventIds,
+        members,
+        primaryOctave: currentMelodic
+          ? getPrimaryOctave(currentMelodic.events)
+          : 3,
         rowHeightPx:
-          currentMelodicRowDrag?.rowHeightPx ?? COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+          currentMelodic?.rowHeightPx ?? COMPOSITOR_TIMELINE_ROW_HEIGHT_PX,
+        lastLegal: true,
       };
 
       removeListeners();
+      onMoveRejectedChangeRef.current(false);
 
       const onMove = (ev: PointerEvent) => {
         const origin = originRef.current;
@@ -253,7 +224,6 @@ export function useCompositorTimelineBlockDrag({
           origin.active = true;
           origin.moved = true;
           setIsDragging(true);
-          onSelect();
         }
 
         ev.preventDefault();
@@ -264,18 +234,87 @@ export function useCompositorTimelineBlockDrag({
             ? pixelDeltaToRowDelta(deltaPxY, origin.rowHeightPx)
             : 0;
 
-        applyDrag(origin.mode, deltaSteps, deltaRows);
+        const eventsById = new Map(
+          trackEventsRef.current.map((entry) => [entry.id, entry]),
+        );
+        const currentMelodicRowDrag = melodicRowDragRef.current;
+
+        if (origin.mode === "move") {
+          const legal = isGroupMoveLegal(
+            origin.members,
+            deltaSteps,
+            deltaRows,
+            gridSteps,
+            canChangeRow,
+            currentMelodicRowDrag?.rows.length ?? 0,
+          );
+
+          onMoveRejectedChangeRef.current(!legal);
+          origin.lastLegal = legal;
+
+          if (!legal) {
+            onUpdateEventsRef.current(
+              buildOriginRestorePatches(origin.members),
+            );
+            return;
+          }
+
+          onUpdateEventsRef.current(
+            buildGroupMovePatches(
+              instrumentId,
+              eventsById,
+              origin.members,
+              deltaSteps,
+              deltaRows,
+              gridSteps,
+              subdivisionsPerGolpe,
+              stepDurationSeconds,
+              currentMelodicRowDrag,
+              origin.primaryOctave,
+              currentMelodicRowDrag?.tonalidadComposicion ?? 0,
+            ),
+          );
+          return;
+        }
+
+        const legal = isGroupResizeLegal(
+          instrumentId,
+          eventsById,
+          origin.members,
+          origin.mode,
+          deltaSteps,
+          gridSteps,
+          subdivisionsPerGolpe,
+          stepDurationSeconds,
+        );
+
+        onMoveRejectedChangeRef.current(!legal);
+        origin.lastLegal = legal;
+
+        if (!legal) {
+          onUpdateEventsRef.current(buildOriginRestorePatches(origin.members));
+          return;
+        }
+
+        onUpdateEventsRef.current(
+          buildGroupResizePatches(origin.members, origin.mode, deltaSteps),
+        );
       };
 
       const onUp = (ev: PointerEvent) => {
         const origin = originRef.current;
 
-        if (!origin.active && !origin.moved) {
-          onSelect();
+        if (!origin.active && !origin.moved && !additive) {
+          onSelectRef.current({ additive: false });
+        }
+
+        if (origin.active && !origin.lastLegal) {
+          onUpdateEventsRef.current(buildOriginRestorePatches(origin.members));
         }
 
         origin.active = false;
         setIsDragging(false);
+        onMoveRejectedChangeRef.current(false);
         removeListeners();
         ev.preventDefault();
       };
@@ -285,12 +324,22 @@ export function useCompositorTimelineBlockDrag({
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
     },
-    [applyDrag, canChangeRow, disabled, event, onSelect, removeListeners],
+    [
+      canChangeRow,
+      disabled,
+      event.id,
+      gridSteps,
+      instrumentId,
+      removeListeners,
+      stepDurationSeconds,
+      subdivisionsPerGolpe,
+    ],
   );
 
   return {
     canResize,
     isDragging,
+    moveRejected,
     handlePointerDown,
   };
 }

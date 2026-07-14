@@ -510,7 +510,7 @@ function scheduleGuitarChordNotes(
   level: MetronomeBeatLevel,
   durationSeconds: number,
   samples: CompositorSampleBank | null,
-  mode: "rasguido" | "bloque",
+  mode: "rasguido" | "rasguidoArriba" | "bloque",
   bus?: AudioPlaybackBus | null,
 ): void {
   const gain = levelToGain(level);
@@ -551,8 +551,11 @@ function scheduleGuitarChordNotes(
     return;
   }
 
-  for (let index = 0; index < notes.length; index += 1) {
-    const note = notes[index]!;
+  const orderedNotes =
+    mode === "rasguidoArriba" ? [...notes].reverse() : notes;
+
+  for (let index = 0; index < orderedNotes.length; index += 1) {
+    const note = orderedNotes[index]!;
     const noteTime = time + index * 0.05;
     const resolved = resolveGuitarPitchedSample(note, samples, "dedo");
 
@@ -621,7 +624,7 @@ function scheduleGuitarNote(
     }
   }
 
-  if (articulation === "rasguido") {
+  if (articulation === "rasguido" || articulation === "rasguidoArriba") {
     const resolved = resolveGuitarPitchedSample(note, samples, "dedo");
 
     if (resolved) {
@@ -804,7 +807,11 @@ export function scheduleCompositorSound(
           sound.level,
           sound.durationSeconds,
           samples,
-          sound.guitarArticulation === "bloque" ? "bloque" : "rasguido",
+          sound.guitarArticulation === "bloque"
+            ? "bloque"
+            : sound.guitarArticulation === "rasguidoArriba"
+              ? "rasguidoArriba"
+              : "rasguido",
           bus,
         );
       } else {

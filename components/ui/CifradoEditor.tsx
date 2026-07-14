@@ -151,7 +151,11 @@ import {
   inferTonalidadFromAcordes,
   type TonalidadInferResult,
 } from "@/lib/cifrado-tonalidad-infer";
-import type { CifradoEditorSession, CifradoSaveResult } from "@/lib/cifrado-editor-session";
+import type {
+  CifradoEditorPersistFn,
+  CifradoEditorSession,
+  CifradoSaveResult,
+} from "@/lib/cifrado-editor-session";
 import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
 import {
   buildDisplayedPreviewPlaybackBeats,
@@ -202,6 +206,11 @@ type CifradoEditorProps = {
   onClose: () => void;
   onSaved: (result?: CifradoSaveResult) => void;
   presentation?: ToolPresentation;
+  /**
+   * Persistencia opcional (p. ej. Entrenador → canciones_practica).
+   * Si falta, se usa el guardado histórico del Cancionero. Sin cambios de UI.
+   */
+  onPersist?: CifradoEditorPersistFn;
 };
 
 type EditorPhase = "ingreso" | "cifrado";
@@ -2326,6 +2335,7 @@ export default function CifradoEditor({
   onClose,
   onSaved,
   presentation = "modal",
+  onPersist,
 }: CifradoEditorProps) {
   const isPage = isToolPagePresentation(presentation);
   const isDesktop = useIsDesktop();
@@ -3972,10 +3982,24 @@ export default function CifradoEditor({
       };
 
       const editingId = cancionIdToSave;
-
       let savedId = editingId;
 
-      if (editingId != null) {
+      if (onPersist) {
+        savedId = await onPersist(
+          editingId ?? undefined,
+          {
+            nombre: payload.nombre,
+            artista: payload.artista,
+            letra: payload.letra,
+            cifrado: payload.cifrado,
+            compas_config: payload.compas_config,
+            tonalidad_default: payload.tonalidad_default,
+            modo_tonal_default: payload.modo_tonal_default,
+            bpm_default: payload.bpm_default,
+          },
+        );
+        editingCancionIdRef.current = savedId;
+      } else if (editingId != null) {
         await updateCancionCifradoAvanzado(supabase, editingId, {
           nombre: payload.nombre,
           artista: payload.artista,
@@ -4038,7 +4062,7 @@ export default function CifradoEditor({
     vistaArmado === "celular"
       ? "mx-auto w-full max-w-[390px]"
       : PC_ARMADO_WIDTH_CLASS;
-  const showCelularLimitGuide = vistaArmado === "pc";
+  const showCelularLimitGuide = isDesktop && vistaArmado === "pc";
 
   const editorTree = (
     <div

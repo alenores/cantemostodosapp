@@ -28,6 +28,7 @@ comentarios, nombres de componentes y prompts. No inventar sinónimos.
 - **Metrónomo** — modal desde el hub. Solo tiempo; módulo cerrado (ver roadmap).
 - **Entrenador Vocal** — modal desde el hub. Carrusel de modos de práctica vocal (ver roadmap).
 - **Compositor** — modal desde el hub. Ver roadmap, `lib/compositor.ts` y `lib/ritmo-terminologia.ts`.
+- **Entrenador de canciones** — página en Práctica (`/practica/entrenador-canciones`). Copia privada por usuario (`canciones_practica`); reutiliza el Editor de canciones. Anotaciones (Canto, etc.): pendiente.
 
 ### Nomenclatura ritmo y Compositor
 

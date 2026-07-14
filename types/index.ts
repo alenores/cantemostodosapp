@@ -6,6 +6,7 @@ export type Sala = {
   created_at: string;
   creado_por?: string | null;
   invite_token?: string | null;
+  avatar_url?: string | null;
 };
 
 export type SalaMiembro = {

@@ -37,7 +37,7 @@ type MetaRow = CancioneroLocalMeta & { id: "sync" };
 export type AppSnapshotRecord = {
   id: "current";
   usuario: UsuarioActivo;
-  salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+  salas: Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">[];
   cancioneroTotal?: number;
   savedAt: string;
 };

@@ -13,6 +13,7 @@ export const COMPOSITOR_MAX_SUSTAIN_SECONDS = {
     pua: 2.5,
     dedo: 4,
     rasguido: 3.5,
+    rasguidoArriba: 3.5,
     bloque: 4,
     silencio: 0,
   },

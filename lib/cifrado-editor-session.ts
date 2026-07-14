@@ -34,6 +34,26 @@ export type CifradoSaveResult = {
   tiene_cifrado_avanzado: boolean;
 };
 
+/**
+ * Persistencia opcional del editor (p. ej. Entrenador → canciones_practica).
+ * Si no se provee, el editor PC usa el flujo histórico del Cancionero.
+ */
+export type CifradoEditorPersistPayload = {
+  nombre: string;
+  artista: string | null;
+  letra: string;
+  cifrado: CifradoData;
+  compas_config: CompasConfig;
+  tonalidad_default: NotaIndex;
+  modo_tonal_default: ModoTonal;
+  bpm_default: number;
+};
+
+export type CifradoEditorPersistFn = (
+  editingId: number | undefined,
+  payload: CifradoEditorPersistPayload,
+) => Promise<number>;
+
 export function buildCifradoEditorSession(input: {
   cancionId?: number;
   nombre: string;

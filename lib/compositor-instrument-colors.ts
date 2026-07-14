@@ -18,6 +18,7 @@ export function getCompositorTimelineBlockClassName({
   instrumentId,
   isSelected,
   isDragging = false,
+  moveRejected = false,
   guitarArticulation,
   drumSilencio = false,
   mini = false,
@@ -25,6 +26,7 @@ export function getCompositorTimelineBlockClassName({
   instrumentId: CompositorInstrumentId;
   isSelected: boolean;
   isDragging?: boolean;
+  moveRejected?: boolean;
   guitarArticulation?: CompositorGuitarArticulation;
   drumSilencio?: boolean;
   mini?: boolean;
@@ -48,6 +50,10 @@ export function getCompositorTimelineBlockClassName({
 
   if (isSelected) {
     classes.push("compositor-timeline-block--selected");
+  }
+
+  if (moveRejected) {
+    classes.push("compositor-timeline-block--move-rejected");
   }
 
   if (isDragging) {

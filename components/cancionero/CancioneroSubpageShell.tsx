@@ -9,6 +9,9 @@ type CancioneroSubpageShellProps = {
   title: string;
   headerAction?: ReactNode;
   children: ReactNode;
+  /** Destino del botón volver (móvil). Por defecto /canciones. */
+  backHref?: string;
+  backAriaLabel?: string;
   /** @deprecated El bloqueo de scroll con modales lo hace cada modal en `document.body`. */
   modalOpen?: boolean;
 };
@@ -17,6 +20,8 @@ export default function CancioneroSubpageShell({
   title,
   headerAction,
   children,
+  backHref = "/canciones",
+  backAriaLabel = "Volver al cancionero",
 }: CancioneroSubpageShellProps) {
   const isDesktop = useIsDesktop();
 
@@ -26,8 +31,8 @@ export default function CancioneroSubpageShell({
         <div className="app-page-container flex items-center gap-3">
           {!isDesktop ? (
             <TapLink
-              href="/canciones"
-              ariaLabel="Volver al cancionero"
+              href={backHref}
+              ariaLabel={backAriaLabel}
               className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
             >
               <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />

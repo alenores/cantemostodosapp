@@ -115,6 +115,17 @@ export async function eliminarMiembroSala(
   }
 }
 
+export async function salirDeSala(salaId: number): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("salir_de_sala", {
+    p_sala_id: salaId,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 export function inviteUrlFromToken(token: string): string {
   if (typeof window === "undefined") {
     return `/salas/unirse?token=${token}`;

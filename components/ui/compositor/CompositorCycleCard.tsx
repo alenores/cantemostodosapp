@@ -25,7 +25,7 @@ type CompositorCycleCardProps = {
   isPlaybackActive: boolean;
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   bpm: number;
   tonalidadComposicion: NotaIndex;
   modoTonalComposicion: ModoTonal;
@@ -50,7 +50,7 @@ export function CompositorCycleCard({
   isPlaybackActive,
   piece,
   activeTrackId,
-  selectedEventId,
+  selectedEventIds,
   bpm,
   tonalidadComposicion,
   modoTonalComposicion,
@@ -150,7 +150,7 @@ export function CompositorCycleCard({
                 layout="compact"
                 piece={piece}
                 activeTrackId={activeTrackId}
-                selectedEventId={selectedEventId}
+                selectedEventIds={selectedEventIds}
                 bpm={bpm}
                 tonalidadComposicion={tonalidadComposicion}
                 modoTonalComposicion={modoTonalComposicion}

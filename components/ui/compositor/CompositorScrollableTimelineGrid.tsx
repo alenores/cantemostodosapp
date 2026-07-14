@@ -10,9 +10,11 @@ import {
 import type { CompositorTimelineDropCell } from "@/lib/compositor-timeline-placement";
 import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
 import type { ReactNode, RefObject } from "react";
+import { useRef, useState } from "react";
 
 const ROW_HEIGHT_CLASS = "h-8";
 const RULER_HEIGHT_CLASS = "h-5";
+const MARQUEE_THRESHOLD_PX = 4;
 
 function TimelineGridBackground({
   gridSteps,
@@ -134,9 +136,9 @@ export function CompositorScrollableTimelineGrid({
   trackOverlay = null,
   disabled = false,
   onClearSelection,
+  onMarqueeSelect,
   scrollContainerRef,
   placementPreview = null,
-  onPlacementTap,
 }: {
   piece: CompositorPiece;
   gridSteps: number;
@@ -146,13 +148,30 @@ export function CompositorScrollableTimelineGrid({
   trackOverlay?: ReactNode;
   disabled?: boolean;
   onClearSelection?: () => void;
+  onMarqueeSelect?: (bounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }) => void;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
   placementPreview?: CompositorTimelineDropCell | null;
-  onPlacementTap?: (clientX: number, clientY: number) => boolean;
 }) {
   const trackWidthPx = gridSteps * COMPOSITOR_TIMELINE_STEP_MIN_PX;
   const contentWidthPx =
     COMPOSITOR_TIMELINE_ROW_LABEL_WIDTH_PX + trackWidthPx;
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [marquee, setMarquee] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const marqueeOriginRef = useRef<{
+    clientX: number;
+    clientY: number;
+    pointerId: number;
+  } | null>(null);
 
   const handleBackgroundPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
@@ -167,11 +186,70 @@ export function CompositorScrollableTimelineGrid({
       return;
     }
 
-    if (onPlacementTap?.(event.clientX, event.clientY)) {
+    if (!onMarqueeSelect) {
+      onClearSelection?.();
       return;
     }
 
-    onClearSelection?.();
+    event.preventDefault();
+    marqueeOriginRef.current = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      pointerId: event.pointerId,
+    };
+    setMarquee(null);
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const origin = marqueeOriginRef.current;
+
+      if (!origin || moveEvent.pointerId !== origin.pointerId) {
+        return;
+      }
+
+      const left = Math.min(origin.clientX, moveEvent.clientX);
+      const top = Math.min(origin.clientY, moveEvent.clientY);
+      const width = Math.abs(moveEvent.clientX - origin.clientX);
+      const height = Math.abs(moveEvent.clientY - origin.clientY);
+
+      if (width < MARQUEE_THRESHOLD_PX && height < MARQUEE_THRESHOLD_PX) {
+        setMarquee(null);
+        return;
+      }
+
+      setMarquee({ left, top, width, height });
+    };
+
+    const onUp = (upEvent: PointerEvent) => {
+      const origin = marqueeOriginRef.current;
+
+      if (!origin || upEvent.pointerId !== origin.pointerId) {
+        return;
+      }
+
+      const left = Math.min(origin.clientX, upEvent.clientX);
+      const top = Math.min(origin.clientY, upEvent.clientY);
+      const right = Math.max(origin.clientX, upEvent.clientX);
+      const bottom = Math.max(origin.clientY, upEvent.clientY);
+      const width = right - left;
+      const height = bottom - top;
+
+      marqueeOriginRef.current = null;
+      setMarquee(null);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+
+      if (width < MARQUEE_THRESHOLD_PX && height < MARQUEE_THRESHOLD_PX) {
+        onClearSelection?.();
+        return;
+      }
+
+      onMarqueeSelect({ left, top, right, bottom });
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
   };
 
   const previewLeftPercent =
@@ -180,10 +258,23 @@ export function CompositorScrollableTimelineGrid({
       : (placementPreview.step / gridSteps) * 100;
   const previewWidthPercent = (1 / gridSteps) * 100;
 
+  const marqueeStyle =
+    marquee == null || trackRef.current == null
+      ? null
+      : (() => {
+          const trackRect = trackRef.current.getBoundingClientRect();
+          return {
+            left: marquee.left - trackRect.left,
+            top: marquee.top - trackRect.top,
+            width: marquee.width,
+            height: marquee.height,
+          };
+        })();
+
   return (
     <div
       ref={scrollContainerRef}
-      className="mt-2 min-w-0 touch-pan-x overflow-x-auto overscroll-x-contain rounded-lg border border-border/80 bg-bg-darker"
+      className="mt-2 min-w-0 touch-pan-x touch-pan-y overflow-x-auto overscroll-x-contain rounded-lg border border-border/80 bg-bg-darker"
       onPointerDown={handleBackgroundPointerDown}
       onWheel={forwardVerticalWheel}
     >
@@ -194,6 +285,7 @@ export function CompositorScrollableTimelineGrid({
         <StickyRowLabels rows={rows} />
 
         <div
+          ref={trackRef}
           className="relative min-w-0 shrink-0"
           style={{ width: `${trackWidthPx}px` }}
           data-compositor-timeline-track=""
@@ -224,6 +316,19 @@ export function CompositorScrollableTimelineGrid({
 
           {playheadProgress != null ? (
             <Playhead playheadProgress={playheadProgress} gridSteps={gridSteps} />
+          ) : null}
+
+          {marqueeStyle ? (
+            <div
+              className="pointer-events-none absolute z-40 border border-compositor-config bg-compositor-config/20"
+              style={{
+                left: `${marqueeStyle.left}px`,
+                top: `${marqueeStyle.top}px`,
+                width: `${marqueeStyle.width}px`,
+                height: `${marqueeStyle.height}px`,
+              }}
+              aria-hidden="true"
+            />
           ) : null}
 
           {placementPreview &&

@@ -37,7 +37,18 @@ function GuitarTimbreBadge({
         className="compositor-guitar-timbre-badge compositor-guitar-timbre-badge--rasguido"
         aria-hidden="true"
       >
-        ↓↑
+        ↓
+      </span>
+    );
+  }
+
+  if (articulation === "rasguidoArriba") {
+    return (
+      <span
+        className="compositor-guitar-timbre-badge compositor-guitar-timbre-badge--rasguido"
+        aria-hidden="true"
+      >
+        ↑
       </span>
     );
   }
@@ -81,6 +92,7 @@ type CompositorTimelineBlockProps = {
   subdivisionsPerGolpe: number;
   stepDurationSeconds: number;
   isSelected: boolean;
+  moveRejected?: boolean;
   conflictHighlight?: boolean;
   disabled?: boolean;
   title: string;
@@ -89,8 +101,13 @@ type CompositorTimelineBlockProps = {
   minWidthPercent?: number;
   positioning?: "absolute" | "fill";
   showNoteLabel?: boolean;
-  onSelect: () => void;
-  onUpdateTiming: (patch: CompositorTimelineEventPatch) => void;
+  selectedEventIds: string[];
+  trackEvents: CompositorTrackEvent[];
+  onSelect: (options?: { additive?: boolean }) => void;
+  onUpdateEvents: (
+    updates: { id: string; patch: CompositorTimelineEventPatch }[],
+  ) => void;
+  onMoveRejectedChange: (rejected: boolean) => void;
   melodicRowDrag?: MelodicRowDragContext;
 };
 
@@ -101,6 +118,7 @@ export function CompositorTimelineBlock({
   subdivisionsPerGolpe,
   stepDurationSeconds,
   isSelected,
+  moveRejected = false,
   conflictHighlight = false,
   disabled = false,
   title,
@@ -109,34 +127,39 @@ export function CompositorTimelineBlock({
   minWidthPercent = 0,
   positioning = "absolute",
   showNoteLabel = true,
+  selectedEventIds,
+  trackEvents,
   onSelect,
-  onUpdateTiming,
+  onUpdateEvents,
+  onMoveRejectedChange,
   melodicRowDrag,
 }: CompositorTimelineBlockProps) {
   const noteLabel = isMelodicCompositorInstrument(instrumentId)
     ? formatCompositorGradoLabel(event.gradoCromatico, event.octavaRelativa)
     : "";
 
-  const {
-    canResize,
-    isDragging,
-    handlePointerDown,
-  } = useCompositorTimelineBlockDrag({
-    event,
-    instrumentId,
-    gridSteps,
-    subdivisionsPerGolpe,
-    stepDurationSeconds,
-    disabled,
-    melodicRowDrag,
-    onSelect,
-    onUpdate: onUpdateTiming,
-  });
+  const { canResize, isDragging, handlePointerDown } =
+    useCompositorTimelineBlockDrag({
+      event,
+      instrumentId,
+      gridSteps,
+      subdivisionsPerGolpe,
+      stepDurationSeconds,
+      disabled,
+      selectedEventIds,
+      trackEvents,
+      melodicRowDrag,
+      moveRejected,
+      onMoveRejectedChange,
+      onSelect,
+      onUpdateEvents,
+    });
 
   const blockClassName = getCompositorTimelineBlockClassName({
     instrumentId,
     isSelected,
     isDragging,
+    moveRejected: isSelected && moveRejected,
     guitarArticulation:
       instrumentId === "guitarra" ? event.guitarArticulation : undefined,
     drumSilencio:
@@ -158,7 +181,9 @@ export function CompositorTimelineBlock({
           ? "relative h-full w-full"
           : "absolute inset-y-0.5"
       } ${
-        conflictHighlight ? "compositor-timeline-block--conflict-focus ring-2 ring-[var(--tuner-lejos)]" : ""
+        conflictHighlight
+          ? "compositor-timeline-block--conflict-focus ring-2 ring-[var(--tuner-lejos)]"
+          : ""
       } ${disabled ? "pointer-events-none opacity-50" : isDragging ? "pointer-events-none cursor-grabbing" : "cursor-grab"}`}
       style={
         positioning === "fill"

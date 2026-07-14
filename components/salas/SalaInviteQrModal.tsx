@@ -242,42 +242,40 @@ export default function SalaInviteQrModal({
                 </TapButton>
               </div>
             </form>
-
-            <div>
-              <p className="mb-2 text-xs font-medium text-text-muted">
-                Miembros
-              </p>
-              <ul className="space-y-2">
-                {miembros.map((m) => (
-                  <li
-                    key={m.user_id}
-                    className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-app px-3 py-2"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
-                      {m.nombre}
-                      {m.rol === "owner" ? (
-                        <span className="ml-1 text-[10px] text-text-faint">
-                          (creador)
-                        </span>
-                      ) : null}
-                    </span>
-                    {m.rol === "member" && m.user_id !== userId ? (
-                      <TapButton
-                        type="button"
-                        aria-label={`Eliminar a ${m.nombre}`}
-                        disabled={busy}
-                        onClick={() => void handleEliminar(m.user_id)}
-                        className="flex size-8 items-center justify-center rounded-full text-accent disabled:opacity-60"
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                      </TapButton>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
         ) : null}
+
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="mb-2 text-xs font-medium text-text-muted">Miembros</p>
+          <ul className="space-y-2">
+            {miembros.map((m) => (
+              <li
+                key={m.user_id}
+                className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-app px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
+                  {m.nombre}
+                  {m.rol === "owner" ? (
+                    <span className="ml-1 text-[10px] text-text-faint">
+                      (creador)
+                    </span>
+                  ) : null}
+                </span>
+                {isOwner && m.rol === "member" && m.user_id !== userId ? (
+                  <TapButton
+                    type="button"
+                    aria-label={`Eliminar a ${m.nombre}`}
+                    disabled={busy}
+                    onClick={() => void handleEliminar(m.user_id)}
+                    className="flex size-8 items-center justify-center rounded-full text-accent disabled:opacity-60"
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </TapButton>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
 
         {error ? (
           <p className="mt-3 text-sm text-accent" role="alert">

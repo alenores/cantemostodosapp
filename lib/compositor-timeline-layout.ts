@@ -360,6 +360,17 @@ export function getSustentoHelpText(
     return "Bloque: todas las cuerdas juntas, golpe seco.";
   }
 
+  if (
+    instrumentId === "guitarra" &&
+    event.guitarArticulation === "rasguidoArriba"
+  ) {
+    return "Rasguido ↑: abanico de agudo a grave, una cuerda detrás de otra.";
+  }
+
+  if (instrumentId === "guitarra" && event.guitarArticulation === "rasguido") {
+    return "Rasguido ↓: abanico de grave a agudo, una cuerda detrás de otra.";
+  }
+
   if (instrumentId === "guitarra") {
     return "Rasguido: abanico claro, una cuerda detrás de otra.";
   }

@@ -3,6 +3,7 @@
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { CompositorPcEditorShell } from "@/components/ui/compositor/CompositorPcEditorShell";
 import { CompositorDrumPatternPicker } from "@/components/ui/compositor/CompositorDrumPatternPicker";
+import { CompositorMelodicPatternPicker } from "@/components/ui/compositor/CompositorMelodicPatternPicker";
 import { CompositorEditorStatusBar } from "@/components/ui/compositor/CompositorEditorStatusBar";
 import { CompositorListenView } from "@/components/ui/compositor/CompositorListenView";
 import {
@@ -39,12 +40,18 @@ import {
   getCompositorDrumPatternById,
   type CompositorDrumPatternId,
 } from "@/lib/compositor-drum-patterns";
+import {
+  getCompositorMelodicPatternById,
+  melodicTrackHasEvents,
+  type CompositorMelodicPatternId,
+} from "@/lib/compositor-melodic-patterns";
 import type { NotaIndex } from "@/lib/cifrado";
 import { formatCompositorTonalidadLabel } from "@/lib/compositor";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import {
   COMPOSITOR_CONFIRM_CYCLE_STRUCTURE_MESSAGE,
   COMPOSITOR_CONFIRM_APLICAR_RITMO_BATERIA,
+  COMPOSITOR_CONFIRM_APLICAR_MELODIA,
   COMPOSITOR_CONFIRM_DELETE_CYCLE_MESSAGE,
   COMPOSITOR_CONFIRM_RESET_MESSAGE,
   COMPOSITOR_LABEL_CICLO_COMPARTIDO,
@@ -73,8 +80,10 @@ export type CompositorEditorProps = {
   piece: CompositorPiece;
   activeTrackId: CompositorInstrumentId;
   activeDrumPatternId: CompositorDrumPatternId | null;
+  activeMelodicPatternId: CompositorMelodicPatternId | null;
+  activeMelodicPatternInstrumentId: CompositorMelodicInstrumentId | null;
   isPieceModifiedFromBaseline: boolean;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   cycleGolpes: number;
   cycleBeatDurations: MetronomeBeatDurationPattern;
   bpm: number;
@@ -84,11 +93,13 @@ export type CompositorEditorProps = {
   isPreviewingTrack: boolean;
   previewingDrumPatternId: CompositorDrumPatternId | null;
   drumPatternPreviewProgress: number | null;
+  previewingMelodicPatternId: CompositorMelodicPatternId | null;
+  melodicPatternPreviewProgress: number | null;
   cycleProgress: number | null;
   tapTempoTapCount: number;
   samplesLoading: boolean;
   onSetActiveTrackId: (instrumentId: CompositorInstrumentId) => void;
-  onSetSelectedEventId: (eventId: string | null) => void;
+  onSetSelectedEventIds: (eventIds: string[]) => void;
   onToggleTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   onToggleListenTrack: (instrumentId: CompositorInstrumentId, enabled: boolean) => void;
   onEnterListen: () => void;
@@ -115,8 +126,12 @@ export type CompositorEditorProps = {
     patch: Partial<CompositorTrackEvent>,
     instrumentId?: CompositorInstrumentId,
   ) => void;
-  onRemoveTrackEvent: (
-    eventId: string,
+  onUpdateTrackEvents: (
+    updates: { eventId: string; patch: Partial<CompositorTrackEvent> }[],
+    instrumentId?: CompositorInstrumentId,
+  ) => void;
+  onRemoveTrackEvents: (
+    eventIds: string[],
     instrumentId?: CompositorInstrumentId,
   ) => void;
   onTapTempo: () => void;
@@ -124,9 +139,18 @@ export type CompositorEditorProps = {
   onPreviewActiveTrack: () => void;
   onPreviewDrumPattern: (patternId: CompositorDrumPatternId) => void;
   onStopDrumPatternPreview: () => void;
+  onPreviewMelodicPattern: (
+    patternId: CompositorMelodicPatternId,
+    instrumentId: CompositorMelodicInstrumentId,
+  ) => void;
+  onStopMelodicPatternPreview: () => void;
   onStop: () => void;
   onReset: () => void;
   onApplyDrumPattern: (patternId: CompositorDrumPatternId) => void;
+  onApplyMelodicPattern: (
+    patternId: CompositorMelodicPatternId,
+    instrumentId: CompositorMelodicInstrumentId,
+  ) => void;
   activeCycle: CompositorCycle | null;
   cyclesBusy: boolean;
   cyclesError: string | null;
@@ -156,8 +180,10 @@ export function CompositorEditor({
   piece,
   activeTrackId,
   activeDrumPatternId,
+  activeMelodicPatternId,
+  activeMelodicPatternInstrumentId,
   isPieceModifiedFromBaseline,
-  selectedEventId,
+  selectedEventIds,
   cycleGolpes,
   cycleBeatDurations,
   bpm,
@@ -167,11 +193,13 @@ export function CompositorEditor({
   isPreviewingTrack,
   previewingDrumPatternId,
   drumPatternPreviewProgress,
+  previewingMelodicPatternId,
+  melodicPatternPreviewProgress,
   cycleProgress,
   tapTempoTapCount,
   samplesLoading,
   onSetActiveTrackId,
-  onSetSelectedEventId,
+  onSetSelectedEventIds,
   onToggleTrack,
   onToggleListenTrack,
   onEnterListen,
@@ -183,15 +211,19 @@ export function CompositorEditor({
   onSetModoTonalComposicion,
   onPlaceTrackEvent,
   onUpdateTrackEvent,
-  onRemoveTrackEvent,
+  onUpdateTrackEvents,
+  onRemoveTrackEvents,
   onTapTempo,
   onStart,
   onPreviewActiveTrack,
   onPreviewDrumPattern,
   onStopDrumPatternPreview,
+  onPreviewMelodicPattern,
+  onStopMelodicPatternPreview,
   onStop,
   onReset,
   onApplyDrumPattern,
+  onApplyMelodicPattern,
   activeCycle,
   cyclesBusy,
   cyclesError,
@@ -219,6 +251,10 @@ export function CompositorEditor({
   const [drumPatternConfirmOpen, setDrumPatternConfirmOpen] = useState(false);
   const [pendingDrumPatternId, setPendingDrumPatternId] =
     useState<CompositorDrumPatternId | null>(null);
+  const [melodicPatternConfirmOpen, setMelodicPatternConfirmOpen] =
+    useState(false);
+  const [pendingMelodicPatternId, setPendingMelodicPatternId] =
+    useState<CompositorMelodicPatternId | null>(null);
 
   const drumTrack = getCompositorTrack(piece, "bateria");
   const melodicTrackId = isMelodicInstrumentId(activeTrackId)
@@ -226,13 +262,15 @@ export function CompositorEditor({
     : "piano";
   const melodicTrack = getCompositorTrack(piece, melodicTrackId);
   const selectedDrumEvent =
-    selectedEventId == null
-      ? null
-      : drumTrack.events.find((event) => event.id === selectedEventId) ?? null;
+    selectedEventIds.length === 1
+      ? drumTrack.events.find((event) => event.id === selectedEventIds[0]) ??
+        null
+      : null;
   const selectedMelodicEvent =
-    selectedEventId == null
-      ? null
-      : melodicTrack.events.find((event) => event.id === selectedEventId) ?? null;
+    selectedEventIds.length === 1
+      ? melodicTrack.events.find((event) => event.id === selectedEventIds[0]) ??
+        null
+      : null;
 
   const configLocked = isPlaying || isPreviewingTrack;
   const trackOverflowWarning = useMemo(() => {
@@ -246,6 +284,9 @@ export function CompositorEditor({
   }, [piece]);
   const pendingDrumPattern = pendingDrumPatternId
     ? getCompositorDrumPatternById(pendingDrumPatternId)
+    : null;
+  const pendingMelodicPattern = pendingMelodicPatternId
+    ? getCompositorMelodicPatternById(pendingMelodicPatternId)
     : null;
 
   const tabSummary = useMemo(() => {
@@ -272,13 +313,13 @@ export function CompositorEditor({
 
     if (tab === "bateria") {
       onSetActiveTrackId("bateria");
-      onSetSelectedEventId(null);
+      onSetSelectedEventIds([]);
       return;
     }
 
     if (tab === "melodias" && !isMelodicInstrumentId(activeTrackId)) {
       onSetActiveTrackId("piano");
-      onSetSelectedEventId(null);
+      onSetSelectedEventIds([]);
     }
   }
 
@@ -347,6 +388,24 @@ export function CompositorEditor({
     }
 
     onApplyDrumPattern(patternId);
+  }
+
+  function handleMelodicPatternClick(patternId: CompositorMelodicPatternId) {
+    if (
+      configLocked ||
+      (patternId === activeMelodicPatternId &&
+        activeMelodicPatternInstrumentId === melodicTrackId)
+    ) {
+      return;
+    }
+
+    if (melodicTrackHasEvents(piece, melodicTrackId)) {
+      setPendingMelodicPatternId(patternId);
+      setMelodicPatternConfirmOpen(true);
+      return;
+    }
+
+    onApplyMelodicPattern(patternId, melodicTrackId);
   }
 
   return (
@@ -460,7 +519,13 @@ export function CompositorEditor({
                   piece={piece}
                   instrumentId="bateria"
                   events={drumTrack.events}
-                  selectedEventId={selectedDrumEvent ? selectedEventId : null}
+                  selectedEventIds={
+                    selectedDrumEvent || selectedEventIds.length > 1
+                      ? selectedEventIds.filter((id) =>
+                          drumTrack.events.some((event) => event.id === id),
+                        )
+                      : []
+                  }
                   cycleProgress={isPreviewingTrack ? cycleProgress : null}
                   octaveExact={true}
                   disabled={configLocked}
@@ -469,57 +534,85 @@ export function CompositorEditor({
                   previewDisabled={isPlaying}
                   capasMode="none"
                   placementMode="drum"
-                  onSelectEvent={onSetSelectedEventId}
+                  onSelectEventIds={onSetSelectedEventIds}
                   onUpdateEvent={(eventId, patch) =>
                     onUpdateTrackEvent(eventId, patch)
+                  }
+                  onUpdateEvents={(updates) =>
+                    onUpdateTrackEvents(updates, "bateria")
                   }
                   onPlaceEvent={(partial) =>
                     onPlaceTrackEvent("bateria", partial)
                   }
-                  onRemoveEvent={onRemoveTrackEvent}
+                  onRemoveEvents={(eventIds) =>
+                    onRemoveTrackEvents(eventIds, "bateria")
+                  }
                   onPreviewTrack={() => void onPreviewActiveTrack()}
                 />
               </div>
             ) : null}
 
             {activeTab === "melodias" ? (
-              <CompositorTrackTimeline
-                piece={piece}
-                instrumentId={melodicTrackId}
-                events={melodicTrack.events}
-                selectedEventId={
-                  selectedMelodicEvent ? selectedEventId : null
-                }
-                cycleProgress={isPreviewingTrack ? cycleProgress : null}
-                octaveExact={true}
-                disabled={configLocked}
-                trackAtCapacity={isTrackAtCapacity(melodicTrack)}
-                isPreviewingTrack={isPreviewingTrack}
-                previewDisabled={isPlaying}
-                capasMode="melodic"
-                placementMode="melodic"
-                tonalidadComposicion={tonalidadComposicion}
-                modoTonalComposicion={modoTonalComposicion}
-                onSetTonalidadComposicion={onSetTonalidadComposicion}
-                onSetModoTonalComposicion={onSetModoTonalComposicion}
-                onSelectTrack={onSetActiveTrackId}
-                onSelectEvent={onSetSelectedEventId}
-                onUpdateEvent={(eventId, patch) =>
-                  onUpdateTrackEvent(eventId, patch)
-                }
-                onPlaceEvent={(partial, options) =>
-                  onPlaceTrackEvent(melodicTrackId, partial, options)
-                }
-                onRemoveEvent={onRemoveTrackEvent}
-                onPreviewTrack={() => void onPreviewActiveTrack()}
-              />
+              <div className="space-y-2.5">
+                <CompositorMelodicPatternPicker
+                  instrumentId={melodicTrackId}
+                  activePatternId={
+                    activeMelodicPatternInstrumentId === melodicTrackId
+                      ? activeMelodicPatternId
+                      : null
+                  }
+                  previewingPatternId={previewingMelodicPatternId}
+                  previewProgress={melodicPatternPreviewProgress}
+                  disabled={configLocked}
+                  onSelectPattern={handleMelodicPatternClick}
+                  onPreviewPattern={(patternId) =>
+                    void onPreviewMelodicPattern(patternId, melodicTrackId)
+                  }
+                  onStopPreview={onStopMelodicPatternPreview}
+                />
+                <CompositorTrackTimeline
+                  piece={piece}
+                  instrumentId={melodicTrackId}
+                  events={melodicTrack.events}
+                  selectedEventIds={selectedEventIds.filter((id) =>
+                    melodicTrack.events.some((event) => event.id === id),
+                  )}
+                  cycleProgress={isPreviewingTrack ? cycleProgress : null}
+                  octaveExact={true}
+                  disabled={configLocked}
+                  trackAtCapacity={isTrackAtCapacity(melodicTrack)}
+                  isPreviewingTrack={isPreviewingTrack}
+                  previewDisabled={isPlaying}
+                  capasMode="melodic"
+                  placementMode="melodic"
+                  tonalidadComposicion={tonalidadComposicion}
+                  modoTonalComposicion={modoTonalComposicion}
+                  onSetTonalidadComposicion={onSetTonalidadComposicion}
+                  onSetModoTonalComposicion={onSetModoTonalComposicion}
+                  onSelectTrack={onSetActiveTrackId}
+                  onSelectEventIds={onSetSelectedEventIds}
+                  onUpdateEvent={(eventId, patch) =>
+                    onUpdateTrackEvent(eventId, patch)
+                  }
+                  onUpdateEvents={(updates) =>
+                    onUpdateTrackEvents(updates, melodicTrackId)
+                  }
+                  onPlaceEvent={(partial, options) =>
+                    onPlaceTrackEvent(melodicTrackId, partial, options)
+                  }
+                  onRemoveEvents={(eventIds) =>
+                    onRemoveTrackEvents(eventIds, melodicTrackId)
+                  }
+                  onPreviewTrack={() => void onPreviewActiveTrack()}
+                />
+              </div>
             ) : null}
 
             {activeTab === "practicar" ? (
               <CompositorListenView
                 piece={piece}
                 activeTrackId={activeTrackId}
-                selectedEventId={selectedEventId}
+                selectedEventIds={selectedEventIds}
                 bpm={bpm}
                 tonalidadComposicion={tonalidadComposicion}
                 modoTonalComposicion={modoTonalComposicion}
@@ -542,7 +635,9 @@ export function CompositorEditor({
           piece={piece}
           activeTrackId={activeTrackId}
           activeDrumPatternId={activeDrumPatternId}
-          selectedEventId={selectedEventId}
+          activeMelodicPatternId={activeMelodicPatternId}
+          activeMelodicPatternInstrumentId={activeMelodicPatternInstrumentId}
+          selectedEventIds={selectedEventIds}
           cycleGolpes={cycleGolpes}
           cycleBeatDurations={cycleBeatDurations}
           bpm={bpm}
@@ -552,11 +647,13 @@ export function CompositorEditor({
           isPreviewingTrack={isPreviewingTrack}
           previewingDrumPatternId={previewingDrumPatternId}
           drumPatternPreviewProgress={drumPatternPreviewProgress}
+          previewingMelodicPatternId={previewingMelodicPatternId}
+          melodicPatternPreviewProgress={melodicPatternPreviewProgress}
           cycleProgress={cycleProgress}
           tapTempoTapCount={tapTempoTapCount}
           disabled={configLocked}
           onSetActiveTrackId={onSetActiveTrackId}
-          onSetSelectedEventId={onSetSelectedEventId}
+          onSetSelectedEventIds={onSetSelectedEventIds}
           onToggleTrack={onToggleTrack}
           onToggleListenTrack={onToggleListenTrack}
           onEnterListen={onEnterListen}
@@ -566,16 +663,20 @@ export function CompositorEditor({
           onSetModoTonalComposicion={onSetModoTonalComposicion}
           onPlaceTrackEvent={onPlaceTrackEvent}
           onUpdateTrackEvent={onUpdateTrackEvent}
-          onRemoveTrackEvent={onRemoveTrackEvent}
+          onUpdateTrackEvents={onUpdateTrackEvents}
+          onRemoveTrackEvents={onRemoveTrackEvents}
           onTapTempo={onTapTempo}
           onPreviewActiveTrack={onPreviewActiveTrack}
           onPreviewDrumPattern={onPreviewDrumPattern}
           onStopDrumPatternPreview={onStopDrumPatternPreview}
+          onPreviewMelodicPattern={onPreviewMelodicPattern}
+          onStopMelodicPatternPreview={onStopMelodicPatternPreview}
           onStart={onStart}
           onStop={onStop}
           onRequestCycleGolpesChange={requestCycleGolpesChange}
           onRequestCycleBeatDurationChange={requestCycleBeatDurationChange}
           onSelectDrumPattern={handleDrumPatternClick}
+          onSelectMelodicPattern={handleMelodicPatternClick}
         />
       )}
 
@@ -615,6 +716,34 @@ export function CompositorEditor({
         onCancel={() => {
           setDrumPatternConfirmOpen(false);
           setPendingDrumPatternId(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={melodicPatternConfirmOpen}
+        message={
+          pendingMelodicPattern
+            ? COMPOSITOR_CONFIRM_APLICAR_MELODIA(
+                pendingMelodicPattern.label,
+                getInstrumentLabel(melodicTrackId),
+              )
+            : ""
+        }
+        confirmLabel="Sí, cargar"
+        cancelLabel="Cancelar"
+        deleteConfirm
+        zIndex={60}
+        onConfirm={() => {
+          if (pendingMelodicPatternId) {
+            onApplyMelodicPattern(pendingMelodicPatternId, melodicTrackId);
+          }
+
+          setMelodicPatternConfirmOpen(false);
+          setPendingMelodicPatternId(null);
+        }}
+        onCancel={() => {
+          setMelodicPatternConfirmOpen(false);
+          setPendingMelodicPatternId(null);
         }}
       />
 

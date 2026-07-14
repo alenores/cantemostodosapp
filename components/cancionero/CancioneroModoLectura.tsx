@@ -31,6 +31,8 @@ import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import type { LucideIcon } from "lucide-react";
 import {
   AudioLines,
+  Eye,
+  EyeOff,
   Minimize2,
   Music,
   Music2,
@@ -130,6 +132,7 @@ export default function CancioneroModoLectura({
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [compasesOcultos, setCompasesOcultos] = useState(false);
+  const [acordesOcultos, setAcordesOcultos] = useState(false);
   const [zoomPanelAbierto, setZoomPanelAbierto] = useState(false);
   const [tonoPanelAbierto, setTonoPanelAbierto] = useState(false);
   const [lecturaCompasPlayback, setLecturaCompasPlayback] =
@@ -190,6 +193,7 @@ export default function CancioneroModoLectura({
     }
 
     setCompasesOcultos(false);
+    setAcordesOcultos(false);
     setLecturaCompasPlayback(null);
     setLecturaTonalidad(null);
     setZoomPanelAbierto(false);
@@ -264,6 +268,10 @@ export default function CancioneroModoLectura({
               compasesOcultos={compasesOcultos}
               onToggleCompasesOcultos={() =>
                 setCompasesOcultos((ocultos) => !ocultos)
+              }
+              acordesOcultos={acordesOcultos}
+              onToggleAcordesOcultos={() =>
+                setAcordesOcultos((ocultos) => !ocultos)
               }
               onCompasPlaybackStateChange={
                 handleLecturaCompasPlaybackStateChange
@@ -429,6 +437,17 @@ export default function CancioneroModoLectura({
                 onClick={() => {
                   setOverlayAbierto(false);
                   setCompasesOcultos(false);
+                }}
+              />
+            ) : null}
+            {showCifradoAvanzado ? (
+              <CancioneroLecturaFabOption
+                icon={acordesOcultos ? Eye : EyeOff}
+                label={acordesOcultos ? "Mostrar acordes" : "Ocultar acordes"}
+                cascadeIndex={cascadeIndex++}
+                onClick={() => {
+                  setOverlayAbierto(false);
+                  setAcordesOcultos((ocultos) => !ocultos);
                 }}
               />
             ) : null}

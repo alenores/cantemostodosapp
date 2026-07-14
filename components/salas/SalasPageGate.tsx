@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 
 type SalasPageGateProps = {
   serverUsuario: UsuarioActivo | null;
-  serverSalas: Pick<Sala, "id" | "nombre" | "descripcion">[] | null;
+  serverSalas: Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">[] | null;
   errorMessage: string | null;
   avisoInicial?: string | null;
 };
@@ -24,7 +24,7 @@ type GateState =
   | {
       status: "ready";
       payload: {
-        salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+        salas: Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">[];
         usuario: UsuarioActivo;
         errorMessage: string | null;
         avisoInicial: string | null;
@@ -113,7 +113,7 @@ export default function SalasPageGate({
       const usuario = mapUserToUsuarioActivo(session.user);
       const { data: salas, error: salasError } = await supabase
         .from("salas")
-        .select("id, nombre, descripcion")
+        .select("id, nombre, descripcion, avatar_url")
         .order("nombre");
 
       if (cancelled) {

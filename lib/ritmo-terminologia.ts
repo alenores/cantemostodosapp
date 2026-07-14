@@ -56,7 +56,7 @@ export const RITMO_HELP_SONIDO_GOLPE =
   "Para cada golpe elegís si hay que cantar o callar.";
 
 export const RITMO_HELP_TIMBRE_GUITARRA =
-  "Cómo se ataca la nota en este golpe (púa, rasguido o dedo).";
+  "Cómo se ataca la nota en este golpe (púa, rasguido ↓/↑, dedo…).";
 
 export const RITMO_HELP_TIMBRE_BATERIA =
   "Qué elemento de batería suena en este golpe (bombo, caja, hi-hat, platillos…).";
@@ -89,6 +89,8 @@ export const COMPOSITOR_LABEL_SONIDO_SELECCIONADO = "Sonido seleccionado";
 
 export const COMPOSITOR_LABEL_BLOQUE_SELECCIONADO = "Bloque seleccionado";
 
+export const COMPOSITOR_LABEL_BLOQUES_SELECCIONADOS = "Bloques seleccionados";
+
 export const COMPOSITOR_LABEL_CREAR_BLOQUE = "Crear bloque";
 
 export const COMPOSITOR_LABEL_EDITAR_BLOQUE = "Editar bloque";
@@ -101,6 +103,8 @@ export const COMPOSITOR_LABEL_CAPAS_INSTRUMENTOS = "CAPAS (Instrumentos)";
 
 export const COMPOSITOR_LABEL_AGREGAR_BLOQUE = "Agregar bloque";
 
+export const COMPOSITOR_LABEL_CANTIDAD_BLOQUES = "Cantidad";
+
 export const COMPOSITOR_LABEL_OCTAVA = "Octava";
 
 export const COMPOSITOR_LABEL_AGREGAR_BLOQUE_NOTA = "Agregar bloque/nota";
@@ -110,6 +114,11 @@ export const COMPOSITOR_LABEL_ESCUCHAR_CAPA = "Escuchar capa";
 export const COMPOSITOR_LABEL_RESET_ZONA = "Dejar todo en cero";
 
 export const COMPOSITOR_LABEL_RESET_BLOQUE = "Reiniciar bloque";
+
+export const COMPOSITOR_CONFIRM_DELETE_BLOCKS_MESSAGE = (count: number) =>
+  count === 1
+    ? "¿Eliminar el bloque seleccionado?"
+    : `¿Eliminar los ${count} bloques seleccionados?`;
 
 export const COMPOSITOR_LABEL_PLANTILLAS = "Plantillas";
 
@@ -128,6 +137,30 @@ export const COMPOSITOR_ARIA_DETENER_PREVIEW_RITMO_BATERIA = (label: string) =>
 
 export const COMPOSITOR_CONFIRM_APLICAR_RITMO_BATERIA = (label: string) =>
   `¿Cargar el ritmo "${label}"? Se reemplazará la batería actual.`;
+
+export const COMPOSITOR_LABEL_MELODIAS_PLANTILLA = "Melodías";
+
+export const COMPOSITOR_LABEL_ACOMPANAMIENTO_PLANTILLA = "Acompañamiento";
+
+export const COMPOSITOR_HELP_MELODIAS_PLANTILLA =
+  "Tocá play para escuchar tres ciclos. Elegí una plantilla para cargarla en la capa activa.";
+
+export const COMPOSITOR_ARIA_MODAL_MELODIAS = "Elegir plantilla de melodía o acompañamiento";
+
+export const COMPOSITOR_ARIA_PREVIEW_MELODIA = (label: string) =>
+  `Escuchar tres ciclos de ${label}`;
+
+export const COMPOSITOR_ARIA_DETENER_PREVIEW_MELODIA = (label: string) =>
+  `Detener vista previa de ${label}`;
+
+export const COMPOSITOR_CONFIRM_APLICAR_MELODIA = (
+  label: string,
+  instrumentLabel: string,
+) =>
+  `¿Cargar la plantilla "${label}"? Se reemplazará ${instrumentLabel} actual.`;
+
+export const COMPOSITOR_HELP_ACOMPANAMIENTO_PLANTILLA =
+  "Bases para cantar encima (punteo y rasguido). Solo en guitarra.";
 
 export const COMPOSITOR_TAB_CICLO = "Ciclo";
 

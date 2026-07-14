@@ -11,7 +11,7 @@ export const OFFLINE_GUEST_USUARIO: UsuarioActivo = {
 };
 
 export type OfflineSalasPayload = {
-  salas: Pick<Sala, "id" | "nombre" | "descripcion">[];
+  salas: Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">[];
   usuario: UsuarioActivo;
   errorMessage: string | null;
   avisoInicial: string | null;

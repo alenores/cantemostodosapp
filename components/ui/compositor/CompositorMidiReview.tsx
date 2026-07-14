@@ -393,7 +393,7 @@ export function CompositorMidiReview({
             piece={piece}
             instrumentId={activeTrackId}
             events={activeLayerEvents}
-            selectedEventId={selectedEventId}
+            selectedEventIds={selectedEventId ? [selectedEventId] : []}
             highlightEventId={highlightEventId}
             cycleProgress={isPreviewingTrack ? cycleProgress : null}
             octaveExact={true}
@@ -412,17 +412,24 @@ export function CompositorMidiReview({
 
               onPreviewLayer(activeTrackId);
             }}
-            onSelectEvent={(eventId) => {
-              setSelectedEventId(eventId);
+            onSelectEventIds={(eventIds) => {
+              setSelectedEventId(eventIds[0] ?? null);
               onSetFocusTarget(null);
             }}
             onUpdateEvent={(
               eventId: string,
               patch: CompositorTimelineEventPatch,
             ) => onUpdateDraftEvent(activeTrackId, eventId, patch)}
-            onRemoveEvent={(eventId) =>
-              onRemoveDraftEvent(activeTrackId, eventId)
-            }
+            onUpdateEvents={(updates) => {
+              for (const { eventId, patch } of updates) {
+                onUpdateDraftEvent(activeTrackId, eventId, patch);
+              }
+            }}
+            onRemoveEvents={(eventIds) => {
+              for (const eventId of eventIds) {
+                onRemoveDraftEvent(activeTrackId, eventId);
+              }
+            }}
           />
           </>
         )}

@@ -160,6 +160,7 @@ export type CifradoLyricsLineProps = {
   tipoCompas?: TipoCompas;
   intensidadPlantilla?: MetronomeBeatLevel[];
   showCompas?: boolean;
+  showAcordes?: boolean;
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
   compact?: boolean;
@@ -179,6 +180,7 @@ export function CifradoLyricsLine({
   tipoCompas = "4-4",
   intensidadPlantilla = [],
   showCompas = false,
+  showAcordes = true,
   activeBeatAnchors = [],
   onMarkersReady,
   compact = false,
@@ -423,50 +425,56 @@ export function CifradoLyricsLine({
         )}
       </div>
 
-      {acordes.map((acorde) => {
-        const position = charPositions[acorde.charOffset];
+      {showAcordes
+        ? acordes.map((acorde) => {
+            const position = charPositions[acorde.charOffset];
 
-        if (!position) {
-          return null;
-        }
+            if (!position) {
+              return null;
+            }
 
-        const dotTop = position.bottom + 2;
-        const stemTop = compact ? 14 : 18;
-        const stemHeight = Math.max(4, dotTop - stemTop);
+            const dotTop = position.bottom + 2;
+            const stemTop = compact ? 14 : 18;
+            const stemHeight = Math.max(4, dotTop - stemTop);
 
-        return (
-          <div
-            key={`cifrado-acorde-${lineIndex}-${acorde.charOffset}`}
-            className="pointer-events-none absolute top-0"
-            style={{ left: position.left }}
-          >
-            <span
-              className={`absolute whitespace-nowrap rounded px-0.5 font-bold leading-none text-accent ${
-                letraSheet ? "text-[length:var(--letra-size)]" : compact ? "text-[10px]" : "text-xs"
-              }`}
-              style={{ top: letraSheet ? 0 : compact ? 2 : 4, left: 0 }}
-            >
-              <AcordeLabel
-                noteIndex={acorde.noteIndex}
-                modifier={acorde.modifier}
-                bassNoteIndex={acorde.bassNoteIndex}
-                notacion={notacion}
-                className="text-accent"
-              />
-            </span>
-            <span
-              className="absolute w-px bg-accent/50"
-              style={{ top: stemTop, left: 0, height: stemHeight }}
-              aria-hidden="true"
-            />
-            <span
-              className="absolute z-10 size-1 rounded-full bg-accent"
-              style={{ top: dotTop, left: 0 }}
-              aria-hidden="true"
-            />
-          </div>
-        );
-      })}
+            return (
+              <div
+                key={`cifrado-acorde-${lineIndex}-${acorde.charOffset}`}
+                className="pointer-events-none absolute top-0"
+                style={{ left: position.left }}
+              >
+                <span
+                  className={`absolute whitespace-nowrap rounded px-0.5 font-bold leading-none text-accent ${
+                    letraSheet
+                      ? "text-[length:var(--letra-size)]"
+                      : compact
+                        ? "text-[10px]"
+                        : "text-xs"
+                  }`}
+                  style={{ top: letraSheet ? 0 : compact ? 2 : 4, left: 0 }}
+                >
+                  <AcordeLabel
+                    noteIndex={acorde.noteIndex}
+                    modifier={acorde.modifier}
+                    bassNoteIndex={acorde.bassNoteIndex}
+                    notacion={notacion}
+                    className="text-accent"
+                  />
+                </span>
+                <span
+                  className="absolute w-px bg-accent/50"
+                  style={{ top: stemTop, left: 0, height: stemHeight }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="absolute z-10 size-1 rounded-full bg-accent"
+                  style={{ top: dotTop, left: 0 }}
+                  aria-hidden="true"
+                />
+              </div>
+            );
+          })
+        : null}
 
       {compasMarkers.length > 0 && (
         <div ref={compasRowRef} className="mt-1.5">
@@ -491,6 +499,7 @@ export type CifradoLyricsBlockProps = {
   tipoCompas?: TipoCompas;
   intensidadPlantilla?: MetronomeBeatLevel[];
   showCompas?: boolean;
+  showAcordes?: boolean;
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
   onLineRef?: (lineIndex: number, element: HTMLDivElement | null) => void;
@@ -510,6 +519,7 @@ export function CifradoLyricsBlock({
   tipoCompas = "4-4",
   intensidadPlantilla = [],
   showCompas = false,
+  showAcordes = true,
   activeBeatAnchors = [],
   onMarkersReady,
   onLineRef,
@@ -542,6 +552,7 @@ export function CifradoLyricsBlock({
             tipoCompas={tipoCompas}
             intensidadPlantilla={intensidadPlantilla}
             showCompas={showCompas}
+            showAcordes={showAcordes}
             activeBeatAnchors={activeBeatAnchors}
             onMarkersReady={onMarkersReady}
             compact={compact}

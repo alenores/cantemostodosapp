@@ -177,19 +177,21 @@ export default function CifradoLecturaSidePanel({
 
         {hasCompases ? (
           <div className={`${CIFRADO_CONTROLS_PANEL_BOX_CLASS} space-y-3`}>
-            <TapButton
-              type="button"
-              onClick={onTogglePlayback}
-              disabled={!canPlay}
-              aria-label={playing ? "Pausar compás" : "Reproducir compás"}
-              className="flex size-12 shrink-0 items-center justify-center self-center rounded-full bg-accent text-white shadow-[0_2px_10px_rgba(0,0,0,0.28)] disabled:opacity-40"
-            >
-              {playing ? (
-                <Pause className="size-5" aria-hidden="true" />
-              ) : (
-                <Play className="size-5 fill-current" aria-hidden="true" />
-              )}
-            </TapButton>
+            {!compasesOcultos ? (
+              <TapButton
+                type="button"
+                onClick={onTogglePlayback}
+                disabled={!canPlay}
+                aria-label={playing ? "Pausar compás" : "Reproducir compás"}
+                className="flex size-12 shrink-0 items-center justify-center self-center rounded-full bg-accent text-white shadow-[0_2px_10px_rgba(0,0,0,0.28)] disabled:opacity-40"
+              >
+                {playing ? (
+                  <Pause className="size-5" aria-hidden="true" />
+                ) : (
+                  <Play className="size-5 fill-current" aria-hidden="true" />
+                )}
+              </TapButton>
+            ) : null}
 
             <TapButton
               type="button"
@@ -204,54 +206,50 @@ export default function CifradoLecturaSidePanel({
               {compasesOcultos ? "Mostrar compases" : "Ocultar compases"}
             </TapButton>
 
-            {ocultarAcordesButton}
-
-            <div>
-              <label
-                className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
-                htmlFor="cifrado-lectura-bpm"
-              >
-                BPM
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="cifrado-lectura-bpm"
-                  type="number"
-                  min={40}
-                  max={240}
-                  value={bpm}
-                  onChange={(event) =>
-                    onBpmChange(Number(event.target.value) || bpm)
-                  }
-                  className={`${CIFRADO_CONTROLS_INPUT_CLASS} min-w-0 flex-1 text-center`}
-                />
-                <TapButton
-                  type="button"
-                  onClick={onTapTempo}
-                  className="min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+            {!compasesOcultos ? (
+              <div>
+                <label
+                  className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                  htmlFor="cifrado-lectura-bpm"
                 >
-                  Tap{tapCount > 0 ? ` (${tapCount})` : ""}
-                </TapButton>
+                  BPM
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="cifrado-lectura-bpm"
+                    type="number"
+                    min={40}
+                    max={240}
+                    value={bpm}
+                    onChange={(event) =>
+                      onBpmChange(Number(event.target.value) || bpm)
+                    }
+                    className={`${CIFRADO_CONTROLS_INPUT_CLASS} min-w-0 flex-1 text-center`}
+                  />
+                  <TapButton
+                    type="button"
+                    onClick={onTapTempo}
+                    className="min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                  >
+                    Tap{tapCount > 0 ? ` (${tapCount})` : ""}
+                  </TapButton>
+                </div>
               </div>
-            </div>
+            ) : null}
+          </div>
+        ) : null}
 
-            <CifradoNotacionToggle
-              notacion={notacion}
-              onChange={onNotacionChange}
-              embedded
-            />
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {ocultarAcordesButton}
-            <CifradoNotacionToggle
-              notacion={notacion}
-              onChange={onNotacionChange}
-            />
-          </div>
-        )}
+        <div className="mt-3">{ocultarAcordesButton}</div>
 
         {anotacionesToggles}
+
+        <div className="mt-3">
+          <CifradoNotacionToggle
+            notacion={notacion}
+            onChange={onNotacionChange}
+          />
+        </div>
+
         {accionesLectura}
       </div>
     </aside>

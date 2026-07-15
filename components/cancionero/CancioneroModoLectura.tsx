@@ -1,12 +1,11 @@
 "use client";
 
 import CancioneroLecturaListaPanel from "@/components/cancionero/CancioneroLecturaListaPanel";
-import type {
-  LecturaCompasPlaybackState,
-  LecturaTonalidadState,
-} from "@/components/cifrado/LetraCifradoLecturaShell";
 import LetraCifradoLecturaShell from "@/components/cifrado/LetraCifradoLecturaShell";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
+import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
+import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
+import { buildCancioneroLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import LecturaCancionChip, {
@@ -18,86 +17,17 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
-import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
-import { useLetraZoom } from "@/hooks/useLetraZoom";
+import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
-  getLecturaFabMenuTopCss,
   getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
   getLetraTextScrollEndPadding,
 } from "@/lib/sala-layout";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import type { LucideIcon } from "lucide-react";
-import {
-  AudioLines,
-  Eye,
-  EyeOff,
-  Minimize2,
-  Music,
-  Music2,
-  SkipBack,
-  SkipForward,
-  SlidersHorizontal,
-  Type,
-  X,
-} from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { SlidersHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
-const FLOAT_BTN_SECONDARY =
-  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
-const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
-const LECTURA_FAB_CASCADE_STEP_MS = 55;
-
-type FabOptionProps = {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  cascadeIndex: number;
-  disabled?: boolean;
-  iconAfter?: boolean;
-  className?: string;
-};
-
-function CancioneroLecturaFabOption({
-  icon: Icon,
-  label,
-  onClick,
-  cascadeIndex,
-  disabled = false,
-  iconAfter = false,
-  className = "",
-}: FabOptionProps) {
-  const iconNode = <Icon className="size-4 shrink-0" aria-hidden="true" />;
-
-  return (
-    <TapButton
-      type="button"
-      role="menuitem"
-      disabled={disabled}
-      onClick={onClick}
-      className={`sala-lectura-fab-item pointer-events-auto flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY} ${
-        disabled ? FLOAT_BTN_DISABLED : ""
-      } ${className}`}
-      style={{
-        animationDelay: `${cascadeIndex * LECTURA_FAB_CASCADE_STEP_MS}ms`,
-      }}
-    >
-      {iconAfter ? (
-        <>
-          <span>{label}</span>
-          {iconNode}
-        </>
-      ) : (
-        <>
-          {iconNode}
-          <span>{label}</span>
-        </>
-      )}
-    </TapButton>
-  );
-}
 
 type CancioneroModoLecturaProps = {
   open: boolean;
@@ -129,16 +59,6 @@ export default function CancioneroModoLectura({
   const isDesktop = useIsDesktop();
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const [portalMounted, setPortalMounted] = useState(false);
-  const [overlayAbierto, setOverlayAbierto] = useState(false);
-  const [afinadorOpen, setAfinadorOpen] = useState(false);
-  const [compasesOcultos, setCompasesOcultos] = useState(false);
-  const [acordesOcultos, setAcordesOcultos] = useState(false);
-  const [zoomPanelAbierto, setZoomPanelAbierto] = useState(false);
-  const [tonoPanelAbierto, setTonoPanelAbierto] = useState(false);
-  const [lecturaCompasPlayback, setLecturaCompasPlayback] =
-    useState<LecturaCompasPlaybackState | null>(null);
-  const [lecturaTonalidad, setLecturaTonalidad] =
-    useState<LecturaTonalidadState | null>(null);
 
   useBodyScrollLock(open);
 
@@ -152,22 +72,35 @@ export default function CancioneroModoLectura({
   const menuCompacto = lecturaConListaLateral;
 
   const {
-    autoScrollLevel,
-    accelerate: accelerateAutoScroll,
-    decelerate: decelerateAutoScroll,
-  } = useLetraAutoScroll(letraScrollRef, {
-    enabled: open,
+    overlayAbierto,
+    setOverlayAbierto,
+    afinadorOpen,
+    setAfinadorOpen,
+    compasesOcultos,
+    setCompasesOcultos,
+    toggleCompasesOcultos,
+    acordesOcultos,
+    toggleAcordesOcultos,
+    zoomPanelAbierto,
+    setZoomPanelAbierto,
+    tonoPanelAbierto,
+    setTonoPanelAbierto,
+    abrirZoom,
+    abrirTono,
+    lecturaCompasPlayback,
+    handleLecturaCompasPlaybackStateChange,
+    lecturaTonalidad,
+    handleLecturaTonalidadStateChange,
+    autoScroll,
+    zoom,
+    resetVista,
+  } = useModoLecturaCocina({
+    active: open,
+    scrollRef: letraScrollRef,
     contentKey,
   });
 
-  const {
-    level: letraZoomLevel,
-    factor: letraZoomFactor,
-    decrease: decreaseLetraZoom,
-    increase: increaseLetraZoom,
-  } = useLetraZoom(contentKey);
-
-  const letraZoomStyle = getLetraZoomStyle(letraZoomFactor);
+  const letraZoomStyle = getLetraZoomStyle(zoom.factor);
   const scrollEndPadding = getLetraTextScrollEndPadding();
   const lecturaZoomEligible = showCifradoAvanzado || Boolean(textoPlano);
 
@@ -188,32 +121,10 @@ export default function CancioneroModoLectura({
   }, [open]);
 
   useEffect(() => {
-    if (!open) {
-      return;
+    if (open) {
+      resetVista();
     }
-
-    setCompasesOcultos(false);
-    setAcordesOcultos(false);
-    setLecturaCompasPlayback(null);
-    setLecturaTonalidad(null);
-    setZoomPanelAbierto(false);
-    setTonoPanelAbierto(false);
-    setOverlayAbierto(false);
-  }, [contentKey, open]);
-
-  const handleLecturaCompasPlaybackStateChange = useCallback(
-    (state: LecturaCompasPlaybackState | null) => {
-      setLecturaCompasPlayback(state);
-    },
-    [],
-  );
-
-  const handleLecturaTonalidadStateChange = useCallback(
-    (state: LecturaTonalidadState | null) => {
-      setLecturaTonalidad(state);
-    },
-    [],
-  );
+  }, [open, resetVista]);
 
   const handleLecturaBack = useCallback(() => {
     if (tonoPanelAbierto) {
@@ -234,15 +145,24 @@ export default function CancioneroModoLectura({
     onContraer();
   }, [onContraer, overlayAbierto, tonoPanelAbierto, zoomPanelAbierto]);
 
+  const lecturaNavItems = useMemo(() => {
+    if (menuCompacto) {
+      return [];
+    }
+
+    return buildCancioneroLecturaNavItems({
+      tieneAnterior,
+      tieneSiguiente,
+      onAnterior,
+      onSiguiente,
+    });
+  }, [menuCompacto, onAnterior, onSiguiente, tieneAnterior, tieneSiguiente]);
+
   useHardwareBack(open && !afinadorOpen, handleLecturaBack);
 
   if (!open || !portalMounted) {
     return null;
   }
-
-  let cascadeIndex = 0;
-  const showActivarCompases =
-    Boolean(lecturaCompasPlayback?.hasCompases) && compasesOcultos;
 
   return createPortal(
     <div
@@ -266,13 +186,9 @@ export default function CancioneroModoLectura({
               scrollEndPadding={scrollEndPadding}
               letraZoomStyle={letraZoomStyle}
               compasesOcultos={compasesOcultos}
-              onToggleCompasesOcultos={() =>
-                setCompasesOcultos((ocultos) => !ocultos)
-              }
+              onToggleCompasesOcultos={toggleCompasesOcultos}
               acordesOcultos={acordesOcultos}
-              onToggleAcordesOcultos={() =>
-                setAcordesOcultos((ocultos) => !ocultos)
-              }
+              onToggleAcordesOcultos={toggleAcordesOcultos}
               onCompasPlaybackStateChange={
                 handleLecturaCompasPlaybackStateChange
               }
@@ -320,32 +236,11 @@ export default function CancioneroModoLectura({
         />
       </div>
 
-      <div
-        className="fixed z-50 hidden flex-col items-end gap-2 lg:flex"
-        style={{
-          top: getLecturaTopChromeTopCss(),
-          right: lecturaFixedRightCss,
-        }}
-      >
-        <TapButton
-          type="button"
-          aria-label="Contraer"
-          onClick={onContraer}
-          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
-        >
-          <Minimize2 className="size-4 shrink-0 text-accent" aria-hidden="true" />
-          <span className="text-text-primary">Contraer</span>
-        </TapButton>
-        <TapButton
-          type="button"
-          aria-label="Afinador"
-          onClick={() => setAfinadorOpen(true)}
-          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
-        >
-          <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
-          <span className="text-text-primary">Afinador</span>
-        </TapButton>
-      </div>
+      <LecturaPcTopChrome
+        fixedRightCss={lecturaFixedRightCss}
+        onContraer={onContraer}
+        onAfinador={() => setAfinadorOpen(true)}
+      />
 
       <TapButton
         type="button"
@@ -377,123 +272,32 @@ export default function CancioneroModoLectura({
         )}
       </TapButton>
 
-      {overlayAbierto ? (
-        <>
-          <button
-            type="button"
-            data-no-tap-feedback
-            className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none lg:hidden"
-            aria-label="Cerrar menú de controles"
-            onClick={() => setOverlayAbierto(false)}
-          />
-
-          <div
-            className="pointer-events-none fixed z-40 flex flex-col items-end gap-2 lg:hidden"
-            style={{
-              top: getLecturaFabMenuTopCss(),
-              right: lecturaFixedRightCss,
-            }}
-            role="menu"
-            aria-label="Controles de modo lectura"
-          >
-            <CancioneroLecturaFabOption
-              icon={Minimize2}
-              label="Contraer"
-              cascadeIndex={cascadeIndex++}
-              onClick={onContraer}
-            />
-            {!menuCompacto ? (
-              <>
-                <CancioneroLecturaFabOption
-                  icon={SkipBack}
-                  label="Anterior"
-                  cascadeIndex={cascadeIndex++}
-                  disabled={!tieneAnterior}
-                  onClick={() => {
-                    setOverlayAbierto(false);
-                    onAnterior();
-                  }}
-                  className="lg:hidden"
-                />
-                <CancioneroLecturaFabOption
-                  icon={SkipForward}
-                  label="Siguiente"
-                  iconAfter
-                  cascadeIndex={cascadeIndex++}
-                  disabled={!tieneSiguiente}
-                  onClick={() => {
-                    setOverlayAbierto(false);
-                    onSiguiente();
-                  }}
-                  className="lg:hidden"
-                />
-              </>
-            ) : null}
-            {showActivarCompases ? (
-              <CancioneroLecturaFabOption
-                icon={Music2}
-                label="Activar compases"
-                cascadeIndex={cascadeIndex++}
-                onClick={() => {
-                  setOverlayAbierto(false);
-                  setCompasesOcultos(false);
-                }}
-              />
-            ) : null}
-            {showCifradoAvanzado ? (
-              <CancioneroLecturaFabOption
-                icon={acordesOcultos ? Eye : EyeOff}
-                label={acordesOcultos ? "Mostrar acordes" : "Ocultar acordes"}
-                cascadeIndex={cascadeIndex++}
-                onClick={() => {
-                  setOverlayAbierto(false);
-                  setAcordesOcultos((ocultos) => !ocultos);
-                }}
-              />
-            ) : null}
-            {lecturaTonalidad ? (
-              <CancioneroLecturaFabOption
-                icon={Music}
-                label="Cambiar de tono"
-                cascadeIndex={cascadeIndex++}
-                onClick={() => {
-                  setOverlayAbierto(false);
-                  setTonoPanelAbierto(true);
-                }}
-                className="lg:hidden"
-              />
-            ) : null}
-            {lecturaZoomEligible ? (
-              <CancioneroLecturaFabOption
-                icon={Type}
-                label="Tamaño letra"
-                cascadeIndex={cascadeIndex++}
-                onClick={() => {
-                  setOverlayAbierto(false);
-                  setZoomPanelAbierto(true);
-                }}
-                className="lg:hidden"
-              />
-            ) : null}
-            <CancioneroLecturaFabOption
-              icon={AudioLines}
-              label="Afinador"
-              cascadeIndex={cascadeIndex++}
-              onClick={() => {
-                setOverlayAbierto(false);
-                setAfinadorOpen(true);
-              }}
-            />
-          </div>
-        </>
-      ) : null}
+      <ModoLecturaOverlay
+        abierto={overlayAbierto}
+        fixedRightCss={lecturaFixedRightCss}
+        mobileOnly
+        navItems={lecturaNavItems}
+        hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
+        compasesOcultos={compasesOcultos}
+        acordesOcultos={acordesOcultos}
+        showAcordesOption={showCifradoAvanzado}
+        showTonoOption={Boolean(lecturaTonalidad)}
+        showZoomOption={lecturaZoomEligible}
+        onCerrar={() => setOverlayAbierto(false)}
+        onContraer={onContraer}
+        onAfinador={() => setAfinadorOpen(true)}
+        onActivarCompases={() => setCompasesOcultos(false)}
+        onToggleAcordesOcultos={toggleAcordesOcultos}
+        onAbrirZoom={abrirZoom}
+        onAbrirTono={abrirTono}
+      />
 
       <LecturaZoomPanel
         open={zoomPanelAbierto}
-        level={letraZoomLevel}
+        level={zoom.level}
         enabled={lecturaZoomEligible}
-        onDecrease={decreaseLetraZoom}
-        onIncrease={increaseLetraZoom}
+        onDecrease={zoom.decrease}
+        onIncrease={zoom.increase}
         onClose={() => setZoomPanelAbierto(false)}
       />
 
@@ -509,17 +313,15 @@ export default function CancioneroModoLectura({
 
       <LecturaBottomControls
         showZoom={lecturaZoomEligible}
-        zoomLevel={letraZoomLevel}
+        zoomLevel={zoom.level}
         zoomEnabled={lecturaZoomEligible}
-        onZoomDecrease={decreaseLetraZoom}
-        onZoomIncrease={increaseLetraZoom}
-        autoScrollLevel={autoScrollLevel}
+        onZoomDecrease={zoom.decrease}
+        onZoomIncrease={zoom.increase}
+        autoScrollLevel={autoScroll.autoScrollLevel}
         autoScrollEnabled
         hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
         compasesOcultos={compasesOcultos}
-        onToggleCompasesOcultos={() =>
-          setCompasesOcultos((ocultos) => !ocultos)
-        }
+        onToggleCompasesOcultos={toggleCompasesOcultos}
         compasPlaying={lecturaCompasPlayback?.playing ?? false}
         compasCanPlay={lecturaCompasPlayback?.canPlay ?? false}
         compasBpm={lecturaCompasPlayback?.bpm ?? 120}
@@ -527,8 +329,8 @@ export default function CancioneroModoLectura({
         onCompasBpmDecrease={() => lecturaCompasPlayback?.decreaseBpm()}
         onCompasBpmIncrease={() => lecturaCompasPlayback?.increaseBpm()}
         fixedRightCss={lecturaFixedRightCss}
-        onAutoScrollAccelerate={accelerateAutoScroll}
-        onAutoScrollDecelerate={decelerateAutoScroll}
+        onAutoScrollAccelerate={autoScroll.accelerate}
+        onAutoScrollDecelerate={autoScroll.decelerate}
       />
 
       <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />

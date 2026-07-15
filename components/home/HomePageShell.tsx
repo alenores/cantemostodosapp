@@ -1,11 +1,10 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
-import type {
-  LecturaCompasPlaybackState,
-  LecturaTonalidadState,
-} from "@/components/cifrado/LetraCifradoLecturaShell";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
+import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
+import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
+import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
@@ -16,8 +15,7 @@ import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
-import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
-import { useLetraZoom } from "@/hooks/useLetraZoom";
+import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_AVISO_EXIT_MS,
@@ -28,253 +26,14 @@ import {
   getLecturaTopChromeTopCss,
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
-import type { LucideIcon } from "lucide-react";
-import {
-  AudioLines,
-  Eye,
-  EyeOff,
-  ListMusic,
-  Minimize2,
-  Music,
-  Music2,
-  Search,
-  SkipForward,
-  SlidersHorizontal,
-  Type,
-  X,
-} from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const FLOAT_BTN_SECONDARY =
-  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
-const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
 const LECTURA_TOP_CHIP =
   "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
-const LECTURA_FAB_CASCADE_STEP_MS = 55;
-
-type HomeModoLecturaFabOptionProps = {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  iconAfter?: boolean;
-  cascadeIndex: number;
-  className?: string;
-};
-
-function HomeModoLecturaFabOption({
-  icon: Icon,
-  label,
-  onClick,
-  disabled = false,
-  iconAfter = false,
-  cascadeIndex,
-  className = "",
-}: HomeModoLecturaFabOptionProps) {
-  const iconNode = (
-    <Icon className="size-4 shrink-0" aria-hidden="true" />
-  );
-
-  return (
-    <TapButton
-      type="button"
-      role="menuitem"
-      disabled={disabled}
-      onClick={onClick}
-      className={`sala-lectura-fab-item pointer-events-auto flex items-center gap-2 px-4 py-2 text-sm font-medium ${FLOAT_BTN_SECONDARY} ${
-        disabled ? FLOAT_BTN_DISABLED : ""
-      } ${className}`}
-      style={{
-        animationDelay: `${cascadeIndex * LECTURA_FAB_CASCADE_STEP_MS}ms`,
-      }}
-    >
-      {iconAfter ? (
-        <>
-          <span>{label}</span>
-          {iconNode}
-        </>
-      ) : (
-        <>
-          {iconNode}
-          <span>{label}</span>
-        </>
-      )}
-    </TapButton>
-  );
-}
-
-type HomeModoLecturaOverlayProps = {
-  abierto: boolean;
-  pendientesCount: number;
-  fixedRightCss: string;
-  menuCompacto?: boolean;
-  showZoomOption?: boolean;
-  showTonoOption?: boolean;
-  showAcordesOption?: boolean;
-  hasCompases?: boolean;
-  compasesOcultos?: boolean;
-  acordesOcultos?: boolean;
-  onCerrar: () => void;
-  onContraer: () => void;
-  onSiguiente: () => void;
-  onCola: () => void;
-  onBuscar: () => void;
-  onAfinador: () => void;
-  onActivarCompases?: () => void;
-  onToggleAcordesOcultos?: () => void;
-  onAbrirZoom?: () => void;
-  onAbrirTono?: () => void;
-};
-
-function HomeModoLecturaOverlay({
-  abierto,
-  pendientesCount,
-  fixedRightCss,
-  menuCompacto = false,
-  showZoomOption = false,
-  showTonoOption = false,
-  showAcordesOption = false,
-  hasCompases = false,
-  compasesOcultos = false,
-  acordesOcultos = false,
-  onCerrar,
-  onContraer,
-  onSiguiente,
-  onCola,
-  onBuscar,
-  onAfinador,
-  onActivarCompases,
-  onToggleAcordesOcultos,
-  onAbrirZoom,
-  onAbrirTono,
-}: HomeModoLecturaOverlayProps) {
-  if (!abierto) {
-    return null;
-  }
-
-  let cascadeIndex = 0;
-  const showActivarCompases = hasCompases && compasesOcultos;
-
-  return (
-    <>
-      <button
-        type="button"
-        data-no-tap-feedback
-        className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none"
-        aria-label="Cerrar menú de controles"
-        onClick={onCerrar}
-      />
-
-      <div
-        className="pointer-events-none fixed z-40 flex flex-col items-end gap-2"
-        style={{
-          top: getLecturaFabMenuTopCss(),
-          right: fixedRightCss,
-        }}
-        role="menu"
-        aria-label="Controles de modo lectura"
-      >
-        <HomeModoLecturaFabOption
-          icon={Minimize2}
-          label="Contraer"
-          cascadeIndex={cascadeIndex++}
-          onClick={onContraer}
-        />
-        {!menuCompacto ? (
-          <>
-            <HomeModoLecturaFabOption
-              icon={Search}
-              label="Buscar"
-              cascadeIndex={cascadeIndex++}
-              onClick={() => {
-                onCerrar();
-                onBuscar();
-              }}
-            />
-            <HomeModoLecturaFabOption
-              icon={SkipForward}
-              label="Siguiente"
-              iconAfter
-              cascadeIndex={cascadeIndex++}
-              disabled={pendientesCount === 0}
-              onClick={() => {
-                onCerrar();
-                onSiguiente();
-              }}
-            />
-            <HomeModoLecturaFabOption
-              icon={ListMusic}
-              label={`Fila · ${pendientesCount}`}
-              cascadeIndex={cascadeIndex++}
-              onClick={() => {
-                onCerrar();
-                onCola();
-              }}
-            />
-          </>
-        ) : null}
-        {showActivarCompases ? (
-          <HomeModoLecturaFabOption
-            icon={Music2}
-            label="Activar compases"
-            cascadeIndex={cascadeIndex++}
-            onClick={() => {
-              onCerrar();
-              onActivarCompases?.();
-            }}
-          />
-        ) : null}
-        {showAcordesOption ? (
-          <HomeModoLecturaFabOption
-            icon={acordesOcultos ? Eye : EyeOff}
-            label={acordesOcultos ? "Mostrar acordes" : "Ocultar acordes"}
-            cascadeIndex={cascadeIndex++}
-            onClick={() => {
-              onCerrar();
-              onToggleAcordesOcultos?.();
-            }}
-          />
-        ) : null}
-        {showTonoOption ? (
-          <HomeModoLecturaFabOption
-            icon={Music}
-            label="Cambiar de tono"
-            cascadeIndex={cascadeIndex++}
-            onClick={() => {
-              onCerrar();
-              onAbrirTono?.();
-            }}
-            className="lg:hidden"
-          />
-        ) : null}
-        {showZoomOption ? (
-          <HomeModoLecturaFabOption
-            icon={Type}
-            label="Tamaño letra"
-            cascadeIndex={cascadeIndex++}
-            onClick={() => {
-              onCerrar();
-              onAbrirZoom?.();
-            }}
-            className="lg:hidden"
-          />
-        ) : null}
-        <HomeModoLecturaFabOption
-          icon={AudioLines}
-          label="Afinador"
-          cascadeIndex={cascadeIndex++}
-          onClick={() => {
-            onCerrar();
-            onAfinador();
-          }}
-        />
-      </div>
-    </>
-  );
-}
 
 export default function HomePageShell() {
   const cola = useColaIndividual();
@@ -291,18 +50,8 @@ export default function HomePageShell() {
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
   const [buscadorOpen, setBuscadorOpen] = useState(false);
-  const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
-  const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [lecturaZoomEligible, setLecturaZoomEligible] = useState(false);
-  const [compasesOcultos, setCompasesOcultos] = useState(false);
-  const [acordesOcultos, setAcordesOcultos] = useState(false);
-  const [zoomPanelAbierto, setZoomPanelAbierto] = useState(false);
-  const [tonoPanelAbierto, setTonoPanelAbierto] = useState(false);
-  const [lecturaCompasPlayback, setLecturaCompasPlayback] =
-    useState<LecturaCompasPlaybackState | null>(null);
-  const [lecturaTonalidad, setLecturaTonalidad] =
-    useState<LecturaTonalidadState | null>(null);
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
@@ -316,44 +65,34 @@ export default function HomePageShell() {
     : null;
 
   const {
-    autoScrollLevel,
-    accelerate: accelerateAutoScroll,
-    decelerate: decelerateAutoScroll,
-  } = useLetraAutoScroll(letraScrollRef, {
-    enabled: modoLectura,
+    overlayAbierto,
+    setOverlayAbierto,
+    afinadorOpen,
+    setAfinadorOpen,
+    compasesOcultos,
+    setCompasesOcultos,
+    toggleCompasesOcultos,
+    acordesOcultos,
+    toggleAcordesOcultos,
+    zoomPanelAbierto,
+    setZoomPanelAbierto,
+    tonoPanelAbierto,
+    setTonoPanelAbierto,
+    abrirZoom,
+    abrirTono,
+    lecturaCompasPlayback,
+    handleLecturaCompasPlaybackStateChange,
+    lecturaTonalidad,
+    handleLecturaTonalidadStateChange,
+    autoScroll,
+    zoom,
+    resetVista,
+  } = useModoLecturaCocina({
+    active: modoLectura,
+    scrollRef: letraScrollRef,
     contentKey: cancionActivaScrollKey,
     embedIframeRef,
   });
-
-  const {
-    level: letraZoomLevel,
-    factor: letraZoomFactor,
-    decrease: decreaseLetraZoom,
-    increase: increaseLetraZoom,
-  } = useLetraZoom(cancionActivaScrollKey);
-
-  useEffect(() => {
-    setCompasesOcultos(false);
-    setAcordesOcultos(false);
-    setLecturaCompasPlayback(null);
-    setLecturaTonalidad(null);
-    setZoomPanelAbierto(false);
-    setTonoPanelAbierto(false);
-  }, [cancionActivaScrollKey]);
-
-  const handleLecturaCompasPlaybackStateChange = useCallback(
-    (state: LecturaCompasPlaybackState | null) => {
-      setLecturaCompasPlayback(state);
-    },
-    [],
-  );
-
-  const handleLecturaTonalidadStateChange = useCallback(
-    (state: LecturaTonalidadState | null) => {
-      setLecturaTonalidad(state);
-    },
-    [],
-  );
 
   const handleColaAdded = useCallback(() => {
     triggerHaptic();
@@ -386,16 +125,9 @@ export default function HomePageShell() {
   }, []);
 
   const salirModoLectura = useCallback(() => {
-    setOverlayAbierto(false);
-    setZoomPanelAbierto(false);
-    setTonoPanelAbierto(false);
-    setAfinadorOpen(false);
-    setCompasesOcultos(false);
-    setAcordesOcultos(false);
-    setLecturaCompasPlayback(null);
-    setLecturaTonalidad(null);
+    resetVista();
     setModoLectura(false);
-  }, []);
+  }, [resetVista]);
 
   const handleModoLecturaBack = useCallback(() => {
     if (tonoPanelAbierto) {
@@ -472,6 +204,19 @@ export default function HomePageShell() {
     setModoLectura(true);
   }, []);
 
+  const lecturaNavItems = useMemo(() => {
+    if (lecturaConColaLateral) {
+      return [];
+    }
+
+    return buildColaLecturaNavItems({
+      pendientesCount: cola.pendientesCount,
+      onBuscar: () => setBuscadorOpen(true),
+      onSiguiente: () => void handleSiguienteRef.current?.(),
+      onCola: () => openColaRef.current?.(),
+    });
+  }, [cola.pendientesCount, lecturaConColaLateral]);
+
   return (
     <div
       className="flex flex-col overflow-hidden bg-bg-sala"
@@ -503,16 +248,12 @@ export default function HomePageShell() {
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
               headerAction={headerActions}
-              letraZoomFactor={letraZoomFactor}
+              letraZoomFactor={zoom.factor}
               onLecturaZoomEligibleChange={setLecturaZoomEligible}
               compasesOcultos={compasesOcultos}
-              onToggleCompasesOcultos={() =>
-                setCompasesOcultos((ocultos) => !ocultos)
-              }
+              onToggleCompasesOcultos={toggleCompasesOcultos}
               acordesOcultos={acordesOcultos}
-              onToggleAcordesOcultos={() =>
-                setAcordesOcultos((ocultos) => !ocultos)
-              }
+              onToggleAcordesOcultos={toggleAcordesOcultos}
               onLecturaCompasPlaybackStateChange={
                 handleLecturaCompasPlaybackStateChange
               }
@@ -558,32 +299,11 @@ export default function HomePageShell() {
 
       {modoLectura ? (
         <>
-          <div
-            className="fixed z-50 hidden flex-col items-end gap-2 lg:flex"
-            style={{
-              top: getLecturaTopChromeTopCss(),
-              right: lecturaFixedRightCss,
-            }}
-          >
-            <TapButton
-              type="button"
-              aria-label="Contraer"
-              onClick={salirModoLectura}
-              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
-            >
-              <Minimize2 className="size-4 shrink-0 text-accent" aria-hidden="true" />
-              <span className="text-text-primary">Contraer</span>
-            </TapButton>
-            <TapButton
-              type="button"
-              aria-label="Afinador"
-              onClick={() => setAfinadorOpen(true)}
-              className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
-            >
-              <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
-              <span className="text-text-primary">Afinador</span>
-            </TapButton>
-          </div>
+          <LecturaPcTopChrome
+            fixedRightCss={lecturaFixedRightCss}
+            onContraer={salirModoLectura}
+            onAfinador={() => setAfinadorOpen(true)}
+          />
 
           <TapButton
             type="button"
@@ -630,11 +350,10 @@ export default function HomePageShell() {
             </TapButton>
           ) : null}
 
-          <HomeModoLecturaOverlay
+          <ModoLecturaOverlay
             abierto={overlayAbierto}
-            pendientesCount={cola.pendientesCount}
             fixedRightCss={lecturaFixedRightCss}
-            menuCompacto={lecturaConColaLateral}
+            navItems={lecturaNavItems}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
             showAcordesOption={Boolean(lecturaTonalidad)}
@@ -643,30 +362,19 @@ export default function HomePageShell() {
             acordesOcultos={acordesOcultos}
             onCerrar={() => setOverlayAbierto(false)}
             onContraer={salirModoLectura}
-            onSiguiente={() => void handleSiguienteRef.current?.()}
-            onCola={() => openColaRef.current?.()}
-            onBuscar={() => setBuscadorOpen(true)}
             onAfinador={() => setAfinadorOpen(true)}
             onActivarCompases={() => setCompasesOcultos(false)}
-            onToggleAcordesOcultos={() =>
-              setAcordesOcultos((ocultos) => !ocultos)
-            }
-            onAbrirZoom={() => {
-              setTonoPanelAbierto(false);
-              setZoomPanelAbierto(true);
-            }}
-            onAbrirTono={() => {
-              setZoomPanelAbierto(false);
-              setTonoPanelAbierto(true);
-            }}
+            onToggleAcordesOcultos={toggleAcordesOcultos}
+            onAbrirZoom={abrirZoom}
+            onAbrirTono={abrirTono}
           />
 
           <LecturaZoomPanel
             open={zoomPanelAbierto}
-            level={letraZoomLevel}
+            level={zoom.level}
             enabled={Boolean(cola.cancionActiva)}
-            onDecrease={decreaseLetraZoom}
-            onIncrease={increaseLetraZoom}
+            onDecrease={zoom.decrease}
+            onIncrease={zoom.increase}
             onClose={() => setZoomPanelAbierto(false)}
           />
 
@@ -682,17 +390,15 @@ export default function HomePageShell() {
 
           <LecturaBottomControls
             showZoom={lecturaZoomEligible}
-            zoomLevel={letraZoomLevel}
+            zoomLevel={zoom.level}
             zoomEnabled={Boolean(cola.cancionActiva)}
-            onZoomDecrease={decreaseLetraZoom}
-            onZoomIncrease={increaseLetraZoom}
-            autoScrollLevel={autoScrollLevel}
+            onZoomDecrease={zoom.decrease}
+            onZoomIncrease={zoom.increase}
+            autoScrollLevel={autoScroll.autoScrollLevel}
             autoScrollEnabled={Boolean(cola.cancionActiva)}
             hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
             compasesOcultos={compasesOcultos}
-            onToggleCompasesOcultos={() =>
-              setCompasesOcultos((ocultos) => !ocultos)
-            }
+            onToggleCompasesOcultos={toggleCompasesOcultos}
             compasPlaying={lecturaCompasPlayback?.playing ?? false}
             compasCanPlay={lecturaCompasPlayback?.canPlay ?? false}
             compasBpm={lecturaCompasPlayback?.bpm ?? 120}
@@ -700,8 +406,8 @@ export default function HomePageShell() {
             onCompasBpmDecrease={() => lecturaCompasPlayback?.decreaseBpm()}
             onCompasBpmIncrease={() => lecturaCompasPlayback?.increaseBpm()}
             fixedRightCss={lecturaFixedRightCss}
-            onAutoScrollAccelerate={accelerateAutoScroll}
-            onAutoScrollDecelerate={decelerateAutoScroll}
+            onAutoScrollAccelerate={autoScroll.accelerate}
+            onAutoScrollDecelerate={autoScroll.decelerate}
           />
         </>
       ) : null}

@@ -4,9 +4,17 @@ import LetraCifradoLecturaShell, {
   type LecturaCompasPlaybackState,
   type LecturaTonalidadState,
 } from "@/components/cifrado/LetraCifradoLecturaShell";
+import LecturaTogglesFab from "@/components/herramientas/LecturaTogglesFab";
 import NotaCancionFab from "@/components/herramientas/NotaCancionFab";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import {
+  DEFAULT_ANOTACION_VISIBILITY,
+  type Anotacion,
+  type AnotacionTipo,
+  type AnotacionVisibility,
+} from "@/lib/anotaciones-practica";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import {
   cancionPracticaToDetalle,
@@ -17,33 +25,10 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { getLetraTextScrollEndPadding } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import { ArrowLeft, Eye, EyeOff, Pencil } from "lucide-react";
+import { ArrowLeft, NotebookPen, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-type TogglePillProps = {
-  active: boolean;
-  onLabel: string;
-  offLabel: string;
-  onClick: () => void;
-};
-
-function TogglePill({ active, onLabel, offLabel, onClick }: TogglePillProps) {
-  return (
-    <TapButton
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-3 py-2 text-xs font-semibold text-text-primary"
-    >
-      {active ? (
-        <Eye className="size-4 shrink-0" aria-hidden="true" />
-      ) : (
-        <EyeOff className="size-4 shrink-0" aria-hidden="true" />
-      )}
-      {active ? offLabel : onLabel}
-    </TapButton>
-  );
-}
+import { createPortal } from "react-dom";
 
 export default function EntrenadorCancionesVerPageClient() {
   const router = useRouter();
@@ -62,10 +47,21 @@ export default function EntrenadorCancionesVerPageClient() {
 
   const [compasesOcultos, setCompasesOcultos] = useState(false);
   const [acordesOcultos, setAcordesOcultos] = useState(false);
+  const [anotacionesVisibility, setAnotacionesVisibility] =
+    useState<AnotacionVisibility>(DEFAULT_ANOTACION_VISIBILITY);
+  const [notaLectura, setNotaLectura] = useState<Anotacion | null>(null);
+  const [notaGeneralOpen, setNotaGeneralOpen] = useState(false);
 
   const [, setLecturaCompasPlayback] =
     useState<LecturaCompasPlaybackState | null>(null);
   const [, setLecturaTonalidad] = useState<LecturaTonalidadState | null>(null);
+
+  const toggleAnotacionTipo = useCallback((tipo: AnotacionTipo) => {
+    setAnotacionesVisibility((current) => ({
+      ...current,
+      [tipo]: !current[tipo],
+    }));
+  }, []);
 
   const goToList = useCallback(() => {
     navigateWithProgress("/practica/entrenador-canciones");
@@ -79,7 +75,12 @@ export default function EntrenadorCancionesVerPageClient() {
     navigateWithProgress(`/practica/entrenador-canciones/editor?id=${id}`);
   }, [id, navigateWithProgress]);
 
-  useHardwareBack(true, goToList);
+  useHardwareBack(notaLectura !== null, () => setNotaLectura(null));
+  useHardwareBack(
+    notaLectura === null && !notaGeneralOpen,
+    goToList,
+  );
+  useBodyScrollLock(true);
 
   useEffect(() => {
     document.body.setAttribute("data-modo-lectura", "true");
@@ -143,6 +144,17 @@ export default function EntrenadorCancionesVerPageClient() {
   );
 
   const hasCompases = Boolean(cancion?.compas_config?.barras?.length);
+  const notaGeneral = cancion?.nota_general ?? "";
+  const tieneNotaGeneral = notaGeneral.trim().length > 0;
+  const anotaciones = useMemo(() => cancion?.anotaciones ?? [], [cancion]);
+  const anotacionTiposPresentes = useMemo(
+    () => Array.from(new Set(anotaciones.map((anotacion) => anotacion.tipo))),
+    [anotaciones],
+  );
+
+  const openNotaGeneral = useCallback(() => {
+    setNotaGeneralOpen(true);
+  }, []);
 
   if (isLoggedIn !== true || !ready) {
     return null;
@@ -164,7 +176,7 @@ export default function EntrenadorCancionesVerPageClient() {
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh">
       <header className="flex shrink-0 items-center gap-2 border-b border-border bg-bg-darker px-4 py-3">
         <TapButton
           type="button"
@@ -184,14 +196,6 @@ export default function EntrenadorCancionesVerPageClient() {
             </p>
           ) : null}
         </div>
-        <TapButton
-          type="button"
-          aria-label="Editar canción"
-          onClick={goToEditor}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--accent-entrenador-canciones)] text-[var(--text-on-light)]"
-        >
-          <Pencil className="size-5" aria-hidden="true" />
-        </TapButton>
       </header>
 
       {detalle ? (
@@ -210,28 +214,83 @@ export default function EntrenadorCancionesVerPageClient() {
             }
             onCompasPlaybackStateChange={setLecturaCompasPlayback}
             onTonalidadStateChange={setLecturaTonalidad}
+            anotaciones={anotaciones}
+            anotacionesVisibility={anotacionesVisibility}
+            onToggleAnotacionTipo={toggleAnotacionTipo}
+            onOpenNota={(anotacion) => setNotaLectura(anotacion)}
+            onOpenNotaGeneral={openNotaGeneral}
+            tieneNotaGeneral={tieneNotaGeneral}
+            onEdit={goToEditor}
           />
         </div>
       ) : null}
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-bg-darker px-4 py-2.5 lg:hidden">
-        {hasCompases ? (
-          <TogglePill
-            active={!compasesOcultos}
-            onLabel="Mostrar compases"
-            offLabel="Ocultar compases"
-            onClick={() => setCompasesOcultos((ocultos) => !ocultos)}
-          />
-        ) : null}
-        <TogglePill
-          active={!acordesOcultos}
-          onLabel="Mostrar acordes"
-          offLabel="Ocultar acordes"
-          onClick={() => setAcordesOcultos((ocultos) => !ocultos)}
-        />
-      </div>
+      <LecturaTogglesFab
+        compasesDisponibles={hasCompases}
+        compasesOcultos={compasesOcultos}
+        onToggleCompases={() => setCompasesOcultos((ocultos) => !ocultos)}
+        acordesOcultos={acordesOcultos}
+        onToggleAcordes={() => setAcordesOcultos((ocultos) => !ocultos)}
+        anotacionesVisibility={anotacionesVisibility}
+        anotacionTiposPresentes={anotacionTiposPresentes}
+        onToggleAnotacionTipo={toggleAnotacionTipo}
+        onOpenNotaGeneral={openNotaGeneral}
+        tieneNotaGeneral={tieneNotaGeneral}
+        onEdit={goToEditor}
+      />
 
-      <NotaCancionFab mode="view" nota={cancion?.nota_general ?? ""} />
+      <NotaCancionFab
+        mode="view"
+        nota={notaGeneral}
+        hideTrigger
+        open={notaGeneralOpen}
+        onOpenChange={setNotaGeneralOpen}
+      />
+
+      {notaLectura
+        ? createPortal(
+            <div className="fixed inset-0 z-[95] flex items-end justify-center px-4 pb-6 sm:items-center sm:pb-0">
+              <button
+                type="button"
+                aria-label="Cerrar nota"
+                className="absolute inset-0 bg-black/60"
+                onClick={() => setNotaLectura(null)}
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Nota del renglón"
+                className="relative z-10 flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-card shadow-xl"
+              >
+                <header className="flex shrink-0 items-center gap-2.5 border-b border-border px-4 py-3">
+                  <NotebookPen
+                    className="size-5 shrink-0 text-[var(--accent-entrenador-canciones)]"
+                    aria-hidden="true"
+                  />
+                  <h2 className="min-w-0 flex-1 text-base font-extrabold text-text-primary">
+                    Nota del renglón
+                  </h2>
+                  <TapButton
+                    type="button"
+                    aria-label="Cerrar"
+                    onClick={() => setNotaLectura(null)}
+                    className="flex size-9 items-center justify-center rounded-full bg-bg-dark"
+                  >
+                    <X className="size-4 text-text-primary" aria-hidden="true" />
+                  </TapButton>
+                </header>
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-text-primary">
+                    {notaLectura.texto?.trim()
+                      ? notaLectura.texto
+                      : "Esta nota está vacía."}
+                  </p>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

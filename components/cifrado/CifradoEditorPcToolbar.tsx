@@ -13,11 +13,12 @@ import {
 import type { CompositorCycle } from "@/lib/compositor-cycles";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 
-type ModoInsercion = "acordes" | "compas" | "letra";
+type ModoInsercion = "acordes" | "compas" | "letra" | "canto";
 
 type CifradoEditorPcToolbarProps = {
   modoInsercion: ModoInsercion;
   onSetModoInsercion: (modo: ModoInsercion) => void;
+  anotacionesEnabled?: boolean;
   compasToolTab: CifradoCompasToolTab;
   onCompasToolTabChange: (tab: CifradoCompasToolTab) => void;
   cycleGolpes: number;
@@ -41,6 +42,7 @@ type CifradoEditorPcToolbarProps = {
 export function CifradoEditorPcToolbar({
   modoInsercion,
   onSetModoInsercion,
+  anotacionesEnabled = false,
   compasToolTab,
   onCompasToolTabChange,
   cycleGolpes,
@@ -95,6 +97,17 @@ export function CifradoEditorPcToolbar({
           >
             Letra
           </button>
+          {anotacionesEnabled ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={modoInsercion === "canto"}
+              onClick={() => onSetModoInsercion("canto")}
+              className={cifradoEditorPcTabClass(modoInsercion === "canto")}
+            >
+              Canto
+            </button>
+          ) : null}
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -125,6 +138,13 @@ export function CifradoEditorPcToolbar({
             onApplyCyclesToAllLines={onApplyCyclesToAllLines}
           />
         </div>
+      ) : null}
+
+      {modoInsercion === "canto" ? (
+        <p className="px-4 pb-2.5 text-xs text-text-muted">
+          Tocá la letra donde quieras una marca y elegí el tipo. Para editar,
+          tocá una marca existente.
+        </p>
       ) : null}
     </div>
   );

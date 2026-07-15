@@ -62,6 +62,9 @@ export type CompositorGuitarArticulation =
   | "dedo"
   | "silencio";
 
+/** Numeración tradicional: 1ª aguda, 6ª grave. */
+export type CompositorGuitarString = 1 | 2 | 3 | 4 | 5 | 6;
+
 export function isGuitarChordArticulation(
   articulation: CompositorGuitarArticulation,
 ): boolean {
@@ -96,6 +99,11 @@ export type CompositorTrackEvent = {
   note: CompositorSlotNote;
   drumSound: CompositorDrumSound;
   guitarArticulation: CompositorGuitarArticulation;
+  /**
+   * Cuerda física dentro del voicing automático del acorde.
+   * `null` conserva el comportamiento de nota libre/acorde completo.
+   */
+  guitarString: CompositorGuitarString | null;
 };
 
 export type CompositorTrack = {
@@ -214,6 +222,7 @@ export function createCompositorEvent(
     note,
     drumSound: partial.drumSound ?? "kick",
     guitarArticulation: partial.guitarArticulation ?? "pua",
+    guitarString: partial.guitarString ?? null,
   };
 }
 
@@ -244,6 +253,12 @@ function normalizeEvent(
     pianoHarmonyMode: event.pianoHarmonyMode === "acorde" ? "acorde" : "nota",
     drumSound: event.drumSound ?? "kick",
     guitarArticulation: event.guitarArticulation ?? "pua",
+    guitarString:
+      typeof event.guitarString === "number" &&
+      event.guitarString >= 1 &&
+      event.guitarString <= 6
+        ? (Math.round(event.guitarString) as CompositorGuitarString)
+        : null,
   };
 
   if (isMelodicCompositorInstrument(instrumentId)) {

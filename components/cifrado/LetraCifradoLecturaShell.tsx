@@ -3,6 +3,11 @@
 import CifradoLecturaSidePanel from "@/components/cifrado/CifradoLecturaSidePanel";
 import LetraCifradoPanel from "@/components/cifrado/LetraCifradoPanel";
 import { useCifradoPlayback } from "@/hooks/useCifradoPlayback";
+import type {
+  Anotacion,
+  AnotacionTipo,
+  AnotacionVisibility,
+} from "@/lib/anotaciones-practica";
 import type { NotaIndex } from "@/lib/cifrado";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import type { CancionCifradoDetalle } from "@/types";
@@ -35,6 +40,13 @@ type LetraCifradoLecturaShellProps = {
   onToggleAcordesOcultos?: () => void;
   onCompasPlaybackStateChange?: (state: LecturaCompasPlaybackState | null) => void;
   onTonalidadStateChange?: (state: LecturaTonalidadState | null) => void;
+  anotaciones?: Anotacion[];
+  anotacionesVisibility?: AnotacionVisibility;
+  onToggleAnotacionTipo?: (tipo: AnotacionTipo) => void;
+  onOpenNota?: (anotacion: Anotacion) => void;
+  onOpenNotaGeneral?: () => void;
+  tieneNotaGeneral?: boolean;
+  onEdit?: () => void;
 };
 
 export default function LetraCifradoLecturaShell({
@@ -48,6 +60,13 @@ export default function LetraCifradoLecturaShell({
   onToggleAcordesOcultos,
   onCompasPlaybackStateChange,
   onTonalidadStateChange,
+  anotaciones,
+  anotacionesVisibility,
+  onToggleAnotacionTipo,
+  onOpenNota,
+  onOpenNotaGeneral,
+  tieneNotaGeneral = false,
+  onEdit,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
   const hasCompases = Boolean(compasConfig?.barras?.length);
@@ -120,12 +139,19 @@ export default function LetraCifradoLecturaShell({
     };
   }, [onTonalidadStateChange]);
 
+  const anotacionTiposPresentes = anotaciones
+    ? Array.from(new Set(anotaciones.map((anotacion) => anotacion.tipo)))
+    : [];
+
   return (
-    <div className="flex h-full min-h-0 min-w-0 w-full flex-col lg:flex-row">
+    <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col lg:flex-row">
       <CifradoLecturaSidePanel
         hasCompases={hasCompases}
         compasesOcultos={compasesOcultos}
         acordesOcultos={acordesOcultos}
+        anotacionesVisibility={anotacionesVisibility}
+        anotacionTiposPresentes={anotacionTiposPresentes}
+        onToggleAnotacionTipo={onToggleAnotacionTipo}
         playing={playback.playing}
         canPlay={playback.canPlay}
         notacion={playback.notacion}
@@ -141,6 +167,9 @@ export default function LetraCifradoLecturaShell({
         onModoTonalChange={playback.handleModoTonalChange}
         onBpmChange={playback.handleBpmChange}
         onTapTempo={playback.handleTapTempo}
+        onOpenNotaGeneral={onOpenNotaGeneral}
+        tieneNotaGeneral={tieneNotaGeneral}
+        onEdit={onEdit}
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-r-[12px]">
@@ -162,6 +191,9 @@ export default function LetraCifradoLecturaShell({
           showAcordes={showAcordes}
           onMarkersReady={hasCompases ? playback.handleMarkersReady : undefined}
           onLineRef={hasCompases ? playback.handleLineRef : undefined}
+          anotaciones={anotaciones}
+          anotacionesVisibility={anotacionesVisibility}
+          onOpenNota={onOpenNota}
         />
         </div>
       </div>

@@ -6,6 +6,7 @@ import CifradoEditor from "@/components/ui/CifradoEditor";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import type { Anotacion } from "@/lib/anotaciones-practica";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import type {
   CifradoEditorSession,
@@ -49,6 +50,7 @@ export default function EntrenadorCancionesEditorPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [nota, setNota] = useState("");
   const [notaSaving, setNotaSaving] = useState(false);
+  const [anotaciones, setAnotaciones] = useState<Anotacion[]>([]);
 
   const backHref =
     editingId != null && !Number.isNaN(editingId) ? verHref(editingId) : LIST_HREF;
@@ -80,6 +82,7 @@ export default function EntrenadorCancionesEditorPageClient() {
 
       if (editingId == null || Number.isNaN(editingId)) {
         setSession(null);
+        setAnotaciones([]);
         setReady(true);
         return;
       }
@@ -95,6 +98,7 @@ export default function EntrenadorCancionesEditorPageClient() {
 
         setSession(cancionPracticaToEditorSession(cancion));
         setNota(cancion.nota_general ?? "");
+        setAnotaciones(cancion.anotaciones ?? []);
         setReady(true);
       } catch (loadError) {
         setError(
@@ -114,14 +118,16 @@ export default function EntrenadorCancionesEditorPageClient() {
       id: number | undefined,
       payload: Parameters<typeof insertCancionPractica>[1],
     ) => {
+      const payloadConAnotaciones = { ...payload, anotaciones };
+
       if (id != null) {
-        await updateCancionPractica(supabase, id, payload);
+        await updateCancionPractica(supabase, id, payloadConAnotaciones);
         return id;
       }
 
-      return insertCancionPractica(supabase, payload);
+      return insertCancionPractica(supabase, payloadConAnotaciones);
     },
-    [supabase],
+    [anotaciones, supabase],
   );
 
   const handleSaveNota = useCallback(
@@ -190,6 +196,7 @@ export default function EntrenadorCancionesEditorPageClient() {
           onClose={goBack}
           onPersist={persistPractica}
           onSaved={handleSaved}
+          anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
         />
       ) : (
         <CifradoEditorMobile
@@ -199,6 +206,7 @@ export default function EntrenadorCancionesEditorPageClient() {
           backAriaLabel="Volver"
           onPersist={persistPractica}
           onSaved={handleSaved}
+          anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
         />
       )}
 

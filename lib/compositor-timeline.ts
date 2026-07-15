@@ -9,6 +9,10 @@ import {
 } from "@/lib/compositor";
 import { resolveEventMelodicNote } from "@/lib/compositor-melodic-pitch";
 import { buildChordNotesFromRoot, getDefaultChordModifierForRoot } from "@/lib/compositor-chords";
+import {
+  buildCompositorGuitarVoicing,
+  getCompositorGuitarVoicingNote,
+} from "@/lib/compositor-guitar-voicings";
 import type { Modificador } from "@/lib/cifrado";
 import { gradoToNotaIndex } from "@/lib/compositor-melodic-pitch";
 import {
@@ -42,7 +46,10 @@ function resolveEventNotes(
   }
 
   if (instrumentId === "guitarra") {
-    if (!isGuitarChordArticulation(event.guitarArticulation)) {
+    if (
+      !isGuitarChordArticulation(event.guitarArticulation) &&
+      event.guitarString === null
+    ) {
       return [root];
     }
 
@@ -54,7 +61,17 @@ function resolveEventNotes(
           piece.tonalidadComposicion,
           piece.modoTonalComposicion,
         )) as Modificador;
-    return buildChordNotesFromRoot(root, modifier, instrumentId);
+    const voicing = buildCompositorGuitarVoicing(rootIndex, modifier);
+
+    if (event.guitarString !== null) {
+      const stringNote = getCompositorGuitarVoicingNote(
+        voicing,
+        event.guitarString,
+      );
+      return stringNote ? [stringNote] : [];
+    }
+
+    return voicing.strings.map((entry) => entry.note);
   }
 
   if (instrumentId === "piano" && event.pianoHarmonyMode === "acorde") {

@@ -8,6 +8,22 @@ import {
   type CifradoCompasToolTab,
 } from "@/components/cifrado/CifradoCompasToolPanel";
 import { CifradoEditorPcToolbar } from "@/components/cifrado/CifradoEditorPcToolbar";
+import AnotacionesLineLayer, {
+  ANOTACIONES_ARRIBA_BANDA_PX,
+} from "@/components/cifrado/AnotacionesLineLayer";
+import {
+  AnotacionPickerHost,
+  AnotacionTipoMenu,
+  useAnotacionesEditor,
+  type AnotacionesControl,
+  type RangoPendiente,
+} from "@/components/cifrado/AnotacionPickers";
+import {
+  DEFAULT_ANOTACION_VISIBILITY,
+  anotacionVaArriba,
+  type Anotacion,
+  type AnotacionTipo,
+} from "@/lib/anotaciones-practica";
 import {
   CifradoEditorHelpButton,
   CifradoEditorHelpModal,
@@ -211,6 +227,8 @@ type CifradoEditorProps = {
    * Si falta, se usa el guardado histórico del Cancionero. Sin cambios de UI.
    */
   onPersist?: CifradoEditorPersistFn;
+  /** Habilita las pestañas y anclajes de anotaciones (solo Entrenador). */
+  anotaciones?: AnotacionesControl | null;
 };
 
 type EditorPhase = "ingreso" | "cifrado";
@@ -224,7 +242,7 @@ type PickerState = {
   y: number;
 };
 
-type ModoInsercion = "acordes" | "compas" | "letra";
+type ModoInsercion = "acordes" | "compas" | "letra" | "canto";
 
 type VistaArmado = "pc" | "celular";
 
@@ -635,6 +653,20 @@ type CifradoLineEditorProps = {
   mergePreview?: LineMergePreview | null;
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>;
+  anotaciones?: Anotacion[];
+  onAnnotate?: (
+    tipo: AnotacionTipo,
+    lineIndex: number,
+    charOffset: number,
+  ) => void;
+  onSelectAnotacion?: (anotacion: Anotacion) => void;
+  rangoPendiente?: RangoPendiente | null;
+  onOpenTipoMenu?: (
+    lineIndex: number,
+    charOffset: number,
+    x: number,
+    y: number,
+  ) => void;
 };
 
 type LineEditFabBarProps = {
@@ -856,6 +888,11 @@ function CifradoLineEditor({
   mergePreview = null,
   notacion = "es",
   cyclePiecesById,
+  anotaciones = [],
+  onAnnotate,
+  onSelectAnotacion,
+  rangoPendiente = null,
+  onOpenTipoMenu,
 }: CifradoLineEditorProps) {
   const lineRef = useRef<HTMLDivElement>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
@@ -1243,6 +1280,34 @@ function CifradoLineEditor({
       return;
     }
 
+    if (modoInsercion === "canto") {
+      const clamped = clampCompasCharOffsetToLane(
+        charOffset,
+        characters.length,
+        laneSlotCount,
+      );
+      const existente = anotaciones.find((anotacion) =>
+        anotacion.tipo === "exigencia" && anotacion.charEnd != null
+          ? clamped >= anotacion.charOffset && clamped <= anotacion.charEnd
+          : anotacion.charOffset === clamped,
+      );
+
+      if (existente) {
+        onSelectAnotacion?.(existente);
+        return;
+      }
+
+      // Segundo toque del rango de exigencia: cierra el tramo.
+      if (rangoPendiente && rangoPendiente.lineIndex === lineIndex) {
+        onAnnotate?.("exigencia", lineIndex, clamped);
+        return;
+      }
+
+      // Punto de referencia elegido → abrir el menú de tipos ahí mismo.
+      onOpenTipoMenu?.(lineIndex, clamped, event.clientX, event.clientY);
+      return;
+    }
+
     onInsertBarra(
       lineIndex,
       clampCompasCharOffsetToLane(charOffset, characters.length, laneSlotCount),
@@ -1251,8 +1316,21 @@ function CifradoLineEditor({
 
   const characters = [...(mergePreview?.mergedText ?? text)];
   const laneStart = getLineLaneStart(characters.length);
+  const esModoAnotacion = modoInsercion === "canto";
   const laneClickable =
-    modoInsercion === "compas" && !isLineEditing && !isLineLocked && !isDimmed;
+    (modoInsercion === "compas" || esModoAnotacion) &&
+    !isLineEditing &&
+    !isLineLocked &&
+    !isDimmed;
+  const arribaOffsetEditor = anotaciones.some((anotacion) =>
+    anotacionVaArriba(anotacion.tipo),
+  )
+    ? ANOTACIONES_ARRIBA_BANDA_PX
+    : 0;
+  const rangoPendienteOffset =
+    rangoPendiente && rangoPendiente.lineIndex === lineIndex
+      ? rangoPendiente.charOffset
+      : null;
   const letraDirectEdit =
     modoInsercion === "letra" && !isLineLocked && !isDimmed && !isLineEditing;
   const textEditable = letraDirectEdit || (isLineEditing && !isLineLocked);
@@ -1444,11 +1522,32 @@ function CifradoLineEditor({
           textEditable || isLineLocked || isDimmed ? undefined : handleLineClick
         }
       >
-        <div ref={textRowRef} className="relative">
+        <div ref={textRowRef} className="relative isolate">
+        <AnotacionesLineLayer
+          banda="fondo"
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          visibility={DEFAULT_ANOTACION_VISIBILITY}
+          mode="editor"
+          rangoPendienteOffset={rangoPendienteOffset}
+        />
+        {anotaciones.length > 0 ? (
+          <AnotacionesLineLayer
+            banda="arriba"
+            anotaciones={anotaciones}
+            charPositions={charPositions}
+            visibility={DEFAULT_ANOTACION_VISIBILITY}
+            mode="editor"
+            onSelect={onSelectAnotacion}
+          />
+        ) : null}
         <div
           className={`flex w-full items-baseline pt-5 font-mono text-sm text-letra-text ${
             textEditable ? "select-text" : ""
           }`}
+          style={
+            arribaOffsetEditor ? { paddingTop: 20 + arribaOffsetEditor } : undefined
+          }
         >
           {textEditable ? (
             <>
@@ -1539,7 +1638,7 @@ function CifradoLineEditor({
             chordDragRef.current?.hasMoved &&
             chordDragRef.current.fromOffset === acorde.charOffset;
           const dotTop = position.bottom + 2;
-          const stemTop = 18;
+          const stemTop = 18 + arribaOffsetEditor;
           const stemHeight = Math.max(4, dotTop - stemTop);
 
           return (
@@ -1550,7 +1649,7 @@ function CifradoLineEditor({
             >
               <span
                 className={`absolute whitespace-nowrap rounded px-0.5 text-xs font-bold leading-none ${CIFRADO_EDITOR_ACORDE_TEXT_CLASS}`}
-                style={{ top: 4, left: 0 }}
+                style={{ top: 4 + arribaOffsetEditor, left: 0 }}
               >
                 <AcordeLabel
                   noteIndex={acorde.noteIndex}
@@ -1595,7 +1694,7 @@ function CifradoLineEditor({
                 type="button"
                 aria-label={`${formatAcordeAriaLabel(acorde.noteIndex, acorde.modifier, notacion, acorde.bassNoteIndex)}. Arrastrá para mover o tocá para editar.`}
                 className="absolute z-20 h-5 w-6 cursor-col-resize touch-none border-0 bg-transparent p-0"
-                style={{ left: position.left, top: 4 }}
+                style={{ left: position.left, top: 4 + arribaOffsetEditor }}
                 onPointerDown={(event) => {
                   event.stopPropagation();
                   handleChordPointerDown(event, acorde);
@@ -1606,6 +1705,17 @@ function CifradoLineEditor({
               />
             );
           })}
+
+        {anotaciones.length > 0 ? (
+          <AnotacionesLineLayer
+            banda="abajo"
+            anotaciones={anotaciones}
+            charPositions={charPositions}
+            visibility={DEFAULT_ANOTACION_VISIBILITY}
+            mode="editor"
+            onSelect={onSelectAnotacion}
+          />
+        ) : null}
 
         {(compasMarkers.length > 0 ||
           (modoInsercion === "compas" && barras.length > 0)) && (
@@ -1834,6 +1944,7 @@ type CifradoPreviewLineProps = {
   onCharPositionsReady?: (lineIndex: number, positions: CharPosition[]) => void;
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>;
+  anotaciones?: Anotacion[];
 };
 
 function CifradoPreviewLine({
@@ -1851,6 +1962,7 @@ function CifradoPreviewLine({
   onCharPositionsReady,
   notacion = "es",
   cyclePiecesById,
+  anotaciones = [],
 }: CifradoPreviewLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const compasRowRef = useRef<HTMLDivElement>(null);
@@ -2006,9 +2118,41 @@ function CifradoPreviewLine({
     onCharPositionsReady?.(lineIndex, charPositions);
   }, [charPositions, lineIndex, onCharPositionsReady]);
 
+  const arribaOffsetPreview = anotaciones.some((anotacion) =>
+    anotacionVaArriba(anotacion.tipo),
+  )
+    ? ANOTACIONES_ARRIBA_BANDA_PX
+    : 0;
+
   return (
-    <div ref={textLaneRef} className="relative mb-4 overflow-hidden font-mono text-sm text-letra-text">
-      <div className="pointer-events-none relative flex w-full items-baseline pt-5">
+    <div
+      ref={textLaneRef}
+      className="relative isolate mb-4 overflow-hidden font-mono text-sm text-letra-text"
+    >
+      <AnotacionesLineLayer
+        banda="fondo"
+        anotaciones={anotaciones}
+        charPositions={charPositions}
+        visibility={DEFAULT_ANOTACION_VISIBILITY}
+        mode="display"
+      />
+      {anotaciones.length > 0 ? (
+        <AnotacionesLineLayer
+          banda="arriba"
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          visibility={DEFAULT_ANOTACION_VISIBILITY}
+          mode="display"
+        />
+      ) : null}
+      <div
+        className="pointer-events-none relative flex w-full items-baseline pt-5"
+        style={
+          arribaOffsetPreview
+            ? { paddingTop: 20 + arribaOffsetPreview }
+            : undefined
+        }
+      >
         {characters.length === 0 ? (
           <span className={`${CIFRADO_LINE_LANE_CONTAINER_CLASS} w-full`}>
             {Array.from({ length: laneSlotCount }).map((_, slot) => (
@@ -2056,7 +2200,7 @@ function CifradoPreviewLine({
         }
 
         const dotTop = position.bottom + 2;
-        const stemTop = 18;
+        const stemTop = 18 + arribaOffsetPreview;
         const stemHeight = Math.max(4, dotTop - stemTop);
 
         return (
@@ -2067,7 +2211,7 @@ function CifradoPreviewLine({
           >
             <span
               className={`absolute whitespace-nowrap rounded px-0.5 text-xs font-bold leading-none ${CIFRADO_EDITOR_ACORDE_TEXT_CLASS}`}
-              style={{ top: 4, left: 0 }}
+              style={{ top: 4 + arribaOffsetPreview, left: 0 }}
             >
               <AcordeLabel
                 noteIndex={acorde.noteIndex}
@@ -2090,6 +2234,16 @@ function CifradoPreviewLine({
           </div>
         );
       })}
+
+      {anotaciones.length > 0 ? (
+        <AnotacionesLineLayer
+          banda="abajo"
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          visibility={DEFAULT_ANOTACION_VISIBILITY}
+          mode="display"
+        />
+      ) : null}
 
       {compasMarkers.length > 0 && (
         <div ref={compasRowRef} className="mt-1.5">
@@ -2124,6 +2278,7 @@ type CifradoPreviewOverlayProps = {
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>;
   mode?: "fullscreen" | "contained";
+  anotaciones?: Anotacion[];
 };
 
 function CifradoPreviewOverlay({
@@ -2143,6 +2298,7 @@ function CifradoPreviewOverlay({
   notacion = "es",
   cyclePiecesById,
   mode = "fullscreen",
+  anotaciones = [],
 }: CifradoPreviewOverlayProps) {
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const isContained = mode === "contained";
@@ -2194,6 +2350,9 @@ function CifradoPreviewOverlay({
           activeBeatAnchors={activeBeat?.anchors}
           notacion={notacion}
           cyclePiecesById={cyclePiecesById}
+          anotaciones={anotaciones.filter(
+            (anotacion) => anotacion.lineIndex === lineIndex,
+          )}
         />
       </div>
     );
@@ -2336,6 +2495,7 @@ export default function CifradoEditor({
   onSaved,
   presentation = "modal",
   onPersist,
+  anotaciones,
 }: CifradoEditorProps) {
   const isPage = isToolPagePresentation(presentation);
   const isDesktop = useIsDesktop();
@@ -2370,6 +2530,8 @@ export default function CifradoEditor({
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
+  const anotacionesEnabled = Boolean(anotaciones);
+  const anotEditor = useAnotacionesEditor(anotaciones ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveValidation, setSaveValidation] = useState<string | null>(null);
@@ -3446,6 +3608,9 @@ export default function CifradoEditor({
 
   function handleSetModoInsercion(modo: ModoInsercion) {
     setModoInsercion(modo);
+    if (modo !== "canto") {
+      anotEditor.resetCanto();
+    }
     if (modo === "compas") {
       setCompasToolTab("componer");
     } else {
@@ -4233,6 +4398,7 @@ export default function CifradoEditor({
                     onTogglePlayback={handleTogglePlayback}
                     notacion={notacion}
                     cyclePiecesById={cyclesById}
+                    anotaciones={anotaciones?.items ?? []}
                   />
                 ) : null}
 
@@ -4246,6 +4412,7 @@ export default function CifradoEditor({
                   <CifradoEditorPcToolbar
                     modoInsercion={modoInsercion}
                     onSetModoInsercion={handleSetModoInsercion}
+                    anotacionesEnabled={anotacionesEnabled}
                     compasToolTab={compasToolTab}
                     onCompasToolTabChange={setCompasToolTab}
                     cycleGolpes={getCompasCycleGolpes(compasConfig)}
@@ -4311,6 +4478,19 @@ export default function CifradoEditor({
                             >
                             Letra
                           </button>
+                          {anotacionesEnabled ? (
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={modoInsercion === "canto"}
+                              onClick={() => handleSetModoInsercion("canto")}
+                              className={cifradoEditorToolbarSegmentedButtonClass(
+                                modoInsercion === "canto",
+                              )}
+                            >
+                              Canto
+                            </button>
+                          ) : null}
                         </div>
 
                         {modoInsercion === "compas" ? (
@@ -4484,6 +4664,18 @@ export default function CifradoEditor({
                           onLineTextChange={handleLineTextChange}
                           onMarkersReady={handleMarkersReady}
                           notacion={notacion}
+                          anotaciones={
+                            anotaciones
+                              ? anotaciones.items.filter(
+                                  (anotacion) =>
+                                    anotacion.lineIndex === lineIndex,
+                                )
+                              : undefined
+                          }
+                          onAnnotate={anotEditor.placeAt}
+                          onSelectAnotacion={anotEditor.selectExisting}
+                          rangoPendiente={anotEditor.rangoPendiente}
+                          onOpenTipoMenu={anotEditor.openTipoMenu}
                         />
 
                         {isEditing && (
@@ -4603,18 +4795,16 @@ export default function CifradoEditor({
                   />
                 </VozPcConfigCard>
 
-                {notacion !== "numero" && (
-                  <VozPcConfigCard title="Tonalidad">
-                    <CifradoTonalidadFields
-                      idPrefix="cifrado-sidebar"
-                      notacion={notacion}
-                      tonalidadIndex={tonalidadIndex}
-                      modoTonal={modoTonal}
-                      onTonalidadChange={setTonalidadIndex}
-                      onModoTonalChange={setModoTonal}
-                    />
-                  </VozPcConfigCard>
-                )}
+                <VozPcConfigCard title="Tonalidad">
+                  <CifradoTonalidadFields
+                    idPrefix="cifrado-sidebar"
+                    notacion={notacion === "numero" ? "es" : notacion}
+                    tonalidadIndex={tonalidadIndex}
+                    modoTonal={modoTonal}
+                    onTonalidadChange={setTonalidadIndex}
+                    onModoTonalChange={setModoTonal}
+                  />
+                </VozPcConfigCard>
 
                 <VozPcConfigCard title="Tempo">
                   <label
@@ -4870,6 +5060,7 @@ export default function CifradoEditor({
           onTogglePlayback={handleTogglePlayback}
           notacion={notacion}
           cyclePiecesById={cyclesById}
+          anotaciones={anotaciones?.items ?? []}
         />
       ) : null}
 
@@ -4885,6 +5076,24 @@ export default function CifradoEditor({
           onClose={() => setPicker(null)}
         />
       )}
+
+      {anotEditor.draft ? (
+        <AnotacionPickerHost
+          draft={anotEditor.draft}
+          onClose={anotEditor.close}
+          onSubmit={anotEditor.submit}
+          onDelete={anotEditor.remove}
+        />
+      ) : null}
+
+      {anotEditor.tipoMenu ? (
+        <AnotacionTipoMenu
+          x={anotEditor.tipoMenu.x}
+          y={anotEditor.tipoMenu.y}
+          onPick={anotEditor.chooseTipo}
+          onClose={anotEditor.closeTipoMenu}
+        />
+      ) : null}
 
       {toast && (
         <div

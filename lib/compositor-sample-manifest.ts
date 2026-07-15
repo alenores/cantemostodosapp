@@ -14,9 +14,9 @@ export type CompositorMultiSampleDef = {
 };
 
 export type CompositorGuitarSampleDef = {
-  /** Cuerdas al aire para púa (multi-sample). */
+  /** Guitarra acústica cromática para púa y rasgueo. */
   pua: CompositorMultiSampleDef[];
-  /** Mismas cuerdas al aire para dedo/bloque/rasguido (multi-sample). */
+  /** Guitarra de nylon independiente para ejecución con dedo. */
   dedo: CompositorMultiSampleDef[];
 };
 
@@ -66,18 +66,38 @@ export const COMPOSITOR_VIENTO_SAMPLES: CompositorMultiSampleDef[] = [
   { file: `${SAMPLE_BASE}/viento/a6.mp3`, root: { note: "A", octave: 6 } },
 ];
 
-const GUITAR_OPEN_STRINGS: CompositorMultiSampleDef[] = [
-  { file: `${SAMPLE_BASE}/guitar/e2.mp3`, root: { note: "E", octave: 2 } },
-  { file: `${SAMPLE_BASE}/guitar/a2.mp3`, root: { note: "A", octave: 2 } },
-  { file: `${SAMPLE_BASE}/guitar/d3.mp3`, root: { note: "D", octave: 3 } },
-  { file: `${SAMPLE_BASE}/guitar/g3.mp3`, root: { note: "G", octave: 3 } },
-  { file: `${SAMPLE_BASE}/guitar/b3.mp3`, root: { note: "B", octave: 3 } },
-  { file: `${SAMPLE_BASE}/guitar/e4.mp3`, root: { note: "E", octave: 4 } },
-];
+const GUITAR_ACOUSTIC_NOTE_IDS = [
+  "E2", "F2", "Fs2", "G2", "Gs2", "A2", "As2", "B2",
+  "C3", "Cs3", "D3", "Ds3", "E3", "F3", "Fs3", "G3", "Gs3", "A3", "As3", "B3",
+  "C4", "Cs4", "D4", "Ds4", "E4", "F4", "Fs4", "G4", "Gs4", "A4", "As4", "B4",
+  "C5",
+] as const;
+
+const GUITAR_NYLON_NOTE_IDS = [
+  "E2", "Fs2", "Gs2", "A2", "B2", "Cs3", "D3", "E3", "Fs3", "G3", "A3",
+  "B3", "Cs4", "Ds4", "E4", "Fs4", "Gs4", "A4", "B4", "Cs5", "D5", "E5",
+] as const;
+
+function guitarSampleDefinitions(
+  family: "acoustic" | "nylon",
+  noteIds: readonly string[],
+): CompositorMultiSampleDef[] {
+  return noteIds.map((id) => {
+    const match = /^([A-G])(s?)(\d)$/.exec(id);
+    const [, letter = "E", sharp = "", octave = "2"] = match ?? [];
+    return {
+      file: `${SAMPLE_BASE}/guitar/${family}/${id.toLowerCase()}.mp3`,
+      root: {
+        note: `${letter}${sharp ? "#" : ""}`,
+        octave: Number(octave),
+      },
+    };
+  });
+}
 
 export const COMPOSITOR_GUITAR_SAMPLES: CompositorGuitarSampleDef = {
-  pua: GUITAR_OPEN_STRINGS,
-  dedo: GUITAR_OPEN_STRINGS,
+  pua: guitarSampleDefinitions("acoustic", GUITAR_ACOUSTIC_NOTE_IDS),
+  dedo: guitarSampleDefinitions("nylon", GUITAR_NYLON_NOTE_IDS),
 };
 
 export const COMPOSITOR_DRUM_SAMPLES: CompositorDrumSampleDef = {
@@ -110,7 +130,10 @@ export const COMPOSITOR_SAMPLE_PACKS: Record<
     COMPOSITOR_PIANO_CORE_SAMPLE.file,
   ],
   piano: COMPOSITOR_PIANO_SAMPLES.map((entry) => entry.file),
-  guitarra: COMPOSITOR_GUITAR_SAMPLES.pua.map((entry) => entry.file),
+  guitarra: [
+    ...COMPOSITOR_GUITAR_SAMPLES.pua.map((entry) => entry.file),
+    ...COMPOSITOR_GUITAR_SAMPLES.dedo.map((entry) => entry.file),
+  ],
   bateria: Object.values(COMPOSITOR_DRUM_SAMPLES),
   viento: COMPOSITOR_VIENTO_SAMPLES.map((entry) => entry.file),
 };

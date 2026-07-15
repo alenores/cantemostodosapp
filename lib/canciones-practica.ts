@@ -14,6 +14,7 @@ import {
 } from "@/lib/cifrado-escala";
 import { normalizeCompasConfig } from "@/lib/cifrado-intensidad";
 import { buildCifradoEditorSession } from "@/lib/cifrado-editor-session";
+import { parseAnotaciones, type Anotacion } from "@/lib/anotaciones-practica";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -33,7 +34,7 @@ export type CancionPractica = {
   bpm_default: number | null;
   tiene_cifrado_avanzado: boolean;
   nota_general: string | null;
-  anotaciones: unknown[];
+  anotaciones: Anotacion[];
   dominio: DominioPractica | null;
   created_at: string;
   updated_at: string;
@@ -61,6 +62,7 @@ export type CancionPracticaSavePayload = {
   bpm_default: number;
   origen_cancion_id?: number | null;
   nota_general?: string | null;
+  anotaciones?: Anotacion[];
 };
 
 function parseCifradoData(value: unknown): CifradoData | null {
@@ -87,10 +89,6 @@ function parseCompasConfig(value: unknown): CompasConfig | null {
   } catch {
     return null;
   }
-}
-
-function parseAnotaciones(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
 }
 
 function parseDominio(value: unknown): DominioPractica | null {
@@ -257,7 +255,7 @@ export async function insertCancionPractica(
       bpm_default: clampedBpm,
       tiene_cifrado_avanzado: true,
       nota_general: payload.nota_general?.trim() || null,
-      anotaciones: [],
+      anotaciones: payload.anotaciones ?? [],
     })
     .select("id")
     .single();
@@ -290,6 +288,7 @@ export async function updateCancionPractica(
         modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
         bpm_default: clampedBpm,
         tiene_cifrado_avanzado: true,
+        anotaciones: payload.anotaciones ?? [],
       },
       { count: "exact" },
     )

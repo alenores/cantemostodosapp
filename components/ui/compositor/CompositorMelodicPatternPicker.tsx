@@ -43,22 +43,37 @@ function MelodicPatternMiniPreview({
   color,
 }: {
   patternId: CompositorMelodicPatternId;
-  events: Array<{ startStep: number; durationSteps: number }>;
+  events: Array<{
+    startStep: number;
+    durationSteps: number;
+    guitarArticulation?: string;
+    guitarString?: number | null;
+  }>;
   cycleGolpes: number;
   playheadProgress: number | null;
   color: string;
 }) {
   const gridSteps = cycleGolpes * 4;
+  const showsGuitarMotion = events.some(
+    (event) =>
+      event.guitarString != null ||
+      event.guitarArticulation === "rasguido" ||
+      event.guitarArticulation === "rasguidoArriba",
+  );
 
   return (
     <div
-      className="relative mt-1.5 h-3 overflow-hidden rounded bg-bg-darker"
+      className={`relative mt-1.5 overflow-hidden rounded bg-bg-darker ${
+        showsGuitarMotion ? "h-6" : "h-3"
+      }`}
       aria-hidden="true"
     >
       {events.map((event, index) => (
         <div
           key={`${patternId}-${event.startStep}-${index}`}
-          className="absolute inset-y-0 rounded-sm opacity-80"
+          className={`absolute bottom-0 rounded-sm opacity-80 ${
+            showsGuitarMotion ? "h-2" : "inset-y-0"
+          }`}
           style={{
             left: `${(event.startStep / gridSteps) * 100}%`,
             width: `${Math.max((event.durationSteps / gridSteps) * 100, 4)}%`,
@@ -66,6 +81,27 @@ function MelodicPatternMiniPreview({
           }}
         />
       ))}
+      {showsGuitarMotion
+        ? events.map((event, index) => {
+            const motion =
+              event.guitarString != null
+                ? event.guitarString === 6
+                  ? "B"
+                  : String(event.guitarString)
+                : event.guitarArticulation === "rasguidoArriba"
+                  ? "↑"
+                  : "↓";
+            return (
+              <span
+                key={`motion-${patternId}-${event.startStep}-${index}`}
+                className="absolute top-0.5 -translate-x-1/2 text-[9px] font-black leading-none text-text-secondary"
+                style={{ left: `${((event.startStep + 0.5) / gridSteps) * 100}%` }}
+              >
+                {motion}
+              </span>
+            );
+          })
+        : null}
       {playheadProgress != null ? (
         <div
           className="absolute inset-y-0 w-0.5 rounded-full"

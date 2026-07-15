@@ -1,6 +1,10 @@
 "use client";
 
 import { CifradoLyricsBlock } from "@/components/cifrado/CifradoLyricsView";
+import type {
+  Anotacion,
+  AnotacionVisibility,
+} from "@/lib/anotaciones-practica";
 import { type AcordePos, type CompasMarker } from "@/lib/cifrado";
 import { getIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
@@ -24,6 +28,9 @@ type LetraCifradoPanelProps = {
   showAcordes?: boolean;
   onMarkersReady?: (lineIndex: number, markers: CompasMarker[]) => void;
   onLineRef?: (lineIndex: number, element: HTMLDivElement | null) => void;
+  anotaciones?: Anotacion[];
+  anotacionesVisibility?: AnotacionVisibility;
+  onOpenNota?: (anotacion: Anotacion) => void;
 };
 
 export default function LetraCifradoPanel({
@@ -38,6 +45,9 @@ export default function LetraCifradoPanel({
   showAcordes = true,
   onMarkersReady,
   onLineRef,
+  anotaciones,
+  anotacionesVisibility,
+  onOpenNota,
 }: LetraCifradoPanelProps) {
   const letra = detalle.letra?.trim() ?? "";
   const compasConfig = detalle.compas_config;
@@ -85,6 +95,9 @@ export default function LetraCifradoPanel({
           onLineRef={onLineRef}
           letraSheet
           notacion={notacion}
+          anotaciones={anotaciones}
+          anotacionesVisibility={anotacionesVisibility}
+          onOpenNota={onOpenNota}
         />
       </div>
     </div>

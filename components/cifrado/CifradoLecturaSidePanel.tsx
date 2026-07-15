@@ -10,15 +10,24 @@ import {
 } from "@/components/cifrado/cifrado-controls-ui";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { APP_SIDEBAR_WIDTH_CSS } from "@/lib/app-layout";
+import {
+  ANOTACION_TIPO_LABEL,
+  ANOTACION_TIPOS,
+  type AnotacionTipo,
+  type AnotacionVisibility,
+} from "@/lib/anotaciones-practica";
 import type { NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
-import { Eye, EyeOff, Pause, Play } from "lucide-react";
+import { Eye, EyeOff, NotebookPen, Pause, Pencil, Play } from "lucide-react";
 
 type CifradoLecturaSidePanelProps = {
   hasCompases?: boolean;
   compasesOcultos?: boolean;
   acordesOcultos?: boolean;
+  anotacionesVisibility?: AnotacionVisibility;
+  anotacionTiposPresentes?: AnotacionTipo[];
+  onToggleAnotacionTipo?: (tipo: AnotacionTipo) => void;
   playing: boolean;
   canPlay: boolean;
   notacion: NotacionAcordes;
@@ -34,6 +43,9 @@ type CifradoLecturaSidePanelProps = {
   onModoTonalChange: (next: ModoTonal) => void;
   onBpmChange: (next: number) => void;
   onTapTempo: () => void;
+  onOpenNotaGeneral?: () => void;
+  tieneNotaGeneral?: boolean;
+  onEdit?: () => void;
 };
 
 export function getLecturaPremiumRailWidthCss(): string {
@@ -44,6 +56,9 @@ export default function CifradoLecturaSidePanel({
   hasCompases = false,
   compasesOcultos = false,
   acordesOcultos = false,
+  anotacionesVisibility,
+  anotacionTiposPresentes = [],
+  onToggleAnotacionTipo,
   playing,
   canPlay,
   notacion,
@@ -59,8 +74,72 @@ export default function CifradoLecturaSidePanel({
   onModoTonalChange,
   onBpmChange,
   onTapTempo,
+  onOpenNotaGeneral,
+  tieneNotaGeneral = false,
+  onEdit,
 }: CifradoLecturaSidePanelProps) {
-  const showTonalidad = notacion !== "numero";
+  const tiposParaToggle = ANOTACION_TIPOS.filter((tipo) =>
+    anotacionTiposPresentes.includes(tipo),
+  );
+  const anotacionesToggles =
+    anotacionesVisibility && onToggleAnotacionTipo && tiposParaToggle.length > 0 ? (
+      <div className="mt-3 space-y-2">
+        {tiposParaToggle.map((tipo) => {
+          const oculto = !anotacionesVisibility[tipo];
+
+          return (
+            <TapButton
+              key={tipo}
+              type="button"
+              onClick={() => onToggleAnotacionTipo(tipo)}
+              className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+            >
+              {oculto ? (
+                <Eye className="size-4 shrink-0" aria-hidden="true" />
+              ) : (
+                <EyeOff className="size-4 shrink-0" aria-hidden="true" />
+              )}
+              {oculto ? "Mostrar" : "Ocultar"} {ANOTACION_TIPO_LABEL[tipo].toLowerCase()}
+            </TapButton>
+          );
+        })}
+      </div>
+    ) : null;
+
+  const accionesLectura =
+    onOpenNotaGeneral || onEdit ? (
+      <div className="mt-3 space-y-2">
+        {onOpenNotaGeneral ? (
+          <TapButton
+            type="button"
+            onClick={onOpenNotaGeneral}
+            className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+          >
+            <NotebookPen
+              className="size-4 shrink-0 text-[var(--accent-entrenador-canciones)]"
+              aria-hidden="true"
+            />
+            Nota de la canción
+            {tieneNotaGeneral ? (
+              <span
+                className="size-1.5 rounded-full bg-[var(--accent-entrenador-canciones)]"
+                aria-hidden="true"
+              />
+            ) : null}
+          </TapButton>
+        ) : null}
+        {onEdit ? (
+          <TapButton
+            type="button"
+            onClick={onEdit}
+            className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--accent-entrenador-canciones)] py-2.5 text-sm font-semibold text-[var(--text-on-light)]"
+          >
+            <Pencil className="size-4 shrink-0" aria-hidden="true" />
+            Editar
+          </TapButton>
+        ) : null}
+      </div>
+    ) : null;
 
   const ocultarAcordesButton = (
     <TapButton
@@ -84,19 +163,17 @@ export default function CifradoLecturaSidePanel({
       aria-label="Controles de cifrado premium"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
-        {showTonalidad ? (
-          <div className="mb-4">
-            <CifradoTonalidadFields
-              idPrefix="cifrado-lectura"
-              notacion={notacion}
-              tonalidadIndex={tonalidadIndex}
-              modoTonal={modoTonal}
-              showModoTonal={false}
-              onTonalidadChange={onTonalidadChange}
-              onModoTonalChange={onModoTonalChange}
-            />
-          </div>
-        ) : null}
+        <div className="mb-4">
+          <CifradoTonalidadFields
+            idPrefix="cifrado-lectura"
+            notacion={notacion === "numero" ? "es" : notacion}
+            tonalidadIndex={tonalidadIndex}
+            modoTonal={modoTonal}
+            showModoTonal={false}
+            onTonalidadChange={onTonalidadChange}
+            onModoTonalChange={onModoTonalChange}
+          />
+        </div>
 
         {hasCompases ? (
           <div className={`${CIFRADO_CONTROLS_PANEL_BOX_CLASS} space-y-3`}>
@@ -173,6 +250,9 @@ export default function CifradoLecturaSidePanel({
             />
           </div>
         )}
+
+        {anotacionesToggles}
+        {accionesLectura}
       </div>
     </aside>
   );

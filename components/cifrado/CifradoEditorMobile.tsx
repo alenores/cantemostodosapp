@@ -76,6 +76,13 @@ import type {
   CifradoEditorSession,
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
+import {
+  AnotacionPickerHost,
+  AnotacionTipoMenu,
+  useAnotacionesEditor,
+  type AnotacionesControl,
+} from "@/components/cifrado/AnotacionPickers";
+import { DEFAULT_ANOTACION_VISIBILITY } from "@/lib/anotaciones-practica";
 import { ArrowLeft, Eye, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -90,8 +97,8 @@ type PickerTarget = {
 
 const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 
-const textareaClassName =
-  "min-h-[220px] w-full flex-1 resize-none rounded-[10px] border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
+  const textareaClassName =
+  "min-h-0 w-full flex-1 resize-none rounded-[10px] border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
 
 type CifradoEditorMobileProps = {
   session?: CifradoEditorSession | null;
@@ -100,6 +107,7 @@ type CifradoEditorMobileProps = {
   backAriaLabel?: string;
   onPersist?: CifradoEditorPersistFn;
   onSaved?: (result?: CifradoSaveResult) => void;
+  anotaciones?: AnotacionesControl | null;
 };
 
 /**
@@ -113,6 +121,7 @@ export default function CifradoEditorMobile({
   backAriaLabel = "Volver",
   onPersist,
   onSaved,
+  anotaciones,
 }: CifradoEditorMobileProps = {}) {
   const searchParams = useSearchParams();
   const desdeCancionero = searchParams.get("desde") === "cancionero";
@@ -143,6 +152,8 @@ export default function CifradoEditorMobile({
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
   const [modoInsercion, setModoInsercion] =
     useState<MobileModoInsercion>("acordes");
+  const anotacionesEnabled = Boolean(anotaciones);
+  const anotEditor = useAnotacionesEditor(anotaciones ?? null);
   const [pasteProposeOpen, setPasteProposeOpen] = useState(false);
   const [pasteAnalysis, setPasteAnalysis] = useState<PasteIngresoAnalysis | null>(
     null,
@@ -479,6 +490,9 @@ export default function CifradoEditorMobile({
     setModoInsercion(modo);
     setPickerTarget(null);
     setSelectedBarra(null);
+    if (modo !== "canto") {
+      anotEditor.resetCanto();
+    }
   }
 
   function handleCompasTap(lineIndex: number, charOffset: number) {
@@ -879,9 +893,9 @@ export default function CifradoEditorMobile({
       </header>
 
       {phase === "ingreso" ? (
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 pb-28">
-          {/* Letra / búsqueda arriba: las automatizaciones parten de acá */}
-          <div className="flex min-h-[220px] flex-1 flex-col">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 pb-28">
+          {/* Letra / búsqueda: ocupa el espacio libre, sin alargar el scroll */}
+          <div className="flex min-h-0 flex-1 flex-col">
             {ingresoTab === "letra" ? (
               <>
                 <label className={labelClassName} htmlFor="cifrado-mobile-letra">
@@ -926,139 +940,141 @@ export default function CifradoEditorMobile({
             ) : null}
           </div>
 
-          {/* Pestañas, cajilleros y botón abajo de la letra */}
-          <div
-            className={`mt-4 shrink-0 ${CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}`}
-            role="tablist"
-            aria-label="Forma de ingreso"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={ingresoTab === "letra"}
-              onClick={() => {
-                setIngresoTab("letra");
-                clearError();
-              }}
-              className={cifradoEditorToolbarSegmentedButtonClass(
-                ingresoTab === "letra",
-              )}
+          {/* Datos / pestañas: scroll propio con tope en el último bloque */}
+          <div className="mt-4 min-h-0 shrink overflow-y-auto overscroll-y-contain">
+            <div
+              className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
+              role="tablist"
+              aria-label="Forma de ingreso"
             >
-              Escribir letra
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={ingresoTab === "web"}
-              onClick={() => {
-                setIngresoTab("web");
-                clearError();
-              }}
-              className={cifradoEditorToolbarSegmentedButtonClass(
-                ingresoTab === "web",
-              )}
-            >
-              Buscar en la web
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={ingresoTab === "pegar"}
-              onClick={() => {
-                setIngresoTab("pegar");
-                clearError();
-              }}
-              className={cifradoEditorToolbarSegmentedButtonClass(
-                ingresoTab === "pegar",
-              )}
-            >
-              Pegar letra+acordes
-            </button>
-          </div>
-
-          <div className={`mt-3 shrink-0 ${CIFRADO_CONTROLS_PANEL_BOX_CLASS}`}>
-            <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-              Datos de la canción
-            </p>
-            <label className={labelClassName} htmlFor="cifrado-mobile-nombre">
-              Nombre
-            </label>
-            <input
-              id="cifrado-mobile-nombre"
-              value={nombre}
-              onChange={(event) => {
-                setNombre(event.target.value);
-                clearError();
-              }}
-              className={CIFRADO_CONTROLS_INPUT_CLASS}
-              placeholder="Nombre de la canción"
-            />
-            <label
-              className={`${labelClassName} mt-3`}
-              htmlFor="cifrado-mobile-artista"
-            >
-              Artista
-            </label>
-            <input
-              id="cifrado-mobile-artista"
-              value={artista}
-              onChange={(event) => setArtista(event.target.value)}
-              className={CIFRADO_CONTROLS_INPUT_CLASS}
-              placeholder="Artista"
-            />
-            <div className="mt-3">
-              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
-              <CifradoTonalidadFields
-                idPrefix="cifrado-mobile-ingreso"
-                notacion="es"
-                tonalidadIndex={tonalidadIndex}
-                modoTonal={modoTonal}
-                requireSelection
-                onTonalidadChange={(next) => {
-                  setTonalidadIndex(next);
+              <button
+                type="button"
+                role="tab"
+                aria-selected={ingresoTab === "letra"}
+                onClick={() => {
+                  setIngresoTab("letra");
                   clearError();
                 }}
-                onModoTonalChange={(next) => {
-                  setModoTonal(next);
+                className={cifradoEditorToolbarSegmentedButtonClass(
+                  ingresoTab === "letra",
+                )}
+              >
+                Escribir letra
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={ingresoTab === "web"}
+                onClick={() => {
+                  setIngresoTab("web");
                   clearError();
                 }}
-              />
+                className={cifradoEditorToolbarSegmentedButtonClass(
+                  ingresoTab === "web",
+                )}
+              >
+                Buscar en la web
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={ingresoTab === "pegar"}
+                onClick={() => {
+                  setIngresoTab("pegar");
+                  clearError();
+                }}
+                className={cifradoEditorToolbarSegmentedButtonClass(
+                  ingresoTab === "pegar",
+                )}
+              >
+                Pegar letra+acordes
+              </button>
             </div>
+
+            <div className={`mt-3 ${CIFRADO_CONTROLS_PANEL_BOX_CLASS}`}>
+              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                Datos de la canción
+              </p>
+              <label className={labelClassName} htmlFor="cifrado-mobile-nombre">
+                Nombre
+              </label>
+              <input
+                id="cifrado-mobile-nombre"
+                value={nombre}
+                onChange={(event) => {
+                  setNombre(event.target.value);
+                  clearError();
+                }}
+                className={CIFRADO_CONTROLS_INPUT_CLASS}
+                placeholder="Nombre de la canción"
+              />
+              <label
+                className={`${labelClassName} mt-3`}
+                htmlFor="cifrado-mobile-artista"
+              >
+                Artista
+              </label>
+              <input
+                id="cifrado-mobile-artista"
+                value={artista}
+                onChange={(event) => setArtista(event.target.value)}
+                className={CIFRADO_CONTROLS_INPUT_CLASS}
+                placeholder="Artista"
+              />
+              <div className="mt-3">
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
+                <CifradoTonalidadFields
+                  idPrefix="cifrado-mobile-ingreso"
+                  notacion="es"
+                  tonalidadIndex={tonalidadIndex}
+                  modoTonal={modoTonal}
+                  requireSelection
+                  onTonalidadChange={(next) => {
+                    setTonalidadIndex(next);
+                    clearError();
+                  }}
+                  onModoTonalChange={(next) => {
+                    setModoTonal(next);
+                    clearError();
+                  }}
+                />
+              </div>
+            </div>
+
+            {error ? (
+              <p className="mt-3 text-sm font-medium text-red-400" role="alert">
+                {error}
+              </p>
+            ) : null}
+
+            {ingresoTab === "letra" ? (
+              <TapButton
+                type="button"
+                onClick={handleApplyLyrics}
+                disabled={!draftLyrics.trim() || !tonalidadLista}
+                className={`mt-4 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+              >
+                Aplicar y empezar a cifrar
+              </TapButton>
+            ) : null}
+
+            {ingresoTab === "pegar" ? (
+              <TapButton
+                type="button"
+                onClick={handleApplyPaste}
+                disabled={!draftPaste.trim() || !tonalidadLista}
+                className={`mt-4 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+              >
+                Importar y editar
+              </TapButton>
+            ) : null}
+
+            {ingresoTab === "web" ? (
+              <p className="mt-3 text-center text-xs text-text-muted">
+                En la web, el botón de importar aparece al elegir una canción.
+              </p>
+            ) : null}
           </div>
-
-          {error ? (
-            <p className="mt-3 shrink-0 text-sm font-medium text-red-400" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          {ingresoTab === "letra" ? (
-            <TapButton
-              type="button"
-              onClick={handleApplyLyrics}
-              disabled={!draftLyrics.trim() || !tonalidadLista}
-              className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
-            >
-              Aplicar y empezar a cifrar
-            </TapButton>
-          ) : null}
-
-          {ingresoTab === "pegar" ? (
-            <TapButton
-              type="button"
-              onClick={handleApplyPaste}
-              disabled={!draftPaste.trim() || !tonalidadLista}
-              className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
-            >
-              Importar y editar
-            </TapButton>
-          ) : null}
-
-          {ingresoTab === "web" ? (
-            <p className="mt-3 shrink-0 text-center text-xs text-text-muted">
-              En la web, el botón de importar aparece al elegir una canción.
-            </p>
-          ) : null}
         </main>
       ) : (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1104,9 +1120,9 @@ export default function CifradoEditorMobile({
           ) : null}
 
           <div
-            className={`relative min-h-0 flex-1 overflow-y-auto ${CIFRADO_EDITOR_SHEET_BG_CLASS}`}
+            className={`relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain ${CIFRADO_EDITOR_SHEET_BG_CLASS}`}
           >
-            <div className="relative min-h-full px-4 py-4 pb-28">
+            <div className="relative px-4 py-4 pb-28">
               {dragTarget || barDragTarget ? (
                 <div
                   className="pointer-events-none absolute inset-0 z-[5] bg-black/50"
@@ -1153,6 +1169,12 @@ export default function CifradoEditorMobile({
                 compasCycleGolpes={getCompasCycleGolpes(compasConfig)}
                 compasIntensidadPattern={compasIntensidadPattern}
                 selectedCompasNumero={selectedBarraData?.compasNumero ?? null}
+                anotacionesEnabled={anotacionesEnabled}
+                anotaciones={anotaciones?.items ?? []}
+                onAnnotate={anotEditor.placeAt}
+                onSelectAnotacion={anotEditor.selectExisting}
+                rangoPendiente={anotEditor.rangoPendiente}
+                onOpenTipoMenu={anotEditor.openTipoMenu}
               />
             </div>
           </div>
@@ -1184,6 +1206,24 @@ export default function CifradoEditorMobile({
         />
       ) : null}
 
+      {anotEditor.draft ? (
+        <AnotacionPickerHost
+          draft={anotEditor.draft}
+          onClose={anotEditor.close}
+          onSubmit={anotEditor.submit}
+          onDelete={anotEditor.remove}
+        />
+      ) : null}
+
+      {anotEditor.tipoMenu ? (
+        <AnotacionTipoMenu
+          x={anotEditor.tipoMenu.x}
+          y={anotEditor.tipoMenu.y}
+          onPick={anotEditor.chooseTipo}
+          onClose={anotEditor.closeTipoMenu}
+        />
+      ) : null}
+
       {configOpen && phase === "cifrado" ? (
         <div className="absolute inset-0 z-[60] flex flex-col bg-bg-app">
           <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
@@ -1210,88 +1250,93 @@ export default function CifradoEditorMobile({
             </TapButton>
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 pb-28">
-            <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-                Datos de la canción
-              </p>
-              <label className={labelClassName} htmlFor="cifrado-mobile-cfg-nombre">
-                Nombre
-              </label>
-              <input
-                id="cifrado-mobile-cfg-nombre"
-                value={nombre}
-                onChange={(event) => {
-                  setNombre(event.target.value);
-                  clearError();
-                }}
-                className={CIFRADO_CONTROLS_INPUT_CLASS}
-                placeholder="Nombre de la canción"
-              />
-              <label
-                className={`${labelClassName} mt-3`}
-                htmlFor="cifrado-mobile-cfg-artista"
-              >
-                Artista
-              </label>
-              <input
-                id="cifrado-mobile-cfg-artista"
-                value={artista}
-                onChange={(event) => setArtista(event.target.value)}
-                className={CIFRADO_CONTROLS_INPUT_CLASS}
-                placeholder="Artista"
-              />
-            </div>
-
-            <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
-              <CifradoTonalidadFields
-                idPrefix="cifrado-mobile-cfg"
-                notacion="es"
-                tonalidadIndex={tonalidadIndex}
-                modoTonal={modoTonal}
-                requireSelection
-                onTonalidadChange={(next) => {
-                  setTonalidadIndex(next);
-                  clearError();
-                }}
-                onModoTonalChange={(next) => {
-                  setModoTonal(next);
-                  clearError();
-                }}
-              />
-            </div>
-
-            <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-              <label
-                className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
-                htmlFor="cifrado-mobile-cfg-bpm"
-              >
-                Tempo (BPM)
-              </label>
-              <div className="flex items-stretch gap-2">
-                <ToolNumericStepper
-                  value={compasConfig.bpm}
-                  density="compact"
-                  inputId="cifrado-mobile-cfg-bpm"
-                  min={40}
-                  max={240}
-                  decrementDisabled={compasConfig.bpm <= 40}
-                  incrementDisabled={compasConfig.bpm >= 240}
-                  decrementAriaLabel="Reducir BPM"
-                  incrementAriaLabel="Aumentar BPM"
-                  onDecrement={() => handleSetBpm(compasConfig.bpm - 1)}
-                  onIncrement={() => handleSetBpm(compasConfig.bpm + 1)}
-                  onSetValue={handleSetBpm}
-                  className="min-w-0 flex-1"
-                />
-                <TapButton
-                  type="button"
-                  onClick={handleTapTempo}
-                  className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4">
+            <div className="flex flex-col gap-4">
+              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                  Datos de la canción
+                </p>
+                <label
+                  className={labelClassName}
+                  htmlFor="cifrado-mobile-cfg-nombre"
                 >
-                  Tap{tapCount > 0 ? ` (${tapCount})` : ""}
-                </TapButton>
+                  Nombre
+                </label>
+                <input
+                  id="cifrado-mobile-cfg-nombre"
+                  value={nombre}
+                  onChange={(event) => {
+                    setNombre(event.target.value);
+                    clearError();
+                  }}
+                  className={CIFRADO_CONTROLS_INPUT_CLASS}
+                  placeholder="Nombre de la canción"
+                />
+                <label
+                  className={`${labelClassName} mt-3`}
+                  htmlFor="cifrado-mobile-cfg-artista"
+                >
+                  Artista
+                </label>
+                <input
+                  id="cifrado-mobile-cfg-artista"
+                  value={artista}
+                  onChange={(event) => setArtista(event.target.value)}
+                  className={CIFRADO_CONTROLS_INPUT_CLASS}
+                  placeholder="Artista"
+                />
+              </div>
+
+              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
+                <CifradoTonalidadFields
+                  idPrefix="cifrado-mobile-cfg"
+                  notacion="es"
+                  tonalidadIndex={tonalidadIndex}
+                  modoTonal={modoTonal}
+                  requireSelection
+                  onTonalidadChange={(next) => {
+                    setTonalidadIndex(next);
+                    clearError();
+                  }}
+                  onModoTonalChange={(next) => {
+                    setModoTonal(next);
+                    clearError();
+                  }}
+                />
+              </div>
+
+              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                <label
+                  className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                  htmlFor="cifrado-mobile-cfg-bpm"
+                >
+                  Tempo (BPM)
+                </label>
+                <div className="flex items-stretch gap-2">
+                  <ToolNumericStepper
+                    value={compasConfig.bpm}
+                    density="compact"
+                    inputId="cifrado-mobile-cfg-bpm"
+                    min={40}
+                    max={240}
+                    decrementDisabled={compasConfig.bpm <= 40}
+                    incrementDisabled={compasConfig.bpm >= 240}
+                    decrementAriaLabel="Reducir BPM"
+                    incrementAriaLabel="Aumentar BPM"
+                    onDecrement={() => handleSetBpm(compasConfig.bpm - 1)}
+                    onIncrement={() => handleSetBpm(compasConfig.bpm + 1)}
+                    onSetValue={handleSetBpm}
+                    className="min-w-0 flex-1"
+                  />
+                  <TapButton
+                    type="button"
+                    onClick={handleTapTempo}
+                    className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                  >
+                    Tap{tapCount > 0 ? ` (${tapCount})` : ""}
+                  </TapButton>
+                </div>
               </div>
             </div>
           </div>
@@ -1323,7 +1368,7 @@ export default function CifradoEditorMobile({
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-letra-bg px-4 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-letra-bg px-4 py-5">
             <CifradoLyricsBlock
               letra={lyricsText}
               acordes={cifrado.acordes}
@@ -1335,6 +1380,8 @@ export default function CifradoEditorMobile({
               showAcordes
               notacion="es"
               letraSheet
+              anotaciones={anotaciones?.items ?? []}
+              anotacionesVisibility={DEFAULT_ANOTACION_VISIBILITY}
             />
           </div>
         </div>

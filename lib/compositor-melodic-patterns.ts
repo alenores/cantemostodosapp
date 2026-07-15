@@ -20,7 +20,11 @@ import { suggestedChordModifier } from "@/lib/compositor-melodic-draft";
 import { getMelodicOctaveRange } from "@/lib/compositor-timeline-layout";
 import type { NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
-import type { MetronomeBeatLevel } from "@/lib/metronomo";
+import {
+  METRONOME_PATTERN_LENGTH,
+  type MetronomeBeatDuration,
+  type MetronomeBeatLevel,
+} from "@/lib/metronomo";
 
 export type CompositorMelodicPatternId =
   | "escala-ascendente"
@@ -33,11 +37,16 @@ export type CompositorMelodicPatternId =
   | "pentatonica"
   | "terceras"
   | "bordon"
-  | "arpegio-cuerdas-a"
-  | "rasguido-negras"
-  | "rasguido-corcheas"
-  | "rasguido-ddudu"
-  | "rasguido-con-bajo";
+  | "arpegio-folk"
+  | "arpegio-balada"
+  | "arpegio-seis-ocho"
+  | "rasgueo-pop"
+  | "rasgueo-corcheas"
+  | "rasgueo-rock"
+  | "rasgueo-vals"
+  | "rasgueo-seis-ocho"
+  | "bajo-rasgueo-folk"
+  | "progresion-pop";
 
 export type CompositorPatternFamilia = "melodia" | "acompanamiento";
 
@@ -48,6 +57,7 @@ export type CompositorMelodicPattern = {
   familia: CompositorPatternFamilia;
   aptoPara: readonly CompositorMelodicInstrumentId[];
   cycleGolpes: number;
+  beatDuration: MetronomeBeatDuration;
   suggestedBpm: number;
   events: CompositorTrackEvent[];
 };
@@ -60,6 +70,7 @@ type MelodicHit = {
   octaveOffset?: number;
   level?: MetronomeBeatLevel;
   guitarArticulation?: CompositorGuitarArticulation;
+  guitarString?: 1 | 2 | 3 | 4 | 5 | 6;
 };
 
 const CYCLE_GOLPES = 4;
@@ -74,20 +85,6 @@ const ALL_MELODIC: readonly CompositorMelodicInstrumentId[] = [
 
 const GUITARRA_ONLY: readonly CompositorMelodicInstrumentId[] = ["guitarra"];
 
-/**
- * Voicing de acorde I en “cuerdas” (1 aguda → 6 grave) para arpegios clásicos.
- * Aproxima un punteo folk con bajo en 6ª.
- */
-const CUERDA_A_GRADO: Record<
-  1 | 2 | 3 | 6,
-  { gradoCromatico: CompositorGradoCromatico; octaveOffset: number }
-> = {
-  6: { gradoCromatico: 1, octaveOffset: 0 },
-  3: { gradoCromatico: 8, octaveOffset: 0 },
-  2: { gradoCromatico: 1, octaveOffset: 1 },
-  1: { gradoCromatico: 5, octaveOffset: 1 },
-};
-
 function hitsToEvents(hits: MelodicHit[]): CompositorTrackEvent[] {
   return hits.map((hit) =>
     createCompositorEvent({
@@ -97,6 +94,7 @@ function hitsToEvents(hits: MelodicHit[]): CompositorTrackEvent[] {
       gradoCromatico: hit.gradoCromatico,
       octavaRelativa: PATTERN_BASE_OCTAVE + (hit.octaveOffset ?? 0),
       guitarArticulation: hit.guitarArticulation ?? "pua",
+      guitarString: hit.guitarString ?? null,
     }),
   );
 }
@@ -111,6 +109,7 @@ function buildPattern(
     familia: CompositorPatternFamilia;
     aptoPara: readonly CompositorMelodicInstrumentId[];
     cycleGolpes?: number;
+    beatDuration?: MetronomeBeatDuration;
   },
 ): CompositorMelodicPattern {
   return {
@@ -120,6 +119,7 @@ function buildPattern(
     familia: options.familia,
     aptoPara: options.aptoPara,
     cycleGolpes: options.cycleGolpes ?? CYCLE_GOLPES,
+    beatDuration: options.beatDuration ?? "negra",
     suggestedBpm,
     events: hitsToEvents(hits),
   };
@@ -140,18 +140,34 @@ function buildMelodia(
 
 function cuerdaHit(
   step: number,
-  cuerda: 1 | 2 | 3 | 6,
+  cuerda: 1 | 2 | 3 | 4 | 5 | 6,
   durationSteps = 2,
   level: MetronomeBeatLevel = "medio",
 ): MelodicHit {
-  const pitch = CUERDA_A_GRADO[cuerda];
   return {
     step,
     durationSteps,
-    gradoCromatico: pitch.gradoCromatico,
-    octaveOffset: pitch.octaveOffset,
+    gradoCromatico: 1,
     level,
-    guitarArticulation: "pua",
+    guitarArticulation: "dedo",
+    guitarString: cuerda,
+  };
+}
+
+function rasgueoHit(
+  step: number,
+  direction: "abajo" | "arriba",
+  level: MetronomeBeatLevel = "medio",
+  gradoCromatico: CompositorGradoCromatico = 1,
+  durationSteps = 2,
+): MelodicHit {
+  return {
+    step,
+    durationSteps,
+    gradoCromatico,
+    level,
+    guitarArticulation:
+      direction === "arriba" ? "rasguidoArriba" : "rasguido",
   };
 }
 
@@ -305,10 +321,10 @@ export const COMPOSITOR_MELODIC_PATTERNS: CompositorMelodicPattern[] = [
 
   // —— Acompañamiento (guitarra) ——
   buildPattern(
-    "arpegio-cuerdas-a",
-    "Arpegio de cuerdas",
-    "Punteo 6-3-2-3-1-2-3-2 · base típica de guitarra",
-    90,
+    "arpegio-folk",
+    "Arpegio folk",
+    "Bajo–3–2–3–1–2–3–2 · cada nota sale de una cuerda real del acorde",
+    86,
     [
       cuerdaHit(0, 6, 2, "fuerte"),
       cuerdaHit(2, 3),
@@ -322,185 +338,143 @@ export const COMPOSITOR_MELODIC_PATTERNS: CompositorMelodicPattern[] = [
     { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
   ),
   buildPattern(
-    "rasguido-negras",
-    "Rasguido en negras",
-    "Un rasguido por tiempo · acorde de tónica",
+    "arpegio-balada",
+    "Arpegio de balada",
+    "Bajo–4–3–2–1–2–3–4 · recorrido amplio y parejo",
+    72,
+    [
+      cuerdaHit(0, 6, 2, "fuerte"),
+      cuerdaHit(2, 4),
+      cuerdaHit(4, 3),
+      cuerdaHit(6, 2),
+      cuerdaHit(8, 1, 2, "medio"),
+      cuerdaHit(10, 2),
+      cuerdaHit(12, 3),
+      cuerdaHit(14, 4),
+    ],
+    { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
+  ),
+  buildPattern(
+    "arpegio-seis-ocho",
+    "Arpegio 6/8",
+    "Bajo–3–2–1–2–3 · balance natural en dos grupos de tres",
+    76,
+    [
+      cuerdaHit(0, 6, 4, "fuerte"),
+      cuerdaHit(4, 3, 4),
+      cuerdaHit(8, 2, 4),
+      cuerdaHit(12, 1, 4, "medio"),
+      cuerdaHit(16, 2, 4),
+      cuerdaHit(20, 3, 4),
+    ],
+    {
+      familia: "acompanamiento",
+      aptoPara: GUITARRA_ONLY,
+      cycleGolpes: 6,
+      beatDuration: "corchea",
+    },
+  ),
+  buildPattern(
+    "rasgueo-pop",
+    "Pop universal",
+    "↓ – ↓ ↑ – ↑ ↓ ↑ · patrón completo de ocho movimientos",
     96,
     [
-      {
-        step: 0,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 4,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 8,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 12,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
+      rasgueoHit(0, "abajo", "fuerte"),
+      rasgueoHit(4, "abajo", "medio"),
+      rasgueoHit(6, "arriba", "suave"),
+      rasgueoHit(10, "arriba", "suave"),
+      rasgueoHit(12, "abajo", "fuerte"),
+      rasgueoHit(14, "arriba", "suave"),
     ],
     { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
   ),
   buildPattern(
-    "rasguido-corcheas",
-    "Rasguido en corcheas",
-    "↓ ↑ ↓ ↑ · abajo en tiempos, arriba en contratiempos",
-    100,
+    "rasgueo-corcheas",
+    "Corcheas continuas",
+    "↓ ↑ ↓ ↑ ↓ ↑ ↓ ↑ · acentos humanos en 1 y 3",
+    104,
     [
-      {
-        step: 0,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 2,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "suave",
-        guitarArticulation: "rasguidoArriba",
-      },
-      {
-        step: 4,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 6,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "suave",
-        guitarArticulation: "rasguidoArriba",
-      },
-      {
-        step: 8,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 10,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "suave",
-        guitarArticulation: "rasguidoArriba",
-      },
-      {
-        step: 12,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 14,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "suave",
-        guitarArticulation: "rasguidoArriba",
-      },
+      rasgueoHit(0, "abajo", "fuerte"),
+      rasgueoHit(2, "arriba", "suave"),
+      rasgueoHit(4, "abajo", "medio"),
+      rasgueoHit(6, "arriba", "suave"),
+      rasgueoHit(8, "abajo", "fuerte"),
+      rasgueoHit(10, "arriba", "suave"),
+      rasgueoHit(12, "abajo", "medio"),
+      rasgueoHit(14, "arriba", "suave"),
     ],
     { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
   ),
   buildPattern(
-    "rasguido-ddudu",
-    "Rasguido ↓↓↑↑↓",
-    "Abajo, abajo, arriba, arriba y abajo · patrón clásico",
-    96,
+    "rasgueo-rock",
+    "Rock en negras",
+    "↓ ↓ ↓ ↓ · ataque firme, acentos en 2 y 4",
+    112,
     [
-      {
-        step: 0,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 4,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 6,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "suave",
-        guitarArticulation: "rasguidoArriba",
-      },
-      {
-        step: 10,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "suave",
-        guitarArticulation: "rasguidoArriba",
-      },
-      {
-        step: 12,
-        durationSteps: 2,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "rasguido",
-      },
+      rasgueoHit(0, "abajo", "medio", 1, 4),
+      rasgueoHit(4, "abajo", "fuerte", 1, 4),
+      rasgueoHit(8, "abajo", "medio", 1, 4),
+      rasgueoHit(12, "abajo", "fuerte", 1, 4),
     ],
     { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
   ),
   buildPattern(
-    "rasguido-con-bajo",
-    "Rasguido con bajo",
-    "Bajo en 1 y 3 · rasguido en 2 y 4",
+    "rasgueo-vals",
+    "Vals 3/4",
+    "Bajo en 1, acordes en 2 y 3 · acompañamiento tradicional",
+    108,
+    [
+      cuerdaHit(0, 6, 4, "fuerte"),
+      rasgueoHit(4, "abajo", "medio", 1, 4),
+      rasgueoHit(8, "arriba", "suave", 1, 4),
+    ],
+    {
+      familia: "acompanamiento",
+      aptoPara: GUITARRA_ONLY,
+      cycleGolpes: 3,
+    },
+  ),
+  buildPattern(
+    "rasgueo-seis-ocho",
+    "Rasgueo 6/8",
+    "↓ – – ↓ ↑ – · dos pulsos grandes, sin convertirlo en 4/4",
+    82,
+    [
+      rasgueoHit(0, "abajo", "fuerte", 1, 4),
+      rasgueoHit(12, "abajo", "medio", 1, 4),
+      rasgueoHit(16, "arriba", "suave", 1, 4),
+    ],
+    {
+      familia: "acompanamiento",
+      aptoPara: GUITARRA_ONLY,
+      cycleGolpes: 6,
+      beatDuration: "corchea",
+    },
+  ),
+  buildPattern(
+    "bajo-rasgueo-folk",
+    "Bajo y rasgueo folk",
+    "Bajo–acorde–bajo–acorde · mano derecha práctica y reconocible",
     92,
     [
-      {
-        step: 0,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "pua",
-      },
-      {
-        step: 4,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
-      {
-        step: 8,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "fuerte",
-        guitarArticulation: "pua",
-      },
-      {
-        step: 12,
-        durationSteps: 4,
-        gradoCromatico: 1,
-        level: "medio",
-        guitarArticulation: "rasguido",
-      },
+      cuerdaHit(0, 6, 4, "fuerte"),
+      rasgueoHit(4, "abajo", "medio", 1, 4),
+      cuerdaHit(8, 5, 4, "fuerte"),
+      rasgueoHit(12, "abajo", "medio", 1, 4),
+    ],
+    { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
+  ),
+  buildPattern(
+    "progresion-pop",
+    "Progresión I–V–vi–IV",
+    "Un acorde real por tiempo · base inmediata para componer canciones",
+    88,
+    [
+      rasgueoHit(0, "abajo", "fuerte", 1, 4),
+      rasgueoHit(4, "abajo", "medio", 8, 4),
+      rasgueoHit(8, "abajo", "fuerte", 10, 4),
+      rasgueoHit(12, "abajo", "medio", 6, 4),
     ],
     { familia: "acompanamiento", aptoPara: GUITARRA_ONLY },
   ),
@@ -571,7 +545,8 @@ function materializeMelodicEvents(
 
     const isChordHit =
       instrumentId === "guitarra" &&
-      isGuitarChordArticulation(guitarArticulation);
+      (isGuitarChordArticulation(guitarArticulation) ||
+        event.guitarString !== null);
 
     return createCompositorEvent({
       startStep: event.startStep,
@@ -581,6 +556,7 @@ function materializeMelodicEvents(
       octavaRelativa,
       note,
       guitarArticulation,
+      guitarString: instrumentId === "guitarra" ? event.guitarString : null,
       chordModifier: isChordHit
         ? suggestedChordModifier(
             event.gradoCromatico as CompositorGradoCromatico,
@@ -612,14 +588,39 @@ export function applyMelodicPatternToPiece(
     piece.tonalidadComposicion,
     piece.modoTonalComposicion,
   );
+  const oldGridSteps = piece.cycleGolpes * piece.subdivisionsPerGolpe;
+  const newGridSteps = pattern.cycleGolpes * piece.subdivisionsPerGolpe;
 
   return normalizeCompositorPiece({
     ...piece,
-    tracks: piece.tracks.map((track) =>
-      track.instrumentId === instrumentId
-        ? { ...track, enabled: true, events }
-        : track,
+    cycleGolpes: pattern.cycleGolpes,
+    cycleBeatDurations: Array.from(
+      { length: METRONOME_PATTERN_LENGTH },
+      () => pattern.beatDuration,
     ),
+    tracks: piece.tracks.map((track) => {
+      if (track.instrumentId === instrumentId) {
+        return { ...track, enabled: true, events };
+      }
+
+      if (oldGridSteps === newGridSteps || oldGridSteps <= 0) {
+        return track;
+      }
+
+      return {
+        ...track,
+        events: track.events.map((event) => ({
+          ...event,
+          startStep: Math.round(
+            (event.startStep / oldGridSteps) * newGridSteps,
+          ),
+          durationSteps: Math.max(
+            1,
+            Math.round((event.durationSteps / oldGridSteps) * newGridSteps),
+          ),
+        })),
+      };
+    }),
   });
 }
 
@@ -641,6 +642,10 @@ export function buildMelodicPatternPreviewPiece(
     ...base,
     bpm: pattern.suggestedBpm,
     cycleGolpes: pattern.cycleGolpes,
+    cycleBeatDurations: Array.from(
+      { length: METRONOME_PATTERN_LENGTH },
+      () => pattern.beatDuration,
+    ),
     subdivisionsPerGolpe: COMPOSITOR_SUBDIVISIONS_PER_GOLPE,
     tonalidadComposicion,
     modoTonalComposicion,

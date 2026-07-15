@@ -13,6 +13,10 @@ type NotaCancionFabProps = {
   onSave?: (nota: string) => Promise<void> | void;
   saving?: boolean;
   side?: "left" | "right";
+  /** Si es true, no muestra el botón flotante (abrir con open/onOpenChange). */
+  hideTrigger?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
@@ -25,14 +29,34 @@ export default function NotaCancionFab({
   onSave,
   saving = false,
   side = "right",
+  hideTrigger = false,
+  open: openControlled,
+  onOpenChange,
 }: NotaCancionFabProps) {
   const [mounted, setMounted] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [openUncontrolled, setOpenUncontrolled] = useState(false);
   const [draft, setDraft] = useState(nota);
+
+  const isControlled = openControlled !== undefined;
+  const open = isControlled ? openControlled : openUncontrolled;
+
+  function setOpen(next: boolean) {
+    if (!isControlled) {
+      setOpenUncontrolled(next);
+    }
+
+    onOpenChange?.(next);
+  }
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      setDraft(nota);
+    }
+  }, [open, nota]);
 
   useHardwareBack(open, () => setOpen(false));
 
@@ -82,24 +106,30 @@ export default function NotaCancionFab({
 
   return createPortal(
     <>
-      <TapButton
-        type="button"
-        aria-label={mode === "edit" ? "Editar nota de la canción" : "Ver nota de la canción"}
-        onClick={handleOpen}
-        className={`fixed bottom-20 z-[70] flex items-center gap-1.5 rounded-full border border-border bg-bg-card/95 px-3 py-2 text-xs font-semibold text-text-primary shadow-md backdrop-blur lg:bottom-6 ${sideClass}`}
-      >
-        <NotebookPen
-          className="size-4 text-[var(--accent-entrenador-canciones)]"
-          aria-hidden="true"
-        />
-        Nota
-        {tieneNota ? (
-          <span
-            className="size-1.5 rounded-full bg-[var(--accent-entrenador-canciones)]"
+      {!hideTrigger ? (
+        <TapButton
+          type="button"
+          aria-label={
+            mode === "edit"
+              ? "Editar nota de la canción"
+              : "Ver nota de la canción"
+          }
+          onClick={handleOpen}
+          className={`fixed bottom-20 z-[70] flex items-center gap-1.5 rounded-full border border-border bg-bg-card/95 px-3 py-2 text-xs font-semibold text-text-primary shadow-md backdrop-blur lg:bottom-6 ${sideClass}`}
+        >
+          <NotebookPen
+            className="size-4 text-[var(--accent-entrenador-canciones)]"
             aria-hidden="true"
           />
-        ) : null}
-      </TapButton>
+          Nota
+          {tieneNota ? (
+            <span
+              className="size-1.5 rounded-full bg-[var(--accent-entrenador-canciones)]"
+              aria-hidden="true"
+            />
+          ) : null}
+        </TapButton>
+      ) : null}
 
       {open ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center px-4 pb-6 sm:items-center sm:pb-0">

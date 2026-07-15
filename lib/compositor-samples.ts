@@ -43,7 +43,7 @@ export type CompositorSampleBank = {
 const MIN_PLAYBACK_RATE = 0.5;
 const MAX_PLAYBACK_RATE = 2;
 /** Incrementar al cambiar archivos de samples para invalidar caché en memoria. */
-const SAMPLE_BANK_VERSION = 4;
+const SAMPLE_BANK_VERSION = 5;
 
 let cachedBank: CompositorSampleBank | null = null;
 let cachedBankVersion = 0;

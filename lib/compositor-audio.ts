@@ -16,7 +16,6 @@ import {
   type CompositorScheduledSound,
 } from "@/lib/compositor-timeline";
 import {
-  getCompositorPlaybackRate,
   pickNearestMultiSample,
   type CompositorResolvedSample,
   type CompositorSampleBank,
@@ -25,33 +24,6 @@ import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import { targetToFrequency } from "@/lib/voz";
 
 const COMPOSITOR_GUITAR_PUA_ROOT: CompositorSlotNote = { note: "E", octave: 2 };
-/** Misma referencia que al inicio del chat: cuerda La (sample “dedo”). */
-const COMPOSITOR_GUITAR_BLOQUE_ROOT: CompositorSlotNote = {
-  note: "A",
-  octave: 2,
-};
-
-function getGuitarNotePlaybackRate(note: CompositorSlotNote): number {
-  return getCompositorPlaybackRate(note, COMPOSITOR_GUITAR_PUA_ROOT);
-}
-
-/** Un solo buffer para Bloque (como al inicio): no multi-sample por nota. */
-function getBloqueGuitarBuffer(
-  samples: CompositorSampleBank | null,
-): AudioBuffer | null {
-  const entries = samples?.guitar?.dedo?.entries;
-  if (!entries || entries.length === 0) {
-    return null;
-  }
-
-  const a2 = entries.find(
-    (entry) =>
-      entry.root.note === COMPOSITOR_GUITAR_BLOQUE_ROOT.note &&
-      entry.root.octave === COMPOSITOR_GUITAR_BLOQUE_ROOT.octave,
-  );
-
-  return (a2 ?? entries[0])!.buffer;
-}
 
 function resolveGuitarPitchedSample(
   note: CompositorSlotNote,
@@ -67,10 +39,8 @@ function resolveGuitarPitchedSample(
 type GuitarStringVoice = "pua" | "dedo" | "rasguido";
 
 /**
- * Contraste fuerte a propósito:
- * - púa: seca, brillante, ataque inmediato
- * - dedo: suave, cálida, ataque lento
- * - rasguido: color de cuerda para el abanico (bloque NO usa este perfil)
+ * Ajuste leve sobre muestras ya grabadas con su articulación natural.
+ * No se reconstruye el carácter de la guitarra con filtros artificiales.
  */
 function getGuitarStringVoiceProfile(voice: GuitarStringVoice): {
   gainScale: number;
@@ -81,24 +51,24 @@ function getGuitarStringVoiceProfile(voice: GuitarStringVoice): {
   switch (voice) {
     case "pua":
       return {
-        gainScale: 0.88,
+        gainScale: 0.82,
         attackSeconds: 0.001,
-        lowpassHz: 14000,
-        highpassHz: 320,
+        lowpassHz: 16000,
+        highpassHz: 45,
       };
     case "dedo":
       return {
-        gainScale: 0.36,
-        attackSeconds: 0.075,
-        lowpassHz: 2600,
-        highpassHz: 40,
+        gainScale: 0.58,
+        attackSeconds: 0.003,
+        lowpassHz: 12000,
+        highpassHz: 35,
       };
     case "rasguido":
       return {
-        gainScale: 0.4,
-        attackSeconds: 0.006,
-        lowpassHz: 9000,
-        highpassHz: 120,
+        gainScale: 0.5,
+        attackSeconds: 0.001,
+        lowpassHz: 15000,
+        highpassHz: 45,
       };
     default:
       return {
@@ -119,6 +89,7 @@ function scheduleGuitarStringSample(
   maxDuration: number,
   voice: GuitarStringVoice,
   bus?: AudioPlaybackBus | null,
+  panPosition = 0,
 ): void {
   const profile = getGuitarStringVoiceProfile(voice);
   const source = audioContext.createBufferSource();
@@ -136,6 +107,8 @@ function scheduleGuitarStringSample(
   lowpass.Q.value = 0.85;
 
   const gainNode = audioContext.createGain();
+  const stereoPanner = audioContext.createStereoPanner();
+  stereoPanner.pan.value = Math.max(-1, Math.min(1, panPosition));
   const rate = Math.max(playbackRate, 0.01);
   const onsetSeconds = getBufferOnsetSeconds(buffer);
   const naturalDuration = Math.max(
@@ -157,7 +130,8 @@ function scheduleGuitarStringSample(
   source.connect(highpass);
   highpass.connect(lowpass);
   lowpass.connect(gainNode);
-  gainNode.connect(bus?.output ?? audioContext.destination);
+  gainNode.connect(stereoPanner);
+  stereoPanner.connect(bus?.output ?? audioContext.destination);
   bus?.track(source);
 
   source.start(time, onsetSeconds);
@@ -522,18 +496,21 @@ function scheduleGuitarChordNotes(
   const duration = clampMelodicDuration(durationSeconds);
 
   if (mode === "bloque") {
-    const bloqueBuffer = getBloqueGuitarBuffer(samples);
+    for (let index = 0; index < notes.length; index += 1) {
+      const note = notes[index]!;
+      const resolved = resolveGuitarPitchedSample(note, samples, "pua");
 
-    for (const note of notes) {
-      if (bloqueBuffer) {
-        scheduleSample(
+      if (resolved) {
+        scheduleGuitarStringSample(
           audioContext,
-          time,
-          bloqueBuffer,
-          gain * 0.36,
-          getGuitarNotePlaybackRate(note),
+          time + index * 0.002,
+          resolved.buffer,
+          gain * 0.78,
+          resolved.playbackRate,
           duration,
+          "pua",
           bus,
+          -0.14 + (index / Math.max(1, notes.length - 1)) * 0.28,
         );
         continue;
       }
@@ -551,13 +528,15 @@ function scheduleGuitarChordNotes(
     return;
   }
 
-  const orderedNotes =
-    mode === "rasguidoArriba" ? [...notes].reverse() : notes;
+  const isUpstroke = mode === "rasguidoArriba";
+  const playableNotes = isUpstroke ? notes.slice(-4) : notes;
+  const orderedNotes = isUpstroke ? [...playableNotes].reverse() : playableNotes;
+  const spreadSeconds = isUpstroke ? 0.011 : 0.014;
 
   for (let index = 0; index < orderedNotes.length; index += 1) {
     const note = orderedNotes[index]!;
-    const noteTime = time + index * 0.05;
-    const resolved = resolveGuitarPitchedSample(note, samples, "dedo");
+    const noteTime = time + index * spreadSeconds;
+    const resolved = resolveGuitarPitchedSample(note, samples, "pua");
 
     if (!resolved) {
       scheduleTone(
@@ -581,6 +560,9 @@ function scheduleGuitarChordNotes(
       duration,
       "rasguido",
       bus,
+      isUpstroke
+        ? 0.16 - (index / Math.max(1, orderedNotes.length - 1)) * 0.3
+        : -0.15 + (index / Math.max(1, orderedNotes.length - 1)) * 0.3,
     );
   }
 }
@@ -608,16 +590,17 @@ function scheduleGuitarNote(
   const duration = clampMelodicDuration(durationSeconds);
 
   if (articulation === "bloque") {
-    const bloqueBuffer = getBloqueGuitarBuffer(samples);
+    const resolved = resolveGuitarPitchedSample(note, samples, "pua");
 
-    if (bloqueBuffer) {
-      scheduleSample(
+    if (resolved) {
+      scheduleGuitarStringSample(
         audioContext,
         time,
-        bloqueBuffer,
-        gain * 0.36,
-        getGuitarNotePlaybackRate(note),
+        resolved.buffer,
+        gain * 0.78,
+        resolved.playbackRate,
         duration,
+        "pua",
         bus,
       );
       return;
@@ -625,7 +608,7 @@ function scheduleGuitarNote(
   }
 
   if (articulation === "rasguido" || articulation === "rasguidoArriba") {
-    const resolved = resolveGuitarPitchedSample(note, samples, "dedo");
+    const resolved = resolveGuitarPitchedSample(note, samples, "pua");
 
     if (resolved) {
       scheduleGuitarStringSample(

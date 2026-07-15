@@ -18,6 +18,14 @@ import {
   type TipoCompas,
 } from "@/lib/cifrado";
 import { AcordeLabel } from "@/components/cifrado/AcordeLabel";
+import AnotacionesLineLayer, {
+  ANOTACIONES_ARRIBA_BANDA_PX,
+} from "@/components/cifrado/AnotacionesLineLayer";
+import {
+  anotacionVaArriba,
+  type Anotacion,
+  type AnotacionVisibility,
+} from "@/lib/anotaciones-practica";
 import {
   CIFRADO_LINE_LANE_CONTAINER_CLASS,
   CIFRADO_LINE_LANE_SLOT_CLASS,
@@ -170,6 +178,9 @@ export type CifradoLyricsLineProps = {
   cyclePiecesById?: ReadonlyMap<string, CompositorPiece>;
   lineTerminalOffsets?: CompasConfig["lineTerminalOffsets"];
   nextLineHasCompas?: boolean;
+  anotaciones?: Anotacion[];
+  anotacionesVisibility?: AnotacionVisibility;
+  onOpenNota?: (anotacion: Anotacion) => void;
 };
 
 export function CifradoLyricsLine({
@@ -190,6 +201,9 @@ export function CifradoLyricsLine({
   cyclePiecesById,
   lineTerminalOffsets,
   nextLineHasCompas = false,
+  anotaciones = [],
+  anotacionesVisibility,
+  onOpenNota,
 }: CifradoLyricsLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const compasRowRef = useRef<HTMLDivElement>(null);
@@ -361,23 +375,33 @@ export function CifradoLyricsLine({
     onMarkersReady?.(lineIndex, compasMarkers);
   }, [compasMarkers, lineIndex, onMarkersReady]);
 
+  const anotacionesActivas = Boolean(anotacionesVisibility);
+  const hasArribaAnot =
+    anotacionesActivas &&
+    anotaciones.some(
+      (anotacion) =>
+        anotacionesVisibility![anotacion.tipo] &&
+        anotacionVaArriba(anotacion.tipo),
+    );
+  const arribaOffset = hasArribaAnot ? ANOTACIONES_ARRIBA_BANDA_PX : 0;
+
+  const letraSheetStyle = letraSheet
+    ? {
+        fontSize: "var(--letra-size)",
+        lineHeight: "var(--letra-line-height)",
+        fontWeight: "var(--letra-weight)",
+      }
+    : undefined;
+
   return (
     <div
       ref={textLaneRef}
-      className={`relative overflow-hidden text-letra-text ${
+      className={`relative isolate overflow-hidden text-letra-text ${
         letraSheet
           ? "mb-3"
           : `font-mono ${compact ? "mb-2 text-xs" : "mb-4 text-sm"}`
       }`}
-      style={
-        letraSheet
-          ? {
-              fontSize: "var(--letra-size)",
-              lineHeight: "var(--letra-line-height)",
-              fontWeight: "var(--letra-weight)",
-            }
-          : undefined
-      }
+      style={letraSheetStyle}
     >
       {isPlaybackActiveLine && (
         <span
@@ -385,7 +409,29 @@ export function CifradoLyricsLine({
           aria-hidden="true"
         />
       )}
-      <div className="pointer-events-none relative flex w-full items-baseline pt-5">
+      {anotacionesActivas ? (
+        <AnotacionesLineLayer
+          banda="fondo"
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          visibility={anotacionesVisibility!}
+          mode="lectura"
+        />
+      ) : null}
+      {anotacionesActivas ? (
+        <AnotacionesLineLayer
+          banda="arriba"
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          visibility={anotacionesVisibility!}
+          mode="lectura"
+          onOpenNota={onOpenNota}
+        />
+      ) : null}
+      <div
+        className="pointer-events-none relative flex w-full items-baseline pt-5"
+        style={arribaOffset ? { paddingTop: 20 + arribaOffset } : undefined}
+      >
         {characters.length === 0 ? (
           <span className={`${CIFRADO_LINE_LANE_CONTAINER_CLASS} w-full`}>
             {Array.from({ length: laneSlotCount }).map((_, slot) => (
@@ -434,7 +480,7 @@ export function CifradoLyricsLine({
             }
 
             const dotTop = position.bottom + 2;
-            const stemTop = compact ? 14 : 18;
+            const stemTop = (compact ? 14 : 18) + arribaOffset;
             const stemHeight = Math.max(4, dotTop - stemTop);
 
             return (
@@ -451,7 +497,10 @@ export function CifradoLyricsLine({
                         ? "text-[10px]"
                         : "text-xs"
                   }`}
-                  style={{ top: letraSheet ? 0 : compact ? 2 : 4, left: 0 }}
+                  style={{
+                    top: (letraSheet ? 0 : compact ? 2 : 4) + arribaOffset,
+                    left: 0,
+                  }}
                 >
                   <AcordeLabel
                     noteIndex={acorde.noteIndex}
@@ -475,6 +524,17 @@ export function CifradoLyricsLine({
             );
           })
         : null}
+
+      {anotacionesActivas ? (
+        <AnotacionesLineLayer
+          banda="abajo"
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          visibility={anotacionesVisibility!}
+          mode="lectura"
+          onOpenNota={onOpenNota}
+        />
+      ) : null}
 
       {compasMarkers.length > 0 && (
         <div ref={compasRowRef} className="mt-1.5">
@@ -510,6 +570,9 @@ export type CifradoLyricsBlockProps = {
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, CompositorPiece>;
   lineTerminalOffsets?: CompasConfig["lineTerminalOffsets"];
+  anotaciones?: Anotacion[];
+  anotacionesVisibility?: AnotacionVisibility;
+  onOpenNota?: (anotacion: Anotacion) => void;
 };
 
 export function CifradoLyricsBlock({
@@ -530,6 +593,9 @@ export function CifradoLyricsBlock({
   notacion = "es",
   cyclePiecesById,
   lineTerminalOffsets,
+  anotaciones,
+  anotacionesVisibility,
+  onOpenNota,
 }: CifradoLyricsBlockProps) {
   const lines = useMemo(() => splitLyricsLines(letra), [letra]);
 
@@ -563,6 +629,15 @@ export function CifradoLyricsBlock({
             }
             notacion={notacion}
             cyclePiecesById={cyclePiecesById}
+            anotaciones={
+              anotaciones
+                ? anotaciones.filter(
+                    (anotacion) => anotacion.lineIndex === lineIndex,
+                  )
+                : undefined
+            }
+            anotacionesVisibility={anotacionesVisibility}
+            onOpenNota={onOpenNota}
           />
         </div>
       ))}

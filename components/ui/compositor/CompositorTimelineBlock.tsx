@@ -213,6 +213,14 @@ export function CompositorTimelineBlock({
         {instrumentId === "guitarra" ? (
           <GuitarTimbreBadge articulation={event.guitarArticulation} />
         ) : null}
+        {instrumentId === "guitarra" && event.guitarString !== null ? (
+          <span
+            className="rounded bg-black/15 px-0.5 text-[8px] tabular-nums"
+            aria-hidden="true"
+          >
+            {event.guitarString === 6 ? "B" : event.guitarString}
+          </span>
+        ) : null}
         {instrumentId === "bateria" ? (
           <CompositorDrumIcon sound={event.drumSound} size="sm" />
         ) : null}

@@ -64,6 +64,7 @@ import {
   RITMO_HELP_TEMPO_PULSA,
   RITMO_PATTERN_CONFIG_HINT,
   RITMO_PATTERN_CONFIG_TITLE,
+  getRitmoConfigColorVar,
   type RitmoUiVariant,
 } from "@/lib/ritmo-terminologia";
 import { TargetPickerBody } from "@/components/ui/entrenador-vocal/EntrenadorVocalShared";
@@ -547,7 +548,8 @@ function CompasCyclePreview({
 }) {
   const levels = getActivePatternSlice(pattern, patternLength);
   const durations = getActiveBeatDurationSlice(beatDurations, patternLength);
-  const uniformAppearance = getBeatLevelBarAppearance("medio");
+  const configColorVar = getRitmoConfigColorVar(variant);
+  const uniformAppearance = getBeatLevelBarAppearance("medio", configColorVar);
   const accent = getRitmoAccentClasses(variant);
 
   return (
@@ -557,7 +559,7 @@ function CompasCyclePreview({
         const barAppearance =
           visualMode === "uniform"
             ? uniformAppearance
-            : getBeatLevelBarAppearance(level);
+            : getBeatLevelBarAppearance(level, configColorVar);
         const isSelected = selectable && selectedBeatIndex === index;
         const isPlayingBeat = currentBeat === index;
         const barHeightPx = getVolumeBarHeightPx(

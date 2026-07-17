@@ -20,7 +20,13 @@ import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { CancionCancionero } from "@/types";
 import { Music, Plus, Search, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type PointerEvent,
+} from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
@@ -41,6 +47,67 @@ function filterPractica(
 
     return matchesNombre || Boolean(matchesArtista);
   });
+}
+
+type PracticaCancionListItemProps = {
+  cancion: CancionPracticaListItem;
+  onOpen: () => void;
+  onDelete: () => void;
+};
+
+function PracticaCancionListItem({
+  cancion,
+  onOpen,
+  onDelete,
+}: PracticaCancionListItemProps) {
+  const [isPressed, setIsPressed] = useState(false);
+
+  function handleOpenPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    setIsPressed(true);
+  }
+
+  function handleOpenPointerEnd() {
+    setIsPressed(false);
+  }
+
+  return (
+    <div
+      style={isPressed ? { transform: "scale(0.97)" } : undefined}
+      className="flex items-stretch gap-2 rounded-[12px] border border-border bg-bg-card transition-transform duration-100 ease-out"
+    >
+      <button
+        type="button"
+        data-no-tap-feedback
+        aria-label={`Abrir ${cancion.nombre}`}
+        onClick={onOpen}
+        onPointerDown={handleOpenPointerDown}
+        onPointerUp={handleOpenPointerEnd}
+        onPointerLeave={handleOpenPointerEnd}
+        onPointerCancel={handleOpenPointerEnd}
+        className="min-w-0 flex-1 px-4 py-3 text-left"
+      >
+        <p className="truncate text-base font-bold text-text-primary">
+          {cancion.nombre}
+        </p>
+        {cancion.artista ? (
+          <p className="truncate text-sm text-text-muted">{cancion.artista}</p>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        data-no-tap-feedback
+        aria-label={`Eliminar ${cancion.nombre}`}
+        onClick={onDelete}
+        className="flex w-12 shrink-0 items-center justify-center text-text-muted"
+      >
+        <Trash2 className="size-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
 }
 
 export default function EntrenadorCancionesPageClient() {
@@ -264,33 +331,15 @@ export default function EntrenadorCancionesPageClient() {
           <ul className="app-list-grid list-none p-0">
             {filtered.map((cancion) => (
               <li key={cancion.id}>
-                <div className="flex items-stretch gap-2 rounded-[12px] border border-border bg-bg-card">
-                  <TapButton
-                    aria-label={`Abrir ${cancion.nombre}`}
-                    onClick={() =>
-                      navigateWithProgress(
-                        `/practica/entrenador-canciones/ver?id=${cancion.id}`,
-                      )
-                    }
-                    className="min-w-0 flex-1 px-4 py-3 text-left"
-                  >
-                    <p className="truncate text-base font-bold text-text-primary">
-                      {cancion.nombre}
-                    </p>
-                    {cancion.artista ? (
-                      <p className="truncate text-sm text-text-muted">
-                        {cancion.artista}
-                      </p>
-                    ) : null}
-                  </TapButton>
-                  <TapButton
-                    aria-label={`Eliminar ${cancion.nombre}`}
-                    onClick={() => setDeleteTarget(cancion)}
-                    className="flex w-12 shrink-0 items-center justify-center text-text-muted"
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </TapButton>
-                </div>
+                <PracticaCancionListItem
+                  cancion={cancion}
+                  onOpen={() =>
+                    navigateWithProgress(
+                      `/practica/entrenador-canciones/ver?id=${cancion.id}`,
+                    )
+                  }
+                  onDelete={() => setDeleteTarget(cancion)}
+                />
               </li>
             ))}
           </ul>

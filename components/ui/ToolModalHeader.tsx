@@ -36,6 +36,7 @@ export function ToolModalHeader({
   const isCompact = density === "compact";
   const isDesktop = useIsDesktop();
   const isPageDesktop = isPage && isDesktop;
+  const isPageMobile = isPage && !isDesktop;
 
   return (
     <header
@@ -43,16 +44,24 @@ export function ToolModalHeader({
         isPageDesktop
           ? "shrink-0 border-none bg-transparent px-4 lg:px-6 pt-4 lg:pt-6 pb-1 [&_h2]:text-2xl [&_h2]:lg:text-[1.75rem] [&_h2]:tracking-tight [&_h2]:font-extrabold"
           : `shrink-0 border-b border-border bg-bg-dark px-4 ${
-              isCompact ? "pb-1.5 lg:pb-2" : "pb-2.5 lg:pb-3"
+              isPageMobile
+                ? "pb-1.5"
+                : isCompact
+                  ? "pb-1.5 lg:pb-2"
+                  : "pb-2.5 lg:pb-3"
             }`
       }
       style={
         isPageDesktop
           ? undefined
           : {
-              paddingTop: isCompact
-                ? "calc(0.375rem + env(safe-area-inset-top, 0px))"
-                : "calc(0.625rem + env(safe-area-inset-top, 0px))",
+              paddingTop: isPageMobile
+                ? isCompact
+                  ? "0.375rem"
+                  : "0.5rem"
+                : isCompact
+                  ? "calc(0.375rem + env(safe-area-inset-top, 0px))"
+                  : "calc(0.625rem + env(safe-area-inset-top, 0px))",
             }
       }
     >

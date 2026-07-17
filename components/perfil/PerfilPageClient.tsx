@@ -18,7 +18,7 @@ const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
 
 const logoutButtonClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-semibold text-text-primary disabled:opacity-60";
+  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-medium text-text-muted disabled:opacity-60";
 
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -451,7 +451,7 @@ export default function PerfilPageClient({
           <TapButton
             onClick={() => void handleLogout()}
             disabled={logoutLoading || loading}
-            className={`${logoutButtonClassName} mt-6 lg:hidden`}
+            className={`${logoutButtonClassName} mt-4 mb-5 lg:hidden`}
           >
             {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
           </TapButton>

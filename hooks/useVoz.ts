@@ -21,6 +21,7 @@ import {
   getVozFeedbackLabel,
   playHoldCelebration,
   resolveTargetComparison,
+  stopOctaveReference,
   trimHistorySamples,
   VOZ_DEFAULT_TARGET,
   VOZ_HISTORY_SAMPLE_INTERVAL_MS,
@@ -770,6 +771,7 @@ export function useVoz() {
 
   const stop = useCallback(() => {
     ritmo.stopRitmo();
+    stopOctaveReference();
     deactivatePracticeMic();
     clearHistory();
     if (attemptsArmTimeoutRef.current !== null) {

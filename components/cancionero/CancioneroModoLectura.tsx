@@ -23,6 +23,7 @@ import {
   getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
   getLetraTextScrollEndPadding,
+  MODO_LECTURA_OVERLAY_Z_CLASS,
 } from "@/lib/sala-layout";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import { SlidersHorizontal, X } from "lucide-react";
@@ -168,7 +169,7 @@ export default function CancioneroModoLectura({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[350] flex flex-col overflow-hidden bg-bg-sala"
+      className={`fixed inset-0 ${MODO_LECTURA_OVERLAY_Z_CLASS} flex flex-col overflow-hidden bg-bg-sala`}
       style={{ height: "100dvh" }}
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">

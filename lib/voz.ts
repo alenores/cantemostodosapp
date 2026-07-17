@@ -5,8 +5,10 @@ import {
 } from "@/lib/metronomo";
 import {
   ensurePracticeAudioContext,
+  getPracticeReferenceBus,
   primePracticeAudioOnGesture,
   scheduleVozPracticeNote,
+  stopPracticeReferencePlayback,
 } from "@/lib/voz-practice-audio";
 
 export type VozCalibre = "principiante" | "estandar" | "avanzado";
@@ -1262,30 +1264,63 @@ export function octavasCentsToChartY(
 
 const REFERENCE_NOTE_START_OFFSET_SECONDS = 0.05;
 
+let octaveReferenceSessionId = 0;
+let octaveReferenceCompleteTimeoutId: ReturnType<typeof setTimeout> | null =
+  null;
+let octaveReferenceOnEnded: (() => void) | null = null;
+
 async function createResumedReferenceAudioContext(): Promise<AudioContext | null> {
   return ensurePracticeAudioContext();
 }
+
+export function stopOctaveReference(): void {
+  octaveReferenceSessionId += 1;
+
+  if (octaveReferenceCompleteTimeoutId !== null) {
+    clearTimeout(octaveReferenceCompleteTimeoutId);
+    octaveReferenceCompleteTimeoutId = null;
+  }
+
+  octaveReferenceOnEnded = null;
+  stopPracticeReferencePlayback();
+}
+
+export type OctaveReferencePlaybackOptions = {
+  onEnded?: () => void;
+};
 
 export function playOctaveReference(
   target: VozTarget,
   noteDurationSeconds: number,
   pauseMs = VOZ_OCTAVAS_PAUSE_MS,
+  options: OctaveReferencePlaybackOptions = {},
 ): void {
   primePracticeAudioOnGesture();
-  void playOctaveReferenceAsync(target, noteDurationSeconds, pauseMs);
+  void playOctaveReferenceAsync(
+    target,
+    noteDurationSeconds,
+    pauseMs,
+    options,
+  );
 }
 
 async function playOctaveReferenceAsync(
   target: VozTarget,
   noteDurationSeconds: number,
   pauseMs = VOZ_OCTAVAS_PAUSE_MS,
+  options: OctaveReferencePlaybackOptions = {},
 ): Promise<void> {
+  stopOctaveReference();
+  const sessionId = octaveReferenceSessionId;
+  octaveReferenceOnEnded = options.onEnded ?? null;
+
   const audioContext = await createResumedReferenceAudioContext();
 
-  if (!audioContext) {
+  if (!audioContext || sessionId !== octaveReferenceSessionId) {
     return;
   }
 
+  const bus = getPracticeReferenceBus(audioContext);
   const startTime = audioContext.currentTime + REFERENCE_NOTE_START_OFFSET_SECONDS;
   const durationSeconds = Math.max(0.25, noteDurationSeconds);
   const pauseSeconds = pauseMs / 1000;
@@ -1297,13 +1332,37 @@ async function playOctaveReferenceAsync(
     lowerFrequency,
     startTime,
     durationSeconds,
+    undefined,
+    undefined,
+    bus,
   );
   scheduleVozPracticeNote(
     audioContext,
     higherFrequency,
     startTime + durationSeconds + pauseSeconds,
     durationSeconds,
+    undefined,
+    undefined,
+    bus,
   );
+
+  const totalDurationMs =
+    (REFERENCE_NOTE_START_OFFSET_SECONDS +
+      durationSeconds * 2 +
+      pauseSeconds +
+      0.08) *
+    1000;
+
+  octaveReferenceCompleteTimeoutId = setTimeout(() => {
+    if (sessionId !== octaveReferenceSessionId) {
+      return;
+    }
+
+    octaveReferenceCompleteTimeoutId = null;
+    const onEnded = octaveReferenceOnEnded;
+    octaveReferenceOnEnded = null;
+    onEnded?.();
+  }, totalDurationMs);
 }
 
 export function playMelodiaReference(

@@ -636,14 +636,17 @@ export function getBeatLevelBarHeightPercent(level: MetronomeBeatLevel): number 
   }
 }
 
-export function getBeatLevelConfigColor(level: MetronomeBeatLevel): string {
+export function getBeatLevelConfigColor(
+  level: MetronomeBeatLevel,
+  configColorVar = "--voz-config",
+): string {
   switch (level) {
     case "fuerte":
-      return "var(--voz-config)";
+      return `var(${configColorVar})`;
     case "medio":
-      return "color-mix(in srgb, var(--voz-config) 62%, transparent)";
+      return `color-mix(in srgb, var(${configColorVar}) 62%, transparent)`;
     case "suave":
-      return "color-mix(in srgb, var(--voz-config) 32%, transparent)";
+      return `color-mix(in srgb, var(${configColorVar}) 32%, transparent)`;
     default:
       return "var(--cola-sheet-pill)";
   }
@@ -656,16 +659,17 @@ export type MetronomeBeatLevelBarAppearance = {
 
 export function getBeatLevelBarAppearance(
   level: MetronomeBeatLevel,
+  configColorVar = "--voz-config",
 ): MetronomeBeatLevelBarAppearance {
   if (level === "silencio") {
     return {
-      backgroundColor: getBeatLevelConfigColor(level),
+      backgroundColor: getBeatLevelConfigColor(level, configColorVar),
       border: "1px solid var(--border)",
     };
   }
 
   return {
-    backgroundColor: getBeatLevelConfigColor(level),
+    backgroundColor: getBeatLevelConfigColor(level, configColorVar),
     border: "none",
   };
 }

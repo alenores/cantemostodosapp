@@ -6,6 +6,7 @@ import type { NoteDetection } from "@/lib/afinador";
 import type { RitmoToneEvaluation } from "@/hooks/useVoz";
 import {
   formatTargetLabel,
+  stopOctaveReference,
   type VozAccuracy,
   type VozCalibre,
   type VozHistorySample,
@@ -251,6 +252,7 @@ export default function EntrenadorVocalModal({
       setActiveModeIndex(0);
       prevSlideIndexRef.current = 0;
       onStopRhythm();
+      stopOctaveReference();
       onDeactivatePracticeMic();
       return;
     }
@@ -270,6 +272,7 @@ export default function EntrenadorVocalModal({
 
     if (prevSlideIndexRef.current !== activeModeIndex) {
       onStopRhythm();
+      stopOctaveReference();
       onDeactivatePracticeMic();
       onClearInstantAttempts();
       prevSlideIndexRef.current = activeModeIndex;
@@ -304,6 +307,7 @@ export default function EntrenadorVocalModal({
       <ToolModalHeader
         titleId="entrenador-vocal-titulo"
         title={isDesktop ? undefined : "Entrenador Vocal"}
+        density={isPage && !isDesktop ? "compact" : "default"}
         accentVar="--accent-vocal"
         headerContent={
           isDesktop ? (
@@ -330,7 +334,9 @@ export default function EntrenadorVocalModal({
             ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
             : isDesktop
               ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
-              : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
+              : isPage
+                ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-4 pt-1.5`
+                : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
         }`}
         style={{
           ["--tool-practice-section-bg" as string]: "var(--bg-app)",
@@ -352,13 +358,7 @@ export default function EntrenadorVocalModal({
             onRequestMic={onRequestMic}
           />
         ) : (
-          <div
-            className={
-              isDesktop
-                ? "flex min-h-0 flex-1 flex-col"
-                : "flex min-h-0 flex-1 flex-col py-4"
-            }
-          >
+          <div className="flex min-h-0 flex-1 flex-col">
             {micStarting ? <MicConnectingPanel /> : null}
             <VozModeSlides
               activeIndex={activeModeIndex}

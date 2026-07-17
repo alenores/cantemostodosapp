@@ -115,7 +115,7 @@ export default function NotaCancionFab({
               : "Ver nota de la canción"
           }
           onClick={handleOpen}
-          className={`fixed bottom-20 z-[70] flex items-center gap-1.5 rounded-full border border-border bg-bg-card/95 px-3 py-2 text-xs font-semibold text-text-primary shadow-md backdrop-blur lg:bottom-6 ${sideClass}`}
+          className={`fixed z-[70] flex items-center gap-1.5 rounded-full border border-border bg-bg-card/95 px-3 py-2 text-xs font-semibold text-text-primary shadow-md backdrop-blur max-lg:bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] lg:bottom-6 ${sideClass}`}
         >
           <NotebookPen
             className="size-4 text-[var(--accent-entrenador-canciones)]"

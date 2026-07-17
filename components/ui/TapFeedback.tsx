@@ -35,6 +35,7 @@ type TapLinkProps = {
   children: ReactNode;
   className?: string;
   ariaLabel?: string;
+  noGlobalFeedback?: boolean;
 };
 
 function TapLinkContent({ children }: { children: ReactNode }) {
@@ -60,11 +61,13 @@ export function TapLink({
   children,
   className = "",
   ariaLabel,
+  noGlobalFeedback = false,
 }: TapLinkProps) {
   return (
     <Link
       href={href}
       aria-label={ariaLabel}
+      {...(noGlobalFeedback ? { "data-no-tap-feedback": true } : {})}
       className={`relative active:scale-[0.96] transition-transform duration-100 ease-out ${className}`.trim()}
     >
       <Suspense fallback={children}>

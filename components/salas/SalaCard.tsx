@@ -2,10 +2,15 @@
 
 import PresenceAvatarStack from "@/components/salas/PresenceAvatarStack";
 import SalaAvatar from "@/components/salas/SalaAvatar";
-import { TapButton } from "@/components/ui/TapFeedback";
 import type { PresenceUsuario, Sala, SalaMiembro } from "@/types";
 import { Loader2, Users } from "lucide-react";
-import { useMemo, useState, type CSSProperties, type MouseEvent } from "react";
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 
 type SalaRef = Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">;
 
@@ -27,6 +32,7 @@ export default function SalaCard({
   onOpenMiembros,
 }: SalaCardProps) {
   const [pending, setPending] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
   const avatares = useMemo((): PresenceUsuario[] => {
     return miembros.map((m) => ({
@@ -49,6 +55,18 @@ export default function SalaCard({
     onOpen(sala);
   }
 
+  function handleOpenPointerDown(event: PointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0 || pending || disabled) {
+      return;
+    }
+
+    setIsPressed(true);
+  }
+
+  function handleOpenPointerEnd() {
+    setIsPressed(false);
+  }
+
   function handleOpenMiembros(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
@@ -60,7 +78,10 @@ export default function SalaCard({
 
   return (
     <div
-      style={cardStyle}
+      style={{
+        ...cardStyle,
+        ...(isPressed ? { transform: "scale(0.97)" } : undefined),
+      }}
       className={`home-cascade-item sala-card-depth relative flex min-h-[4.25rem] w-full items-stretch gap-2 rounded-amplio border border-solid bg-bg-card p-1.5 transition-[border-color,background-color,box-shadow,transform] duration-200 lg:min-h-[4.75rem] ${
         disabled ? "opacity-50" : "lg:hover:bg-bg-card-hover"
       }`}
@@ -77,15 +98,21 @@ export default function SalaCard({
         </span>
       )}
 
-      <TapButton
+      <button
+        type="button"
+        data-no-tap-feedback
         aria-label={
           disabled
             ? `${sala.nombre} no disponible sin conexión`
             : `Abrir ${sala.nombre}`
         }
         onClick={handleOpen}
+        onPointerDown={handleOpenPointerDown}
+        onPointerUp={handleOpenPointerEnd}
+        onPointerLeave={handleOpenPointerEnd}
+        onPointerCancel={handleOpenPointerEnd}
         disabled={pending || disabled}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] px-3 py-2.5 text-left lg:px-4"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] px-3 py-2.5 text-left lg:px-4 disabled:opacity-50"
       >
         <SalaAvatar
           nombre={sala.nombre}
@@ -107,10 +134,11 @@ export default function SalaCard({
             </span>
           )}
         </span>
-      </TapButton>
+      </button>
 
-      <TapButton
+      <button
         type="button"
+        data-no-tap-feedback
         aria-label={
           avatares.length > 0
             ? `Ver miembros de ${sala.nombre}, ${avatares.length}`
@@ -119,7 +147,7 @@ export default function SalaCard({
         title="Ver miembros"
         onClick={handleOpenMiembros}
         disabled={disabled}
-        className="flex w-[4.75rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[14px] border border-border/80 bg-bg-app/60 px-1.5 py-2 transition-[background-color,border-color] duration-200 lg:w-[5.25rem] lg:hover:border-[color-mix(in_srgb,var(--accent-salas)_45%,var(--border-card))] lg:hover:bg-[var(--accent-salas-dim)]"
+        className="flex w-[4.75rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[14px] border border-border/80 bg-bg-app/60 px-1.5 py-2 transition-[background-color,border-color] duration-200 disabled:opacity-50 lg:w-[5.25rem] lg:hover:border-[color-mix(in_srgb,var(--accent-salas)_45%,var(--border-card))] lg:hover:bg-[var(--accent-salas-dim)]"
       >
         {avatares.length > 0 ? (
           <>
@@ -142,7 +170,7 @@ export default function SalaCard({
             </span>
           </>
         )}
-      </TapButton>
+      </button>
     </div>
   );
 }

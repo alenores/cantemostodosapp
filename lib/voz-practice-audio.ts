@@ -1,4 +1,7 @@
-import type { AudioPlaybackBus } from "@/lib/audio-playback-bus";
+import {
+  createPlaybackBus,
+  type AudioPlaybackBus,
+} from "@/lib/audio-playback-bus";
 
 const NOTE_REFERENCE_PEAK_GAIN = 0.68;
 const MIN_PRACTICE_NOTE_DURATION_SECONDS = 0.04;
@@ -7,6 +10,29 @@ const NOTE_LOUDNESS_REFERENCE_HZ = 440;
 const NOTE_LOUDNESS_BOOST_MAX = 3.2;
 
 let sharedPracticeAudioContext: AudioContext | null = null;
+let practiceReferenceBus: AudioPlaybackBus | null = null;
+let practiceReferenceBusContext: AudioContext | null = null;
+
+/** Corta al instante cualquier referencia de práctica (octavas, etc.). */
+export function stopPracticeReferencePlayback(): void {
+  practiceReferenceBus?.cut();
+}
+
+export function getPracticeReferenceBus(
+  audioContext: AudioContext,
+): AudioPlaybackBus {
+  if (
+    !practiceReferenceBus ||
+    practiceReferenceBusContext !== audioContext
+  ) {
+    practiceReferenceBus = createPlaybackBus(audioContext);
+    practiceReferenceBusContext = audioContext;
+  } else {
+    practiceReferenceBus.reset();
+  }
+
+  return practiceReferenceBus;
+}
 
 function getCompensatedPeakGain(frequency: number, peakGain: number): number {
   const bassBoost = Math.min(

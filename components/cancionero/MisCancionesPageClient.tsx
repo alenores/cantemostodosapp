@@ -101,6 +101,7 @@ function MiCancionItem({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClickRef = useRef(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -124,10 +125,14 @@ function MiCancionItem({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLElement>) {
+    if (event.button !== 0) return;
+
+    setIsPressed(true);
     pointerStartRef.current = { x: event.clientX, y: event.clientY };
     clearLongPressTimer();
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null;
+      setIsPressed(false);
       openActions();
     }, LONG_PRESS_MS);
   }
@@ -135,7 +140,7 @@ function MiCancionItem({
   function handlePointerMove(event: PointerEvent<HTMLElement>) {
     const start = pointerStartRef.current;
 
-    if (!start || !longPressTimerRef.current) {
+    if (!start) {
       return;
     }
 
@@ -148,12 +153,14 @@ function MiCancionItem({
     ) {
       pointerStartRef.current = null;
       clearLongPressTimer();
+      setIsPressed(false);
     }
   }
 
   function handlePointerEnd() {
     pointerStartRef.current = null;
     clearLongPressTimer();
+    setIsPressed(false);
   }
 
   function handleClick() {
@@ -177,7 +184,8 @@ function MiCancionItem({
 
   return (
     <article
-      className={`relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-3 select-none ${
+      style={isPressed ? { transform: "scale(0.97)" } : undefined}
+      className={`relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-[12px] border bg-bg-card px-3 py-3 select-none transition-transform duration-100 ease-out ${
         actionsOpen
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"

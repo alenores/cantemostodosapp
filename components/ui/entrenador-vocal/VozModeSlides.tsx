@@ -119,6 +119,7 @@ import {
   isPerfectPitch,
   octavasCentsToChartY,
   playOctaveReference,
+  stopOctaveReference,
   semitoneOffsetToLadderPercent,
   splitHistorySegments,
   smoothChartCents,
@@ -701,7 +702,7 @@ function ModeCarouselShell({
   return (
     <div className="w-full">
       <div className="flex min-w-0 flex-1 flex-col">
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-2 flex items-center gap-2">
             <button
               type="button"
               aria-label="Modo anterior"
@@ -3034,6 +3035,7 @@ function VozOctavasPractice({
   const [samples, setSamples] = useState<VozOctavasChartSample[]>([]);
   const [sequenceProgress, setSequenceProgress] = useState(0);
   const [scaleStepIndex, setScaleStepIndex] = useState(0);
+  const [isReferencePlaying, setIsReferencePlaying] = useState(false);
   const runPhaseRef = useRef(runPhase);
   const phaseStartedAtRef = useRef(0);
   const lastSampleAtRef = useRef(0);
@@ -3106,8 +3108,28 @@ function VozOctavasPractice({
   useEffect(() => {
     if (!practiceActive) {
       resetAttempt();
+      stopOctaveReference();
+      setIsReferencePlaying(false);
     }
   }, [practiceActive, resetAttempt]);
+
+  useEffect(() => {
+    stopOctaveReference();
+    setIsReferencePlaying(false);
+  }, [
+    baseTarget.note,
+    baseTarget.octave,
+    noteDurationSeconds,
+    pitchMode,
+    scaleRepetitions,
+  ]);
+
+  useEffect(
+    () => () => {
+      stopOctaveReference();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!practiceActive) {
@@ -3280,10 +3302,20 @@ function VozOctavasPractice({
     });
   }, [practiceActive, detection, noteDurationMs, practiceTarget, runPhase, voiceRms]);
 
-  function handlePlayReference() {
+  function handleToggleReference() {
     triggerHaptic();
-    playOctaveReference(practiceTarget, noteDurationSeconds);
+
+    if (isReferencePlaying) {
+      stopOctaveReference();
+      setIsReferencePlaying(false);
+      return;
+    }
+
     resetAttempt();
+    setIsReferencePlaying(true);
+    playOctaveReference(practiceTarget, noteDurationSeconds, undefined, {
+      onEnded: () => setIsReferencePlaying(false),
+    });
   }
 
   return (
@@ -3298,9 +3330,10 @@ function VozOctavasPractice({
       />
 
       <VozChartPlayControl
-        playOnly
-        onClick={handlePlayReference}
+        isPlaying={isReferencePlaying}
+        onClick={handleToggleReference}
         playAriaLabel="Escuchar nota y octava"
+        stopAriaLabel="Detener referencia"
       />
     </>
   );
@@ -4091,7 +4124,7 @@ export function VozModeSlides({
               targetOctave={practiceTargetOctave}
               historySamples={historySamples}
               holdCalibre={holdCalibre}
-              hideMic={layout === "desktop"}
+              hideMic
               layout={layout}
             />
             <InstantAttemptsStrip attempts={instantAttempts} />

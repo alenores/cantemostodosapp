@@ -160,7 +160,7 @@ export default function SalaMiembrosDetalleModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="sala-miembros-titulo"
-        className="relative z-10 max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-[16px] border border-border bg-bg-card p-5 shadow-xl sm:max-h-[90dvh] sm:rounded-[16px]"
+        className="relative z-10 max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-[16px] border border-border bg-bg-card p-5 shadow-xl sm:max-h-[90dvh]"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">

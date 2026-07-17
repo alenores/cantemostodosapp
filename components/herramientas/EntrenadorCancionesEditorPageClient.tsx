@@ -215,7 +215,6 @@ export default function EntrenadorCancionesEditorPageClient() {
       {editingId != null && !Number.isNaN(editingId) ? (
         <NotaCancionFab
           mode="edit"
-          side="left"
           nota={nota}
           onSave={handleSaveNota}
           saving={notaSaving}

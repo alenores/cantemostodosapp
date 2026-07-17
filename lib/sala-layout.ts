@@ -267,3 +267,8 @@ export function getColaOpenHeight(
 export function getColaPanelClosedY(contentHeight: number): number {
   return contentHeight + COLA_PANEL_CLOSED_EXTRA_PX;
 }
+
+/** Portal fullscreen de modo lectura (cancionero expandido, visor cifrado). */
+export const MODO_LECTURA_OVERLAY_Z_CLASS = "z-[350]";
+/** Modales de herramientas: deben quedar sobre modo lectura y bajo snackbars (400). */
+export const TOOL_MODAL_OVERLAY_Z_CLASS = "z-[380]";

@@ -129,7 +129,7 @@ type MobileLineRowProps = {
   dragOriginOffset: number | null;
   barDragCharOffset: number | null;
   barDragOriginOffset: number | null;
-  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  onClick: (event: MouseEvent<HTMLElement>) => void;
   onLineTextChange?: (lineIndex: number, newText: string) => void;
   onDragMove?: (toCharOffset: number) => void;
   onBarDragMove?: (toCharOffset: number) => void;
@@ -530,7 +530,7 @@ function MobileLineRow({
       : null;
 
   const lineClassName = `block w-full max-w-full overflow-x-hidden pb-5 text-left ${
-    isDragMode ? "touch-none select-none" : ""
+    isDragMode ? "touch-none select-none" : "touch-pan-y cursor-pointer"
   } ${
     isActive || isDragMode
       ? `rounded-[12px] border border-accent/70 px-3 pt-1 shadow-[0_0_0_2px_rgba(232,145,90,0.18)] ${CIFRADO_EDITOR_LINE_BG_CLASS}`
@@ -870,16 +870,23 @@ function MobileLineRow({
   }
 
   return (
-    <button
+    <div
       ref={(element) => {
         lineRef.current = element;
       }}
-      type="button"
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick(event as unknown as MouseEvent<HTMLElement>);
+        }
+      }}
       className={lineClassName}
     >
       {lineBody}
-    </button>
+    </div>
   );
 }
 
@@ -965,7 +972,7 @@ export function CifradoMobileEditableLines({
   }
 
   function handleLineClick(
-    event: MouseEvent<HTMLButtonElement>,
+    event: MouseEvent<HTMLElement>,
     lineIndex: number,
   ) {
     if (isDragMode) {

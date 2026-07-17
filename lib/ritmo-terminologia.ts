@@ -427,6 +427,12 @@ export const RITMO_COMPAS_SETUP_TITLE = "Golpes del ciclo";
 
 export type RitmoUiVariant = "default" | "compositor";
 
+export function getRitmoConfigColorVar(
+  variant: RitmoUiVariant = "default",
+): string {
+  return variant === "compositor" ? "--compositor-config" : "--voz-config";
+}
+
 export function formatGolpeLabel(slotIndex: number): string {
   return `${RITMO_LABEL_GOLPE} ${slotIndex + 1}`;
 }

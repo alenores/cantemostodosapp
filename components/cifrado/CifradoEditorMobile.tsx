@@ -854,7 +854,7 @@ export default function CifradoEditorMobile({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh">
       {phase === "ingreso" ? (
         <header
           className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 pb-3"
@@ -1185,7 +1185,7 @@ export default function CifradoEditorMobile({
           ) : null}
 
           <div
-            className={`relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain ${CIFRADO_EDITOR_SHEET_BG_CLASS}`}
+            className={`relative min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain ${CIFRADO_EDITOR_SHEET_BG_CLASS}`}
           >
             <div className="relative px-4 py-4 pb-28">
               {dragTarget || barDragTarget ? (

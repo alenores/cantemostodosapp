@@ -152,6 +152,7 @@ export function useVozRitmo(): UseVozRitmoResult {
   const audioContextRef = useRef<AudioContext | null>(null);
   const ritmoEngineRef = useRef<VozRitmoPracticeEngine | null>(null);
   const melodiaEngineRef = useRef<VozMelodiaPracticeEngine | null>(null);
+  const playbackRequestRef = useRef(0);
 
   ritmoBpmRef.current = ritmoBpm;
   ritmoBeatPatternRef.current = ritmoBeatPattern;
@@ -182,15 +183,21 @@ export function useVozRitmo(): UseVozRitmoResult {
     setBeatMarkers([]);
   }, []);
 
+  const cancelPendingPlayback = useCallback(() => {
+    playbackRequestRef.current += 1;
+  }, []);
+
   const stopRitmo = useCallback(() => {
+    cancelPendingPlayback();
     stopEngine();
     closeAudioContext();
-  }, [closeAudioContext, stopEngine]);
+  }, [cancelPendingPlayback, closeAudioContext, stopEngine]);
 
   const stopMelodia = useCallback(() => {
+    cancelPendingPlayback();
     stopEngine();
     closeAudioContext();
-  }, [closeAudioContext, stopEngine]);
+  }, [cancelPendingPlayback, closeAudioContext, stopEngine]);
 
   const ensureAudioContext = useCallback(async (): Promise<AudioContext> => {
     const audioContext = await ensurePracticeAudioContext();
@@ -207,6 +214,8 @@ export function useVozRitmo(): UseVozRitmoResult {
   const startPlayback = useCallback(
     (mode: PlaybackMode) => {
       primePracticeAudioOnGesture();
+      const requestId = playbackRequestRef.current + 1;
+      playbackRequestRef.current = requestId;
 
       void (async () => {
         try {
@@ -215,6 +224,10 @@ export function useVozRitmo(): UseVozRitmoResult {
           setBeatMarkers([]);
 
           let audioContext = await ensureAudioContext();
+
+          if (requestId !== playbackRequestRef.current) {
+            return;
+          }
 
           if (audioContext.state === "suspended") {
             await audioContext.resume();
@@ -225,10 +238,19 @@ export function useVozRitmo(): UseVozRitmoResult {
             audioContext = await ensureAudioContext();
           }
 
+          if (requestId !== playbackRequestRef.current) {
+            return;
+          }
+
           if (mode === "ritmo") {
             ritmoEngineRef.current = createVozRitmoPracticeEngine(audioContext);
 
             const engine = ritmoEngineRef.current;
+
+            if (requestId !== playbackRequestRef.current) {
+              engine.stop();
+              return;
+            }
 
             setRitmoPlaying(true);
             ritmoPlayingRef.current = true;
@@ -267,9 +289,6 @@ export function useVozRitmo(): UseVozRitmoResult {
 
           const engine = melodiaEngineRef.current;
 
-          setMelodiaPlaying(true);
-          melodiaPlayingRef.current = true;
-
           const melodiaPattern = buildMelodiaSingPattern(
             melodiaPatternLengthRef.current,
           );
@@ -280,6 +299,14 @@ export function useVozRitmo(): UseVozRitmoResult {
             melodiaNotePatternRef.current,
             melodiaPatternLengthRef.current,
           );
+
+          if (requestId !== playbackRequestRef.current) {
+            engine.stop();
+            return;
+          }
+
+          setMelodiaPlaying(true);
+          melodiaPlayingRef.current = true;
 
           engine.start(
             melodiaBpmRef.current,
@@ -340,9 +367,10 @@ export function useVozRitmo(): UseVozRitmoResult {
 
   const stopIfPlaying = useCallback(() => {
     if (ritmoPlayingRef.current || melodiaPlayingRef.current) {
+      cancelPendingPlayback();
       stopEngine();
     }
-  }, [stopEngine]);
+  }, [cancelPendingPlayback, stopEngine]);
 
   const setRitmoBpm = useCallback(
     (value: number) => {

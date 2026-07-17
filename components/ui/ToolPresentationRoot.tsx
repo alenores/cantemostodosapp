@@ -1,5 +1,6 @@
 "use client";
 
+import { TOOL_MODAL_OVERLAY_Z_CLASS } from "@/lib/sala-layout";
 import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
 import type { ReactNode } from "react";
@@ -55,7 +56,9 @@ export function ToolPresentationRoot({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-6">
+      <div
+        className={`fixed inset-0 ${TOOL_MODAL_OVERLAY_Z_CLASS} flex items-center justify-center px-3 py-6`}
+      >
         <button
           type="button"
           aria-label={closeAriaLabel}

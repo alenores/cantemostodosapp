@@ -59,8 +59,7 @@ export function TargetPickerPanel({
 export { ToolConfigSection as VozConfigSection } from "@/components/ui/ToolModalSections";
 
 export function VozPracticeDivider() {
-  const accentColor = "#0f2435";
-  const lineColor = "#1a3a52";
+  const dividerColor = "#1a3a52";
 
   return (
     <div
@@ -70,17 +69,17 @@ export function VozPracticeDivider() {
     >
       <div
         className="min-w-0 flex-1 border-t-2"
-        style={{ borderColor: lineColor }}
+        style={{ borderColor: dividerColor }}
       />
       <span
         className="shrink-0 text-sm font-extrabold uppercase tracking-wider"
-        style={{ color: accentColor }}
+        style={{ color: dividerColor }}
       >
         PRACTICAR
       </span>
       <div
         className="min-w-0 flex-1 border-t-2"
-        style={{ borderColor: lineColor }}
+        style={{ borderColor: dividerColor }}
       />
     </div>
   );

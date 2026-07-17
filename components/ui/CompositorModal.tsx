@@ -36,6 +36,7 @@ import {
   COMPOSITOR_LABEL_RECORTE_MIDI,
   COMPOSITOR_NOTICE_TRACK_OVERFLOW_LOAD,
 } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS } from "@/lib/compositor-ui";
 import { useEffect, useMemo, useState } from "react";
 
 type CompositorLibraryTab = "mine" | "community";
@@ -437,7 +438,7 @@ export default function CompositorModal({
       panelClassName={
         isPage
           ? ""
-          : "relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+          : "relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-amplio border border-border bg-bg-cola-sheet shadow-xl"
       }
       trailing={
         <>
@@ -482,6 +483,7 @@ export default function CompositorModal({
         titleId="compositor-titulo"
         title={editorOpen ? undefined : modalTitle}
         headerContent={editorHeaderContent}
+        accentVar="--accent-compositor"
         density={editorOpen ? "compact" : "default"}
         closeAriaLabel="Cerrar compositor"
         onClose={requestClose}
@@ -500,6 +502,7 @@ export default function CompositorModal({
               : "Volver a mis ciclos"
         }
         showClose={!isPage}
+        isPage={isPage}
       />
 
         {!editorOpen && !inMidiImport ? (
@@ -518,7 +521,7 @@ export default function CompositorModal({
                 onClick={() => requestLibraryTabChange("mine")}
                 className={`min-h-9 shrink-0 rounded-full px-4 text-xs font-bold transition-colors lg:px-5 ${
                   libraryTab === "mine"
-                    ? "bg-compositor-config/15 text-compositor-config"
+                    ? COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS
                     : "text-text-muted hover:text-text-primary"
                 }`}
               >
@@ -531,7 +534,7 @@ export default function CompositorModal({
                 onClick={() => requestLibraryTabChange("community")}
                 className={`min-h-9 shrink-0 rounded-full px-4 text-xs font-bold transition-colors lg:px-5 ${
                   libraryTab === "community"
-                    ? "bg-compositor-config/15 text-compositor-config"
+                    ? COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS
                     : "text-text-muted hover:text-text-primary"
                 }`}
               >

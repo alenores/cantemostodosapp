@@ -31,6 +31,7 @@ import {
   COMPOSITOR_LABEL_RECORTE_MIDI,
   COMPOSITOR_LABEL_VENTANA_RECORTE_MIDI,
 } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { Loader2, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -465,7 +466,7 @@ export function CompositorMidiCropStep({
             busy || !validation.ok || crop.selectedLayers.length === 0
           }
           onClick={handleConfirm}
-          className="rounded-full border border-compositor-config/35 bg-compositor-config/15 px-4 py-2 text-xs font-bold text-compositor-config disabled:opacity-40"
+          className={`rounded-full px-4 py-2 text-xs disabled:opacity-40 ${COMPOSITOR_ACTION_BUTTON_CLASS}`}
         >
           {COMPOSITOR_LABEL_CONTINUAR_REVISION_MIDI}
         </TapButton>

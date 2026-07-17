@@ -121,7 +121,15 @@ function TunerPitchBar({
 
   return (
     <div className="w-full max-w-sm">
-      <div className="relative h-28 overflow-hidden rounded-[12px] border border-border bg-bg-card px-1">
+      <div
+        className="relative h-28 overflow-hidden rounded-estandar border transition-[border-color,box-shadow] duration-200 ease-out bg-bg-card px-1"
+        style={{
+          borderColor: status === "in-tune" ? "var(--tuner-in-tune)" : "var(--border)",
+          boxShadow: status === "in-tune"
+            ? "0 0 16px color-mix(in srgb, var(--tuner-in-tune) 35%, transparent)"
+            : undefined,
+        }}
+      >
         <div
           className="pointer-events-none absolute inset-y-2 rounded-md"
           style={{

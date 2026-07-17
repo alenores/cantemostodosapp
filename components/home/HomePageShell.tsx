@@ -87,6 +87,8 @@ export default function HomePageShell() {
     autoScroll,
     zoom,
     resetVista,
+    temaLectura,
+    cambiarTemaLectura,
   } = useModoLecturaCocina({
     active: modoLectura,
     scrollRef: letraScrollRef,
@@ -367,6 +369,8 @@ export default function HomePageShell() {
             onToggleAcordesOcultos={toggleAcordesOcultos}
             onAbrirZoom={abrirZoom}
             onAbrirTono={abrirTono}
+            temaLectura={temaLectura}
+            onTemaLecturaChange={cambiarTemaLectura}
           />
 
           <LecturaZoomPanel

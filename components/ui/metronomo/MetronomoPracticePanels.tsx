@@ -2,6 +2,7 @@
 
 import { BeatPatternEditor } from "@/components/ui/ToolRitmoConfig";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import {
   computeOnTimeStreak,
   getActivePatternSlice,
@@ -39,6 +40,10 @@ export function MetronomoPracticePlaybackSummary({
   isPlaying: boolean;
   compact?: boolean;
 }) {
+  const beatDurationSec = 60 / bpm;
+  const pendulumOnLeft =
+    isPlaying && currentBeat !== null && currentBeat % 2 === 0;
+
   return (
     <div
       className={
@@ -47,7 +52,36 @@ export function MetronomoPracticePlaybackSummary({
           : "rounded-[10px] border border-border bg-bg-card px-3 py-3"
       }
     >
-      <div className="flex justify-end" aria-live="polite">
+      {/* Péndulo: se mueve al ritmo real del metrónomo (un golpe = un lado) */}
+      <div className="relative mb-3 h-1 w-full overflow-hidden rounded-full bg-bg-darker/60 border border-border/10">
+        <div
+          className={`absolute top-0 h-full w-16 rounded-full bg-gradient-to-r from-transparent via-[var(--accent-metronomo,#d9aa2b)] to-transparent shadow-[0_0_8px_var(--accent-metronomo,#d9aa2b)] ${
+            isPlaying ? "opacity-100" : "opacity-40"
+          }`}
+          style={{
+            left: isPlaying && currentBeat !== null
+              ? pendulumOnLeft
+                ? "0%"
+                : "100%"
+              : "50%",
+            transform:
+              isPlaying && currentBeat !== null
+                ? pendulumOnLeft
+                  ? "translateX(0%)"
+                  : "translateX(-100%)"
+                : "translateX(-50%)",
+            width: isPlaying ? "4rem" : "1rem",
+            transition: isPlaying
+              ? `left ${beatDurationSec}s ease-in-out, transform ${beatDurationSec}s ease-in-out, width 300ms ease`
+              : "left 300ms ease, transform 300ms ease, width 300ms ease, opacity 300ms ease",
+          }}
+        />
+      </div>
+
+      <div className="flex justify-between items-baseline" aria-live="polite">
+        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+          {isPlaying ? "RITMO ACTIVO" : "METRÓNOMO DETENIDO"}
+        </span>
         <div className="text-right">
           <p
             className={
@@ -348,17 +382,26 @@ export function MetronomoHitTimingFeedback({
         key={flashKey}
         className={
           isDesktop
-            ? "min-h-[72px] text-center animate-[metronomo-hit-flash_450ms_ease-out]"
-            : "min-h-[64px] text-center animate-[metronomo-hit-flash_450ms_ease-out]"
+            ? "min-h-[72px] text-center animate-[metronomo-hit-flash_450ms_ease-out] flex flex-col items-center justify-center relative overflow-visible"
+            : "min-h-[64px] text-center animate-[metronomo-hit-flash_450ms_ease-out] flex flex-col items-center justify-center relative overflow-visible"
         }
       >
         {lastHit ? (
-          <>
+          <div className="relative flex flex-col items-center justify-center overflow-visible">
+            {/* Onda expansiva de reacción */}
+            <div 
+              key={`ripple-${flashKey}`}
+              className="absolute pointer-events-none rounded-full border opacity-0 animate-[mic-hit-ring_650ms_ease-out_forwards] size-14"
+              style={{
+                borderColor: getHitAccuracyColor(lastAccuracy!),
+                boxShadow: `0 0 12px ${getHitAccuracyColor(lastAccuracy!)}`,
+              }}
+            />
             <p
               className={
                 isDesktop
-                  ? "text-2xl font-extrabold leading-tight"
-                  : "text-xl font-extrabold leading-tight"
+                  ? "text-2xl font-extrabold leading-tight relative z-10"
+                  : "text-xl font-extrabold leading-tight relative z-10"
               }
               style={{ color: getHitAccuracyColor(lastAccuracy!) }}
               aria-live="assertive"
@@ -367,13 +410,13 @@ export function MetronomoHitTimingFeedback({
             </p>
             {streak >= 2 ? (
               <p
-                className="mt-1.5 text-sm font-bold"
+                className="mt-1 text-sm font-bold relative z-10"
                 style={{ color: "var(--tuner-in-tune)" }}
               >
                 Racha: {streak} en tiempo
               </p>
             ) : null}
-          </>
+          </div>
         ) : (
           <p
             className={
@@ -509,23 +552,13 @@ export function MetronomoMicDetectionPanel({
         <span className="text-sm font-semibold text-text-primary">
           Detectar mis golpes
         </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={micActivo}
-          onClick={onToggleMic}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-            micActivo
-              ? "border border-text-secondary bg-bg-dark"
-              : "border border-border bg-bg-darker"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 size-6 rounded-full bg-white transition-transform ${
-              micActivo ? "left-[22px]" : "left-0.5"
-            }`}
-          />
-        </button>
+        <ToolSwitch
+          checked={micActivo}
+          onChange={onToggleMic}
+          accentVar="--accent-metronomo"
+          size="md"
+          aria-label="Detectar mis golpes"
+        />
       </label>
 
       {micActivo ? (

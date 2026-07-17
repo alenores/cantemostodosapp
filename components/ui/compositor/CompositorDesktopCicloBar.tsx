@@ -45,6 +45,7 @@ export function CompositorDesktopCicloBar({
   disabled = false,
   size = "compact",
   accent,
+  accentVar,
   onSetCycleGolpes,
   onSetCycleBeatDurationAtSlot,
 }: {
@@ -53,6 +54,7 @@ export function CompositorDesktopCicloBar({
   disabled?: boolean;
   size?: "compact" | "comfortable";
   accent?: RitmoDesktopConfigAccent;
+  accentVar?: string;
   onSetCycleGolpes: (value: number) => void;
   onSetCycleBeatDurationAtSlot: (
     slotIndex: number,
@@ -102,6 +104,7 @@ export function CompositorDesktopCicloBar({
           incrementAriaLabel="Aumentar golpes"
           onDecrement={() => onSetCycleGolpes(cycleGolpes - 1)}
           onIncrement={() => onSetCycleGolpes(cycleGolpes + 1)}
+          accentVar={accentVar || (accent === "compositor" ? "--accent-compositor" : "--accent-vocal")}
         />
       </div>
 

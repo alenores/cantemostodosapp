@@ -47,6 +47,8 @@ type LetraCifradoLecturaShellProps = {
   onOpenNotaGeneral?: () => void;
   tieneNotaGeneral?: boolean;
   onEdit?: () => void;
+  temaLectura?: "dia" | "sepia" | "escenario";
+  onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
 };
 
 export default function LetraCifradoLecturaShell({
@@ -67,6 +69,8 @@ export default function LetraCifradoLecturaShell({
   onOpenNotaGeneral,
   tieneNotaGeneral = false,
   onEdit,
+  temaLectura,
+  onTemaLecturaChange,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
   const hasCompases = Boolean(compasConfig?.barras?.length);
@@ -170,6 +174,8 @@ export default function LetraCifradoLecturaShell({
         onOpenNotaGeneral={onOpenNotaGeneral}
         tieneNotaGeneral={tieneNotaGeneral}
         onEdit={onEdit}
+        temaLectura={temaLectura}
+        onTemaLecturaChange={onTemaLecturaChange}
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-r-[12px]">

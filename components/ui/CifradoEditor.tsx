@@ -67,6 +67,7 @@ import {
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
+import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import { VozPcConfigCard } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -229,6 +230,8 @@ type CifradoEditorProps = {
   onPersist?: CifradoEditorPersistFn;
   /** Habilita las pestañas y anclajes de anotaciones (solo Entrenador). */
   anotaciones?: AnotacionesControl | null;
+  /** Muestra la X de cerrar aunque la presentación sea página (p. ej. Entrenador). */
+  showPageClose?: boolean;
 };
 
 type EditorPhase = "ingreso" | "cifrado";
@@ -271,7 +274,7 @@ const labelClassName =
 const inputClassName = CIFRADO_CONTROLS_INPUT_CLASS;
 
 const textareaClassName =
-  "min-h-[200px] w-full resize-y rounded-[10px] border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
+  "min-h-[200px] w-full resize-y rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
 
 /** Ancho exterior del armado en vista celular (max-w del contenedor). */
 const CELULAR_ARMADO_OUTER_WIDTH_PX = 390;
@@ -448,7 +451,7 @@ function ChordPicker({
   return (
     <div
       ref={panelRef}
-      className="fixed z-[70] max-h-[min(32rem,calc(100vh-1rem))] w-72 overflow-y-auto rounded-[12px] border border-border bg-bg-card p-3 shadow-xl"
+      className="fixed z-[70] max-h-[min(32rem,calc(100vh-1rem))] w-72 overflow-y-auto rounded-estandar border border-border bg-bg-card p-3 shadow-xl"
       style={{ left: state.x, top: state.y }}
       role="dialog"
       aria-label="Selector de acorde"
@@ -502,11 +505,9 @@ function ChordPicker({
         <span className="text-xs font-medium text-text-muted">
           ¿Bajo en otra nota?
         </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={bassEnabled}
-          onClick={() => {
+        <ToolSwitch
+          checked={bassEnabled}
+          onChange={() => {
             setBassEnabled((current) => {
               const next = !current;
 
@@ -517,18 +518,10 @@ function ChordPicker({
               return next;
             });
           }}
-          className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
-            bassEnabled
-              ? "border border-text-secondary bg-bg-dark"
-              : "border border-border bg-bg-darker"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 size-3 rounded-full bg-white transition-transform ${
-              bassEnabled ? "left-3.5" : "left-0.5"
-            }`}
-          />
-        </button>
+          accentVar="--accent-editor"
+          size="sm"
+          aria-label="Bajo en otra nota"
+        />
       </label>
 
       {bassEnabled ? (
@@ -2437,9 +2430,9 @@ function CifradoPreviewOverlay({
           : "fixed inset-0 z-[60] flex flex-col bg-letra-bg";
 
   const previewShellClass = isCelularContainedPreview
-    ? "flex h-full min-h-0 w-full max-w-[390px] flex-col overflow-hidden rounded-[12px] border border-border bg-letra-bg"
+    ? "flex h-full min-h-0 w-full max-w-[390px] flex-col overflow-hidden rounded-estandar border border-border bg-letra-bg"
     : isPcPreview
-      ? `flex w-[80%] max-w-full flex-col overflow-hidden rounded-[12px] border border-border bg-letra-bg ${
+      ? `flex w-[80%] max-w-full flex-col overflow-hidden rounded-estandar border border-border bg-letra-bg ${
           isContained ? "h-full min-h-0" : "min-h-0 flex-1"
         }`
       : isContained
@@ -2496,8 +2489,10 @@ export default function CifradoEditor({
   presentation = "modal",
   onPersist,
   anotaciones,
+  showPageClose = false,
 }: CifradoEditorProps) {
   const isPage = isToolPagePresentation(presentation);
+  const showCloseButton = !isPage || showPageClose;
   const isDesktop = useIsDesktop();
   const [phase, setPhase] = useState<EditorPhase>("ingreso");
   const [ingresoTab, setIngresoTab] = useState<IngresoTab>("letra");
@@ -4533,8 +4528,8 @@ export default function CifradoEditor({
                 <div
                   className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${
                     isDesktop
-                      ? `rounded-b-[12px] ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
-                      : `rounded-[12px] ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
+                      ? `rounded-b-estandar ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
+                      : `rounded-estandar ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
                   }`}
                 >
                 <div
@@ -4721,7 +4716,7 @@ export default function CifradoEditor({
             <EditorSidebarHeader
               onClose={onClose}
               loading={loading}
-              showClose={!isPage}
+              showClose={showCloseButton}
             />
 
             <div
@@ -4824,6 +4819,7 @@ export default function CifradoEditor({
                       incrementDisabled={compasConfig.bpm >= 240}
                       decrementAriaLabel="Reducir BPM"
                       incrementAriaLabel="Aumentar BPM"
+                      accentVar="--accent-editor"
                       onDecrement={() =>
                         setCompasConfig((current) => ({
                           ...current,
@@ -4847,7 +4843,7 @@ export default function CifradoEditor({
                     <TapButton
                       type="button"
                       onClick={handleTapTempo}
-                      className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                      className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-estandar border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
                     >
                       Tap{tapCount > 0 ? ` (${tapCount})` : ""}
                     </TapButton>
@@ -4887,7 +4883,7 @@ export default function CifradoEditor({
             <EditorSidebarHeader
               onClose={onClose}
               loading={loading}
-              showClose={!isPage}
+              showClose={showCloseButton}
             />
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">

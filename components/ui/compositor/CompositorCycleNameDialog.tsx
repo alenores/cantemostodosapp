@@ -40,7 +40,7 @@ export function CompositorCycleNameDialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-sm rounded-[12px] border border-border bg-bg-card p-5"
+        className="relative z-10 w-full max-w-sm rounded-estandar border border-border bg-bg-card p-5"
       >
         <p className="text-sm font-semibold text-text-primary">{title}</p>
         <label className="mt-3 block text-sm text-text-primary">
@@ -58,7 +58,7 @@ export function CompositorCycleNameDialog({
                 onConfirm();
               }
             }}
-            className="mt-2 w-full rounded-[10px] border border-border bg-bg-darker px-3 py-2 text-sm text-text-primary outline-none focus:border-compositor-config disabled:opacity-60"
+            className="mt-2 w-full rounded-estandar border border-border bg-bg-darker px-3 py-2 text-sm text-text-primary outline-none focus:border-compositor-config transition-colors duration-150 disabled:opacity-60"
           />
         </label>
         {error ? (
@@ -69,7 +69,7 @@ export function CompositorCycleNameDialog({
             type="button"
             disabled={busy}
             onClick={onCancel}
-            className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card text-sm font-semibold text-text-primary disabled:opacity-60"
+            className="min-h-11 flex-1 rounded-estandar border border-border bg-bg-card text-sm font-semibold text-text-primary transition-colors duration-150 disabled:opacity-60"
           >
             Cancelar
           </button>
@@ -77,7 +77,7 @@ export function CompositorCycleNameDialog({
             type="button"
             disabled={busy}
             onClick={onConfirm}
-            className="min-h-11 flex-1 rounded-[10px] bg-accent text-sm font-semibold text-white disabled:opacity-60"
+            className="min-h-11 flex-1 rounded-estandar bg-accent text-sm font-semibold text-white transition-colors duration-150 disabled:opacity-60"
           >
             {busy ? "Guardando..." : confirmLabel}
           </button>

@@ -13,6 +13,7 @@ import {
   Music,
   Music2,
   Type,
+  Palette,
 } from "lucide-react";
 
 type ResolvedItem = LecturaFabItem & { closeOnClick: boolean };
@@ -40,6 +41,8 @@ type ModoLecturaOverlayProps = {
   onAbrirTono?: () => void;
   onAbrirZoom?: () => void;
   onAfinador?: () => void;
+  temaLectura?: "dia" | "sepia" | "escenario";
+  onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
 };
 
 /** Menú flotante de controles de modo lectura (celular). Compartido por las pantallas. */
@@ -63,6 +66,8 @@ export default function ModoLecturaOverlay({
   onAbrirTono,
   onAbrirZoom,
   onAfinador,
+  temaLectura,
+  onTemaLecturaChange,
 }: ModoLecturaOverlayProps) {
   if (!abierto) {
     return null;
@@ -130,6 +135,27 @@ export default function ModoLecturaOverlay({
       label: "Afinador",
       onClick: onAfinador,
       closeOnClick: true,
+    });
+  }
+
+  if (temaLectura && onTemaLecturaChange) {
+    const nextThemeMap = {
+      dia: "sepia",
+      sepia: "escenario",
+      escenario: "dia",
+    } as const;
+    const themeLabelMap = {
+      dia: "Tema: Claro",
+      sepia: "Tema: Sepia",
+      escenario: "Tema: Escenario",
+    } as const;
+
+    items.push({
+      key: "tema-lectura",
+      icon: Palette,
+      label: themeLabelMap[temaLectura],
+      onClick: () => onTemaLecturaChange(nextThemeMap[temaLectura]),
+      closeOnClick: false,
     });
   }
 

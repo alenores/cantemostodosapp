@@ -254,7 +254,10 @@ export default function HubSectionPageClient({
       <AppReadyMarker />
 
       {!isDesktop ? (
-        <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <main
+          className="app-page-main flex flex-col gap-3 px-4 pb-24 lg:px-8 lg:py-8"
+          style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top, 0px))" }}
+        >
           <div className="app-page-container flex flex-col gap-3 lg:gap-4">
             <h2 className="text-xl font-extrabold text-text-primary">
               {sectionLabel}

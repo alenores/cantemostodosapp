@@ -118,7 +118,7 @@ export default function MetronomoModal({
       panelClassName={
         isPage
           ? ""
-          : "relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+          : "relative z-10 tool-modal-panel-wide flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-amplio border border-border bg-bg-cola-sheet shadow-xl"
       }
       trailing={
         <MetronomoConfigHelpModal
@@ -130,12 +130,13 @@ export default function MetronomoModal({
       <ToolModalHeader
         titleId="metronomo-titulo"
         title={isDesktop ? undefined : "Metrónomo"}
+        accentVar="--accent-metronomo"
         headerContent={
           isDesktop ? (
             <div className="flex min-w-0 items-center gap-2">
               <h2
                 id="metronomo-titulo"
-                className="min-w-0 truncate text-lg font-extrabold text-accent"
+                className="min-w-0 truncate text-lg font-extrabold text-inherit"
               >
                 Metrónomo
               </h2>
@@ -148,14 +149,27 @@ export default function MetronomoModal({
         closeAriaLabel="Cerrar metrónomo"
         onClose={onClose}
         showClose={!isPage}
+        isPage={isPage}
       />
 
       <div
-        className={`flex min-h-0 flex-1 flex-col ${
+        className={`flex min-h-0 flex-1 flex-col metronomo-ui ${
           isDesktop
             ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
             : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
         }`}
+        style={{
+          ["--tool-practice-section-bg" as string]: "var(--bg-app)",
+          ["--bg-cola-sheet" as string]: "var(--bg-app)",
+          ["--tool-practice" as string]: "var(--accent-metronomo)",
+          ["--tool-practice-dim" as string]: "var(--accent-metronomo-dim)",
+          ["--voz-config" as string]: "var(--accent-metronomo)",
+          ["--voz-config-dim" as string]: "var(--accent-metronomo-dim)",
+          ["--ritmo-inactive-bar-bg" as string]: "var(--bg-darker)",
+          ["--ritmo-inactive-bar-border" as string]: "1px solid var(--border)",
+          ["--ritmo-active-bar-bg" as string]: "var(--accent-metronomo)",
+          ["--ritmo-active-bar-border" as string]: "1px solid var(--accent-metronomo)",
+        }}
       >
         {isDesktop ? (
           <MetronomoPcShell
@@ -202,6 +216,7 @@ export default function MetronomoModal({
                 isPlaying={isPlaying}
                 tapTempoTapCount={tapTempoTapCount}
                 patternLengthInputId="metronomo-pattern-length"
+                accentVar="--accent-metronomo"
                 onSetPatternLength={onSetPatternLength}
                 onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
                 onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
@@ -236,6 +251,7 @@ export default function MetronomoModal({
                   onClick={isPlaying ? onStop : onStart}
                   playAriaLabel="Iniciar metrónomo"
                   stopAriaLabel="Detener metrónomo"
+                  className="text-[var(--accent-metronomo)] border-[var(--accent-metronomo)] bg-bg-card shadow-[0_0_12px_color-mix(in_srgb,var(--accent-metronomo)_25%,transparent)]"
                 />
               </div>
 

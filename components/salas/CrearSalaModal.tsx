@@ -8,7 +8,7 @@ import { Camera, X } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-bg-app px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-11 w-full rounded-estandar border border-border bg-bg-app px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent transition-colors duration-150";
 
 type CrearSalaModalProps = {
   open: boolean;

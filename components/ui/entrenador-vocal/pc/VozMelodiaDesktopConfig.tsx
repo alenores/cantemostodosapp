@@ -101,6 +101,7 @@ export function VozMelodiaDesktopConfig({
             incrementAriaLabel="Aumentar golpes"
             onDecrement={() => onSetPatternLength(patternLength - 1)}
             onIncrement={() => onSetPatternLength(patternLength + 1)}
+            accentVar="--accent-vocal"
           />
         </div>
 

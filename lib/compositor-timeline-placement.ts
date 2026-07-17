@@ -204,6 +204,43 @@ export function buildDrumPlacementPartial(
   };
 }
 
+export function getNextDrumPlacementStep(
+  events: CompositorTrackEvent[],
+  gridSteps: number,
+): number | null {
+  const durationSteps = 1;
+
+  if (events.length === 0) {
+    return durationSteps > gridSteps ? null : 0;
+  }
+
+  let maxEnd = 0;
+
+  for (const event of events) {
+    maxEnd = Math.max(maxEnd, event.startStep + event.durationSteps);
+  }
+
+  if (maxEnd + durationSteps > gridSteps) {
+    return null;
+  }
+
+  return maxEnd;
+}
+
+export function buildDrumAddPartial(
+  draft: { drumSound: CompositorDrumSound; level: CompositorTrackEvent["level"] },
+  events: CompositorTrackEvent[],
+  gridSteps: number,
+): Partial<CompositorTrackEvent> | null {
+  const startStep = getNextDrumPlacementStep(events, gridSteps);
+
+  if (startStep == null) {
+    return null;
+  }
+
+  return buildDrumPlacementPartial(draft.drumSound, startStep, draft.level);
+}
+
 export function getTimelineRowHeightPx(): number {
   return COMPOSITOR_TIMELINE_ROW_HEIGHT_PX;
 }

@@ -12,10 +12,13 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-11 w-full rounded-estandar border border-border bg-bg-card px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent transition-colors duration-150";
 
 const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
+
+const logoutButtonClassName =
+  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-semibold text-text-primary disabled:opacity-60";
 
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -205,191 +208,253 @@ export default function PerfilPageClient({
   const previewUrl = avatarPreview ?? avatarUrl;
   const tieneNombreGuardado = Boolean(usuarioInicial.nombre.trim());
 
+  const avatarBlock = (
+    <>
+      <div className="relative">
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewUrl}
+            alt={nombre.trim() || "Avatar"}
+            className="size-24 rounded-full object-cover lg:size-28"
+          />
+        ) : (
+          <UserAvatar
+            nombre={nombre}
+            email={email}
+            avatarUrl={null}
+            size={96}
+            className="text-2xl"
+          />
+        )}
+        <TapButton
+          type="button"
+          aria-label="Cambiar foto de perfil"
+          onClick={() => fileInputRef.current?.click()}
+          className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full border border-border bg-bg-card text-text-primary"
+        >
+          <Camera className="size-4" aria-hidden="true" />
+        </TapButton>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only"
+        onChange={handleAvatarPick}
+      />
+      <p className="text-center text-xs text-text-muted lg:text-left">
+        JPG, PNG o WebP · máx. 2 MB
+      </p>
+    </>
+  );
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
       <AppReadyMarker />
-      <header className="border-b border-accent/40 bg-accent px-4 py-3">
-        <div className="flex items-center gap-2">
+      {/* Mobile-only integrated header */}
+      <header
+        className="shrink-0 bg-transparent px-4 pb-2 lg:hidden"
+        style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top, 0px))" }}
+      >
+        <div className="app-page-container flex items-center gap-3">
           <TapLink
             href="/"
             ariaLabel="Volver al inicio"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-bg-darker lg:hidden"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card border border-border/40 shadow-sm"
           >
-            <ArrowLeft className="size-5" aria-hidden="true" />
+            <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
           </TapLink>
-          <h1 className="text-lg font-extrabold tracking-tight text-bg-darker">
+          <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
             Mi perfil
           </h1>
         </div>
       </header>
 
-      <main className="app-page-main flex flex-1 flex-col gap-6 px-4 py-6 pb-24 lg:px-8 lg:py-8">
-        <div className="app-page-container mx-auto w-full max-w-xl">
-        {!tieneNombreGuardado && (
-          <p className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary">
-            Tu cuenta no tiene nombre guardado todavía. Completalo acá abajo.
-          </p>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative">
-              {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt={nombre.trim() || "Avatar"}
-                  className="size-24 rounded-full object-cover"
-                />
-              ) : (
-                <UserAvatar
-                  nombre={nombre}
-                  email={email}
-                  avatarUrl={null}
-                  size={96}
-                  className="text-2xl"
-                />
-              )}
-              <TapButton
-                type="button"
-                aria-label="Cambiar foto de perfil"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full border border-border bg-bg-card text-text-primary"
-              >
-                <Camera className="size-4" aria-hidden="true" />
-              </TapButton>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={handleAvatarPick}
-            />
-            <p className="text-center text-xs text-text-muted">
-              JPG, PNG o WebP · máx. 2 MB
-            </p>
+      <main className="app-page-main flex flex-1 flex-col gap-6 px-4 py-4 pb-24 lg:gap-5 lg:px-8 lg:py-8 lg:pb-8">
+        <div className="app-page-container flex w-full flex-col gap-6 lg:gap-5">
+          <div className="hidden items-center justify-between gap-4 lg:flex">
+            <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
+              Mi perfil
+            </h1>
+            <TapButton
+              type="button"
+              onClick={() => void handleLogout()}
+              disabled={logoutLoading || loading}
+              className="min-h-10 rounded-[10px] border border-border bg-bg-card px-5 text-sm font-semibold text-text-primary disabled:opacity-60"
+            >
+              {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
+            </TapButton>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="perfil-nombre" className="text-sm text-text-secondary">
-              Nombre
-            </label>
-            <input
-              id="perfil-nombre"
-              type="text"
-              required
-              autoComplete="name"
-              placeholder="Tu nombre"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
-              className={inputClassName}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="perfil-email" className="text-sm text-text-secondary">
-              Email
-            </label>
-            <input
-              id="perfil-email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className={inputClassName}
-            />
-            <p className="text-xs text-text-muted">
-              Si lo cambiás, Supabase envía un email de confirmación. Hasta
-              confirmarlo seguís entrando con el email actual.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-card/50 p-4">
-            <p className="text-sm font-semibold text-text-primary">
-              Cambiar contraseña
-            </p>
-            <p className="text-xs text-text-muted">
-              Dejá estos campos vacíos si no querés cambiarla. Supabase puede
-              pedir tu contraseña actual por seguridad.
-            </p>
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="perfil-password-actual"
-                className="text-sm text-text-secondary"
-              >
-                Contraseña actual
-              </label>
-              <input
-                id="perfil-password-actual"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Solo si querés cambiarla"
-                value={contraseñaActual}
-                onChange={(event) => setContraseñaActual(event.target.value)}
-                className={inputClassName}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="perfil-password-nueva"
-                className="text-sm text-text-secondary"
-              >
-                Nueva contraseña
-              </label>
-              <input
-                id="perfil-password-nueva"
-                type="password"
-                autoComplete="new-password"
-                placeholder="Mínimo 6 caracteres"
-                value={nuevaContraseña}
-                onChange={(event) => setNuevaContraseña(event.target.value)}
-                className={inputClassName}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="perfil-password-confirmar"
-                className="text-sm text-text-secondary"
-              >
-                Confirmar nueva contraseña
-              </label>
-              <input
-                id="perfil-password-confirmar"
-                type="password"
-                autoComplete="new-password"
-                placeholder="Repetí la nueva contraseña"
-                value={confirmarContraseña}
-                onChange={(event) => setConfirmarContraseña(event.target.value)}
-                className={inputClassName}
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={buttonClassName}
-            style={{ transitionTimingFunction: "var(--transition-timing)" }}
-          >
-            {loading ? "Guardando..." : "Guardar cambios"}
-          </button>
-
-          {error && (
-            <p className="text-center text-sm text-accent" role="alert">
-              {error}
+          {!tieneNombreGuardado && (
+            <p className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary">
+              Tu cuenta no tiene nombre guardado todavía. Completalo acá abajo.
             </p>
           )}
-        </form>
 
-        <TapButton
-          onClick={() => void handleLogout()}
-          disabled={logoutLoading || loading}
-          className="mt-6 min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-semibold text-text-primary disabled:opacity-60"
-        >
-          {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
-        </TapButton>
+          <form
+            id="perfil-form"
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-5 lg:gap-4"
+          >
+            <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-4">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col items-center gap-3 lg:items-start">
+                  {avatarBlock}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="perfil-nombre"
+                    className="text-sm text-text-secondary"
+                  >
+                    Nombre
+                  </label>
+                  <input
+                    id="perfil-nombre"
+                    type="text"
+                    required
+                    autoComplete="name"
+                    placeholder="Tu nombre"
+                    value={nombre}
+                    onChange={(event) => setNombre(event.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="perfil-email"
+                    className="text-sm text-text-secondary"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="perfil-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className={inputClassName}
+                  />
+                  <p className="text-xs text-text-muted">
+                    Si lo cambiás, Supabase envía un email de confirmación.
+                    Hasta confirmarlo seguís entrando con el email actual.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-card/50 p-4 lg:bg-bg-card lg:p-5">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-semibold text-text-primary">
+                    Cambiar contraseña
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    Dejá estos campos vacíos si no querés cambiarla. Supabase
+                    puede pedir tu contraseña actual por seguridad.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="perfil-password-actual"
+                      className="text-sm text-text-secondary"
+                    >
+                      Contraseña actual
+                    </label>
+                    <input
+                      id="perfil-password-actual"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Solo si querés cambiarla"
+                      value={contraseñaActual}
+                      onChange={(event) =>
+                        setContraseñaActual(event.target.value)
+                      }
+                      className={inputClassName}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="perfil-password-nueva"
+                      className="text-sm text-text-secondary"
+                    >
+                      Nueva contraseña
+                    </label>
+                    <input
+                      id="perfil-password-nueva"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={nuevaContraseña}
+                      onChange={(event) =>
+                        setNuevaContraseña(event.target.value)
+                      }
+                      className={inputClassName}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="perfil-password-confirmar"
+                      className="text-sm text-text-secondary"
+                    >
+                      Confirmar nueva contraseña
+                    </label>
+                    <input
+                      id="perfil-password-confirmar"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Repetí la nueva contraseña"
+                      value={confirmarContraseña}
+                      onChange={(event) =>
+                        setConfirmarContraseña(event.target.value)
+                      }
+                      className={inputClassName}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden lg:flex lg:justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="min-h-10 rounded-[10px] bg-accent px-6 text-sm font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60"
+                style={{ transitionTimingFunction: "var(--transition-timing)" }}
+              >
+                {loading ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`${buttonClassName} lg:hidden`}
+              style={{ transitionTimingFunction: "var(--transition-timing)" }}
+            >
+              {loading ? "Guardando..." : "Guardar cambios"}
+            </button>
+
+            {error && (
+              <p
+                className="text-center text-sm text-accent lg:text-left"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
+          </form>
+
+          <TapButton
+            onClick={() => void handleLogout()}
+            disabled={logoutLoading || loading}
+            className={`${logoutButtonClassName} mt-6 lg:hidden`}
+          >
+            {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
+          </TapButton>
         </div>
       </main>
     </div>

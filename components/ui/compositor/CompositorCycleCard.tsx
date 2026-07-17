@@ -13,10 +13,11 @@ import {
   COMPOSITOR_LABEL_EDITAR_CICLO,
   COMPOSITOR_LABEL_ESCUCHAR_CICLO,
 } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { ChevronDown, Pencil, Play, Square } from "lucide-react";
 
 const CYCLE_CARD_ACTION_BUTTON_CLASS =
-  "flex size-7 items-center justify-center rounded-full border border-compositor-config/35 bg-compositor-config/10 text-compositor-config disabled:opacity-40";
+  `flex size-7 items-center justify-center rounded-full disabled:opacity-40 ${COMPOSITOR_ACTION_BUTTON_CLASS}`;
 
 type CompositorCycleCardProps = {
   cycle: CompositorCycle;
@@ -90,10 +91,10 @@ export function CompositorCycleCard({
             aria-label={listenLabel}
           >
             <span
-              className={`flex size-7 shrink-0 items-center justify-center rounded-full border ${
+              className={`flex size-7 shrink-0 items-center justify-center rounded-full ${
                 isExpanded
-                  ? "border-tool-practice/35 bg-tool-practice/10 text-tool-practice"
-                  : "border-compositor-config/35 bg-compositor-config/10 text-compositor-config"
+                  ? "border border-tool-practice/35 bg-tool-practice/10 text-tool-practice"
+                  : CYCLE_CARD_ACTION_BUTTON_CLASS
               }`}
             >
               {isExpanded ? (

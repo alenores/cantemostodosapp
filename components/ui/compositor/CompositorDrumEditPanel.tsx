@@ -1,5 +1,6 @@
 "use client";
 
+import { useId, useState } from "react";
 import { CompositorDesktopDrumSoundGrid } from "@/components/ui/compositor/CompositorDesktopBlockGrids";
 import { CompositorBlockEditDismiss } from "@/components/ui/compositor/CompositorBlockEditDismiss";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -10,9 +11,11 @@ import {
   compositorBlockSegmentActiveClass,
   compositorBlockTitleClass,
 } from "@/lib/compositor-block-edit-ui";
+import { COMPOSITOR_ADD_BLOCK_BUTTON_CLASS } from "@/lib/compositor-ui";
 import {
-  COMPOSITOR_LABEL_ARRASTRAR_GRAFICO,
+  COMPOSITOR_LABEL_AGREGAR_BLOQUE,
   COMPOSITOR_LABEL_BLOQUES_SELECCIONADOS,
+  COMPOSITOR_LABEL_CANTIDAD_BLOQUES,
   COMPOSITOR_LABEL_CREAR_BLOQUE,
   COMPOSITOR_LABEL_EDITAR_BLOQUE,
   RITMO_LABEL_INTENSIDAD,
@@ -20,7 +23,33 @@ import {
 } from "@/lib/ritmo-terminologia";
 import { METRONOME_BEAT_LEVELS, getBeatLevelLabel } from "@/lib/metronomo";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
-import { GripHorizontal } from "lucide-react";
+
+const COMPOSITOR_ADD_BLOCK_COUNT_MIN = 1;
+const COMPOSITOR_ADD_BLOCK_COUNT_MAX = 10;
+
+function clampAddBlockCount(value: number): number {
+  return Math.min(
+    COMPOSITOR_ADD_BLOCK_COUNT_MAX,
+    Math.max(COMPOSITOR_ADD_BLOCK_COUNT_MIN, Math.floor(value)),
+  );
+}
+
+/** Vacío o inválido equivale a 1 al agregar bloques. */
+function resolveAddBlockCount(text: string): number {
+  const trimmed = text.trim();
+
+  if (trimmed === "") {
+    return COMPOSITOR_ADD_BLOCK_COUNT_MIN;
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+
+  if (Number.isNaN(parsed)) {
+    return COMPOSITOR_ADD_BLOCK_COUNT_MIN;
+  }
+
+  return clampAddBlockCount(parsed);
+}
 
 type CompositorDrumEditPanelMode = "create" | "edit" | "mass";
 
@@ -35,7 +64,7 @@ type CompositorDrumEditPanelProps = {
   disabled?: boolean;
   onDraftChange: (draft: CompositorDrumDraft) => void;
   onExitEdit?: () => void;
-  onPointerDownDrag?: (event: React.PointerEvent<HTMLButtonElement>) => void;
+  onAddBlock?: (count?: number) => void;
 };
 
 /** Estilos comparten la paleta de "edit" mientras se editan bloques (uno o varios). */
@@ -114,8 +143,10 @@ export function CompositorDrumEditPanel({
   disabled = false,
   onDraftChange,
   onExitEdit,
-  onPointerDownDrag,
+  onAddBlock,
 }: CompositorDrumEditPanelProps) {
+  const blockCountInputId = useId();
+  const [addBlockCountText, setAddBlockCountText] = useState("1");
   const isMass = mode === "mass";
   const showIntensidadMass = massFields?.showIntensidad ?? false;
 
@@ -172,16 +203,64 @@ export function CompositorDrumEditPanel({
         ) : null}
       </div>
 
-      {mode === "create" && onPointerDownDrag ? (
-        <TapButton
-          type="button"
-          disabled={disabled}
-          onPointerDown={onPointerDownDrag}
-          className="flex w-fit touch-none items-center justify-center gap-2 self-start rounded-lg border border-dashed border-compositor-config/60 bg-compositor-config/10 px-4 py-1.5 text-xs font-bold text-compositor-config disabled:opacity-50"
-        >
-          <GripHorizontal className="size-4" aria-hidden="true" />
-          {COMPOSITOR_LABEL_ARRASTRAR_GRAFICO}
-        </TapButton>
+      {mode === "create" && onAddBlock ? (
+        <div className="flex w-fit flex-wrap items-center gap-2 self-start">
+          <label htmlFor={blockCountInputId} className="sr-only">
+            {COMPOSITOR_LABEL_CANTIDAD_BLOQUES}
+          </label>
+          <input
+            id={blockCountInputId}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            enterKeyHint="done"
+            autoComplete="off"
+            disabled={disabled}
+            value={addBlockCountText}
+            aria-label={COMPOSITOR_LABEL_CANTIDAD_BLOQUES}
+            onChange={(event) => {
+              const raw = event.target.value;
+
+              if (raw === "") {
+                setAddBlockCountText("");
+                return;
+              }
+
+              if (!/^\d+$/.test(raw)) {
+                return;
+              }
+
+              const parsed = Number.parseInt(raw, 10);
+
+              if (Number.isNaN(parsed)) {
+                return;
+              }
+
+              if (parsed > COMPOSITOR_ADD_BLOCK_COUNT_MAX) {
+                setAddBlockCountText(String(COMPOSITOR_ADD_BLOCK_COUNT_MAX));
+                return;
+              }
+
+              setAddBlockCountText(raw.replace(/^0+(?=\d)/, ""));
+            }}
+            onBlur={() => {
+              if (addBlockCountText.trim() === "") {
+                return;
+              }
+
+              setAddBlockCountText(String(resolveAddBlockCount(addBlockCountText)));
+            }}
+            className="h-8 w-12 shrink-0 rounded-lg border border-border/70 bg-bg-dark/35 px-1 text-center text-xs font-bold tabular-nums text-text-primary outline-none disabled:opacity-50"
+          />
+          <TapButton
+            type="button"
+            disabled={disabled}
+            onClick={() => onAddBlock(resolveAddBlockCount(addBlockCountText))}
+            className={`flex items-center justify-center rounded-lg px-4 py-1.5 text-xs disabled:opacity-50 ${COMPOSITOR_ADD_BLOCK_BUTTON_CLASS}`}
+          >
+            {COMPOSITOR_LABEL_AGREGAR_BLOQUE}
+          </TapButton>
+        </div>
       ) : null}
     </div>
   );

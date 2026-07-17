@@ -96,6 +96,8 @@ export default function EntrenadorCancionesVerPageClient() {
     handleLecturaTonalidadStateChange,
     autoScroll,
     zoom,
+    temaLectura,
+    cambiarTemaLectura,
   } = cocina;
 
   const letraZoomStyle = getLetraZoomStyle(zoom.factor);
@@ -308,6 +310,8 @@ export default function EntrenadorCancionesVerPageClient() {
             onOpenNotaGeneral={openNotaGeneral}
             tieneNotaGeneral={tieneNotaGeneral}
             onEdit={goToEditor}
+            temaLectura={temaLectura}
+            onTemaLecturaChange={cambiarTemaLectura}
           />
         </div>
       ) : null}
@@ -361,6 +365,8 @@ export default function EntrenadorCancionesVerPageClient() {
         onToggleAcordesOcultos={toggleAcordesOcultos}
         onAbrirZoom={abrirZoom}
         onAbrirTono={abrirTono}
+        temaLectura={temaLectura}
+        onTemaLecturaChange={cambiarTemaLectura}
       />
 
       {detalle ? (

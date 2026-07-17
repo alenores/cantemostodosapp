@@ -194,6 +194,7 @@ export default function EntrenadorCancionesEditorPageClient() {
           isLoggedIn
           session={session}
           onClose={goBack}
+          showPageClose
           onPersist={persistPractica}
           onSaved={handleSaved}
           anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
@@ -202,8 +203,9 @@ export default function EntrenadorCancionesEditorPageClient() {
         <CifradoEditorMobile
           session={session}
           isLoggedIn
-          backHref={backHref}
-          backAriaLabel="Volver"
+          onClose={goBack}
+          exitIcon="close"
+          backAriaLabel="Cerrar editor"
           onPersist={persistPractica}
           onSaved={handleSaved}
           anotaciones={{ items: anotaciones, onChange: setAnotaciones }}

@@ -140,7 +140,10 @@ function CifradoSettingsSheet({
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
-      <div className="relative z-10 max-h-[min(70vh,520px)] overflow-y-auto rounded-t-[16px] border border-border bg-bg-card px-4 pb-6 pt-4 shadow-xl">
+      <div
+        className="relative z-10 max-h-[min(70vh,520px)] overflow-y-auto rounded-t-amplio border border-border bg-bg-card px-4 pt-4 shadow-xl"
+        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-base font-bold text-text-primary">Ajustes</h2>
           <TapButton

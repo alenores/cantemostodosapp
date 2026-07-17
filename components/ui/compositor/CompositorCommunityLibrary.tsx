@@ -10,6 +10,7 @@ import {
   COMPOSITOR_LABEL_AGREGAR_A_MIS_CICLOS,
   COMPOSITOR_LABEL_COMUNIDAD,
 } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { Download, RefreshCw, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -145,7 +146,7 @@ export function CompositorCommunityLibrary({
                     controlsDisabled || importingCycleId === cycle.id
                   }
                   onClick={() => void handleImportCycle(cycle)}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-compositor-config/35 bg-compositor-config/10 px-2.5 py-1 text-[10px] font-bold text-compositor-config disabled:opacity-40"
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] disabled:opacity-40 ${COMPOSITOR_ACTION_BUTTON_CLASS}`}
                 >
                   <Download className="size-3" aria-hidden="true" />
                   {COMPOSITOR_LABEL_AGREGAR_A_MIS_CICLOS}

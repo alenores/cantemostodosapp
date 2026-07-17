@@ -20,10 +20,10 @@ const labelClassName =
   "mb-1.5 block text-sm font-medium text-text-secondary";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-[#3a3a3a] px-4 text-base text-text-secondary placeholder:italic placeholder:text-text-muted outline-none focus:border-accent focus:text-text-primary";
+  "min-h-11 w-full rounded-estandar border border-border bg-[#3a3a3a] px-4 text-base text-text-secondary placeholder:italic placeholder:text-text-muted outline-none focus:border-accent focus:text-text-primary transition-colors duration-150";
 
 const textareaClassName =
-  "min-h-[200px] w-full resize-y rounded-[10px] border border-border bg-letra-bg px-4 py-3 text-base text-letra-text placeholder:italic placeholder:text-gray-500 outline-none focus:border-accent";
+  "min-h-[200px] w-full resize-y rounded-estandar border border-border bg-letra-bg px-4 py-3 text-base text-letra-text placeholder:italic placeholder:text-gray-500 outline-none focus:border-accent transition-colors duration-150";
 
 type CancioneroFormModalProps = {
   open: boolean;

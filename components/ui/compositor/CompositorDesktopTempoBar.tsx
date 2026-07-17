@@ -16,6 +16,7 @@ export function CompositorDesktopTempoBar({
   tapTempoTapCount,
   disabled = false,
   accent = "compositor",
+  accentVar,
   showLabel = true,
   onSetBpm,
   onTapTempo,
@@ -25,6 +26,7 @@ export function CompositorDesktopTempoBar({
   tapTempoTapCount: number;
   disabled?: boolean;
   accent?: BpmSetupAccent;
+  accentVar?: string;
   showLabel?: boolean;
   onSetBpm: (value: number) => void;
   onTapTempo: () => void;
@@ -44,6 +46,7 @@ export function CompositorDesktopTempoBar({
         tapTempoTapCount={tapTempoTapCount}
         disabled={disabled}
         accent={accent}
+        accentVar={accentVar}
         onSetBpm={onSetBpm}
         onTapTempo={onTapTempo}
       />

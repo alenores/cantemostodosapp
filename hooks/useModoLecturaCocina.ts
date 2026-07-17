@@ -6,6 +6,7 @@ import type {
 } from "@/components/cifrado/LetraCifradoLecturaShell";
 import { useLetraAutoScroll } from "@/hooks/useLetraAutoScroll";
 import { useLetraZoom } from "@/hooks/useLetraZoom";
+import type { LecturaScrollSyncState } from "@/lib/lectura-scroll-sync";
 import {
   useCallback,
   useEffect,
@@ -21,6 +22,10 @@ type UseModoLecturaCocinaOptions = {
   contentKey: string | number | null;
   /** Iframe embebido (Cifra Club) para auto-scroll visual. */
   embedIframeRef?: RefObject<HTMLIFrameElement | null>;
+  /** Mantiene animación/listeners aunque no haya modo lectura (salas). */
+  playbackEnabled?: boolean;
+  syncEnabled?: boolean;
+  onSyncStateChange?: (state: LecturaScrollSyncState) => void;
 };
 
 /**
@@ -33,6 +38,9 @@ export function useModoLecturaCocina({
   scrollRef,
   contentKey,
   embedIframeRef,
+  playbackEnabled = false,
+  syncEnabled = false,
+  onSyncStateChange,
 }: UseModoLecturaCocinaOptions) {
   const [overlayAbierto, setOverlayAbierto] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
@@ -45,8 +53,40 @@ export function useModoLecturaCocina({
   const [lecturaTonalidad, setLecturaTonalidad] =
     useState<LecturaTonalidadState | null>(null);
 
+  const [temaLectura, setTemaLectura] = useState<"dia" | "sepia" | "escenario">("dia");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cantemostodos-tema-lectura");
+      if (saved === "dia" || saved === "sepia" || saved === "escenario") {
+        setTemaLectura(saved);
+      }
+    }
+  }, []);
+
+  const cambiarTemaLectura = useCallback((tema: "dia" | "sepia" | "escenario") => {
+    setTemaLectura(tema);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cantemostodos-tema-lectura", tema);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (active) {
+      document.body.setAttribute("data-tema-lectura", temaLectura);
+    } else {
+      document.body.removeAttribute("data-tema-lectura");
+    }
+    return () => {
+      document.body.removeAttribute("data-tema-lectura");
+    };
+  }, [active, temaLectura]);
+
   const autoScroll = useLetraAutoScroll(scrollRef, {
-    enabled: active,
+    enabled: active || playbackEnabled,
+    controlsEnabled: active,
+    syncEnabled,
+    onSyncStateChange,
     contentKey,
     embedIframeRef,
   });
@@ -133,5 +173,7 @@ export function useModoLecturaCocina({
     autoScroll,
     zoom,
     resetVista,
+    temaLectura,
+    cambiarTemaLectura,
   };
 }

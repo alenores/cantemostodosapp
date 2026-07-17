@@ -1,6 +1,7 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useState } from "react";
 
 export type ToolNumericStepperDensity = "default" | "compact";
 
@@ -53,6 +54,7 @@ export type ToolNumericStepperProps = {
   onSetValue?: (value: number) => void;
   density?: ToolNumericStepperDensity;
   className?: string;
+  accentVar?: string;
 };
 
 export function ToolNumericStepper({
@@ -72,10 +74,12 @@ export function ToolNumericStepper({
   onSetValue,
   density = "default",
   className = "",
+  accentVar,
 }: ToolNumericStepperProps) {
+  const [isFocused, setIsFocused] = useState(false);
   const styles = DENSITY_STYLES[density];
   const editable = Boolean(inputId && onSetValue);
-  const buttonClass = `flex shrink-0 ${styles.buttonWidth} ${styles.rowMinHeight} items-center justify-center rounded-lg border border-border/70 bg-bg-dark/35 font-bold text-text-primary transition-colors disabled:opacity-40 ${styles.buttonText}`;
+  const buttonClass = `flex shrink-0 ${styles.buttonWidth} ${styles.rowMinHeight} items-center justify-center rounded-sutil border border-border/70 bg-bg-dark/35 font-bold text-text-primary transition-colors disabled:opacity-40 ${styles.buttonText}`;
 
   return (
     <div className={`tool-numeric-stepper w-full ${className}`.trim()}>
@@ -91,7 +95,10 @@ export function ToolNumericStepper({
         </TapButton>
 
         <div
-          className={`flex ${styles.rowMinHeight} flex-col items-center justify-center rounded-[8px] border border-border bg-bg-card px-3 py-1.5 text-center`}
+          className={`flex ${styles.rowMinHeight} flex-col items-center justify-center rounded-estandar border bg-bg-card px-3 py-1.5 text-center transition-colors duration-150`}
+          style={{
+            borderColor: isFocused && accentVar ? `var(${accentVar})` : "var(--border)",
+          }}
           aria-live={editable ? "polite" : undefined}
         >
           {editable ? (
@@ -107,6 +114,7 @@ export function ToolNumericStepper({
                 max={max}
                 disabled={disabled}
                 value={value}
+                onFocus={() => setIsFocused(true)}
                 onChange={(event) => {
                   const parsed = Number.parseInt(event.target.value, 10);
 
@@ -120,6 +128,7 @@ export function ToolNumericStepper({
                   onSetValue?.(
                     Number.isNaN(parsed) ? (min ?? value) : parsed,
                   );
+                  setIsFocused(false);
                 }}
                 className={`w-full max-w-[4.5rem] border-0 bg-transparent p-0 text-center font-extrabold leading-none text-text-primary outline-none disabled:opacity-40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${styles.inputText}`}
               />

@@ -11,6 +11,7 @@ import {
   COMPOSITOR_LABEL_MIS_CICLOS,
   COMPOSITOR_LABEL_NUEVO_CICLO,
 } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { Plus, RefreshCw } from "lucide-react";
 
 type CompositorCyclesLibraryProps = {
@@ -113,7 +114,7 @@ export function CompositorCyclesLibrary({
             type="button"
             disabled={controlsDisabled}
             onClick={onBeginNewCycle}
-            className="inline-flex min-h-8 flex-1 items-center justify-center gap-1 rounded-full border border-compositor-config/35 bg-compositor-config/10 px-2.5 py-1 text-[11px] font-bold text-compositor-config disabled:opacity-40 sm:flex-none"
+            className={`inline-flex min-h-8 flex-1 items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] disabled:opacity-40 sm:flex-none ${COMPOSITOR_ACTION_BUTTON_CLASS}`}
           >
             <Plus className="size-3.5" aria-hidden="true" />
             {COMPOSITOR_LABEL_NUEVO_CICLO}

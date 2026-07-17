@@ -26,6 +26,7 @@ import {
   compositorBlockSegmentActiveClass,
   compositorBlockTitleClass,
 } from "@/lib/compositor-block-edit-ui";
+import { COMPOSITOR_ADD_BLOCK_BUTTON_CLASS } from "@/lib/compositor-ui";
 import {
   COMPOSITOR_GRADO_OPTIONS,
   gradoToNotaIndex,
@@ -525,7 +526,7 @@ export function CompositorMelodicConfigPanel({
             type="button"
             disabled={disabled}
             onClick={() => onAddBlock(resolveAddBlockCount(addBlockCountText))}
-            className="flex items-center justify-center rounded-lg border border-compositor-config/60 bg-compositor-config px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            className={`flex items-center justify-center rounded-lg px-4 py-1.5 text-xs disabled:opacity-50 ${COMPOSITOR_ADD_BLOCK_BUTTON_CLASS}`}
           >
             {COMPOSITOR_LABEL_AGREGAR_BLOQUE}
           </TapButton>

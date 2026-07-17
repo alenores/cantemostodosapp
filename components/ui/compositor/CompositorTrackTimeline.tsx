@@ -42,6 +42,7 @@ import {
   type CompositorTimelineEventPatch,
 } from "@/lib/compositor-timeline-layout";
 import {
+  buildDrumAddPartial,
   buildMelodicAddPartial,
   getMelodicRowIdForDraft,
 } from "@/lib/compositor-timeline-placement";
@@ -947,6 +948,62 @@ export function CompositorTrackTimeline({
     trackAtCapacity,
   ]);
 
+  const handleAddDrumBlock = useCallback((count = 1) => {
+    if (!onPlaceEvent || disabled || trackAtCapacity) {
+      return;
+    }
+
+    const times = Math.min(10, Math.max(1, Math.floor(count)));
+    let workingEvents = events;
+
+    for (let index = 0; index < times; index += 1) {
+      if (workingEvents.length >= COMPOSITOR_MAX_EVENTS_PER_TRACK) {
+        break;
+      }
+
+      const partial = buildDrumAddPartial(drumDraft, workingEvents, gridSteps);
+
+      if (!partial) {
+        if (index === 0) {
+          onPlaceEvent(
+            {
+              startStep: gridSteps,
+              durationSteps: 1,
+              drumSound: drumDraft.drumSound,
+              level: drumDraft.level,
+            },
+            { selectOnPlace: false },
+          );
+        }
+        break;
+      }
+
+      const placedId = onPlaceEvent(partial, { selectOnPlace: false });
+
+      if (!placedId) {
+        break;
+      }
+
+      workingEvents = [
+        ...workingEvents,
+        {
+          id: placedId,
+          startStep: partial.startStep ?? 0,
+          durationSteps: partial.durationSteps ?? 1,
+          drumSound: partial.drumSound ?? drumDraft.drumSound,
+          level: partial.level ?? drumDraft.level,
+        } as CompositorTrackEvent,
+      ];
+    }
+  }, [
+    disabled,
+    drumDraft,
+    events,
+    gridSteps,
+    onPlaceEvent,
+    trackAtCapacity,
+  ]);
+
   function handleDrumDraftChange(nextDraft: CompositorDrumDraft) {
     setDrumDraft(nextDraft);
 
@@ -1042,10 +1099,8 @@ export function CompositorTrackTimeline({
             disabled={disabled || (configMode === "create" && !!trackAtCapacity)}
             onDraftChange={handleDrumDraftChange}
             onExitEdit={clearBlockSelection}
-            onPointerDownDrag={
-              configMode === "create"
-                ? palettePlacement.handlePointerDownDrumDrag
-                : undefined
+            onAddBlock={
+              configMode === "create" ? handleAddDrumBlock : undefined
             }
           />
         </div>

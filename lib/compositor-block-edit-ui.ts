@@ -30,8 +30,8 @@ export function compositorBlockSegmentActiveClass(mode: "create" | "edit"): stri
 
 export function compositorBlockOptionActiveClass(mode: "create" | "edit"): string {
   return mode === "edit"
-    ? "border-compositor-block-edit-border bg-[color-mix(in_srgb,var(--compositor-block-edit)_18%,var(--bg-card))] text-compositor-block-edit"
-    : "border-compositor-config bg-compositor-config-bg text-compositor-config";
+    ? "border border-compositor-block-edit-border/35 bg-[color-mix(in_srgb,var(--compositor-block-edit)_24%,white_68%)] text-[#1a1a1a]"
+    : "border border-compositor-config/20 bg-[color-mix(in_srgb,var(--compositor-config)_14%,white_72%)] text-compositor-config";
 }
 
 export function compositorBlockMelodicNoteActiveClass(mode: "create" | "edit"): string {

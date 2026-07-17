@@ -3,6 +3,7 @@
 import { AcordeLabel } from "@/components/cifrado/AcordeLabel";
 import { CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS } from "@/components/cifrado/cifrado-controls-ui";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import {
   MODIFICADORES,
   type AcordePos,
@@ -157,7 +158,8 @@ export function CifradoMobileChordPicker({
         role="dialog"
         aria-modal="true"
         aria-label="Selector de acorde"
-        className="relative z-10 rounded-t-[16px] border border-border bg-bg-card px-4 pb-6 pt-3"
+        className="relative z-10 rounded-t-amplio border border-border bg-bg-card px-4 pt-3"
+        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
         onPointerDown={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-border" />
@@ -184,7 +186,7 @@ export function CifradoMobileChordPicker({
             <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
           </TapButton>
           <div
-            className={`min-w-[5.5rem] rounded-[12px] px-3 py-2 text-center text-xl font-extrabold ${
+            className={`min-w-[5.5rem] rounded-estandar px-3 py-2 text-center text-xl font-extrabold ${
               noteInScale
                 ? "bg-accent text-white"
                 : "bg-bg-dark text-text-muted"
@@ -214,7 +216,7 @@ export function CifradoMobileChordPicker({
           >
             <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
           </TapButton>
-          <div className="min-w-[5.5rem] rounded-[12px] bg-bg-dark px-3 py-2 text-center text-base font-bold text-text-primary">
+          <div className="min-w-[5.5rem] rounded-estandar bg-bg-dark px-3 py-2 text-center text-base font-bold text-text-primary">
             {MODIFICADORES[modifierPos]?.label ?? "Mayor"}
           </div>
           <TapButton
@@ -231,23 +233,13 @@ export function CifradoMobileChordPicker({
           <span className="text-xs font-medium text-text-muted">
             ¿Bajo en otra nota?
           </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={bassEnabled}
-            onClick={handleToggleBass}
-            className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
-              bassEnabled
-                ? "border border-text-secondary bg-bg-dark"
-                : "border border-border bg-bg-darker"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 size-3 rounded-full bg-white transition-transform ${
-                bassEnabled ? "left-3.5" : "left-0.5"
-              }`}
-            />
-          </button>
+          <ToolSwitch
+            checked={bassEnabled}
+            onChange={handleToggleBass}
+            accentVar="--accent-editor"
+            size="sm"
+            aria-label="Bajo en otra nota"
+          />
         </label>
 
         {bassEnabled ? (
@@ -264,7 +256,7 @@ export function CifradoMobileChordPicker({
               >
                 <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
               </TapButton>
-              <div className="min-w-[5.5rem] rounded-[12px] bg-bg-dark px-3 py-2 text-center text-xl font-extrabold text-text-primary">
+              <div className="min-w-[5.5rem] rounded-estandar bg-bg-dark px-3 py-2 text-center text-xl font-extrabold text-text-primary">
                 {getNotaLabel(bassNoteIndex ?? tonalidadIndex, notacion)}
               </div>
               <TapButton
@@ -315,7 +307,7 @@ export function CifradoMobileChordPicker({
               <TapButton
                 type="button"
                 onClick={onRemove}
-                className="rounded-[10px] border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary"
+                className="rounded-estandar border border-border px-4 py-2.5 text-sm font-semibold text-text-secondary"
               >
                 Quitar
               </TapButton>
@@ -325,7 +317,7 @@ export function CifradoMobileChordPicker({
             <TapButton
               type="button"
               onClick={onStartDrag}
-              className="w-full rounded-[10px] border border-border bg-bg-dark py-2.5 text-sm font-semibold text-text-primary"
+              className="w-full rounded-estandar border border-border bg-bg-dark py-2.5 text-sm font-semibold text-text-primary"
             >
               Arrastrar acorde
             </TapButton>

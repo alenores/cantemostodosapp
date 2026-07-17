@@ -1,4 +1,4 @@
-import AppTopHeader from "@/components/ui/AppTopHeader";
+import AppTopHeaderRouteGate from "@/components/ui/AppTopHeaderRouteGate";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { createClient } from "@/lib/supabase/server";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
@@ -19,7 +19,7 @@ export default async function PracticaLayout({
 
   return (
     <div className="tool-page-layout flex min-h-full w-full min-w-0 flex-1 flex-col overflow-x-clip bg-bg-app">
-      <AppTopHeader usuario={usuario} />
+      <AppTopHeaderRouteGate usuario={usuario} />
       {children}
     </div>
   );

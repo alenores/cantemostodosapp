@@ -20,7 +20,11 @@ export function TapButton({
   ...props
 }: TapButtonProps) {
   return (
-    <button type={type} {...props} className={className.trim()}>
+    <button
+      type={type}
+      {...props}
+      className={`active:scale-[0.96] transition-transform duration-100 ease-out ${className}`.trim()}
+    >
       {children}
     </button>
   );
@@ -61,7 +65,7 @@ export function TapLink({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className={`relative ${className}`.trim()}
+      className={`relative active:scale-[0.96] transition-transform duration-100 ease-out ${className}`.trim()}
     >
       <Suspense fallback={children}>
         <TapLinkContent>{children}</TapLinkContent>

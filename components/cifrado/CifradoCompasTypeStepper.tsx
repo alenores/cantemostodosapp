@@ -34,6 +34,7 @@ export function CifradoCompasTypeStepper({
           inputId="cifrado-cycle-golpes"
           min={BEATS_PER_MEASURE_MIN}
           max={BEATS_PER_MEASURE_MAX}
+          accentVar="--accent-editor"
           onDecrement={() => onCycleGolpesChange(cycleGolpes - 1)}
           onIncrement={() => onCycleGolpesChange(cycleGolpes + 1)}
           onSetValue={(value) => onCycleGolpesChange(value)}

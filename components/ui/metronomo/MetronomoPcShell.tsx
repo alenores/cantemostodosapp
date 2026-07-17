@@ -73,7 +73,7 @@ export function MetronomoPcShell({
   onRequestMic,
 }: MetronomoPcShellProps) {
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden rounded-[12px] border border-border bg-bg-card">
+    <div className="flex min-h-0 flex-1 overflow-hidden rounded-estandar border border-border bg-bg-card">
       <aside className="flex min-h-0 w-[min(100%,20rem)] min-w-0 shrink-0 flex-col border-r border-border/80 bg-[color-mix(in_srgb,var(--voz-config)_5%,var(--bg-card))]">
         <div
           data-tool-vertical-scroll=""
@@ -86,6 +86,7 @@ export function MetronomoPcShell({
               disabled={false}
               size="compact"
               accent="voz"
+              accentVar="--accent-metronomo"
               onSetCycleGolpes={onSetPatternLength}
               onSetCycleBeatDurationAtSlot={onSetBeatDurationAtSlot}
             />
@@ -111,6 +112,7 @@ export function MetronomoPcShell({
               isPlaying={isPlaying}
               tapTempoTapCount={tapTempoTapCount}
               accent="voz"
+              accentVar="--accent-metronomo"
               onSetBpm={onSetBpm}
               onTapTempo={onTapTempo}
             />
@@ -152,6 +154,7 @@ export function MetronomoPcShell({
                 onClick={isPlaying ? onStop : onStart}
                 playAriaLabel="Iniciar metrónomo"
                 stopAriaLabel="Detener metrónomo"
+                className="text-[var(--accent-metronomo)] border-[var(--accent-metronomo)] bg-bg-card shadow-[0_0_12px_color-mix(in_srgb,var(--accent-metronomo)_25%,transparent)]"
               />
             </div>
           </div>

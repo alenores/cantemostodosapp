@@ -98,13 +98,17 @@ type PickerTarget = {
 const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 
   const textareaClassName =
-  "min-h-0 w-full flex-1 resize-none rounded-[10px] border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
+  "min-h-0 w-full flex-1 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
 
 type CifradoEditorMobileProps = {
   session?: CifradoEditorSession | null;
   isLoggedIn?: boolean;
   backHref?: string;
   backAriaLabel?: string;
+  /** Cierra/vuelve con callback (p. ej. Entrenador con icono X). */
+  onClose?: () => void;
+  /** Icono del botón de salida cuando hay onClose. Por defecto flecha atrás. */
+  exitIcon?: "back" | "close";
   onPersist?: CifradoEditorPersistFn;
   onSaved?: (result?: CifradoSaveResult) => void;
   anotaciones?: AnotacionesControl | null;
@@ -119,6 +123,8 @@ export default function CifradoEditorMobile({
   isLoggedIn = false,
   backHref,
   backAriaLabel = "Volver",
+  onClose,
+  exitIcon = "back",
   onPersist,
   onSaved,
   anotaciones,
@@ -849,48 +855,55 @@ export default function CifradoEditorMobile({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
-        {backHref ? (
-          <TapLink
-            href={backHref}
-            ariaLabel={backAriaLabel}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-          >
-            <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-          </TapLink>
-        ) : desdeCancionero ? (
-          <TapLink
-            href="/canciones/cancionero"
-            ariaLabel="Volver al cancionero"
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-          >
-            <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-          </TapLink>
-        ) : null}
-        <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
-          Editor
-        </h1>
-        {onPersist && phase === "cifrado" ? (
-          <TapButton
-            type="button"
-            aria-label="Guardar"
-            disabled={saveLoading}
-            onClick={() => void handleSave()}
-            className={`shrink-0 px-3 py-2 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
-          >
-            {saveLoading ? "…" : "Guardar"}
-          </TapButton>
-        ) : null}
-        {!backHref && !desdeCancionero ? (
-          <TapLink
-            href="/canciones"
-            ariaLabel="Cerrar"
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-          >
-            <X className="size-5 text-text-primary" aria-hidden="true" />
-          </TapLink>
-        ) : null}
-      </header>
+      {phase === "ingreso" ? (
+        <header
+          className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 pb-3"
+          style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
+        >
+          {onClose ? (
+            <TapButton
+              type="button"
+              aria-label={backAriaLabel}
+              onClick={onClose}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              {exitIcon === "close" ? (
+                <X className="size-5 text-text-primary" aria-hidden="true" />
+              ) : (
+                <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+              )}
+            </TapButton>
+          ) : backHref ? (
+            <TapLink
+              href={backHref}
+              ariaLabel={backAriaLabel}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+            </TapLink>
+          ) : desdeCancionero ? (
+            <TapLink
+              href="/canciones/cancionero"
+              ariaLabel="Volver al cancionero"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+            </TapLink>
+          ) : null}
+          <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
+            Editor
+          </h1>
+          {!backHref && !desdeCancionero && !onClose ? (
+            <TapLink
+              href="/canciones"
+              ariaLabel="Cerrar"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+            >
+              <X className="size-5 text-text-primary" aria-hidden="true" />
+            </TapLink>
+          ) : null}
+        </header>
+      ) : null}
 
       {phase === "ingreso" ? (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 pb-28">
@@ -1078,36 +1091,88 @@ export default function CifradoEditorMobile({
         </main>
       ) : (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+          <div
+            className="flex shrink-0 items-center gap-2 border-b border-border bg-bg-darker px-3 pb-1.5"
+            style={{ paddingTop: "calc(0.375rem + env(safe-area-inset-top, 0px))" }}
+          >
+            {onClose ? (
+              <TapButton
+                type="button"
+                aria-label={backAriaLabel}
+                onClick={onClose}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                {exitIcon === "close" ? (
+                  <X className="size-4 text-text-primary" aria-hidden="true" />
+                ) : (
+                  <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
+                )}
+              </TapButton>
+            ) : backHref ? (
+              <TapLink
+                href={backHref}
+                ariaLabel={backAriaLabel}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
+              </TapLink>
+            ) : desdeCancionero ? (
+              <TapLink
+                href="/canciones/cancionero"
+                ariaLabel="Volver al cancionero"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
+              </TapLink>
+            ) : (
+              <TapLink
+                href="/canciones"
+                ariaLabel="Cerrar"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                <X className="size-4 text-text-primary" aria-hidden="true" />
+              </TapLink>
+            )}
+
             <button
               type="button"
               onClick={() => setConfigOpen(true)}
-              className="flex min-w-0 flex-1 flex-col items-start text-left"
+              className="flex min-w-0 flex-1 flex-col items-start text-left pl-1"
             >
-              <span className="w-full truncate text-sm font-semibold text-text-primary">
+              <span className="w-full truncate text-sm font-extrabold text-text-primary">
                 {nombre.trim() || "Sin nombre"}
-                {artista.trim() ? ` · ${artista.trim()}` : ""}
               </span>
-              <span className="text-xs text-text-muted">
-                {tonalidadLabel} {modoLabel} · {compasConfig.bpm} BPM
+              <span className="text-[10px] text-text-muted">
+                {artista.trim() ? `${artista.trim()} · ` : ""}{tonalidadLabel} {modoLabel}
               </span>
             </button>
             <TapButton
               type="button"
               aria-label="Datos y ajustes de la canción"
               onClick={() => setConfigOpen(true)}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
             >
-              <SlidersHorizontal className="size-5" aria-hidden="true" />
+              <SlidersHorizontal className="size-4.5" aria-hidden="true" />
             </TapButton>
             <TapButton
               type="button"
               aria-label="Vista previa"
               onClick={() => setPreviewOpen(true)}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
             >
-              <Eye className="size-5" aria-hidden="true" />
+              <Eye className="size-4.5" aria-hidden="true" />
             </TapButton>
+            {onPersist ? (
+              <TapButton
+                type="button"
+                aria-label="Guardar"
+                disabled={saveLoading}
+                onClick={() => void handleSave()}
+                className={`shrink-0 rounded-sutil px-3 py-1.5 text-xs font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+              >
+                {saveLoading ? "…" : "Guardar"}
+              </TapButton>
+            ) : null}
           </div>
 
           {error ? (
@@ -1324,6 +1389,7 @@ export default function CifradoEditorMobile({
                     incrementDisabled={compasConfig.bpm >= 240}
                     decrementAriaLabel="Reducir BPM"
                     incrementAriaLabel="Aumentar BPM"
+                    accentVar="--accent-editor"
                     onDecrement={() => handleSetBpm(compasConfig.bpm - 1)}
                     onIncrement={() => handleSetBpm(compasConfig.bpm + 1)}
                     onSetValue={handleSetBpm}
@@ -1332,7 +1398,7 @@ export default function CifradoEditorMobile({
                   <TapButton
                     type="button"
                     onClick={handleTapTempo}
-                    className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                    className="min-h-[2.25rem] min-w-[5.25rem] shrink-0 rounded-estandar border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
                   >
                     Tap{tapCount > 0 ? ` (${tapCount})` : ""}
                   </TapButton>

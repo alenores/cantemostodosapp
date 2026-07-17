@@ -858,7 +858,7 @@ function PitchLadderBar({
   return (
     <div className="w-full">
       <div
-        className={`relative overflow-hidden rounded-[12px] border border-border bg-bg-card px-1 ${barHeightClass}`}
+        className={`relative overflow-hidden rounded-estandar border border-border bg-bg-card px-1 ${barHeightClass}`}
       >
         <div
           className="pointer-events-none absolute inset-y-2 rounded-md"
@@ -960,7 +960,7 @@ function InstantAttemptsStrip({
   });
 
   return (
-    <div className="mt-2 w-full rounded-[10px] border border-border bg-bg-card/60 px-3 py-2.5">
+    <div className="mt-2 w-full rounded-estandar border border-border bg-bg-darker/40 px-3 py-2.5">
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
         Tus intentos
       </p>
@@ -1041,7 +1041,7 @@ function VozCalibrePicker({
   }
 
   return (
-    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+    <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
       <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
         Calibre de afinación
       </p>
@@ -1120,6 +1120,7 @@ function OctavasQueDigaPicker({
           incrementDisabled={
             scaleRepetitions >= VOZ_OCTAVAS_SCALE_REPETITIONS_MAX
           }
+          accentVar="--accent-vocal"
           onDecrement={() =>
             onSetScaleRepetitions(
               clampOctavasScaleRepetitions(scaleRepetitions - 1),
@@ -1144,7 +1145,7 @@ function OctavasQueDigaPicker({
   }
 
   return (
-    <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+    <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
       <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
         Ciclo
       </p>
@@ -1377,7 +1378,7 @@ function HoldTimerPanel({
         <p className="text-xs font-semibold text-text-secondary">Cronómetro</p>
       </div>
 
-      <div className="rounded-[12px] border border-border bg-bg-card px-2.5 py-2">
+      <div className="rounded-estandar border border-border bg-bg-darker/35 px-2.5 py-2">
         <div className="flex flex-col items-center">
           <p className="mb-0.5 text-sm font-extrabold tabular-nums leading-none text-voz-config">
             {holdTargetSeconds} s
@@ -1438,7 +1439,7 @@ function ChartLiveNoteRail({
 
   return (
     <div
-      className="flex w-12 shrink-0 flex-col items-center justify-center rounded-[10px] border border-border/60 bg-bg-dark/35 px-0.5 py-2"
+      className="flex w-12 shrink-0 flex-col items-center justify-center rounded-estandar border border-border/60 bg-bg-darker/40 px-0.5 py-2"
       aria-live="polite"
       aria-label={
         hasAudibleVoice && detection
@@ -1887,7 +1888,7 @@ export function PitchHistoryChart({
         }
       >
         <div
-          className={`relative min-w-0 overflow-hidden rounded-[12px] border border-border bg-bg-card ${
+          className={`relative min-w-0 overflow-hidden rounded-estandar border border-border bg-bg-card ${
             layout === "desktop" ? "w-full" : "flex-1"
           }`}
           style={
@@ -2244,7 +2245,7 @@ function VozRitmoTimeline({
   });
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-border bg-bg-card">
+    <div className="overflow-hidden rounded-estandar border border-border bg-bg-card">
       <div
         className={
           layout === "desktop"
@@ -2475,6 +2476,7 @@ function VozChartPlayControl({
         onClick={onClick}
         playAriaLabel={playAriaLabel}
         stopAriaLabel={stopAriaLabel}
+        className="text-[var(--accent-vocal)] border-[var(--accent-vocal)] bg-bg-card shadow-[0_0_12px_color-mix(in_srgb,var(--accent-vocal)_25%,transparent)]"
       />
     </div>
   );
@@ -2867,7 +2869,7 @@ function OctavasPitchChart({
   const note2Percent = 100 - note1Percent - pausePercent;
 
   return (
-    <div className="w-full overflow-hidden rounded-[12px] border border-border bg-bg-card">
+    <div className="w-full overflow-hidden rounded-estandar border border-border bg-bg-card">
       <div className="flex border-b border-border/60 bg-bg-dark/45">
         <div
           className="flex min-w-0 items-center justify-center border-r border-border/40 px-1 py-2"
@@ -3423,7 +3425,7 @@ function VozIntensidadTimeline({
   });
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-border bg-bg-card">
+    <div className="overflow-hidden rounded-estandar border border-border bg-bg-card">
       <div
         className={
           layout === "desktop"
@@ -3878,6 +3880,7 @@ export function VozModeSlides({
             incrementAriaLabel="Aumentar segundos"
             decrementDisabled={holdTargetSeconds <= VOZ_HOLD_TARGET_MIN}
             incrementDisabled={holdTargetSeconds >= VOZ_HOLD_TARGET_MAX}
+            accentVar="--accent-vocal"
             onDecrement={() =>
               onSetHoldTargetSeconds(
                 clampHoldTargetSeconds(holdTargetSeconds - 1),
@@ -3956,7 +3959,7 @@ export function VozModeSlides({
                 calibre={holdCalibre}
                 onSetCalibre={onSetHoldCalibre}
               />
-              <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+              <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
                   Meta tiempo a sostener
                 </p>
@@ -3982,6 +3985,7 @@ export function VozModeSlides({
             incrementDisabled={
               octavasNoteDurationSeconds >= VOZ_OCTAVAS_NOTE_DURATION_MAX
             }
+            accentVar="--accent-vocal"
             onDecrement={() =>
               onSetOctavasNoteDurationSeconds(
                 clampOctavasNoteDurationSeconds(octavasNoteDurationSeconds - 1),
@@ -4050,7 +4054,7 @@ export function VozModeSlides({
                 scaleRepetitions={octavasScaleRepetitions}
                 onSetScaleRepetitions={onSetOctavasScaleRepetitions}
               />
-              <div className="rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3">
+              <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
                 <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
                   Duración de cada nota
                 </p>
@@ -4493,7 +4497,7 @@ export function VozModeSlides({
   return (
     <>
       {isDesktop ? (
-        <div className="flex h-full min-h-0 flex-1 overflow-hidden rounded-[12px] border border-border bg-bg-card">
+        <div className="flex h-full min-h-0 flex-1 overflow-hidden rounded-estandar border border-border bg-bg-card">
           <VozPcModeNav
             activeIndex={activeIndex}
             onChangeIndex={onChangeIndex}

@@ -793,6 +793,12 @@ export function useCompositor({
 
       if (instrumentId === "bateria") {
         const drumSound = (partial.drumSound ?? "kick") as CompositorDrumSound;
+        const durationSteps = partial.durationSteps ?? 1;
+
+        if (startStep + durationSteps > gridSteps) {
+          showEditorNotice(COMPOSITOR_NOTICE_CYCLE_FULL);
+          return null;
+        }
 
         if (isDrumCellOccupied(track.events, drumSound, startStep)) {
           showEditorNotice(COMPOSITOR_NOTICE_CELL_OCCUPIED);

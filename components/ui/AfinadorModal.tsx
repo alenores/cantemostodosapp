@@ -7,7 +7,7 @@ import { ToolModalHeader } from "@/components/ui/ToolModalHeader";
 import { ToolPresentationRoot } from "@/components/ui/ToolPresentationRoot";
 import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
-import { Mic } from "lucide-react";
+import { Mic, Gauge } from "lucide-react";
 
 type AfinadorModalProps = {
   open: boolean;
@@ -98,15 +98,31 @@ export default function AfinadorModal({
       panelClassName={
         isPage
           ? ""
-          : "relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-xl"
+          : "relative z-10 tool-modal-panel flex h-[min(92vh,780px)] flex-col overflow-hidden rounded-amplio border border-border bg-bg-cola-sheet shadow-xl"
       }
     >
       <ToolModalHeader
         titleId="afinador-titulo"
-        title="Afinador"
+        headerContent={
+          <div className="flex min-w-0 items-center gap-2">
+            {!isPage ? (
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card">
+                <Gauge className="size-5 text-inherit" aria-hidden="true" />
+              </div>
+            ) : null}
+            <h2
+              id="afinador-titulo"
+              className="min-w-0 truncate text-lg font-extrabold text-inherit"
+            >
+              Afinador
+            </h2>
+          </div>
+        }
+        accentVar="--accent-afinador"
         closeAriaLabel="Cerrar afinador"
         onClose={onClose}
         showClose={!isPage}
+        isPage={isPage}
       />
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 touch-pan-y overflow-y-auto overscroll-y-contain px-4 py-6">

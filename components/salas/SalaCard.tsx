@@ -37,9 +37,6 @@ export default function SalaCard({
   }, [miembros]);
 
   const cardStyle = {
-    borderColor: "color-mix(in srgb, var(--accent-salas) 45%, var(--border-card))",
-    boxShadow:
-      "0 0 0 1px color-mix(in srgb, var(--accent-salas) 12%, transparent), 0 6px 18px color-mix(in srgb, var(--accent-salas) 8%, transparent)",
     ["--cascade-delay" as string]: `${cascadeDelayMs}ms`,
   } satisfies CSSProperties;
 
@@ -64,7 +61,7 @@ export default function SalaCard({
   return (
     <div
       style={cardStyle}
-      className={`home-cascade-item relative flex min-h-[4.25rem] w-full items-stretch gap-2 rounded-2xl border border-solid bg-bg-card p-1.5 transition-[border-color,background-color,box-shadow] duration-200 lg:min-h-[4.75rem] ${
+      className={`home-cascade-item sala-card-depth relative flex min-h-[4.25rem] w-full items-stretch gap-2 rounded-amplio border border-solid bg-bg-card p-1.5 transition-[border-color,background-color,box-shadow,transform] duration-200 lg:min-h-[4.75rem] ${
         disabled ? "opacity-50" : "lg:hover:bg-bg-card-hover"
       }`}
     >

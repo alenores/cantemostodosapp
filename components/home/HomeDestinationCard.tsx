@@ -37,8 +37,7 @@ export default function HomeDestinationCard({
   titleInviteActive = false,
 }: HomeDestinationCardProps) {
   const cardStyle = {
-    borderColor: `var(${accentVar})`,
-    boxShadow: `0 0 0 1px color-mix(in srgb, var(${accentVar}) 15%, transparent), 0 4px 14px color-mix(in srgb, var(${accentVar}) 10%, transparent)`,
+    ["--accent-card-var" as string]: `var(${accentVar})`,
     ["--cascade-delay" as string]: `${cascadeDelayMs}ms`,
   } satisfies CSSProperties;
 
@@ -48,7 +47,7 @@ export default function HomeDestinationCard({
       onClick={onClick}
       disabled={disabled || pending}
       style={cardStyle}
-      className="home-cascade-item relative flex w-full items-center gap-3 rounded-2xl border border-solid bg-bg-card px-4 py-5 text-left transition-[border-color,background-color,box-shadow] duration-200 disabled:opacity-40"
+      className="home-cascade-item home-destination-card relative flex w-full items-center gap-3 rounded-amplio border border-solid bg-bg-card px-4 py-5 text-left transition-[border-color,background-color,box-shadow,transform] duration-200 disabled:opacity-40"
     >
       {pending ? (
         <span

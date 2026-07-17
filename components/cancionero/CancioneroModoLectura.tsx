@@ -94,6 +94,8 @@ export default function CancioneroModoLectura({
     autoScroll,
     zoom,
     resetVista,
+    temaLectura,
+    cambiarTemaLectura,
   } = useModoLecturaCocina({
     active: open,
     scrollRef: letraScrollRef,
@@ -193,6 +195,8 @@ export default function CancioneroModoLectura({
                 handleLecturaCompasPlaybackStateChange
               }
               onTonalidadStateChange={handleLecturaTonalidadStateChange}
+              temaLectura={temaLectura}
+              onTemaLecturaChange={cambiarTemaLectura}
             />
           ) : (
             <div className="relative h-full min-h-0 w-full overflow-hidden">
@@ -290,6 +294,8 @@ export default function CancioneroModoLectura({
         onToggleAcordesOcultos={toggleAcordesOcultos}
         onAbrirZoom={abrirZoom}
         onAbrirTono={abrirTono}
+        temaLectura={temaLectura}
+        onTemaLecturaChange={cambiarTemaLectura}
       />
 
       <LecturaZoomPanel

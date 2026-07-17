@@ -8,6 +8,7 @@ import {
   COMPOSITOR_TAB_PRACTICAR,
 } from "@/lib/ritmo-terminologia";
 import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
+import { COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS } from "@/lib/compositor-ui";
 import type { ReactNode } from "react";
 
 
@@ -49,7 +50,7 @@ function compositorTabButtonClass(isActive: boolean, practiceTab: boolean) {
 
       ? "bg-tool-practice/18 text-tool-practice ring-1 ring-inset ring-tool-practice/25"
 
-      : "bg-compositor-config/18 text-compositor-config ring-1 ring-inset ring-compositor-config/25";
+      : COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS;
 
   }
 

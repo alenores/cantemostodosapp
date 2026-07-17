@@ -4,6 +4,12 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Descripción funcional del producto
+
+Antes de tocar código, leer `docs/descripcion-funcional.md`: inventario completo de módulos,
+flujos de usuario, permisos, diferencias móvil/PC y estado del producto (sin detalle técnico).
+Actualizar ese documento cuando se agregue o cambie funcionalidad visible para el usuario.
+
 ## Nomenclatura oficial del proyecto (v2)
 
 Esta es la terminología canónica de CantemosTodosApp. Usarla siempre en código,

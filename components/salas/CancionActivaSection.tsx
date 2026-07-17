@@ -198,6 +198,8 @@ type CancionActivaSectionProps = {
   onLecturaTonalidadStateChange?: (
     state: LecturaTonalidadState | null,
   ) => void;
+  temaLectura?: "dia" | "sepia" | "escenario";
+  onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
 };
 
 function LetraEmptySheet({
@@ -258,6 +260,8 @@ export default function CancionActivaSection({
   onToggleAcordesOcultos,
   onLecturaCompasPlaybackStateChange,
   onLecturaTonalidadStateChange,
+  temaLectura,
+  onTemaLecturaChange,
 }: CancionActivaSectionProps) {
   const letraScrollRefLocal = useRef<HTMLDivElement>(null);
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
@@ -501,6 +505,8 @@ export default function CancionActivaSection({
                     onLecturaCompasPlaybackStateChange
                   }
                   onTonalidadStateChange={onLecturaTonalidadStateChange}
+                  temaLectura={temaLectura}
+                  onTemaLecturaChange={onTemaLecturaChange}
                 />
               ) : (
                 <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[12px]">

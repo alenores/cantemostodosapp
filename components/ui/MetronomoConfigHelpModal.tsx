@@ -126,7 +126,7 @@ export function MetronomoConfigHelpModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="metronomo-help-titulo"
-        className="relative z-10 flex h-[min(88vh,720px)] w-full max-w-md flex-col overflow-hidden rounded-[16px] border border-border bg-bg-cola-sheet shadow-2xl"
+        className="relative z-10 flex h-[min(88vh,720px)] w-full max-w-md flex-col overflow-hidden rounded-amplio border border-border bg-bg-cola-sheet shadow-2xl"
       >
         <header
           className="shrink-0 border-b bg-bg-dark px-4 pb-3 pt-4"

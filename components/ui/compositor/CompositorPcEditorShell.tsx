@@ -9,6 +9,7 @@ import { CompositorListenView } from "@/components/ui/compositor/CompositorListe
 import { CompositorTrackTimeline } from "@/components/ui/compositor/CompositorTrackTimeline";
 import type { CompositorEditorProps } from "@/components/ui/compositor/CompositorEditor";
 import type { CompositorEditorTab } from "@/components/ui/compositor/CompositorEditorTabShell";
+import { COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS } from "@/lib/compositor-ui";
 import {
   COMPOSITOR_INSTRUMENT_OPTIONS,
   COMPOSITOR_MELODIC_INSTRUMENT_IDS,
@@ -40,7 +41,7 @@ const MELODIC_OPTIONS = COMPOSITOR_INSTRUMENT_OPTIONS.filter((option) =>
 function primaryTabClass(isActive: boolean) {
   return `shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold leading-none transition-colors disabled:opacity-50 ${
     isActive
-      ? "bg-compositor-config text-white shadow-sm"
+      ? COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS
       : "text-text-muted hover:bg-bg-card/70 hover:text-text-primary"
   }`;
 }

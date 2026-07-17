@@ -492,11 +492,13 @@ function PatternLengthCarousel({
   disabled = false,
   inputId = "tool-ritmo-pattern-length",
   onSetPatternLength,
+  accentVar,
 }: {
   patternLength: number;
   disabled?: boolean;
   inputId?: string;
   onSetPatternLength: (value: number) => void;
+  accentVar?: string;
 }) {
   return (
     <ToolNumericStepper
@@ -513,6 +515,7 @@ function PatternLengthCarousel({
       onDecrement={() => onSetPatternLength(patternLength - 1)}
       onIncrement={() => onSetPatternLength(patternLength + 1)}
       onSetValue={onSetPatternLength}
+      accentVar={accentVar}
     />
   );
 }
@@ -628,15 +631,23 @@ function CompasCyclePreview({
             >
               {level !== "silencio" ? (
                 <span
-                  className="w-full origin-bottom rounded-full transition-[height,box-shadow] duration-300 ease-out"
+                  className="w-full origin-bottom rounded-full transition-[height,background-color,border-color,box-shadow,transform] duration-300 ease-out"
                   style={{
                     height: `${barHeightPx}px`,
-                    backgroundColor: barAppearance.backgroundColor,
-                    border: barAppearance.border,
+                    backgroundColor: isSelected
+                      ? `var(--ritmo-active-bar-bg, ${barAppearance.backgroundColor})`
+                      : isPlayingBeat
+                        ? `var(--ritmo-active-bar-bg, ${barAppearance.backgroundColor})`
+                        : `var(--ritmo-inactive-bar-bg, ${barAppearance.backgroundColor})`,
+                    border: isSelected
+                      ? `var(--ritmo-active-bar-border, ${barAppearance.border})`
+                      : isPlayingBeat
+                        ? `var(--ritmo-active-bar-border, ${barAppearance.border})`
+                        : `var(--ritmo-inactive-bar-border, ${barAppearance.border})`,
                     boxShadow: isSelected
                       ? `0 0 16px color-mix(in srgb, ${accent.accentVar} 38%, transparent)`
                       : isPlayingBeat
-                        ? "0 0 10px color-mix(in srgb, var(--text-primary) 25%, transparent)"
+                        ? `0 0 14px color-mix(in srgb, var(--ritmo-active-bar-bg, var(--text-primary)) 70%, transparent)`
                         : undefined,
                   }}
                 />
@@ -834,23 +845,17 @@ function BeatSoundSegmentPicker({
 }
 
 const BPM_MODE_CONTAINER_CLASS =
-  "rounded-[8px] border border-border/70 bg-bg-cola-sheet px-2 py-1.5";
+  "rounded-estandar border border-border/70 bg-bg-cola-sheet px-2 py-1.5";
 
 const BPM_ACTION_ROW_MIN_HEIGHT_CLASS = "min-h-[3.25rem]";
 
 export type BpmSetupAccent = "voz" | "compositor";
 
-function getBpmSetupAccentClasses(accent: BpmSetupAccent) {
+function getBpmSetupAccentClasses(resolvedAccentVar: string) {
   return {
-    tabActive:
-      accent === "compositor"
-        ? "bg-compositor-config text-white"
-        : "bg-voz-config text-white",
-    tapActive:
-      accent === "compositor"
-        ? "border-compositor-config bg-compositor-config/15 text-compositor-config"
-        : "border-voz-config bg-voz-config/15 text-voz-config",
-    tapCount: accent === "compositor" ? "text-compositor-config" : "text-voz-config",
+    tabActive: `bg-[color:var(${resolvedAccentVar})] text-white`,
+    tapActive: `border-[color:var(${resolvedAccentVar})] bg-[color-mix(in_srgb,var(${resolvedAccentVar})_15%,transparent)] text-[color:var(${resolvedAccentVar})]`,
+    tapCount: `text-[color:var(${resolvedAccentVar})]`,
   };
 }
 
@@ -864,6 +869,7 @@ export function BpmSetupPanel({
   demoMode = false,
   disabled = false,
   accent = "voz",
+  accentVar,
   onSetBpm,
   onTapTempo,
 }: {
@@ -874,13 +880,28 @@ export function BpmSetupPanel({
   demoMode?: boolean;
   disabled?: boolean;
   accent?: BpmSetupAccent;
+  accentVar?: string;
   onSetBpm: (value: number) => void;
   onTapTempo: () => void;
 }) {
   const [mode, setMode] = useState<BpmInputMode>("botones");
+  const [isBoxPressed, setIsBoxPressed] = useState(false);
+  const [tapWaves, setTapWaves] = useState<{ id: number }[]>([]);
   const activeMode = forcedMode ?? mode;
-  const accentClasses = getBpmSetupAccentClasses(accent);
+  const resolvedAccentVar = accentVar || (accent === "compositor" ? "--accent-compositor" : "--accent-vocal");
+  const bpmTabActiveClass =
+    accent === "compositor" ? "bg-compositor-config text-white" : "bg-voz-config text-white";
+  const accentClasses = getBpmSetupAccentClasses(resolvedAccentVar);
   const interactionsDisabled = disabled || demoMode;
+
+  const handleTap = () => {
+    onTapTempo();
+    const id = Date.now() + Math.random();
+    setTapWaves((prev) => [...prev, { id }]);
+    setTimeout(() => {
+      setTapWaves((prev) => prev.filter((w) => w.id !== id));
+    }, 600);
+  };
 
   useEffect(() => {
     if (isPlaying) {
@@ -906,7 +927,7 @@ export function BpmSetupPanel({
             onClick={() => setMode(tab.id)}
             className={`min-w-0 flex-1 rounded-full px-3 py-1.5 text-[11px] font-bold disabled:opacity-50 ${
               activeMode === tab.id
-                ? accentClasses.tabActive
+                ? bpmTabActiveClass
                 : "text-text-muted"
             }`}
           >
@@ -917,7 +938,15 @@ export function BpmSetupPanel({
 
       <div className="bpm-setup-controls grid w-full grid-cols-2 gap-2">
         <div
-          className={`flex ${BPM_ACTION_ROW_MIN_HEIGHT_CLASS} items-center gap-1.5 rounded-[8px] border border-border bg-bg-card px-2.5 py-1.5`}
+          className={`flex ${BPM_ACTION_ROW_MIN_HEIGHT_CLASS} items-center gap-1.5 rounded-estandar border bg-bg-card px-2.5 py-1.5 transition-[border-color,box-shadow] duration-200 select-none`}
+          onPointerDown={() => setIsBoxPressed(true)}
+          onPointerUp={() => setIsBoxPressed(false)}
+          onPointerLeave={() => setIsBoxPressed(false)}
+          onPointerCancel={() => setIsBoxPressed(false)}
+          style={{
+            borderColor: isBoxPressed ? `var(${resolvedAccentVar})` : "var(--border)",
+            boxShadow: isBoxPressed ? `0 0 10px color-mix(in srgb, var(${resolvedAccentVar}) 30%, transparent)` : undefined,
+          }}
           aria-live="polite"
         >
           <p className="text-3xl font-extrabold leading-none tabular-nums text-text-primary">
@@ -936,7 +965,7 @@ export function BpmSetupPanel({
                 aria-label="Reducir BPM"
                 disabled={isPlaying || interactionsDisabled || bpm <= BPM_MIN}
                 onClick={() => onSetBpm(bpm - 1)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
+                className="flex size-9 shrink-0 items-center justify-center rounded-sutil border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
               >
                 −
               </TapButton>
@@ -948,7 +977,7 @@ export function BpmSetupPanel({
                 aria-label="Aumentar BPM"
                 disabled={isPlaying || interactionsDisabled || bpm >= BPM_MAX}
                 onClick={() => onSetBpm(bpm + 1)}
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
+                className="flex size-9 shrink-0 items-center justify-center rounded-sutil border border-border bg-bg-card text-lg font-bold text-text-primary disabled:opacity-40"
               >
                 +
               </TapButton>
@@ -957,14 +986,24 @@ export function BpmSetupPanel({
             <TapButton
               type="button"
               disabled={isPlaying || interactionsDisabled}
-              onClick={onTapTempo}
-              className={`absolute inset-0 flex h-full w-full items-center justify-center rounded-[8px] border px-3 text-sm font-bold disabled:opacity-40 ${
+              onClick={handleTap}
+              className={`absolute inset-0 flex h-full w-full items-center justify-center rounded-estandar border px-3 text-sm font-bold disabled:opacity-40 overflow-hidden ${
                 tapTempoTapCount > 0 && !isPlaying
                   ? accentClasses.tapActive
                   : "border-border bg-bg-card text-text-primary"
               }`}
             >
-              {RITMO_LABEL_TEMPO_PULSA_TAB}
+              <span className="relative z-10">{RITMO_LABEL_TEMPO_PULSA_TAB}</span>
+              {tapWaves.map((wave) => (
+                <span
+                  key={wave.id}
+                  className="pointer-events-none absolute inset-0 rounded-estandar border animate-[tap-wave-ripple_600ms_ease-out_forwards]"
+                  style={{
+                    borderColor: `var(${resolvedAccentVar})`,
+                    boxShadow: `0 0 14px var(${resolvedAccentVar})`,
+                  }}
+                />
+              ))}
             </TapButton>
           )}
         </div>
@@ -1021,6 +1060,7 @@ function getRitmoAccentClasses(variant: RitmoUiVariant) {
       section: "text-compositor-config",
       tabActive: "bg-compositor-config text-white",
       accentVar: "var(--compositor-config)",
+      stepperAccentVar: "--accent-compositor",
       selectedBadge: "bg-compositor-config text-white shadow-[0_2px_10px_color-mix(in_srgb,var(--compositor-config)_45%,transparent)]",
       selectedNote: "text-compositor-config",
     };
@@ -1030,6 +1070,7 @@ function getRitmoAccentClasses(variant: RitmoUiVariant) {
     section: "text-voz-config",
     tabActive: "bg-voz-config text-white",
     accentVar: "var(--voz-config)",
+    stepperAccentVar: "--accent-vocal",
     selectedBadge: "bg-voz-config text-white shadow-[0_2px_10px_color-mix(in_srgb,var(--voz-config)_45%,transparent)]",
     selectedNote: "text-voz-config",
   };
@@ -1045,6 +1086,7 @@ export function CompasBeatSetupPanel({
   inputId = "tool-ritmo-pattern-length",
   currentBeat = null,
   variant = "default",
+  accentVar,
   scope = "full",
   layout = "nested",
   contenido,
@@ -1069,6 +1111,7 @@ export function CompasBeatSetupPanel({
   inputId?: string;
   currentBeat?: number | null;
   variant?: RitmoUiVariant;
+  accentVar?: string;
   scope?: "cycle" | "full";
   layout?: CompasUiLayout;
   contenido?: CompositorContenidoConfig;
@@ -1263,6 +1306,7 @@ export function CompasBeatSetupPanel({
               disabled={disabled}
               inputId={inputId}
               onSetPatternLength={onSetPatternLength}
+              accentVar={accentVar || accent.stepperAccentVar}
             />
           </CompasSlotControls>
         ) : null}
@@ -1538,15 +1582,22 @@ export function BeatPatternEditor({
               style={useVariableWidths ? { flex: `${flexWeight} 1 0` } : undefined}
             >
               <span
-                className={`w-full rounded-full transition-colors ${
+                className={`w-full rounded-full transition-[height,background-color,border-color,box-shadow] duration-150 ease-out ${
                   isActive
                     ? "ring-2 ring-text-primary ring-offset-1 ring-offset-bg-card"
                     : ""
                 }`}
                 style={{
                   height: `${Math.max(heightPercent * 0.28, level === "silencio" ? 4 : 10)}px`,
-                  backgroundColor: barAppearance.backgroundColor,
-                  border: barAppearance.border,
+                  backgroundColor: isActive
+                    ? "var(--ritmo-active-bar-bg, var(--text-primary))"
+                    : `var(--ritmo-inactive-bar-bg, ${barAppearance.backgroundColor})`,
+                  border: isActive
+                    ? "var(--ritmo-active-bar-border, none)"
+                    : `var(--ritmo-inactive-bar-border, ${barAppearance.border})`,
+                  boxShadow: isActive
+                    ? "0 0 12px color-mix(in srgb, var(--ritmo-active-bar-bg, var(--text-primary)) 70%, transparent)"
+                    : undefined,
                 }}
               />
             </span>
@@ -1565,11 +1616,18 @@ export function BeatPatternEditor({
             style={useVariableWidths ? { flex: `${flexWeight} 1 0` } : undefined}
           >
             <span
-              className="w-full rounded-full"
+              className="w-full rounded-full transition-[height,background-color,border-color,box-shadow] duration-150 ease-out"
               style={{
                 height: `${Math.max(heightPercent * 0.32, level === "silencio" ? 6 : 12)}px`,
-                backgroundColor: barAppearance.backgroundColor,
-                border: barAppearance.border,
+                backgroundColor: isActive
+                  ? "var(--ritmo-active-bar-bg, var(--text-primary))"
+                  : `var(--ritmo-inactive-bar-bg, ${barAppearance.backgroundColor})`,
+                border: isActive
+                  ? "var(--ritmo-active-bar-border, none)"
+                  : `var(--ritmo-inactive-bar-border, ${barAppearance.border})`,
+                boxShadow: isActive
+                  ? "0 0 12px color-mix(in srgb, var(--ritmo-active-bar-bg, var(--text-primary)) 70%, transparent)"
+                  : undefined,
               }}
             />
             <span className="text-[9px] font-bold text-text-muted">
@@ -1654,6 +1712,7 @@ export function ToolRitmoCompasPanel({
   disabled = false,
   patternLengthInputId,
   variant = "default",
+  accentVar,
   scope = "full",
   layout = "nested",
   sectionLabel,
@@ -1679,6 +1738,7 @@ export function ToolRitmoCompasPanel({
   disabled?: boolean;
   patternLengthInputId?: string;
   variant?: RitmoUiVariant;
+  accentVar?: string;
   scope?: "cycle" | "full";
   layout?: CompasUiLayout;
   sectionLabel?: string;
@@ -1717,6 +1777,7 @@ export function ToolRitmoCompasPanel({
       disabled={disabled}
       inputId={patternLengthInputId}
       variant={variant}
+      accentVar={accentVar}
       scope={scope}
       layout={layout}
       contenido={contenido}
@@ -1760,6 +1821,7 @@ export function ToolRitmoTempoPanel({
   demoMode = false,
   disabled = false,
   accent = "voz",
+  accentVar,
   embedded = false,
   onSetBpm,
   onTapTempo,
@@ -1771,6 +1833,7 @@ export function ToolRitmoTempoPanel({
   demoMode?: boolean;
   disabled?: boolean;
   accent?: BpmSetupAccent;
+  accentVar?: string;
   embedded?: boolean;
   onSetBpm: (value: number) => void;
   onTapTempo: () => void;
@@ -1788,6 +1851,7 @@ export function ToolRitmoTempoPanel({
         demoMode={demoMode}
         disabled={disabled}
         accent={accent}
+        accentVar={accentVar}
         onSetBpm={onSetBpm}
         onTapTempo={onTapTempo}
       />
@@ -1808,6 +1872,7 @@ export function ToolRitmoTempoPanel({
           demoMode={demoMode}
           disabled={disabled}
           accent={accent}
+          accentVar={accentVar}
           onSetBpm={onSetBpm}
           onTapTempo={onTapTempo}
         />
@@ -1835,6 +1900,7 @@ export function RitmoConfigSection({
   isPlaying,
   tapTempoTapCount,
   patternLengthInputId,
+  accentVar,
   onSetPatternLength,
   onSetBeatDurationAtSlot,
   onSetBeatLevelAtSlot,
@@ -1859,6 +1925,7 @@ export function RitmoConfigSection({
   isPlaying: boolean;
   tapTempoTapCount: number;
   patternLengthInputId?: string;
+  accentVar?: string;
   onSetPatternLength: (value: number) => void;
   onSetBeatDurationAtSlot: (
     slotIndex: number,
@@ -1887,6 +1954,7 @@ export function RitmoConfigSection({
       isPlaying={isPlaying}
       tapTempoTapCount={tapTempoTapCount}
       patternLengthInputId={patternLengthInputId}
+      accentVar={accentVar}
       onSetPatternLength={onSetPatternLength}
       onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
       onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
@@ -1932,6 +2000,7 @@ export function ToolRitmoConfigPanels({
   isPlaying,
   tapTempoTapCount,
   patternLengthInputId,
+  accentVar,
   onSetPatternLength,
   onSetBeatDurationAtSlot,
   onSetBeatLevelAtSlot,
@@ -1952,6 +2021,7 @@ export function ToolRitmoConfigPanels({
   isPlaying: boolean;
   tapTempoTapCount: number;
   patternLengthInputId?: string;
+  accentVar?: string;
   onSetPatternLength: (value: number) => void;
   onSetBeatDurationAtSlot: (
     slotIndex: number,
@@ -1979,6 +2049,7 @@ export function ToolRitmoConfigPanels({
         beatDurations={beatDurations}
         disabled={isPlaying}
         patternLengthInputId={patternLengthInputId}
+        accentVar={accentVar}
         onSetPatternLength={onSetPatternLength}
         onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
         onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
@@ -1988,6 +2059,7 @@ export function ToolRitmoConfigPanels({
         isPlaying={isPlaying}
         tapTempoTapCount={tapTempoTapCount}
         embedded={embedded}
+        accentVar={accentVar}
         onSetBpm={onSetBpm}
         onTapTempo={onTapTempo}
       />

@@ -238,6 +238,7 @@ function PlacementCycleControls({
               inputId="cifrado-placement-cycle-count"
               min={1}
               max={MAX_COMPAS_PLACEMENT_CYCLE_COUNT}
+              accentVar="--accent-editor"
               onDecrement={() =>
                 onPlacementCycleCountChange(Math.max(1, placementCycleCount - 1))
               }

@@ -30,6 +30,7 @@ import {
   COMPOSITOR_LABEL_VISTA_PREVIA_IMPORT,
   COMPOSITOR_CONFIRM_CANCELAR_IMPORT_MIDI,
 } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { formatDatabaseError } from "@/lib/supabase/errors";
 import type { CompositorTimelineEventPatch } from "@/lib/compositor-timeline-layout";
 import { BookmarkPlus } from "lucide-react";
@@ -444,7 +445,7 @@ export function CompositorMidiReview({
             setSaveName(suggestCycleName());
             setSaveDialogOpen(true);
           }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-compositor-config/35 bg-compositor-config/15 px-4 py-2 text-xs font-bold text-compositor-config disabled:opacity-40"
+          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs disabled:opacity-40 ${COMPOSITOR_ACTION_BUTTON_CLASS}`}
         >
           <BookmarkPlus className="size-4" aria-hidden="true" />
           {COMPOSITOR_LABEL_GUARDAR_CICLO_IMPORT}

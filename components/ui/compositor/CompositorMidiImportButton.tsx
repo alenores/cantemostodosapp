@@ -3,6 +3,7 @@
 import { TapButton } from "@/components/ui/TapFeedback";
 import { MIDI_IMPORT_ACCEPT } from "@/lib/compositor-midi";
 import { COMPOSITOR_LABEL_IMPORTAR_MIDI } from "@/lib/ritmo-terminologia";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { FileMusic } from "lucide-react";
 import { useRef } from "react";
 
@@ -25,7 +26,7 @@ export function CompositorMidiImportButton({
         type="button"
         disabled={disabled || busy}
         onClick={() => inputRef.current?.click()}
-        className="inline-flex min-h-8 items-center justify-center gap-1 rounded-full border border-compositor-config/35 bg-compositor-config/10 px-2.5 py-1 text-[11px] font-bold text-compositor-config disabled:opacity-40"
+        className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-full px-2.5 py-1 text-[11px] disabled:opacity-40 ${COMPOSITOR_ACTION_BUTTON_CLASS}`}
       >
         <FileMusic className="size-3.5" aria-hidden="true" />
         {COMPOSITOR_LABEL_IMPORTAR_MIDI}

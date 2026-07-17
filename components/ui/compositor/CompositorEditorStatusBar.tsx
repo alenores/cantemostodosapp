@@ -20,6 +20,7 @@ import {
   COMPOSITOR_LABEL_RESET_ZONA,
 } from "@/lib/ritmo-terminologia";
 import { compositorBlockTitleClass } from "@/lib/compositor-block-edit-ui";
+import { COMPOSITOR_ACTION_BUTTON_CLASS } from "@/lib/compositor-ui";
 import { formatDatabaseError } from "@/lib/supabase/errors";
 import { BookmarkPlus, Globe, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -174,7 +175,7 @@ export function CompositorEditorStatusBar({
 
   const editSaveButtonClass = isEditingSaved
     ? "border-compositor-block-edit-border bg-compositor-block-edit-bg text-compositor-block-edit"
-    : "border-compositor-config/35 bg-compositor-config/15 text-compositor-config";
+    : COMPOSITOR_ACTION_BUTTON_CLASS;
 
   const actionButtonSizeClass = isHeader
     ? "px-2.5 py-1 text-[10px]"
@@ -201,7 +202,7 @@ export function CompositorEditorStatusBar({
         type="button"
         disabled={saveDisabled}
         onClick={() => void handleSaveNew()}
-        className={`inline-flex items-center gap-1 rounded-full border border-compositor-config/35 bg-compositor-config/15 font-bold text-compositor-config disabled:opacity-40 ${actionButtonSizeClass}`}
+        className={`inline-flex items-center gap-1 rounded-full font-bold disabled:opacity-40 ${COMPOSITOR_ACTION_BUTTON_CLASS} ${actionButtonSizeClass}`}
       >
         <BookmarkPlus className={actionIconSizeClass} aria-hidden="true" />
         {COMPOSITOR_LABEL_GUARDAR_CICLO}

@@ -40,7 +40,9 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
+import { useSalaLecturaSync } from "@/hooks/useSalaLecturaSync";
 import { parsePresenceState } from "@/lib/presence";
+import type { LecturaScrollSyncState } from "@/lib/lectura-scroll-sync";
 import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, PresenceUsuario, SalaMiembro, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -149,6 +151,10 @@ export default function SalaPageShell({
   const cancionActivaScrollKey = cancionActiva
     ? `${cancionActiva.nombre}::${cancionActiva.url_letra}`
     : null;
+  const lecturaScrollSyncActive = online && Boolean(cancionActivaScrollKey);
+  const broadcastScrollStateRef = useRef<
+    (state: LecturaScrollSyncState) => void
+  >(() => {});
 
   const {
     overlayAbierto,
@@ -173,12 +179,29 @@ export default function SalaPageShell({
     autoScroll,
     zoom,
     resetVista,
+    temaLectura,
+    cambiarTemaLectura,
   } = useModoLecturaCocina({
     active: modoLectura,
     scrollRef: letraScrollRef,
     contentKey: cancionActivaScrollKey,
     embedIframeRef,
+    playbackEnabled: lecturaScrollSyncActive,
+    syncEnabled: lecturaScrollSyncActive,
+    onSyncStateChange: (state) => broadcastScrollStateRef.current(state),
   });
+
+  const { broadcastState: broadcastScrollState } = useSalaLecturaSync({
+    salaId,
+    contentKey: cancionActivaScrollKey,
+    userId: currentUserId,
+    online: lecturaScrollSyncActive,
+    onRemoteState: autoScroll.applySyncState,
+  });
+
+  useEffect(() => {
+    broadcastScrollStateRef.current = broadcastScrollState;
+  }, [broadcastScrollState]);
 
   const presenceBarVisible = !modoLectura && online;
   const isOwner = miembros.some(
@@ -661,6 +684,8 @@ export default function SalaPageShell({
                 handleLecturaCompasPlaybackStateChange
               }
               onLecturaTonalidadStateChange={handleLecturaTonalidadStateChange}
+              temaLectura={temaLectura}
+              onTemaLecturaChange={cambiarTemaLectura}
               onExpand={
                 !modoLectura && cancionActiva && !disconnected
                   ? handleExpand
@@ -780,6 +805,8 @@ export default function SalaPageShell({
             onToggleAcordesOcultos={toggleAcordesOcultos}
             onAbrirZoom={abrirZoom}
             onAbrirTono={abrirTono}
+            temaLectura={temaLectura}
+            onTemaLecturaChange={cambiarTemaLectura}
           />
 
           <LecturaZoomPanel

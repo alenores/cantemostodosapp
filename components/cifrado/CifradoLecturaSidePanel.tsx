@@ -7,6 +7,9 @@ import {
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
   CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
+  CIFRADO_NOTACION_LABEL_CLASS,
+  CIFRADO_NOTACION_SEGMENTED_CLASS,
+  cifradoNotacionButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { APP_SIDEBAR_WIDTH_CSS } from "@/lib/app-layout";
@@ -46,6 +49,8 @@ type CifradoLecturaSidePanelProps = {
   onOpenNotaGeneral?: () => void;
   tieneNotaGeneral?: boolean;
   onEdit?: () => void;
+  temaLectura?: "dia" | "sepia" | "escenario";
+  onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
 };
 
 export function getLecturaPremiumRailWidthCss(): string {
@@ -77,6 +82,8 @@ export default function CifradoLecturaSidePanel({
   onOpenNotaGeneral,
   tieneNotaGeneral = false,
   onEdit,
+  temaLectura,
+  onTemaLecturaChange,
 }: CifradoLecturaSidePanelProps) {
   const tiposParaToggle = ANOTACION_TIPOS.filter((tipo) =>
     anotacionTiposPresentes.includes(tipo),
@@ -163,6 +170,30 @@ export default function CifradoLecturaSidePanel({
       aria-label="Controles de cifrado premium"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
+        {temaLectura && onTemaLecturaChange ? (
+          <div className="mb-4 rounded-[10px] border border-border/70 bg-bg-dark/60 px-2.5 py-2">
+            <p className={CIFRADO_NOTACION_LABEL_CLASS}>Tema de lectura</p>
+            <div
+              className={CIFRADO_NOTACION_SEGMENTED_CLASS}
+              role="tablist"
+              aria-label="Tema de lectura"
+            >
+              {(["dia", "sepia", "escenario"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={temaLectura === t}
+                  onClick={() => onTemaLecturaChange(t)}
+                  className={cifradoNotacionButtonClass(temaLectura === t)}
+                >
+                  {t === "dia" ? "Día" : t === "sepia" ? "Sepia" : "Escenario"}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="mb-4">
           <CifradoTonalidadFields
             idPrefix="cifrado-lectura"

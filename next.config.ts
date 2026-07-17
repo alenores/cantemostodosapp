@@ -30,7 +30,7 @@ function getSupabaseHostname(): string | undefined {
 const supabaseHostname = getSupabaseHostname();
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.16.108", "192.168.16.105"],
+  allowedDevOrigins: ["192.168.16.106", "192.168.16.108", "192.168.16.105"],
   env: {
     NEXT_PUBLIC_GIT_COMMIT_SHA: getCommitSha(),
   },

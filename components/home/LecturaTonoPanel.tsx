@@ -5,6 +5,11 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import type { NotaIndex } from "@/lib/cifrado";
 import { DEFAULT_MODO_TONAL } from "@/lib/cifrado-escala";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
+import {
+  MODO_LECTURA_SUBPANEL_BACKDROP_Z_CLASS,
+  MODO_LECTURA_SUBPANEL_DIALOG_Z_CLASS,
+} from "@/lib/sala-layout";
+import { useEffect, useState } from "react";
 
 type LecturaTonoPanelProps = {
   open: boolean;
@@ -21,6 +26,20 @@ export default function LecturaTonoPanel({
   onTonalidadChange,
   onClose,
 }: LecturaTonoPanelProps) {
+  const [pendingTonalidadIndex, setPendingTonalidadIndex] =
+    useState<NotaIndex>(tonalidadIndex);
+
+  useEffect(() => {
+    if (open) {
+      setPendingTonalidadIndex(tonalidadIndex);
+    }
+  }, [open, tonalidadIndex]);
+
+  const handleConfirm = () => {
+    onTonalidadChange(pendingTonalidadIndex);
+    onClose();
+  };
+
   if (!open) {
     return null;
   }
@@ -29,13 +48,14 @@ export default function LecturaTonoPanel({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[50] cursor-default bg-black/40 lg:hidden"
+        data-no-tap-feedback
+        className={`fixed inset-0 cursor-default border-0 bg-black/40 outline-none lg:hidden ${MODO_LECTURA_SUBPANEL_BACKDROP_Z_CLASS}`}
         aria-label="Cerrar cambio de tono"
         onClick={onClose}
       />
 
       <div
-        className="pointer-events-none fixed inset-0 z-[51] flex items-center justify-center p-6 lg:hidden"
+        className={`pointer-events-none fixed inset-0 flex items-center justify-center p-6 lg:hidden ${MODO_LECTURA_SUBPANEL_DIALOG_Z_CLASS}`}
         role="dialog"
         aria-label="Cambiar de tono"
       >
@@ -47,19 +67,19 @@ export default function LecturaTonoPanel({
           <CifradoTonalidadFields
             idPrefix="lectura-tono"
             notacion={notacion}
-            tonalidadIndex={tonalidadIndex}
+            tonalidadIndex={pendingTonalidadIndex}
             modoTonal={DEFAULT_MODO_TONAL}
             showModoTonal={false}
-            onTonalidadChange={onTonalidadChange}
+            onTonalidadChange={setPendingTonalidadIndex}
             onModoTonalChange={() => {}}
           />
 
           <TapButton
             type="button"
-            onClick={onClose}
+            onClick={handleConfirm}
             className="rounded-xl border border-accent/50 bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary"
           >
-            Listo
+            Confirmar
           </TapButton>
         </div>
       </div>

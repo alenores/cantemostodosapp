@@ -270,5 +270,9 @@ export function getColaPanelClosedY(contentHeight: number): number {
 
 /** Portal fullscreen de modo lectura (cancionero expandido, visor cifrado). */
 export const MODO_LECTURA_OVERLAY_Z_CLASS = "z-[350]";
+/** Backdrop de subpaneles móviles dentro de modo lectura (tono, zoom). */
+export const MODO_LECTURA_SUBPANEL_BACKDROP_Z_CLASS = "z-[360]";
+/** Diálogo de subpaneles móviles dentro de modo lectura. */
+export const MODO_LECTURA_SUBPANEL_DIALOG_Z_CLASS = "z-[361]";
 /** Modales de herramientas: deben quedar sobre modo lectura y bajo snackbars (400). */
 export const TOOL_MODAL_OVERLAY_Z_CLASS = "z-[380]";

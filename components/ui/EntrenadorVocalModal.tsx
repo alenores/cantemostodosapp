@@ -1,6 +1,11 @@
 "use client";
 
-import { VozModeSlides } from "@/components/ui/entrenador-vocal/VozModeSlides";
+import { VozModeSlides, VOZ_MODE_SLIDES } from "@/components/ui/entrenador-vocal/VozModeSlides";
+import {
+  VozModeSelectionGrid,
+  VOZ_MODE_CARDS,
+} from "@/components/ui/entrenador-vocal/VozModeSelectionGrid";
+import type { VozModeSlideId } from "@/components/ui/entrenador-vocal/voz-mode-slides";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { NoteDetection } from "@/lib/afinador";
 import type { RitmoToneEvaluation } from "@/hooks/useVoz";
@@ -241,14 +246,24 @@ export default function EntrenadorVocalModal({
   onSetComboNoteAtSlot,
   presentation = "modal",
 }: EntrenadorVocalModalProps) {
+  const [selectedModeId, setSelectedModeId] = useState<VozModeSlideId | null>(null);
   const [activeModeIndex, setActiveModeIndex] = useState(0);
   const [desktopHelpAction, setDesktopHelpAction] = useState<ReactNode>(null);
   const prevSlideIndexRef = useRef(activeModeIndex);
   const isPage = isToolPagePresentation(presentation);
   const isDesktop = useIsDesktop();
 
+  const handleReturnToGrid = () => {
+    onStopRhythm();
+    stopOctaveReference();
+    onDeactivatePracticeMic();
+    onClearInstantAttempts();
+    setSelectedModeId(null);
+  };
+
   useEffect(() => {
     if (!open) {
+      setSelectedModeId(null);
       setActiveModeIndex(0);
       prevSlideIndexRef.current = 0;
       onStopRhythm();
@@ -264,6 +279,28 @@ export default function EntrenadorVocalModal({
     onDeactivatePracticeMic,
     onClearInstantAttempts,
   ]);
+
+  useEffect(() => {
+    if (selectedModeId !== null && isPage) {
+      document.body.dataset.hideAppHeader = "true";
+    } else {
+      delete document.body.dataset.hideAppHeader;
+    }
+    return () => {
+      delete document.body.dataset.hideAppHeader;
+    };
+  }, [selectedModeId, isPage]);
+
+  useEffect(() => {
+    if (!open || selectedModeId === null) {
+      return;
+    }
+
+    const newIndex = VOZ_MODE_SLIDES.findIndex((s) => s.id === selectedModeId);
+    if (newIndex >= 0 && newIndex !== activeModeIndex) {
+      setActiveModeIndex(newIndex);
+    }
+  }, [selectedModeId, open, activeModeIndex]);
 
   useEffect(() => {
     if (!open) {
@@ -292,6 +329,10 @@ export default function EntrenadorVocalModal({
   const objectiveLabel =
     referenceLabel ?? formatTargetLabel(target);
 
+  const activeCard = selectedModeId
+    ? VOZ_MODE_CARDS.find((c) => c.id === selectedModeId)
+    : null;
+
   return (
     <ToolPresentationRoot
       presentation={presentation}
@@ -306,21 +347,27 @@ export default function EntrenadorVocalModal({
     >
       <ToolModalHeader
         titleId="entrenador-vocal-titulo"
-        title={isDesktop ? undefined : "Entrenador Vocal"}
+        title={
+          isDesktop
+            ? undefined
+            : selectedModeId && activeCard
+              ? activeCard.label
+              : "Entrenador Vocal"
+        }
         density={isPage && !isDesktop ? "compact" : "default"}
         accentVar="--accent-vocal"
+        onBack={selectedModeId ? handleReturnToGrid : isPage ? onClose : undefined}
+        backAriaLabel={selectedModeId ? "Volver a los modos" : "Volver a Herramientas"}
         headerContent={
-          isDesktop ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <h2
-                id="entrenador-vocal-titulo"
-                className="min-w-0 truncate text-lg font-extrabold text-inherit"
-              >
-                Entrenador Vocal
-              </h2>
-              {desktopHelpAction}
-            </div>
-          ) : undefined
+          <div className="flex min-w-0 items-center gap-2">
+            <h2
+              id="entrenador-vocal-titulo"
+              className="min-w-0 truncate text-lg font-extrabold text-inherit"
+            >
+              {selectedModeId && activeCard ? activeCard.label : "Entrenador Vocal"}
+            </h2>
+            {desktopHelpAction}
+          </div>
         }
         closeAriaLabel="Cerrar entrenador vocal"
         onClose={onClose}
@@ -335,7 +382,7 @@ export default function EntrenadorVocalModal({
             : isDesktop
               ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
               : isPage
-                ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-4 pt-1.5`
+                ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-24 pt-1.5`
                 : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
         }`}
         style={{
@@ -357,15 +404,21 @@ export default function EntrenadorVocalModal({
             micStarting={micStarting}
             onRequestMic={onRequestMic}
           />
+        ) : selectedModeId === null ? (
+          <div className="flex min-h-0 flex-1 flex-col px-1">
+            <VozModeSelectionGrid
+              onSelectMode={(modeId) => setSelectedModeId(modeId)}
+            />
+          </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
             {micStarting ? <MicConnectingPanel /> : null}
             <VozModeSlides
               activeIndex={activeModeIndex}
               onChangeIndex={setActiveModeIndex}
-              onDesktopHelpActionChange={
-                isDesktop ? setDesktopHelpAction : undefined
-              }
+              hideSwipeNav
+              onDesktopHelpActionChange={setDesktopHelpAction}
+              onHelpActionChange={setDesktopHelpAction}
               onSetRitmoToneEvaluation={onSetRitmoToneEvaluation}
               onSetIntensidadEvaluation={onSetIntensidadEvaluation}
               effectiveTarget={effectiveTarget}

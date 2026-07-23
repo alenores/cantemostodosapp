@@ -492,14 +492,18 @@ export default function CompositorModal({
             ? requestLeaveEditor
             : inMidiImport
               ? requestMidiBack
-              : undefined
+              : isPage
+                ? requestClose
+                : undefined
         }
         backAriaLabel={
-          inMidiReview
-            ? "Volver al recorte"
-            : inMidiCrop
-              ? "Cancelar importación"
-              : "Volver a mis ciclos"
+          editorOpen
+            ? "Volver a mis ciclos"
+            : inMidiReview
+              ? "Volver al recorte"
+              : inMidiCrop
+                ? "Cancelar importación"
+                : "Volver a Herramientas"
         }
         showClose={!isPage}
         isPage={isPage}
@@ -507,10 +511,10 @@ export default function CompositorModal({
 
         {!editorOpen && !inMidiImport ? (
           <div
-            className={`shrink-0 border-b border-border bg-bg-dark pb-3 pt-1 ${TOOL_MODAL_MOBILE_GUTTER_CLASS} lg:px-4`}
+            className={`shrink-0 border-b border-border bg-bg-dark pb-3 pt-2 ${TOOL_MODAL_MOBILE_GUTTER_CLASS} lg:px-4`}
           >
             <div
-              className="tool-segmented-control tool-segmented-control--inline"
+              className="h-[44px] inline-flex items-center gap-1 rounded-full border border-border bg-bg-darker p-1"
               role="tablist"
               aria-label="Secciones del compositor"
             >
@@ -519,7 +523,7 @@ export default function CompositorModal({
                 role="tab"
                 aria-selected={libraryTab === "mine"}
                 onClick={() => requestLibraryTabChange("mine")}
-                className={`min-h-9 shrink-0 rounded-full px-4 text-xs font-bold transition-colors lg:px-5 ${
+                className={`h-full shrink-0 rounded-full px-5 text-xs font-bold transition-all flex items-center justify-center ${
                   libraryTab === "mine"
                     ? COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS
                     : "text-text-muted hover:text-text-primary"
@@ -532,7 +536,7 @@ export default function CompositorModal({
                 role="tab"
                 aria-selected={libraryTab === "community"}
                 onClick={() => requestLibraryTabChange("community")}
-                className={`min-h-9 shrink-0 rounded-full px-4 text-xs font-bold transition-colors lg:px-5 ${
+                className={`h-full shrink-0 rounded-full px-5 text-xs font-bold transition-all flex items-center justify-center ${
                   libraryTab === "community"
                     ? COMPOSITOR_SEGMENTED_TAB_ACTIVE_CLASS
                     : "text-text-muted hover:text-text-primary"

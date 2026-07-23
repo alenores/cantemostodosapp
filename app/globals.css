@@ -1943,11 +1943,13 @@ html.splash-active body {
 /* Herramientas — controles segmentados: ancho natural en escritorio */
 .tool-segmented-control {
   display: flex;
-  gap: 0.125rem;
+  min-height: 36px;
+  align-items: center;
+  gap: 0.25rem;
   border-radius: 9999px;
   border: 1px solid var(--border);
   background: var(--bg-darker);
-  padding: 0.125rem;
+  padding: 0.25rem;
 }
 
 .tool-segmented-control--inline {

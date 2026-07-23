@@ -66,7 +66,7 @@ export function CifradoEditorPcToolbar({
     <div className={CIFRADO_EDITOR_PC_TOOLBAR_SHELL_CLASS}>
       <div className="flex items-center gap-3 px-4 py-2.5">
         <div
-          className="inline-flex shrink-0 gap-1 rounded-full border border-border/80 bg-bg-dark p-0.5"
+          className="inline-flex h-[36px] items-center shrink-0 gap-1 rounded-full border border-border/80 bg-bg-dark p-0.5"
           role="tablist"
           aria-label="Modo edición"
         >

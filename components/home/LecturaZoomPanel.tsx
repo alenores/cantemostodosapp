@@ -3,6 +3,7 @@
 import LetraZoomControl from "@/components/home/LetraZoomControl";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { LetraZoomLevel } from "@/lib/letra-zoom";
+import { X } from "lucide-react";
 
 type LecturaZoomPanelProps = {
   open: boolean;
@@ -29,7 +30,8 @@ export default function LecturaZoomPanel({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[50] cursor-default bg-black/40 lg:hidden"
+        data-no-tap-feedback
+        className="fixed inset-0 z-[50] cursor-default border-0 bg-black/40 outline-none lg:hidden"
         aria-label="Cerrar tamaño de letra"
         onClick={onClose}
       />
@@ -40,9 +42,19 @@ export default function LecturaZoomPanel({
         aria-label="Tamaño de letra"
       >
         <div className="pointer-events-auto flex w-full max-w-[15rem] flex-col items-stretch gap-3 rounded-2xl border border-border/50 bg-bg-dark/95 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.55)] backdrop-blur-md">
-          <p className="text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
-            Tamaño de letra
-          </p>
+          <div className="relative flex items-center justify-center">
+            <p className="text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
+              Tamaño de letra
+            </p>
+            <TapButton
+              type="button"
+              aria-label="Cerrar"
+              onClick={onClose}
+              className="absolute -right-1 -top-1 flex size-7 items-center justify-center rounded-full text-text-muted"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </TapButton>
+          </div>
 
           <div className="self-center">
             <LetraZoomControl

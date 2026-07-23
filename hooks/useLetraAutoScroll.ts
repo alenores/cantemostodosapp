@@ -108,6 +108,8 @@ export function useLetraAutoScroll(
   const autoScrollLevelRef = useRef(0);
   const autoScrollOffsetRef = useRef(0);
   const manualScrollActiveRef = useRef(false);
+  /** Dedos activos en la letra; evita reactivar auto-scroll tras pointercancel en Android. */
+  const manualTouchCountRef = useRef(0);
   const syncAnchorRatioRef = useRef(0);
   const syncAnchorMsRef = useRef(Date.now());
   const skipNextLevelEmitRef = useRef(false);
@@ -151,6 +153,12 @@ export function useLetraAutoScroll(
   );
 
   const captureAnchorFromCurrentOffset = useCallback(() => {
+    const scrollEl = scrollRef.current;
+
+    if (scrollEl && elementHasScrollRange(scrollEl)) {
+      autoScrollOffsetRef.current = scrollEl.scrollTop;
+    }
+
     const maxScroll = getMaxScrollPx();
 
     if (maxScroll <= 1) {
@@ -163,7 +171,7 @@ export function useLetraAutoScroll(
     }
 
     syncAnchorMsRef.current = Date.now();
-  }, [getMaxScrollPx]);
+  }, [getMaxScrollPx, scrollRef]);
 
   const emitLocalSyncState = useCallback(() => {
     if (!syncEnabled) {
@@ -202,6 +210,10 @@ export function useLetraAutoScroll(
 
   const applySyncState = useCallback(
     (state: LecturaScrollSyncState) => {
+      if (manualScrollActiveRef.current) {
+        return;
+      }
+
       const level = Math.max(
         0,
         Math.min(LETRA_AUTO_SCROLL_MAX_LEVEL, Math.round(state.level)),
@@ -245,12 +257,11 @@ export function useLetraAutoScroll(
       scrollEndTimerRef.current = null;
     }
 
-    if (!syncEnabled) {
-      return;
-    }
-
     captureAnchorFromCurrentOffset();
-    emitLocalSyncState();
+
+    if (syncEnabled) {
+      emitLocalSyncState();
+    }
   }, [captureAnchorFromCurrentOffset, emitLocalSyncState, syncEnabled]);
 
   const accelerate = useCallback(() => {
@@ -436,7 +447,39 @@ export function useLetraAutoScroll(
     let cleanup: (() => void) | undefined;
 
     function bindListeners(listenEl: HTMLElement) {
+      function beginManualScroll() {
+        if (syncEnabled || autoScrollLevelRef.current > 0) {
+          manualScrollActiveRef.current = true;
+        }
+      }
+
+      function endManualScrollIfIdle() {
+        if (manualTouchCountRef.current > 0) {
+          return;
+        }
+
+        finishManualScroll();
+      }
+
+      function onTouchStart(event: TouchEvent) {
+        if (isInteractiveTarget(event.target)) {
+          return;
+        }
+
+        manualTouchCountRef.current += 1;
+        beginManualScroll();
+      }
+
+      function onTouchEnd() {
+        manualTouchCountRef.current = Math.max(0, manualTouchCountRef.current - 1);
+        endManualScrollIfIdle();
+      }
+
       function onPointerDown(event: PointerEvent) {
+        if (event.pointerType === "touch") {
+          return;
+        }
+
         if (event.pointerType === "mouse" && event.button !== 0) {
           return;
         }
@@ -445,9 +488,15 @@ export function useLetraAutoScroll(
           return;
         }
 
-        if (syncEnabled || autoScrollLevelRef.current > 0) {
-          manualScrollActiveRef.current = true;
+        beginManualScroll();
+      }
+
+      function onPointerUp(event: PointerEvent) {
+        if (event.pointerType === "touch") {
+          return;
         }
+
+        finishManualScroll();
       }
 
       function onScroll() {
@@ -467,21 +516,27 @@ export function useLetraAutoScroll(
         }
       }
 
+      listenEl.addEventListener("touchstart", onTouchStart, { passive: true });
+      listenEl.addEventListener("touchend", onTouchEnd, { passive: true });
+      listenEl.addEventListener("touchcancel", onTouchEnd, { passive: true });
       listenEl.addEventListener("pointerdown", onPointerDown);
-      listenEl.addEventListener("pointerup", finishManualScroll);
-      listenEl.addEventListener("pointercancel", finishManualScroll);
+      listenEl.addEventListener("pointerup", onPointerUp);
       listenEl.addEventListener("scroll", onScroll, { passive: true });
 
       return () => {
+        listenEl.removeEventListener("touchstart", onTouchStart);
+        listenEl.removeEventListener("touchend", onTouchEnd);
+        listenEl.removeEventListener("touchcancel", onTouchEnd);
         listenEl.removeEventListener("pointerdown", onPointerDown);
-        listenEl.removeEventListener("pointerup", finishManualScroll);
-        listenEl.removeEventListener("pointercancel", finishManualScroll);
+        listenEl.removeEventListener("pointerup", onPointerUp);
         listenEl.removeEventListener("scroll", onScroll);
       };
     }
 
     function attachListeners() {
       cleanup?.();
+      manualTouchCountRef.current = 0;
+      manualScrollActiveRef.current = false;
       const listenEl = resolveScrollListenerTarget(
         scrollRef.current,
         embedIframeRef,

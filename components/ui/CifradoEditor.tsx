@@ -1291,7 +1291,11 @@ function CifradoLineEditor({
       }
 
       // Segundo toque del rango de exigencia: cierra el tramo.
-      if (rangoPendiente && rangoPendiente.lineIndex === lineIndex) {
+      if (
+        rangoPendiente &&
+        rangoPendiente.lineIndex === lineIndex &&
+        rangoPendiente.charEnd == null
+      ) {
         onAnnotate?.("exigencia", lineIndex, clamped);
         return;
       }
@@ -1323,6 +1327,12 @@ function CifradoLineEditor({
   const rangoPendienteOffset =
     rangoPendiente && rangoPendiente.lineIndex === lineIndex
       ? rangoPendiente.charOffset
+      : null;
+  const rangoPendienteEndOffset =
+    rangoPendiente &&
+    rangoPendiente.lineIndex === lineIndex &&
+    rangoPendiente.charEnd != null
+      ? rangoPendiente.charEnd
       : null;
   const letraDirectEdit =
     modoInsercion === "letra" && !isLineLocked && !isDimmed && !isLineEditing;
@@ -1523,6 +1533,7 @@ function CifradoLineEditor({
           visibility={DEFAULT_ANOTACION_VISIBILITY}
           mode="editor"
           rangoPendienteOffset={rangoPendienteOffset}
+          rangoPendienteEndOffset={rangoPendienteEndOffset}
         />
         {anotaciones.length > 0 ? (
           <AnotacionesLineLayer
@@ -2520,6 +2531,9 @@ export default function CifradoEditor({
   const [pasteAnalysis, setPasteAnalysis] = useState<PasteIngresoAnalysis | null>(
     null,
   );
+  const [pendingWebImport, setPendingWebImport] =
+    useState<CifradoEditorWebImportData | null>(null);
+  const [webSearchResetKey, setWebSearchResetKey] = useState(0);
   const lastPasteProposeSignatureRef = useRef<string | null>(null);
   const pasteProposeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
@@ -2864,6 +2878,7 @@ export default function CifradoEditor({
       setPasteAnalysis(null);
       setTonalidadInferResult(null);
       lastPasteProposeSignatureRef.current = null;
+      setPendingWebImport(null);
 
       if (pasteProposeTimerRef.current) {
         clearTimeout(pasteProposeTimerRef.current);
@@ -2901,6 +2916,8 @@ export default function CifradoEditor({
     setPasteAnalysis(null);
     setTonalidadInferResult(null);
     lastPasteProposeSignatureRef.current = null;
+    setPendingWebImport(null);
+    setDraftPasteTraditional("");
     setPreviewOpen(false);
     setPicker(null);
     setLoading(false);
@@ -3240,16 +3257,79 @@ export default function CifradoEditor({
   }
 
   function handleWebImport(data: CifradoEditorWebImportData) {
+    if (data.nombre?.trim()) {
+      setNombre(data.nombre.trim());
+    }
+
+    if (data.artista?.trim()) {
+      setArtista(data.artista.trim());
+    }
+
+    const texto = data.textoTradicional.trim();
+    const analysis = analyzePasteIngreso(texto);
+    const textoParaCampo =
+      analysis.hasMetadataProposal && analysis.textKeptIfEliminate.trim()
+        ? analysis.textKeptIfEliminate.trim()
+        : texto;
+
+    setDraftPasteTraditional(textoParaCampo);
+    if (data.letra?.trim()) {
+      setDraftLyrics(data.letra);
+    }
+
+    const fromLine = analysis.tonalidadFromLine;
+    const imported = parseLetraTradicional(textoParaCampo);
+    const primerAcorde = getPrimerAcordeOrdenado(imported.cifrado.acordes);
+    const inference = fromLine
+      ? null
+      : inferTonalidadFromAcordes(imported.cifrado.acordes, primerAcorde);
+    const suggested = fromLine ?? inference?.candidates[0] ?? null;
+
+    if (suggested) {
+      setIngresoTonalidadIndex(suggested.tonalidadIndex);
+      setIngresoModoTonal(suggested.modoTonal);
+    }
+
+    setPendingWebImport({
+      ...data,
+      textoTradicional: textoParaCampo,
+      letra: imported.letra,
+      cifrado: imported.cifrado,
+    });
+    setError(null);
+  }
+
+  function handleConfirmWebImport() {
+    if (!pendingWebImport) {
+      return;
+    }
+
     if (!assertIngresoTonalidad()) {
       return;
     }
 
+    const trimmed = draftPasteTraditional.trim();
+
+    if (!trimmed) {
+      setError("Revisá la letra con acordes antes de continuar.");
+      return;
+    }
+
     commitIngresoTonalidad();
-    applyImportedCifrado(data.letra, data.cifrado, {
-      nombre: data.nombre,
-      artista: data.artista,
-      warnings: data.warnings,
+    const imported = parseLetraTradicional(trimmed);
+    applyImportedCifrado(imported.letra, imported.cifrado, {
+      nombre,
+      artista,
+      warnings: imported.warnings,
     });
+    setPendingWebImport(null);
+  }
+
+  function handleClearWebImport() {
+    setPendingWebImport(null);
+    setDraftPasteTraditional("");
+    setWebSearchResetKey((current) => current + 1);
+    setError(null);
   }
 
   function handleLineTextChange(lineIndex: number, newText: string) {
@@ -4332,11 +4412,55 @@ export default function CifradoEditor({
                 ) : null}
 
                 {ingresoTab === "web" ? (
-                  <CifradoEditorIngresoWebSearch
-                    onImport={handleWebImport}
-                    onError={setError}
-                    importDisabled={!ingresoTonalidadLista}
-                  />
+                  pendingWebImport ? (
+                    <>
+                      <p className="mb-2 shrink-0 text-sm text-text-muted">
+                        Revisá letra, acordes y datos. Si no es esta,{" "}
+                        <TapButton
+                          type="button"
+                          onClick={handleClearWebImport}
+                          className="font-semibold text-accent"
+                        >
+                          buscá otra
+                        </TapButton>
+                        .
+                      </p>
+                      <label
+                        className={labelClassName}
+                        htmlFor="cifrado-letra-web-revisar"
+                      >
+                        Letra con acordes
+                      </label>
+                      <textarea
+                        id="cifrado-letra-web-revisar"
+                        value={draftPasteTraditional}
+                        onChange={(event) => {
+                          setDraftPasteTraditional(event.target.value);
+                          if (error) {
+                            setError(null);
+                          }
+                        }}
+                        className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
+                        placeholder="Letra con los acordes encima de cada renglón…"
+                      />
+                      <TapButton
+                        type="button"
+                        onClick={handleConfirmWebImport}
+                        disabled={
+                          !draftPasteTraditional.trim() || !ingresoTonalidadLista
+                        }
+                        className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                      >
+                        Importar y editar
+                      </TapButton>
+                    </>
+                  ) : (
+                    <CifradoEditorIngresoWebSearch
+                      key={webSearchResetKey}
+                      onImport={handleWebImport}
+                      onError={setError}
+                    />
+                  )
                 ) : null}
 
                 {ingresoTab === "pegar" ? (
@@ -4887,57 +5011,59 @@ export default function CifradoEditor({
             />
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-                  Datos de la canción
-                </p>
-                <label
-                  className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
-                  htmlFor="cifrado-nombre-ingreso"
-                >
-                  Nombre
-                </label>
-                <input
-                  id="cifrado-nombre-ingreso"
-                  ref={nombreInputRef}
-                  value={nombre}
-                  onChange={(event) => {
-                    setNombre(event.target.value);
-                    if (saveValidation) {
-                      setSaveValidation(null);
-                    }
-                  }}
-                  className={inputClassName}
-                  placeholder="Nombre de la canción"
-                />
-                <label
-                  className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
-                  htmlFor="cifrado-artista-ingreso"
-                >
-                  Artista
-                </label>
-                <input
-                  id="cifrado-artista-ingreso"
-                  value={artista}
-                  onChange={(event) => setArtista(event.target.value)}
-                  className={inputClassName}
-                  placeholder="Artista"
-                />
-                <div className="mt-4">
+              {ingresoTab !== "web" || pendingWebImport ? (
+                <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                   <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-                    Tonalidad
+                    Datos de la canción
                   </p>
-                  <CifradoTonalidadFields
-                    idPrefix="cifrado-ingreso"
-                    notacion={notacion}
-                    tonalidadIndex={ingresoTonalidadIndex}
-                    modoTonal={ingresoModoTonal}
-                    requireSelection
-                    onTonalidadChange={setIngresoTonalidadIndex}
-                    onModoTonalChange={setIngresoModoTonal}
+                  <label
+                    className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                    htmlFor="cifrado-nombre-ingreso"
+                  >
+                    Nombre
+                  </label>
+                  <input
+                    id="cifrado-nombre-ingreso"
+                    ref={nombreInputRef}
+                    value={nombre}
+                    onChange={(event) => {
+                      setNombre(event.target.value);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
+                    className={inputClassName}
+                    placeholder="Nombre de la canción"
                   />
+                  <label
+                    className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
+                    htmlFor="cifrado-artista-ingreso"
+                  >
+                    Artista
+                  </label>
+                  <input
+                    id="cifrado-artista-ingreso"
+                    value={artista}
+                    onChange={(event) => setArtista(event.target.value)}
+                    className={inputClassName}
+                    placeholder="Artista"
+                  />
+                  <div className="mt-4">
+                    <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                      Tonalidad
+                    </p>
+                    <CifradoTonalidadFields
+                      idPrefix="cifrado-ingreso"
+                      notacion={notacion}
+                      tonalidadIndex={ingresoTonalidadIndex}
+                      modoTonal={ingresoModoTonal}
+                      requireSelection
+                      onTonalidadChange={setIngresoTonalidadIndex}
+                      onModoTonalChange={setIngresoModoTonal}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                 <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
@@ -4952,7 +5078,9 @@ export default function CifradoEditor({
                       {draftLyrics.trim()}
                     </p>
                   </>
-                ) : ingresoTab === "pegar" && draftPastePreview.text ? (
+                ) : (ingresoTab === "pegar" ||
+                    (ingresoTab === "web" && pendingWebImport)) &&
+                  draftPastePreview.text ? (
                   <>
                     <p className="mt-2 text-sm font-medium text-text-primary">
                       {draftPastePreview.stats.verses} versos ·{" "}
@@ -4965,7 +5093,9 @@ export default function CifradoEditor({
                 ) : (
                   <p className="mt-2 text-sm text-text-muted">
                     {ingresoTab === "web"
-                      ? "Buscá una canción y previsualizala antes de importarla."
+                      ? pendingWebImport
+                        ? "Revisá los datos y confirmá para ir al editor."
+                        : "Buscá una canción y previsualizala antes de importarla."
                       : ingresoTab === "pegar"
                         ? "Pegá la letra con acordes a la izquierda para ver un resumen acá."
                         : "Pegá la letra a la izquierda para ver un resumen acá."}
@@ -4984,12 +5114,20 @@ export default function CifradoEditor({
                       <li>· Podés completar nombre y artista ahora o al guardar.</li>
                     </>
                   ) : ingresoTab === "web" ? (
-                    <>
-                      <li>· Elegí el tono y el modo antes de importar.</li>
-                      <li>· Solo se busca en Acordes de Canciones.</li>
-                      <li>· Al aceptar, la letra y los acordes se separan automáticamente.</li>
-                      <li>· Revisá el resultado en el editor antes de guardar.</li>
-                    </>
+                    pendingWebImport ? (
+                      <>
+                        <li>· Revisá nombre, artista y tonalidad sugeridos.</li>
+                        <li>· Podés corregir la letra con acordes a la izquierda.</li>
+                        <li>· Cuando esté bien, usá «Importar y editar».</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>· Buscá y previsualizá la canción.</li>
+                        <li>· Con «Usar esta canción» se completan los campos.</li>
+                        <li>· Después revisás y confirmás para editar.</li>
+                        <li>· Solo se busca en Acordes de Canciones.</li>
+                      </>
+                    )
                   ) : (
                     <>
                       <li>· Elegí el tono y el modo antes de continuar.</li>
@@ -5022,10 +5160,15 @@ export default function CifradoEditor({
                 >
                   Aplicar y empezar a cifrar
                 </TapButton>
-              ) : ingresoTab === "pegar" ? (
+              ) : ingresoTab === "pegar" ||
+                (ingresoTab === "web" && pendingWebImport) ? (
                 <TapButton
                   type="button"
-                  onClick={handleApplyPasteTraditional}
+                  onClick={
+                    ingresoTab === "web"
+                      ? handleConfirmWebImport
+                      : handleApplyPasteTraditional
+                  }
                   disabled={
                     !draftPasteTraditional.trim() || !ingresoTonalidadLista
                   }

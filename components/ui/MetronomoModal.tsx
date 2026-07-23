@@ -131,20 +131,20 @@ export default function MetronomoModal({
         titleId="metronomo-titulo"
         title={isDesktop ? undefined : "Metrónomo"}
         accentVar="--accent-metronomo"
+        onBack={isPage ? onClose : undefined}
+        backAriaLabel="Volver a Herramientas"
         headerContent={
-          isDesktop ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <h2
-                id="metronomo-titulo"
-                className="min-w-0 truncate text-lg font-extrabold text-inherit"
-              >
-                Metrónomo
-              </h2>
-              <MetronomoConfigHelpButton
-                onClick={() => setConfigHelpOpen(true)}
-              />
-            </div>
-          ) : undefined
+          <div className="flex min-w-0 items-center gap-2">
+            <h2
+              id="metronomo-titulo"
+              className="min-w-0 truncate text-lg font-extrabold text-inherit"
+            >
+              Metrónomo
+            </h2>
+            <MetronomoConfigHelpButton
+              onClick={() => setConfigHelpOpen(true)}
+            />
+          </div>
         }
         closeAriaLabel="Cerrar metrónomo"
         onClose={onClose}
@@ -156,7 +156,7 @@ export default function MetronomoModal({
         className={`flex min-h-0 flex-1 flex-col metronomo-ui ${
           isDesktop
             ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
-            : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
+            : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-24 pt-4`
         }`}
         style={{
           ["--tool-practice-section-bg" as string]: "var(--bg-app)",

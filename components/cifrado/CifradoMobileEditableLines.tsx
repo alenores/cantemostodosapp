@@ -22,6 +22,7 @@ import { CifradoMobileCompasMarkers } from "@/components/cifrado/CifradoMobileCo
 import { CifradoMobileCompasPanel } from "@/components/cifrado/CifradoMobileCompasPanel";
 import { splitLyricsLines } from "@/components/cifrado/CifradoLyricsView";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { X } from "lucide-react";
 import { getBarraBeatCount } from "@/lib/cifrado-barra-cycles";
 import { getBarraIntensidad } from "@/lib/cifrado-intensidad";
 import {
@@ -106,6 +107,9 @@ type CifradoMobileEditableLinesProps = {
     x: number,
     y: number,
   ) => void;
+  /** Muestra la X para cerrar el renglón activo (celular). */
+  showCloseActiveLine?: boolean;
+  onCloseActiveLine?: () => void;
 };
 
 function lineKey(lineIndex: number, charOffset: number): string {
@@ -136,6 +140,7 @@ type MobileLineRowProps = {
   onSelectBarra?: (charOffset: number) => void;
   lineAnotaciones?: Anotacion[];
   rangoPendienteOffset?: number | null;
+  rangoPendienteEndOffset?: number | null;
 };
 
 /**
@@ -165,6 +170,7 @@ function MobileLineRow({
   onSelectBarra,
   lineAnotaciones = [],
   rangoPendienteOffset = null,
+  rangoPendienteEndOffset = null,
 }: MobileLineRowProps) {
   const lineRef = useRef<HTMLElement | null>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
@@ -556,6 +562,7 @@ function MobileLineRow({
           visibility={DEFAULT_ANOTACION_VISIBILITY}
           mode="display"
           rangoPendienteOffset={rangoPendienteOffset}
+          rangoPendienteEndOffset={rangoPendienteEndOffset}
         />
         {lineAnotaciones.length > 0 ? (
           <AnotacionesLineLayer
@@ -932,6 +939,8 @@ export function CifradoMobileEditableLines({
   onSelectAnotacion,
   rangoPendiente = null,
   onOpenTipoMenu,
+  showCloseActiveLine = false,
+  onCloseActiveLine,
 }: CifradoMobileEditableLinesProps) {
   const lines = splitLyricsLines(letra);
   const hasActiveLine = activeLineIndex !== null;
@@ -1006,7 +1015,11 @@ export function CifradoMobileEditableLines({
       }
 
       // Segundo toque del rango de exigencia: cierra el tramo.
-      if (rangoPendiente && rangoPendiente.lineIndex === lineIndex) {
+      if (
+        rangoPendiente &&
+        rangoPendiente.lineIndex === lineIndex &&
+        rangoPendiente.charEnd == null
+      ) {
         onAnnotate?.("exigencia", lineIndex, charOffset);
         return;
       }
@@ -1093,6 +1106,13 @@ export function CifradoMobileEditableLines({
                   ? rangoPendiente.charOffset
                   : null
               }
+              rangoPendienteEndOffset={
+                rangoPendiente &&
+                rangoPendiente.lineIndex === lineIndex &&
+                rangoPendiente.charEnd != null
+                  ? rangoPendiente.charEnd
+                  : null
+              }
               onClick={(event) => handleLineClick(event, lineIndex)}
               onLineTextChange={onLineTextChange}
               onDragMove={isChordDragLine ? onDragMove : undefined}
@@ -1118,56 +1138,71 @@ export function CifradoMobileEditableLines({
 
             {!isDragMode && isActive ? (
               <div className="flex flex-col gap-1">
-                <div
-                  className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
-                  role="tablist"
-                  aria-label="Qué editar en el renglón"
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={modoInsercion === "acordes"}
-                    onClick={() => onModoInsercionChange("acordes")}
-                    className={cifradoEditorToolbarSegmentedButtonClass(
-                      modoInsercion === "acordes",
-                    )}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`${CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS} min-w-0 flex-1`}
+                    role="tablist"
+                    aria-label="Qué editar en el renglón"
                   >
-                    Acordes
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={modoInsercion === "compas"}
-                    onClick={() => onModoInsercionChange("compas")}
-                    className={cifradoEditorToolbarSegmentedButtonClass(
-                      modoInsercion === "compas",
-                    )}
-                  >
-                    Compás
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={modoInsercion === "letra"}
-                    onClick={() => onModoInsercionChange("letra")}
-                    className={cifradoEditorToolbarSegmentedButtonClass(
-                      modoInsercion === "letra",
-                    )}
-                  >
-                    Letra
-                  </button>
-                  {anotacionesEnabled ? (
                     <button
                       type="button"
                       role="tab"
-                      aria-selected={modoInsercion === "canto"}
-                      onClick={() => onModoInsercionChange("canto")}
+                      aria-selected={modoInsercion === "acordes"}
+                      onClick={() => onModoInsercionChange("acordes")}
                       className={cifradoEditorToolbarSegmentedButtonClass(
-                        modoInsercion === "canto",
+                        modoInsercion === "acordes",
                       )}
                     >
-                      Canto
+                      Acordes
                     </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={modoInsercion === "compas"}
+                      onClick={() => onModoInsercionChange("compas")}
+                      className={cifradoEditorToolbarSegmentedButtonClass(
+                        modoInsercion === "compas",
+                      )}
+                    >
+                      Compás
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={modoInsercion === "letra"}
+                      onClick={() => onModoInsercionChange("letra")}
+                      className={cifradoEditorToolbarSegmentedButtonClass(
+                        modoInsercion === "letra",
+                      )}
+                    >
+                      Letra
+                    </button>
+                    {anotacionesEnabled ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={modoInsercion === "canto"}
+                        onClick={() => onModoInsercionChange("canto")}
+                        className={cifradoEditorToolbarSegmentedButtonClass(
+                          modoInsercion === "canto",
+                        )}
+                      >
+                        Canto
+                      </button>
+                    ) : null}
+                  </div>
+                  {showCloseActiveLine && onCloseActiveLine ? (
+                    <TapButton
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onCloseActiveLine();
+                      }}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-muted"
+                      aria-label="Cerrar renglón"
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </TapButton>
                   ) : null}
                 </div>
               </div>
@@ -1210,7 +1245,9 @@ export function CifradoMobileEditableLines({
 
             {!isDragMode && isActive && modoInsercion === "canto" ? (
               <p className="px-1 text-xs text-text-muted">
-                {rangoPendiente && rangoPendiente.lineIndex === lineIndex
+                {rangoPendiente &&
+                rangoPendiente.lineIndex === lineIndex &&
+                rangoPendiente.charEnd == null
                   ? "Ahora tocá el final del tramo para elegir el color."
                   : "Tocá la letra donde quieras una marca y elegí el tipo. Tocá una marca existente para editarla."}
               </p>

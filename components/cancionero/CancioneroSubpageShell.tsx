@@ -30,18 +30,18 @@ export default function CancioneroSubpageShell({
       {/* Mobile-only integrated header */}
       {!isDesktop ? (
         <header
-          className="shrink-0 bg-transparent px-4 pb-2"
-          style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top, 0px))" }}
+          className="shrink-0 border-b border-border/80 bg-bg-dark px-4 pb-2.5"
+          style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
         >
-          <div className="app-page-container flex items-center gap-3">
+          <div className="app-page-container flex items-center gap-3 min-h-11">
             <TapLink
               href={backHref}
               ariaLabel={backAriaLabel}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card border border-border/40 shadow-sm"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95"
             >
               <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
             </TapLink>
-            <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
+            <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-text-primary">
               {title}
             </h1>
             {headerAction}

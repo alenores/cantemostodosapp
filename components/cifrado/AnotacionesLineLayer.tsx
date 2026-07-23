@@ -22,6 +22,9 @@ export type AnotacionCharPosition = {
 /** Alto en px de la banda de arriba (intensidad/respirar). Sube los acordes. */
 export const ANOTACIONES_ARRIBA_BANDA_PX = 16;
 
+/** Arranque del palito (intensidad/respirar), justo debajo del ícono. */
+const ARRIBA_STEM_TOP_PX = 14;
+
 /** Flecha inclinada según el nivel (30°/60°) y el sentido (fuerte↑ / suave↓). */
 function IntensidadFlecha({
   nivel,
@@ -132,6 +135,8 @@ type AnotacionesLineLayerProps = {
   onOpenNota?: (anotacion: Anotacion) => void;
   /** Solo banda "fondo": punto de inicio del rango de Exigencia aún sin cerrar. */
   rangoPendienteOffset?: number | null;
+  /** Solo banda "fondo": punto de fin del rango mientras se elige el color. */
+  rangoPendienteEndOffset?: number | null;
 };
 
 /** Borde derecho aproximado de un carácter (charPositions no guarda ancho). */
@@ -148,6 +153,7 @@ export default function AnotacionesLineLayer({
   onSelect,
   onOpenNota,
   rangoPendienteOffset = null,
+  rangoPendienteEndOffset = null,
 }: AnotacionesLineLayerProps) {
   if (banda === "fondo") {
     const rangos = visibility.exigencia
@@ -161,8 +167,12 @@ export default function AnotacionesLineLayer({
       rangoPendienteOffset != null
         ? charPositions[rangoPendienteOffset]
         : null;
+    const endPos =
+      rangoPendienteEndOffset != null
+        ? charPositions[rangoPendienteEndOffset]
+        : null;
 
-    if (rangos.length === 0 && !startPos) {
+    if (rangos.length === 0 && !startPos && !endPos) {
       return null;
     }
 
@@ -231,18 +241,32 @@ export default function AnotacionesLineLayer({
           })}
         </div>
 
-        {startPos ? (
+        {startPos || endPos ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full">
-            <span
-              className="absolute w-0.5 rounded-full"
-              style={{
-                left: startPos.left,
-                top: startPos.bottom - 14,
-                height: 15,
-                backgroundColor: "var(--accent-entrenador-canciones)",
-              }}
-              aria-hidden="true"
-            />
+            {startPos ? (
+              <span
+                className="absolute w-0.5 rounded-full"
+                style={{
+                  left: startPos.left,
+                  top: startPos.bottom - 14,
+                  height: 15,
+                  backgroundColor: "var(--accent-entrenador-canciones)",
+                }}
+                aria-hidden="true"
+              />
+            ) : null}
+            {endPos ? (
+              <span
+                className="absolute w-0.5 rounded-full"
+                style={{
+                  left: endPos.left,
+                  top: endPos.bottom - 14,
+                  height: 15,
+                  backgroundColor: "var(--accent-entrenador-canciones)",
+                }}
+                aria-hidden="true"
+              />
+            ) : null}
           </div>
         ) : null}
       </>
@@ -295,10 +319,14 @@ export default function AnotacionesLineLayer({
         }
 
         let content: React.ReactNode = null;
+        const isIntensidad =
+          anotacion.tipo === "intensidad" && Boolean(anotacion.nivel);
+        const isRespirar = anotacion.tipo === "respirar";
+        const hasArribaStem = isIntensidad || isRespirar;
 
-        if (anotacion.tipo === "intensidad" && anotacion.nivel) {
+        if (isIntensidad && anotacion.nivel) {
           content = <IntensidadIcon nivel={anotacion.nivel} />;
-        } else if (anotacion.tipo === "respirar") {
+        } else if (isRespirar) {
           content = (
             <Wind
               className="size-3.5"
@@ -326,6 +354,48 @@ export default function AnotacionesLineLayer({
         const commonClass =
           "absolute flex items-center " +
           (interactive ? "pointer-events-auto" : "pointer-events-none");
+
+        // Palito como los acordes: baja por la letra, sin circulito, tono más suave.
+        // Va fuera del botón para que el feedback al tocar no lo escale.
+        const arribaStem = hasArribaStem ? (
+          <span
+            className="pointer-events-none absolute w-px"
+            style={{
+              top: ARRIBA_STEM_TOP_PX,
+              left: 0,
+              height: Math.max(4, position.bottom - ARRIBA_STEM_TOP_PX),
+              backgroundColor:
+                "color-mix(in srgb, var(--accent-entrenador-canciones) 28%, transparent)",
+            }}
+            aria-hidden="true"
+          />
+        ) : null;
+
+        if (hasArribaStem) {
+          return (
+            <span
+              key={anotacion.id}
+              className="absolute"
+              style={commonStyle}
+            >
+              {interactive ? (
+                <TapButton
+                  type="button"
+                  onClick={handleClick}
+                  className="pointer-events-auto flex items-center"
+                  aria-label={`Anotación ${anotacion.tipo}`}
+                >
+                  {content}
+                </TapButton>
+              ) : (
+                <span className="pointer-events-none flex items-center">
+                  {content}
+                </span>
+              )}
+              {arribaStem}
+            </span>
+          );
+        }
 
         if (interactive) {
           return (

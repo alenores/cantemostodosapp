@@ -55,6 +55,8 @@ export type AnotacionDraft = {
 export type RangoPendiente = {
   lineIndex: number;
   charOffset: number;
+  /** Presente al abrir el color: marcas de inicio y fin visibles sin relleno. */
+  charEnd?: number;
 };
 
 /** Menú de tipos (modo Canto): punto de anclaje + posición del tap en pantalla. */
@@ -109,7 +111,11 @@ export function useAnotacionesEditor(control: AnotacionesControl | null) {
 
       if (tipo === "exigencia") {
         // Rango en dos toques: primero el inicio, luego el fin (mismo renglón).
-        if (!rangoPendiente || rangoPendiente.lineIndex !== lineIndex) {
+        if (
+          !rangoPendiente ||
+          rangoPendiente.lineIndex !== lineIndex ||
+          rangoPendiente.charEnd != null
+        ) {
           setRangoPendiente({ lineIndex, charOffset });
           return;
         }
@@ -120,7 +126,8 @@ export function useAnotacionesEditor(control: AnotacionesControl | null) {
 
         const start = Math.min(rangoPendiente.charOffset, charOffset);
         const end = Math.max(rangoPendiente.charOffset, charOffset);
-        setRangoPendiente(null);
+        // Mantiene las marcas de inicio/fin visibles mientras se elige el color.
+        setRangoPendiente({ lineIndex, charOffset: start, charEnd: end });
         setDraft({
           mode: "new",
           tipo: "exigencia",
@@ -151,7 +158,10 @@ export function useAnotacionesEditor(control: AnotacionesControl | null) {
     });
   }, []);
 
-  const close = useCallback(() => setDraft(null), []);
+  const close = useCallback(() => {
+    setDraft(null);
+    setRangoPendiente(null);
+  }, []);
 
   const resetRango = useCallback(() => setRangoPendiente(null), []);
 
@@ -203,6 +213,7 @@ export function useAnotacionesEditor(control: AnotacionesControl | null) {
 
       control.onChange(upsertAnotacion(control.items, anotacion));
       setDraft(null);
+      setRangoPendiente(null);
     },
     [control, draft],
   );
@@ -210,11 +221,13 @@ export function useAnotacionesEditor(control: AnotacionesControl | null) {
   const remove = useCallback(() => {
     if (!control || !draft?.id) {
       setDraft(null);
+      setRangoPendiente(null);
       return;
     }
 
     control.onChange(removeAnotacion(control.items, draft.id));
     setDraft(null);
+    setRangoPendiente(null);
   }, [control, draft]);
 
   return {

@@ -31,6 +31,7 @@ type ModoLecturaOverlayProps = {
   compasesOcultos?: boolean;
   acordesOcultos?: boolean;
   showAcordesOption?: boolean;
+  showOcultarElementosOption?: boolean;
   showTonoOption?: boolean;
   showZoomOption?: boolean;
   showAfinador?: boolean;
@@ -38,6 +39,7 @@ type ModoLecturaOverlayProps = {
   onContraer: () => void;
   onActivarCompases?: () => void;
   onToggleAcordesOcultos?: () => void;
+  onAbrirOcultarElementos?: () => void;
   onAbrirTono?: () => void;
   onAbrirZoom?: () => void;
   onAfinador?: () => void;
@@ -56,6 +58,7 @@ export default function ModoLecturaOverlay({
   compasesOcultos = false,
   acordesOcultos = false,
   showAcordesOption = false,
+  showOcultarElementosOption = false,
   showTonoOption = false,
   showZoomOption = false,
   showAfinador = true,
@@ -63,6 +66,7 @@ export default function ModoLecturaOverlay({
   onContraer,
   onActivarCompases,
   onToggleAcordesOcultos,
+  onAbrirOcultarElementos,
   onAbrirTono,
   onAbrirZoom,
   onAfinador,
@@ -102,6 +106,17 @@ export default function ModoLecturaOverlay({
       icon: acordesOcultos ? Eye : EyeOff,
       label: acordesOcultos ? "Mostrar acordes" : "Ocultar acordes",
       onClick: onToggleAcordesOcultos,
+      closeOnClick: true,
+    });
+  }
+
+  if (showOcultarElementosOption && onAbrirOcultarElementos) {
+    items.push({
+      key: "ocultar-elementos",
+      icon: Eye,
+      label: "Elementos",
+      onClick: onAbrirOcultarElementos,
+      className: "lg:hidden",
       closeOnClick: true,
     });
   }

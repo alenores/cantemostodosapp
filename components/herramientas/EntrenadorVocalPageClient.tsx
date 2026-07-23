@@ -1,13 +1,23 @@
 "use client";
 
 import EntrenadorVocalModal from "@/components/ui/EntrenadorVocalModal";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useVoz } from "@/hooks/useVoz";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 export default function EntrenadorVocalPageClient() {
   const voz = useVoz();
+  const navigateWithProgress = useNavigateWithProgress();
 
   const { stop } = voz;
+
+  const handleClose = useCallback(() => {
+    stop();
+    navigateWithProgress("/practica");
+  }, [stop, navigateWithProgress]);
+
+  useHardwareBack(true, handleClose);
 
   useEffect(() => {
     return () => {
@@ -88,9 +98,7 @@ export default function EntrenadorVocalPageClient() {
         tonePracticeActive={voz.tonePracticeActive}
         onToggleTonePractice={voz.toggleTonePractice}
         onDeactivatePracticeMic={voz.deactivatePracticeMic}
-        onClose={() => {
-          voz.stop();
-        }}
+        onClose={handleClose}
       />
     </div>
   );

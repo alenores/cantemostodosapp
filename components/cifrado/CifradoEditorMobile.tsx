@@ -26,8 +26,10 @@ import {
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { buildIntensidadForGolpes } from "@/lib/cifrado-barra-cycles";
 import {
   clampBpm,
@@ -83,9 +85,10 @@ import {
   type AnotacionesControl,
 } from "@/components/cifrado/AnotacionPickers";
 import { DEFAULT_ANOTACION_VISIBILITY } from "@/lib/anotaciones-practica";
+import { CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE } from "@/lib/ritmo-terminologia";
 import { ArrowLeft, Eye, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type IngresoTab = "letra" | "web" | "pegar";
 type MobilePhase = "ingreso" | "cifrado";
@@ -132,6 +135,17 @@ export default function CifradoEditorMobile({
   const searchParams = useSearchParams();
   const desdeCancionero = searchParams.get("desde") === "cancionero";
   const [phase, setPhase] = useState<MobilePhase>("ingreso");
+
+  useEffect(() => {
+    if (phase === "cifrado") {
+      document.body.dataset.hideAppHeader = "true";
+    } else {
+      delete document.body.dataset.hideAppHeader;
+    }
+    return () => {
+      delete document.body.dataset.hideAppHeader;
+    };
+  }, [phase]);
   const [ingresoTab, setIngresoTab] = useState<IngresoTab>("letra");
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
@@ -166,6 +180,11 @@ export default function CifradoEditorMobile({
   );
   const [tonalidadInferResult, setTonalidadInferResult] =
     useState<TonalidadInferResult | null>(null);
+  const [exigenciaAbandonConfirmOpen, setExigenciaAbandonConfirmOpen] =
+    useState(false);
+  const [pendingWebImport, setPendingWebImport] =
+    useState<CifradoEditorWebImportData | null>(null);
+  const [webSearchResetKey, setWebSearchResetKey] = useState(0);
 
   const lastPasteProposeSignatureRef = useRef<string | null>(null);
   const pasteProposeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -202,6 +221,10 @@ export default function CifradoEditorMobile({
   }, [session]);
 
   const tonalidadLista = tonalidadIndex !== null && modoTonal !== null;
+  const showDatosIngreso =
+    ingresoTab === "letra" ||
+    (ingresoTab === "pegar" && draftPaste.trim().length > 0) ||
+    (ingresoTab === "web" && pendingWebImport !== null);
   const pickerExisting = pickerTarget
     ? findAcordeAt(
         cifrado.acordes,
@@ -470,6 +493,113 @@ export default function CifradoEditorMobile({
     setPickerTarget(null);
     setSelectedBarra(null);
   }
+
+  const deactivateActiveLine = useCallback(() => {
+    if (
+      typeof document !== "undefined" &&
+      document.activeElement instanceof HTMLElement
+    ) {
+      document.activeElement.blur();
+    }
+
+    setActiveLineIndex(null);
+    setPickerTarget(null);
+    setSelectedBarra(null);
+  }, []);
+
+  const requestDeactivateActiveLine = useCallback(() => {
+    if (
+      anotEditor.rangoPendiente &&
+      anotEditor.rangoPendiente.charEnd == null
+    ) {
+      setExigenciaAbandonConfirmOpen(true);
+      return;
+    }
+
+    deactivateActiveLine();
+  }, [anotEditor.rangoPendiente, deactivateActiveLine]);
+
+  function handleConfirmAbandonExigencia() {
+    anotEditor.resetRango();
+    setExigenciaAbandonConfirmOpen(false);
+    deactivateActiveLine();
+  }
+
+  const showCloseActiveLine =
+    activeLineIndex !== null &&
+    !dragTarget &&
+    !barDragTarget &&
+    pickerTarget === null &&
+    anotEditor.draft === null &&
+    !anotEditor.tipoMenu;
+
+  const mobileEditorBackEnabled =
+    phase === "cifrado" &&
+    (pasteProposeOpen ||
+      previewOpen ||
+      configOpen ||
+      exigenciaAbandonConfirmOpen ||
+      anotEditor.draft !== null ||
+      anotEditor.tipoMenu !== null ||
+      pickerTarget !== null ||
+      (activeLineIndex !== null && !dragTarget && !barDragTarget));
+
+  const handleMobileEditorBack = useCallback(() => {
+    if (exigenciaAbandonConfirmOpen) {
+      setExigenciaAbandonConfirmOpen(false);
+      return;
+    }
+
+    if (pasteProposeOpen) {
+      setPasteProposeOpen(false);
+      return;
+    }
+
+    if (previewOpen) {
+      setPreviewOpen(false);
+      return;
+    }
+
+    if (configOpen) {
+      setConfigOpen(false);
+      return;
+    }
+
+    if (anotEditor.draft) {
+      anotEditor.close();
+      return;
+    }
+
+    if (anotEditor.tipoMenu) {
+      anotEditor.closeTipoMenu();
+      return;
+    }
+
+    if (pickerTarget) {
+      closeChordPicker();
+      return;
+    }
+
+    if (activeLineIndex !== null && !dragTarget && !barDragTarget) {
+      requestDeactivateActiveLine();
+    }
+  }, [
+    activeLineIndex,
+    anotEditor.close,
+    anotEditor.draft,
+    anotEditor.tipoMenu,
+    anotEditor.closeTipoMenu,
+    barDragTarget,
+    configOpen,
+    dragTarget,
+    exigenciaAbandonConfirmOpen,
+    pasteProposeOpen,
+    pickerTarget,
+    previewOpen,
+    requestDeactivateActiveLine,
+  ]);
+
+  useHardwareBack(mobileEditorBackEnabled, handleMobileEditorBack);
 
   function handleSelectPosition(lineIndex: number, charOffset: number) {
     if (ignoreNextPositionSelectRef.current) {
@@ -834,10 +964,6 @@ export default function CifradoEditorMobile({
   }
 
   function handleWebImport(data: CifradoEditorWebImportData) {
-    if (!assertTonalidad()) {
-      return;
-    }
-
     if (data.nombre?.trim()) {
       setNombre(data.nombre.trim());
     }
@@ -846,11 +972,68 @@ export default function CifradoEditorMobile({
       setArtista(data.artista.trim());
     }
 
+    const texto = data.textoTradicional.trim();
+    const analysis = analyzePasteIngreso(texto);
+    const textoParaCampo =
+      analysis.hasMetadataProposal && analysis.textKeptIfEliminate.trim()
+        ? analysis.textKeptIfEliminate.trim()
+        : texto;
+
+    setDraftPaste(textoParaCampo);
     if (data.letra?.trim()) {
       setDraftLyrics(data.letra);
     }
 
-    enterCifrado(data.letra, data.cifrado);
+    const fromLine = analysis.tonalidadFromLine;
+    const textForChords = textoParaCampo;
+    const imported = parseLetraTradicional(textForChords);
+    const primerAcorde = getPrimerAcordeOrdenado(imported.cifrado.acordes);
+    const inference = fromLine
+      ? null
+      : inferTonalidadFromAcordes(imported.cifrado.acordes, primerAcorde);
+    const suggested = fromLine ?? inference?.candidates[0] ?? null;
+
+    if (suggested) {
+      setTonalidadIndex(suggested.tonalidadIndex);
+      setModoTonal(suggested.modoTonal);
+    }
+
+    setPendingWebImport({
+      ...data,
+      textoTradicional: textoParaCampo,
+      letra: imported.letra,
+      cifrado: imported.cifrado,
+    });
+    setError(null);
+  }
+
+  function handleConfirmWebImport() {
+    if (!pendingWebImport) {
+      return;
+    }
+
+    if (!assertTonalidad()) {
+      return;
+    }
+
+    const trimmed = draftPaste.trim();
+
+    if (!trimmed) {
+      setError("Revisá la letra con acordes antes de continuar.");
+      return;
+    }
+
+    const imported = parseLetraTradicional(trimmed);
+    setDraftLyrics(imported.letra);
+    enterCifrado(imported.letra, imported.cifrado);
+    setPendingWebImport(null);
+  }
+
+  function handleClearWebImport() {
+    setPendingWebImport(null);
+    setDraftPaste("");
+    setWebSearchResetKey((current) => current + 1);
+    clearError();
   }
 
   return (
@@ -907,155 +1090,187 @@ export default function CifradoEditorMobile({
 
       {phase === "ingreso" ? (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 pb-28">
-          {/* Letra / búsqueda: ocupa el espacio libre, sin alargar el scroll */}
-          <div className="flex min-h-0 flex-1 flex-col">
-            {ingresoTab === "letra" ? (
-              <>
-                <label className={labelClassName} htmlFor="cifrado-mobile-letra">
-                  Letra (sin acordes)
-                </label>
-                <textarea
-                  id="cifrado-mobile-letra"
-                  value={draftLyrics}
-                  onChange={(event) => {
-                    setDraftLyrics(event.target.value);
-                    clearError();
-                  }}
-                  className={textareaClassName}
-                  placeholder="Pegá aquí la letra de la canción…"
-                />
-              </>
-            ) : null}
-
-            {ingresoTab === "web" ? (
-              <CifradoEditorIngresoWebSearch
-                onImport={handleWebImport}
-                onError={setError}
-                importDisabled={!tonalidadLista}
-              />
-            ) : null}
-
-            {ingresoTab === "pegar" ? (
-              <>
-                <label className={labelClassName} htmlFor="cifrado-mobile-pegar">
-                  Letra con acordes
-                </label>
-                <textarea
-                  id="cifrado-mobile-pegar"
-                  value={draftPaste}
-                  onChange={(event) => {
-                    handleDraftPasteChange(event.target.value);
-                  }}
-                  className={textareaClassName}
-                  placeholder="Pegá la letra con los acordes encima de cada renglón…"
-                />
-              </>
-            ) : null}
+          <div
+            className={`shrink-0 ${CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}`}
+            role="tablist"
+            aria-label="Forma de ingreso"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={ingresoTab === "letra"}
+              onClick={() => {
+                setIngresoTab("letra");
+                clearError();
+              }}
+              className={cifradoEditorToolbarSegmentedButtonClass(
+                ingresoTab === "letra",
+              )}
+            >
+              Escribir letra
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={ingresoTab === "web"}
+              onClick={() => {
+                setIngresoTab("web");
+                clearError();
+              }}
+              className={cifradoEditorToolbarSegmentedButtonClass(
+                ingresoTab === "web",
+              )}
+            >
+              Buscar en la web
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={ingresoTab === "pegar"}
+              onClick={() => {
+                setIngresoTab("pegar");
+                clearError();
+              }}
+              className={cifradoEditorToolbarSegmentedButtonClass(
+                ingresoTab === "pegar",
+              )}
+            >
+              Pegar letra+acordes
+            </button>
           </div>
 
-          {/* Datos / pestañas: scroll propio con tope en el último bloque */}
-          <div className="mt-4 min-h-0 shrink overflow-y-auto overscroll-y-contain">
-            <div
-              className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
-              role="tablist"
-              aria-label="Forma de ingreso"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={ingresoTab === "letra"}
-                onClick={() => {
-                  setIngresoTab("letra");
-                  clearError();
-                }}
-                className={cifradoEditorToolbarSegmentedButtonClass(
-                  ingresoTab === "letra",
-                )}
-              >
-                Escribir letra
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={ingresoTab === "web"}
-                onClick={() => {
-                  setIngresoTab("web");
-                  clearError();
-                }}
-                className={cifradoEditorToolbarSegmentedButtonClass(
-                  ingresoTab === "web",
-                )}
-              >
-                Buscar en la web
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={ingresoTab === "pegar"}
-                onClick={() => {
-                  setIngresoTab("pegar");
-                  clearError();
-                }}
-                className={cifradoEditorToolbarSegmentedButtonClass(
-                  ingresoTab === "pegar",
-                )}
-              >
-                Pegar letra+acordes
-              </button>
+          <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+            <div className="flex min-h-0 flex-1 flex-col">
+              {ingresoTab === "letra" ? (
+                <>
+                  <label className={labelClassName} htmlFor="cifrado-mobile-letra">
+                    Letra (sin acordes)
+                  </label>
+                  <textarea
+                    id="cifrado-mobile-letra"
+                    value={draftLyrics}
+                    onChange={(event) => {
+                      setDraftLyrics(event.target.value);
+                      clearError();
+                    }}
+                    className={textareaClassName}
+                    placeholder="Pegá aquí la letra de la canción…"
+                  />
+                </>
+              ) : null}
+
+              {ingresoTab === "web" ? (
+                pendingWebImport ? (
+                  <>
+                    <p className="mb-2 shrink-0 text-sm text-text-muted">
+                      Revisá letra, acordes y datos. Si no es esta,{" "}
+                      <TapButton
+                        type="button"
+                        onClick={handleClearWebImport}
+                        className="font-semibold text-accent"
+                      >
+                        buscá otra
+                      </TapButton>
+                      .
+                    </p>
+                    <label
+                      className={labelClassName}
+                      htmlFor="cifrado-mobile-web-revisar"
+                    >
+                      Letra con acordes
+                    </label>
+                    <textarea
+                      id="cifrado-mobile-web-revisar"
+                      value={draftPaste}
+                      onChange={(event) => {
+                        setDraftPaste(event.target.value);
+                        clearError();
+                      }}
+                      className={textareaClassName}
+                      placeholder="Letra con los acordes encima de cada renglón…"
+                    />
+                  </>
+                ) : (
+                  <CifradoEditorIngresoWebSearch
+                    key={webSearchResetKey}
+                    onImport={handleWebImport}
+                    onError={setError}
+                  />
+                )
+              ) : null}
+
+              {ingresoTab === "pegar" ? (
+                <>
+                  <label className={labelClassName} htmlFor="cifrado-mobile-pegar">
+                    Letra con acordes
+                  </label>
+                  <textarea
+                    id="cifrado-mobile-pegar"
+                    value={draftPaste}
+                    onChange={(event) => {
+                      handleDraftPasteChange(event.target.value);
+                    }}
+                    className={textareaClassName}
+                    placeholder="Pegá la letra con los acordes encima de cada renglón…"
+                  />
+                </>
+              ) : null}
             </div>
 
-            <div className={`mt-3 ${CIFRADO_CONTROLS_PANEL_BOX_CLASS}`}>
-              <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-                Datos de la canción
-              </p>
-              <label className={labelClassName} htmlFor="cifrado-mobile-nombre">
-                Nombre
-              </label>
-              <input
-                id="cifrado-mobile-nombre"
-                value={nombre}
-                onChange={(event) => {
-                  setNombre(event.target.value);
-                  clearError();
-                }}
-                className={CIFRADO_CONTROLS_INPUT_CLASS}
-                placeholder="Nombre de la canción"
-              />
-              <label
-                className={`${labelClassName} mt-3`}
-                htmlFor="cifrado-mobile-artista"
-              >
-                Artista
-              </label>
-              <input
-                id="cifrado-mobile-artista"
-                value={artista}
-                onChange={(event) => setArtista(event.target.value)}
-                className={CIFRADO_CONTROLS_INPUT_CLASS}
-                placeholder="Artista"
-              />
-              <div className="mt-3">
-                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
-                <CifradoTonalidadFields
-                  idPrefix="cifrado-mobile-ingreso"
-                  notacion="es"
-                  tonalidadIndex={tonalidadIndex}
-                  modoTonal={modoTonal}
-                  requireSelection
-                  onTonalidadChange={(next) => {
-                    setTonalidadIndex(next);
+            {showDatosIngreso ? (
+              <div className={`mt-3 shrink-0 ${CIFRADO_CONTROLS_PANEL_BOX_CLASS}`}>
+                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                  Datos de la canción
+                </p>
+                <label className={labelClassName} htmlFor="cifrado-mobile-nombre">
+                  Nombre
+                </label>
+                <input
+                  id="cifrado-mobile-nombre"
+                  value={nombre}
+                  onChange={(event) => {
+                    setNombre(event.target.value);
                     clearError();
                   }}
-                  onModoTonalChange={(next) => {
-                    setModoTonal(next);
-                    clearError();
-                  }}
+                  className={CIFRADO_CONTROLS_INPUT_CLASS}
+                  placeholder="Nombre de la canción"
                 />
+                <label
+                  className={`${labelClassName} mt-3`}
+                  htmlFor="cifrado-mobile-artista"
+                >
+                  Artista
+                </label>
+                <input
+                  id="cifrado-mobile-artista"
+                  value={artista}
+                  onChange={(event) => setArtista(event.target.value)}
+                  className={CIFRADO_CONTROLS_INPUT_CLASS}
+                  placeholder="Artista"
+                />
+                <div className="mt-3">
+                  <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Tonalidad</p>
+                  <CifradoTonalidadFields
+                    idPrefix="cifrado-mobile-ingreso"
+                    notacion="es"
+                    tonalidadIndex={tonalidadIndex}
+                    modoTonal={modoTonal}
+                    requireSelection
+                    onTonalidadChange={(next) => {
+                      setTonalidadIndex(next);
+                      clearError();
+                    }}
+                    onModoTonalChange={(next) => {
+                      setModoTonal(next);
+                      clearError();
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {error ? (
-              <p className="mt-3 text-sm font-medium text-red-400" role="alert">
+              <p className="mt-3 shrink-0 text-sm font-medium text-red-400" role="alert">
                 {error}
               </p>
             ) : null}
@@ -1065,27 +1280,32 @@ export default function CifradoEditorMobile({
                 type="button"
                 onClick={handleApplyLyrics}
                 disabled={!draftLyrics.trim() || !tonalidadLista}
-                className={`mt-4 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
               >
                 Aplicar y empezar a cifrar
               </TapButton>
             ) : null}
 
-            {ingresoTab === "pegar" ? (
+            {ingresoTab === "pegar" && showDatosIngreso ? (
               <TapButton
                 type="button"
                 onClick={handleApplyPaste}
                 disabled={!draftPaste.trim() || !tonalidadLista}
-                className={`mt-4 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
               >
                 Importar y editar
               </TapButton>
             ) : null}
 
-            {ingresoTab === "web" ? (
-              <p className="mt-3 text-center text-xs text-text-muted">
-                En la web, el botón de importar aparece al elegir una canción.
-              </p>
+            {ingresoTab === "web" && pendingWebImport ? (
+              <TapButton
+                type="button"
+                onClick={handleConfirmWebImport}
+                disabled={!draftPaste.trim() || !tonalidadLista}
+                className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+              >
+                Importar y editar
+              </TapButton>
             ) : null}
           </div>
         </main>
@@ -1240,6 +1460,8 @@ export default function CifradoEditorMobile({
                 onSelectAnotacion={anotEditor.selectExisting}
                 rangoPendiente={anotEditor.rangoPendiente}
                 onOpenTipoMenu={anotEditor.openTipoMenu}
+                showCloseActiveLine={showCloseActiveLine}
+                onCloseActiveLine={requestDeactivateActiveLine}
               />
             </div>
           </div>
@@ -1452,6 +1674,16 @@ export default function CifradoEditorMobile({
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={exigenciaAbandonConfirmOpen}
+        message={CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE}
+        cancelLabel="Seguir marcando"
+        confirmLabel="Salir igual"
+        zIndex={80}
+        onConfirm={handleConfirmAbandonExigencia}
+        onCancel={() => setExigenciaAbandonConfirmOpen(false)}
+      />
     </div>
   );
 }

@@ -1237,9 +1237,15 @@ export default function BuscadorModal({
             </form>
 
             {isHome ? (
-              <div className="mt-2 flex gap-2">
+              <div
+                className="mt-3 h-[44px] flex w-full gap-1 rounded-full border border-border bg-bg-darker p-1"
+                role="tablist"
+                aria-label="Origen de búsqueda"
+              >
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={fuenteHome === "general"}
                   onClick={() => {
                     setFuenteHome("general");
                     setBusquedaRealizada(false);
@@ -1249,16 +1255,18 @@ export default function BuscadorModal({
                       internet: [],
                     });
                   }}
-                  className={`flex-1 rounded-lg py-2 text-xs font-semibold ${
+                  className={`flex-1 h-full rounded-full px-4 text-xs font-bold transition-all flex items-center justify-center ${
                     fuenteHome === "general"
-                      ? "bg-accent text-white"
-                      : "bg-bg-card text-text-muted"
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-text-muted hover:text-text-primary"
                   }`}
                 >
                   General
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={fuenteHome === "mis_canciones"}
                   disabled={!usuarioLogueado}
                   onClick={() => {
                     setFuenteHome("mis_canciones");
@@ -1267,10 +1275,10 @@ export default function BuscadorModal({
                       syncMisCancionesResultados(query, true);
                     }
                   }}
-                  className={`flex-1 rounded-lg py-2 text-xs font-semibold disabled:opacity-40 ${
+                  className={`flex-1 h-full rounded-full px-4 text-xs font-bold transition-all flex items-center justify-center disabled:opacity-40 ${
                     fuenteHome === "mis_canciones"
-                      ? "bg-accent text-white"
-                      : "bg-bg-card text-text-muted"
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-text-muted hover:text-text-primary"
                   }`}
                 >
                   Favoritas

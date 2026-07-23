@@ -440,12 +440,18 @@ function ModeCarouselShell({
   onChangeIndex,
   renderSlide,
   titleAction,
+  hideSwipeNav = false,
 }: {
   activeIndex: number;
   onChangeIndex: (index: number) => void;
   renderSlide: (index: number) => ReactNode;
   titleAction?: ReactNode;
+  hideSwipeNav?: boolean;
 }) {
+  if (hideSwipeNav) {
+    return <div className="w-full pb-20">{renderSlide(activeIndex)}</div>;
+  }
+
   const slideCount = VOZ_MODE_SLIDES.length;
   const activeSlide = VOZ_MODE_SLIDES[activeIndex] ?? VOZ_MODE_SLIDES[0]!;
   const prevIndex = activeIndex - 1;
@@ -3683,6 +3689,8 @@ export type VozModeSlidesProps = {
   comboNotePattern: VozNotaPattern;
   onSetComboNoteAtSlot: (slotIndex: number, target: VozTarget) => void;
   onDesktopHelpActionChange?: (action: ReactNode | null) => void;
+  onHelpActionChange?: (action: ReactNode | null) => void;
+  hideSwipeNav?: boolean;
 };
 
 export function VozModeSlides({
@@ -3751,6 +3759,8 @@ export function VozModeSlides({
   comboNotePattern,
   onSetComboNoteAtSlot,
   onDesktopHelpActionChange,
+  onHelpActionChange,
+  hideSwipeNav = false,
 }: VozModeSlidesProps) {
   const isDesktop = useIsDesktop();
   const [encajarHelpOpen, setEncajarHelpOpen] = useState(false);
@@ -4527,6 +4537,11 @@ export function VozModeSlides({
     }
   }
 
+  useEffect(() => {
+    const helpBtn = renderActiveSlideHelpButton(activeSlideId);
+    onHelpActionChange?.(helpBtn);
+  }, [activeSlideId, onHelpActionChange]);
+
   return (
     <>
       {isDesktop ? (
@@ -4543,6 +4558,7 @@ export function VozModeSlides({
         <ModeCarouselShell
           activeIndex={activeIndex}
           onChangeIndex={onChangeIndex}
+          hideSwipeNav={hideSwipeNav}
           titleAction={renderActiveSlideHelpButton(activeSlideId)}
           renderSlide={(index) =>
             renderSlideContent(VOZ_MODE_SLIDES[index]!.id, "mobile")

@@ -4,10 +4,7 @@ import AppTopHeader from "@/components/ui/AppTopHeader";
 import type { UsuarioActivo } from "@/types";
 import { usePathname } from "next/navigation";
 
-const MOBILE_HEADER_HIDDEN_PATHS = [
-  "/canciones/editor",
-  "/practica/entrenador-canciones/editor",
-] as const;
+const MOBILE_HEADER_HIDDEN_PATHS = [] as const;
 
 function shouldHideMobileAppTopHeader(pathname: string): boolean {
   return MOBILE_HEADER_HIDDEN_PATHS.some(

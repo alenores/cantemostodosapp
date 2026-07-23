@@ -12,7 +12,7 @@ export default function AppTopHeader({ usuario }: AppTopHeaderProps) {
 
   return (
     <header
-      className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 pb-3 lg:hidden"
+      className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 pb-3 lg:hidden [body[data-hide-app-header='true']_&]:hidden"
       style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
     >
       <div className="app-page-container flex w-full min-w-0 items-center gap-2.5">

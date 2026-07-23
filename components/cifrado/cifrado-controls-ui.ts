@@ -13,7 +13,7 @@ export const CIFRADO_CONTROLS_SECTION_LABEL_CLASS =
   "mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-compositor-config";
 
 export const CIFRADO_CONTROLS_SEGMENTED_CLASS =
-  "flex gap-0.5 rounded-full border border-border bg-bg-darker p-0.5";
+  "h-[44px] flex w-full gap-1 rounded-full border border-border bg-bg-darker p-1";
 
 export const CIFRADO_CONTROLS_PANEL_BOX_CLASS =
   "rounded-[10px] border border-border/70 bg-bg-dark/60 px-3 py-3";
@@ -28,7 +28,7 @@ export const NOTACION_TAB_LABEL: Record<NotacionAcordes, string> = {
 };
 
 export function cifradoSegmentedButtonClass(active: boolean): string {
-  return `flex-1 rounded-full px-2 py-1.5 text-xs font-bold transition-colors ${
+  return `flex-1 h-full rounded-full px-3 text-xs font-bold transition-all flex items-center justify-center ${
     active
       ? CIFRADO_COMPOSITOR_ACTIVE_CLASS
       : "text-text-muted hover:text-text-primary"
@@ -36,7 +36,7 @@ export function cifradoSegmentedButtonClass(active: boolean): string {
 }
 
 export function cifradoSegmentedIconButtonClass(active: boolean): string {
-  return `flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-1.5 text-xs font-bold transition-colors ${
+  return `flex flex-1 h-full items-center justify-center gap-1 rounded-full px-3 text-xs font-bold transition-all ${
     active
       ? CIFRADO_COMPOSITOR_ACTIVE_CLASS
       : "text-text-muted hover:text-text-primary"
@@ -48,10 +48,10 @@ export const CIFRADO_NOTACION_LABEL_CLASS =
   "mb-1 block text-[9px] font-bold uppercase tracking-wide text-compositor-config";
 
 export const CIFRADO_NOTACION_SEGMENTED_CLASS =
-  "flex gap-0.5 rounded-full border border-border bg-bg-darker p-0.5";
+  "h-[36px] flex gap-0.5 rounded-full border border-border bg-bg-darker p-0.5";
 
 export function cifradoNotacionButtonClass(active: boolean): string {
-  return `flex-1 rounded-full px-1.5 py-1 text-[10px] font-bold transition-colors ${
+  return `flex-1 h-full rounded-full px-2 text-[10px] font-bold transition-all flex items-center justify-center ${
     active
       ? CIFRADO_COMPOSITOR_ACTIVE_CLASS
       : "text-text-muted hover:text-text-primary"
@@ -63,10 +63,10 @@ export const CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS =
   "mb-0.5 block text-[10px] font-bold uppercase leading-none tracking-wide text-compositor-config";
 
 export const CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS =
-  "inline-flex max-w-full gap-0.5 rounded-full border border-border bg-bg-darker p-0.5";
+  "h-[44px] flex w-full gap-1 rounded-full border border-border bg-bg-darker p-1";
 
 export function cifradoEditorToolbarSegmentedButtonClass(active: boolean): string {
-  return `min-w-0 rounded-full px-2 py-1 text-[10px] font-bold leading-none transition-colors ${
+  return `flex-1 h-full rounded-full px-3 text-xs font-bold transition-all flex items-center justify-center ${
     active
       ? CIFRADO_COMPOSITOR_ACTIVE_CLASS
       : "text-text-muted hover:text-text-primary"
@@ -90,7 +90,7 @@ export const CIFRADO_EDITOR_PC_LABEL_CLASS =
   "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-compositor-config";
 
 export function cifradoEditorPcTabClass(active: boolean): string {
-  return `shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold leading-none transition-colors ${
+  return `shrink-0 h-full inline-flex items-center rounded-full px-3.5 text-xs font-bold leading-none transition-all ${
     active
       ? "bg-compositor-config text-white shadow-sm"
       : "text-text-muted hover:bg-bg-card/70 hover:text-text-primary"

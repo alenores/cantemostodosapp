@@ -135,8 +135,9 @@ export default function NotaCancionFab({
         <div className="fixed inset-0 z-[90] flex items-end justify-center px-4 pb-6 sm:items-center sm:pb-0">
           <button
             type="button"
+            data-no-tap-feedback
             aria-label="Cerrar nota"
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 cursor-default border-0 bg-black/60 outline-none"
             onClick={() => setOpen(false)}
           />
           <div

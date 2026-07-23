@@ -24,6 +24,8 @@ import { FormEvent, useMemo, useRef, useState } from "react";
 import { CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS } from "@/components/cifrado/cifrado-controls-ui";
 
 export type CifradoEditorWebImportData = {
+  /** Texto crudo (acordes arriba + letra), como en «Pegar letra+acordes». */
+  textoTradicional: string;
   letra: string;
   cifrado: CifradoData;
   nombre: string;
@@ -225,13 +227,15 @@ export default function CifradoEditorIngresoWebSearch({
         );
       }
 
-      const imported = parseLetraTradicional(data.letra);
+      const textoTradicional = data.letra.trim();
+      const imported = parseLetraTradicional(textoTradicional);
       const { nombre, artista } = resolverNombreArtistaDisplay(
         seleccionado.titulo,
         seleccionado.artista,
       );
 
       onImport({
+        textoTradicional,
         letra: imported.letra,
         cifrado: imported.cifrado,
         nombre,
@@ -304,7 +308,7 @@ export default function CifradoEditorIngresoWebSearch({
           disabled={importando || importDisabled}
           className={`mt-3 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
         >
-          {importando ? "Importando…" : "Usar esta canción"}
+          {importando ? "Importando…" : "Confirmar e importar"}
         </TapButton>
       </div>
     );

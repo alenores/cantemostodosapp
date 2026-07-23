@@ -1,10 +1,13 @@
 "use client";
 
 import MetronomoModal from "@/components/ui/MetronomoModal";
+import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useMetronomo } from "@/hooks/useMetronomo";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 export default function MetronomoPageClient() {
+  const navigateWithProgress = useNavigateWithProgress();
   const {
     bpm,
     isPlaying,
@@ -31,6 +34,13 @@ export default function MetronomoPageClient() {
     toggleMic,
     requestMic,
   } = useMetronomo();
+
+  const handleClose = useCallback(() => {
+    stop();
+    navigateWithProgress("/practica");
+  }, [stop, navigateWithProgress]);
+
+  useHardwareBack(true, handleClose);
 
   useEffect(() => {
     return () => {
@@ -67,7 +77,7 @@ export default function MetronomoPageClient() {
         onTapTempo={tapTempo}
         onToggleMic={toggleMic}
         onRequestMic={() => void requestMic()}
-        onClose={() => {}}
+        onClose={handleClose}
       />
     </div>
   );

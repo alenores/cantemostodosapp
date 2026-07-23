@@ -138,18 +138,36 @@ export default function HubSectionPageClient({
     }
 
     if (moduleDef.kind === "metronomo") {
+      if (href) {
+        setPendingModuleId(moduleId);
+        navigateWithProgress(href);
+        return;
+      }
+
       mountToolsLayer();
       setMetronomoOpen(true);
       return;
     }
 
     if (moduleDef.kind === "voz") {
+      if (href) {
+        setPendingModuleId(moduleId);
+        navigateWithProgress(href);
+        return;
+      }
+
       mountToolsLayer();
       setVozOpen(true);
       return;
     }
 
     if (moduleDef.kind === "compositor") {
+      if (href) {
+        setPendingModuleId(moduleId);
+        navigateWithProgress(href);
+        return;
+      }
+
       mountToolsLayer();
       setCompositorOpen(true);
       return;

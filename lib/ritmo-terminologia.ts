@@ -388,6 +388,9 @@ export const CIFRADO_CONFIRM_DELETE_LINE_ACORDES_MESSAGE =
 export const CIFRADO_CONFIRM_DELETE_LINE_COMPASES_MESSAGE =
   "¿Eliminar todos los compases de este renglón?";
 
+export const CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE =
+  "Marcaste el inicio de un tramo de exigencia pero no el final. Si cerrás ahora se pierde ese punto. ¿Querés salir igual?";
+
 export const CIFRADO_LABEL_PEGAR_EN_RENGLON = "Pegar en renglón";
 
 export const CIFRADO_LABEL_RENGLON_DESTINO = "¿En qué renglón querés pegarlo?";

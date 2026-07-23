@@ -6,6 +6,7 @@ import LecturaBottomControls from "@/components/home/LecturaBottomControls";
 import { type LecturaFabItem } from "@/components/home/LecturaFabOption";
 import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
+import LecturaOcultarElementosPanel from "@/components/home/LecturaOcultarElementosPanel";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import LecturaCancionChip, {
@@ -22,7 +23,6 @@ import {
   getLecturaTopChromeTopCss,
 } from "@/lib/sala-layout";
 import {
-  ANOTACION_TIPO_LABEL,
   DEFAULT_ANOTACION_VISIBILITY,
   type Anotacion,
   type AnotacionTipo,
@@ -39,8 +39,6 @@ import { getLetraTextScrollEndPadding } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import {
-  Eye,
-  EyeOff,
   NotebookPen,
   Pencil,
   SlidersHorizontal,
@@ -69,6 +67,7 @@ export default function EntrenadorCancionesVerPageClient() {
     useState<AnotacionVisibility>(DEFAULT_ANOTACION_VISIBILITY);
   const [notaLectura, setNotaLectura] = useState<Anotacion | null>(null);
   const [notaGeneralOpen, setNotaGeneralOpen] = useState(false);
+  const [ocultarPanelAbierto, setOcultarPanelAbierto] = useState(false);
 
   const cocina = useModoLecturaCocina({
     active: true,
@@ -122,9 +121,30 @@ export default function EntrenadorCancionesVerPageClient() {
     navigateWithProgress(`/practica/entrenador-canciones/editor?id=${id}`);
   }, [id, navigateWithProgress]);
 
+  const abrirOcultarElementos = useCallback(() => {
+    setTonoPanelAbierto(false);
+    setZoomPanelAbierto(false);
+    setOcultarPanelAbierto(true);
+  }, [setTonoPanelAbierto, setZoomPanelAbierto]);
+
+  const abrirZoomLectura = useCallback(() => {
+    setOcultarPanelAbierto(false);
+    abrirZoom();
+  }, [abrirZoom]);
+
+  const abrirTonoLectura = useCallback(() => {
+    setOcultarPanelAbierto(false);
+    abrirTono();
+  }, [abrirTono]);
+
   const handleLecturaBack = useCallback(() => {
     if (notaLectura) {
       setNotaLectura(null);
+      return;
+    }
+
+    if (ocultarPanelAbierto) {
+      setOcultarPanelAbierto(false);
       return;
     }
 
@@ -147,6 +167,7 @@ export default function EntrenadorCancionesVerPageClient() {
   }, [
     goToList,
     notaLectura,
+    ocultarPanelAbierto,
     overlayAbierto,
     setOverlayAbierto,
     setTonoPanelAbierto,
@@ -154,6 +175,11 @@ export default function EntrenadorCancionesVerPageClient() {
     tonoPanelAbierto,
     zoomPanelAbierto,
   ]);
+
+  useEffect(() => {
+    setAnotacionesVisibility(DEFAULT_ANOTACION_VISIBILITY);
+    setOcultarPanelAbierto(false);
+  }, [id]);
 
   useHardwareBack(!notaGeneralOpen && !afinadorOpen, handleLecturaBack);
   useBodyScrollLock(true);
@@ -232,36 +258,23 @@ export default function EntrenadorCancionesVerPageClient() {
     setNotaGeneralOpen(true);
   }, []);
 
-  const lecturaExtraItems = useMemo<LecturaFabItem[]>(() => {
-    const items: LecturaFabItem[] = anotacionTiposPresentes.map((tipo) => ({
-      key: `anotacion-${tipo}`,
-      icon: anotacionesVisibility[tipo] ? EyeOff : Eye,
-      label: `${anotacionesVisibility[tipo] ? "Ocultar" : "Mostrar"} ${ANOTACION_TIPO_LABEL[tipo].toLowerCase()}`,
-      onClick: () => toggleAnotacionTipo(tipo),
-    }));
-
-    items.push({
-      key: "nota-general",
-      icon: NotebookPen,
-      label: "Nota de la canción",
-      onClick: openNotaGeneral,
-    });
-
-    items.push({
-      key: "editar",
-      icon: Pencil,
-      label: "Editar",
-      onClick: goToEditor,
-    });
-
-    return items;
-  }, [
-    anotacionTiposPresentes,
-    anotacionesVisibility,
-    goToEditor,
-    openNotaGeneral,
-    toggleAnotacionTipo,
-  ]);
+  const lecturaExtraItems = useMemo<LecturaFabItem[]>(
+    () => [
+      {
+        key: "nota-general",
+        icon: NotebookPen,
+        label: "Nota de la canción",
+        onClick: openNotaGeneral,
+      },
+      {
+        key: "editar",
+        icon: Pencil,
+        label: "Editar",
+        onClick: goToEditor,
+      },
+    ],
+    [goToEditor, openNotaGeneral],
+  );
 
   if (isLoggedIn !== true || !ready) {
     return null;
@@ -330,6 +343,7 @@ export default function EntrenadorCancionesVerPageClient() {
         onClick={() => {
           setZoomPanelAbierto(false);
           setTonoPanelAbierto(false);
+          setOcultarPanelAbierto(false);
           setOverlayAbierto((current) => !current);
         }}
         className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP} ${
@@ -354,7 +368,8 @@ export default function EntrenadorCancionesVerPageClient() {
         hasCompases={hasCompases}
         compasesOcultos={compasesOcultos}
         acordesOcultos={acordesOcultos}
-        showAcordesOption
+        showAcordesOption={false}
+        showOcultarElementosOption
         showTonoOption={Boolean(lecturaTonalidad)}
         showZoomOption
         extraItems={lecturaExtraItems}
@@ -362,9 +377,9 @@ export default function EntrenadorCancionesVerPageClient() {
         onContraer={goToList}
         onAfinador={() => setAfinadorOpen(true)}
         onActivarCompases={() => toggleCompasesOcultos()}
-        onToggleAcordesOcultos={toggleAcordesOcultos}
-        onAbrirZoom={abrirZoom}
-        onAbrirTono={abrirTono}
+        onAbrirOcultarElementos={abrirOcultarElementos}
+        onAbrirZoom={abrirZoomLectura}
+        onAbrirTono={abrirTonoLectura}
         temaLectura={temaLectura}
         onTemaLecturaChange={cambiarTemaLectura}
       />
@@ -388,6 +403,16 @@ export default function EntrenadorCancionesVerPageClient() {
               onClose={() => setTonoPanelAbierto(false)}
             />
           ) : null}
+
+          <LecturaOcultarElementosPanel
+            open={ocultarPanelAbierto}
+            acordesOcultos={acordesOcultos}
+            anotacionesVisibility={anotacionesVisibility}
+            anotacionTiposPresentes={anotacionTiposPresentes}
+            onToggleAcordesOcultos={toggleAcordesOcultos}
+            onToggleAnotacionTipo={toggleAnotacionTipo}
+            onClose={() => setOcultarPanelAbierto(false)}
+          />
 
           <LecturaBottomControls
             showZoom

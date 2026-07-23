@@ -96,7 +96,7 @@ export function CompositorEditorTabShell({
             role="tablist"
             aria-label="Editor del compositor"
           >
-            <div className="inline-flex min-w-max items-center gap-0.5 rounded-full border border-border/80 bg-bg-dark p-0.5">
+            <div className="inline-flex h-[36px] items-center min-w-max gap-0.5 rounded-full border border-border/80 bg-bg-dark p-0.5">
               {COMPOSITOR_EDITOR_TABS.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const practiceTab = tab.practice === true;
@@ -110,7 +110,7 @@ export function CompositorEditorTabShell({
                     aria-selected={isActive}
                     disabled={disabled}
                     onClick={() => onTabChange(tab.id)}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold leading-none transition-[color,background-color,box-shadow] disabled:opacity-50 sm:px-3.5 ${compositorTabButtonClass(isActive, practiceTab)}`}
+                    className={`shrink-0 h-full inline-flex items-center rounded-full px-3 text-[11px] font-bold leading-none transition-all disabled:opacity-50 sm:px-3.5 ${compositorTabButtonClass(isActive, practiceTab)}`}
                   >
                     {tab.label}
                   </button>

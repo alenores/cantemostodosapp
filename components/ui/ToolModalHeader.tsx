@@ -40,44 +40,24 @@ export function ToolModalHeader({
 
   return (
     <header
-      className={
-        isPageDesktop
-          ? "shrink-0 border-none bg-transparent px-4 lg:px-6 pt-4 lg:pt-6 pb-1 [&_h2]:text-2xl [&_h2]:lg:text-[1.75rem] [&_h2]:tracking-tight [&_h2]:font-extrabold"
-          : `shrink-0 border-b border-border bg-bg-dark px-4 ${
-              isPageMobile
-                ? "pb-1.5"
-                : isCompact
-                  ? "pb-1.5 lg:pb-2"
-                  : "pb-2.5 lg:pb-3"
-            }`
-      }
-      style={
-        isPageDesktop
-          ? undefined
-          : {
-              paddingTop: isPageMobile
-                ? isCompact
-                  ? "0.375rem"
-                  : "0.5rem"
-                : isCompact
-                  ? "calc(0.375rem + env(safe-area-inset-top, 0px))"
-                  : "calc(0.625rem + env(safe-area-inset-top, 0px))",
-            }
-      }
+      className={`shrink-0 border-b border-border/80 bg-bg-dark px-4 ${
+        isCompact ? "py-2 lg:py-2.5" : "py-2.5 lg:py-3"
+      }`}
+      style={{
+        paddingTop: `calc(${isCompact ? "0.5rem" : "0.75rem"} + env(safe-area-inset-top, 0px))`,
+      }}
     >
       <div
-        className={
-          isPageDesktop
-            ? "flex items-center gap-2.5 min-h-9"
-            : `flex items-center gap-2.5 ${isCompact ? "min-h-9" : "min-h-11 gap-3"}`
-        }
+        className={`flex items-center gap-3 ${
+          isCompact ? "min-h-9" : "min-h-11"
+        }`}
       >
         {onBack ? (
           <button
             type="button"
             aria-label={backAriaLabel}
             onClick={onBack}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-bg-card ${
+            className={`flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95 ${
               isCompact ? "size-9" : "size-11"
             }`}
           >
@@ -97,8 +77,8 @@ export function ToolModalHeader({
         ) : (
           <h2
             id={titleId}
-            className={`min-w-0 flex-1 text-lg font-extrabold ${
-              titleClassName ?? "text-accent"
+            className={`min-w-0 flex-1 text-lg font-extrabold tracking-tight ${
+              titleClassName ?? (accentVar ? "" : "text-text-primary")
             }`}
             style={accentVar ? { color: `var(${accentVar})` } : undefined}
           >
@@ -110,7 +90,7 @@ export function ToolModalHeader({
             type="button"
             aria-label={closeAriaLabel}
             onClick={onClose}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-bg-card ${
+            className={`flex shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95 ${
               isCompact ? "size-9" : "size-11"
             }`}
           >

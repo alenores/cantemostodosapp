@@ -9,6 +9,7 @@ import {
   MODO_LECTURA_SUBPANEL_BACKDROP_Z_CLASS,
   MODO_LECTURA_SUBPANEL_DIALOG_Z_CLASS,
 } from "@/lib/sala-layout";
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type LecturaTonoPanelProps = {
@@ -60,9 +61,19 @@ export default function LecturaTonoPanel({
         aria-label="Cambiar de tono"
       >
         <div className="pointer-events-auto flex w-full max-w-[15rem] flex-col items-stretch gap-3 rounded-2xl border border-border/50 bg-bg-dark/95 p-4 shadow-[0_4px_24px_rgba(0,0,0,0.55)] backdrop-blur-md">
-          <p className="text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
-            Cambiar de tono
-          </p>
+          <div className="relative flex items-center justify-center">
+            <p className="text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
+              Cambiar de tono
+            </p>
+            <TapButton
+              type="button"
+              aria-label="Cerrar"
+              onClick={onClose}
+              className="absolute -right-1 -top-1 flex size-7 items-center justify-center rounded-full text-text-muted"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </TapButton>
+          </div>
 
           <CifradoTonalidadFields
             idPrefix="lectura-tono"

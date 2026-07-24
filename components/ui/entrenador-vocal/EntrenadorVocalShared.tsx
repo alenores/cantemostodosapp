@@ -59,28 +59,17 @@ export function TargetPickerPanel({
 export { ToolConfigSection as VozConfigSection } from "@/components/ui/ToolModalSections";
 
 export function VozPracticeDivider() {
-  const dividerColor = "#1a3a52";
-
   return (
     <div
-      className="flex w-full min-w-0 items-center gap-2.5 py-0.5"
+      className="flex w-full min-w-0 items-center gap-2.5 py-1"
       role="separator"
       aria-label="Practicar"
     >
-      <div
-        className="min-w-0 flex-1 border-t-2"
-        style={{ borderColor: dividerColor }}
-      />
-      <span
-        className="shrink-0 text-sm font-extrabold uppercase tracking-wider"
-        style={{ color: dividerColor }}
-      >
+      <div className="min-w-0 flex-1 h-[2px] bg-gradient-to-r from-transparent via-cyan-400/40 to-cyan-400/80" />
+      <span className="shrink-0 text-[11px] font-black uppercase tracking-widest text-cyan-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
         PRACTICAR
       </span>
-      <div
-        className="min-w-0 flex-1 border-t-2"
-        style={{ borderColor: dividerColor }}
-      />
+      <div className="min-w-0 flex-1 h-[2px] bg-gradient-to-l from-transparent via-cyan-400/40 to-cyan-400/80" />
     </div>
   );
 }
@@ -88,8 +77,9 @@ export function VozPracticeDivider() {
 export function VozPracticeArea({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`voz-mode-practice-panel ${TOOL_MODAL_MOBILE_BLEED_CLASS} space-y-3 pb-1 pt-3 lg:mx-0 lg:rounded-[10px] lg:border lg:border-border/50 lg:bg-bg-card/30 lg:px-3 lg:py-3`}
+      className={`voz-mode-practice-panel ${TOOL_MODAL_MOBILE_BLEED_CLASS} space-y-3.5 pb-2 pt-3 px-3 relative overflow-hidden rounded-[16px] border border-cyan-500/20 bg-gradient-to-b from-bg-card/90 via-bg-dark/95 to-bg-card/80 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-md lg:mx-0`}
     >
+      <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-48 rounded-full bg-cyan-500/10 blur-3xl" aria-hidden="true" />
       <VozPracticeDivider />
       {children}
     </div>

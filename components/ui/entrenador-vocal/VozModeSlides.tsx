@@ -1385,9 +1385,9 @@ function HoldTimerPanel({
         <p className="text-xs font-semibold text-text-secondary">Cronómetro</p>
       </div>
 
-      <div className="rounded-estandar border border-border bg-bg-darker/35 px-2.5 py-2">
+      <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-b from-bg-card/90 via-bg-dark/95 to-bg-card/90 px-3 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.3)] backdrop-blur-sm">
         <div className="flex flex-col items-center">
-          <p className="mb-0.5 text-sm font-extrabold tabular-nums leading-none text-voz-config">
+          <p className="mb-1 text-sm font-black tracking-wide tabular-nums leading-none text-cyan-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.4)]">
             {holdTargetSeconds} s
           </p>
           <HoldClockDial
@@ -1400,11 +1400,11 @@ function HoldTimerPanel({
             calibre={calibre}
             compact={layout === "desktop"}
           />
-          <div className="mt-0.5 flex items-baseline justify-center gap-1">
-            <span className="text-base font-extrabold leading-none tabular-nums text-text-primary">
+          <div className="mt-1 flex items-baseline justify-center gap-1">
+            <span className="text-lg font-black leading-none tabular-nums text-text-primary drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
               {displaySeconds}
             </span>
-            <span className="text-xs font-semibold text-text-muted">s</span>
+            <span className="text-xs font-bold text-text-muted">s</span>
           </div>
         </div>
 
@@ -1412,7 +1412,7 @@ function HoldTimerPanel({
         {celebrationKey > 0 ? (
           <p
             key={celebrationKey}
-            className="mt-2 text-center text-lg font-extrabold text-[var(--tuner-in-tune-perfect)] animate-[metronomo-hit-flash_450ms_ease-out]"
+            className="mt-2 text-center text-lg font-black text-[var(--tuner-in-tune-perfect)] drop-shadow-[0_0_12px_rgba(34,197,94,0.6)] animate-[metronomo-hit-flash_450ms_ease-out]"
             aria-live="assertive"
           >
             ¡Meta cumplida!
@@ -1446,7 +1446,7 @@ function ChartLiveNoteRail({
 
   return (
     <div
-      className="flex w-12 shrink-0 flex-col items-center justify-center rounded-estandar border border-border/60 bg-bg-darker/40 px-0.5 py-2"
+      className="flex w-13 shrink-0 flex-col items-center justify-center rounded-xl border border-cyan-500/25 bg-gradient-to-b from-bg-card/90 via-bg-dark/95 to-bg-card/90 px-1 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-sm"
       aria-live="polite"
       aria-label={
         hasAudibleVoice && detection
@@ -1454,11 +1454,11 @@ function ChartLiveNoteRail({
           : "Sin nota detectada"
       }
     >
-      <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+      <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.4)]">
         Vos
       </span>
       <span
-        className="mt-1 text-center text-lg font-extrabold leading-none"
+        className="mt-1 text-center text-lg font-black leading-none tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
         style={{
           color:
             displayAccuracy === "silencio"
@@ -1468,7 +1468,7 @@ function ChartLiveNoteRail({
       >
         {noteLabel}
       </span>
-      <span className="mt-1 text-center text-xs font-semibold tabular-nums text-text-muted">
+      <span className="mt-1.5 text-center text-[11px] font-bold tabular-nums text-text-muted/80">
         {hasAudibleVoice && detection
           ? `${detection.frequency.toFixed(0)} Hz`
           : "—"}
@@ -1895,7 +1895,7 @@ export function PitchHistoryChart({
         }
       >
         <div
-          className={`relative min-w-0 overflow-hidden rounded-estandar border border-border bg-bg-card ${
+          className={`relative min-w-0 overflow-hidden rounded-xl border border-cyan-500/20 bg-gradient-to-b from-bg-card/90 via-bg-dark/95 to-bg-card/90 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm ${
             layout === "desktop" ? "w-full" : "flex-1"
           }`}
           style={
@@ -1906,7 +1906,7 @@ export function PitchHistoryChart({
         >
         {!isMelodia ? (
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-11 border-r border-border/50 bg-bg-dark/30"
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-11 border-r border-cyan-500/15 bg-bg-dark/60 backdrop-blur-xs"
           aria-hidden="true"
         >
           {yAxisLabels.map(({ semitones, label, emphasis }) => (
@@ -2252,7 +2252,7 @@ function VozRitmoTimeline({
   });
 
   return (
-    <div className="overflow-hidden rounded-estandar border border-border bg-bg-card">
+    <div className="overflow-hidden rounded-xl border border-cyan-500/20 bg-gradient-to-b from-bg-card/90 via-bg-dark/95 to-bg-card/90 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm">
       <div
         className={
           layout === "desktop"

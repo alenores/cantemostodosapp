@@ -332,6 +332,17 @@ export default function EntrenadorVocalModal({
   const activeCard = selectedModeId
     ? VOZ_MODE_CARDS.find((c) => c.id === selectedModeId)
     : null;
+  const showPortada =
+    Boolean(micPermissionGranted) && !micError && selectedModeId === null;
+  const bodyScrollClass =
+    !micPermissionGranted || micError || showPortada || !isDesktop
+      ? "touch-pan-y overflow-y-auto overscroll-y-contain"
+      : "overflow-hidden";
+  const bodyPadClass = isDesktop
+    ? "px-4 py-4 lg:px-6 lg:py-5"
+    : isPage
+      ? `${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-24 pt-1.5`
+      : `${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`;
 
   return (
     <ToolPresentationRoot
@@ -354,7 +365,7 @@ export default function EntrenadorVocalModal({
               ? activeCard.label
               : "Entrenador Vocal"
         }
-        density={isPage && !isDesktop ? "compact" : "default"}
+        density="default"
         accentVar="--accent-vocal"
         onBack={selectedModeId ? handleReturnToGrid : isPage ? onClose : undefined}
         backAriaLabel={selectedModeId ? "Volver a los modos" : "Volver a Herramientas"}
@@ -376,15 +387,7 @@ export default function EntrenadorVocalModal({
       />
 
       <div
-        className={`flex min-h-0 flex-1 flex-col vocal-ui ${
-          !micPermissionGranted || micError
-            ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
-            : isDesktop
-              ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
-              : isPage
-                ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-24 pt-1.5`
-                : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4`
-        }`}
+        className={`flex min-h-0 flex-1 flex-col vocal-ui ${bodyScrollClass} ${bodyPadClass}`}
         style={{
           ["--tool-practice-section-bg" as string]: "var(--bg-app)",
           ["--bg-cola-sheet" as string]: "var(--bg-app)",
@@ -404,8 +407,8 @@ export default function EntrenadorVocalModal({
             micStarting={micStarting}
             onRequestMic={onRequestMic}
           />
-        ) : selectedModeId === null ? (
-          <div className="flex min-h-0 flex-1 flex-col px-1">
+        ) : showPortada ? (
+          <div className="px-1">
             <VozModeSelectionGrid
               onSelectMode={(modeId) => setSelectedModeId(modeId)}
             />

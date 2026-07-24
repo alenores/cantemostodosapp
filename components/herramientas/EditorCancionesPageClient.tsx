@@ -29,6 +29,11 @@ export default function EditorCancionesPageClient() {
   const isDesktop = useIsDesktop();
   const idParam = searchParams.get("id");
   const editingId = idParam ? Number(idParam) : null;
+  const desde = searchParams.get("desde");
+  const backHref =
+    desde === "hub" ? "/canciones" : "/canciones/cancionero";
+  const backAriaLabel =
+    desde === "hub" ? "Volver a Canciones" : "Volver al cancionero";
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [session, setSession] = useState<CifradoEditorSession | null>(null);
   const [ready, setReady] = useState(false);
@@ -151,8 +156,8 @@ export default function EditorCancionesPageClient() {
 
   const handleSavedMobile = useCallback(async () => {
     await syncCancionero();
-    router.push("/canciones/cancionero");
-  }, [router, syncCancionero]);
+    router.push(backHref);
+  }, [backHref, router, syncCancionero]);
 
   if (isLoggedIn !== true || (editingId != null && !ready)) {
     return null;
@@ -166,7 +171,10 @@ export default function EditorCancionesPageClient() {
           presentation="page"
           isLoggedIn
           session={session}
-          onClose={() => {}}
+          onClose={() => {
+            router.push(backHref);
+          }}
+          showPageClose
           onSaved={() => {
             void syncCancionero();
           }}
@@ -175,8 +183,8 @@ export default function EditorCancionesPageClient() {
         <CifradoEditorMobile
           session={session}
           isLoggedIn
-          backHref="/canciones/cancionero"
-          backAriaLabel="Volver al cancionero"
+          backHref={backHref}
+          backAriaLabel={backAriaLabel}
           onPersist={persistCancionero}
           onSaved={() => {
             void handleSavedMobile();

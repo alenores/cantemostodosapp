@@ -153,10 +153,10 @@ export default function MetronomoModal({
       />
 
       <div
-        className={`flex min-h-0 flex-1 flex-col metronomo-ui ${
+        className={`flex min-h-0 flex-1 flex-col metronomo-ui touch-pan-y overflow-y-auto overscroll-y-contain ${
           isDesktop
-            ? "overflow-hidden px-4 py-4 lg:px-6 lg:py-5"
-            : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-24 pt-4`
+            ? "px-4 py-4 lg:px-6 lg:py-5"
+            : `${TOOL_MODAL_MOBILE_GUTTER_CLASS} pb-24 pt-4`
         }`}
         style={{
           ["--tool-practice-section-bg" as string]: "var(--bg-app)",

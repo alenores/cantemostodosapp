@@ -133,7 +133,14 @@ export default function CifradoEditorMobile({
   anotaciones,
 }: CifradoEditorMobileProps = {}) {
   const searchParams = useSearchParams();
-  const desdeCancionero = searchParams.get("desde") === "cancionero";
+  const desdeParam = searchParams.get("desde");
+  const desdeCancionero = desdeParam === "cancionero";
+  const desdeHub = desdeParam === "hub";
+  const fallbackBackHref = desdeCancionero
+    ? "/canciones/cancionero"
+    : desdeHub
+      ? "/canciones"
+      : "/canciones";
   const [phase, setPhase] = useState<MobilePhase>("ingreso");
 
   useEffect(() => {
@@ -1037,12 +1044,15 @@ export default function CifradoEditorMobile({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh">
+    <div
+      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app ${
+        phase === "cifrado"
+          ? "max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh"
+          : ""
+      }`}
+    >
       {phase === "ingreso" ? (
-        <header
-          className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 pb-3"
-          style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
-        >
+        <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
           {onClose ? (
             <TapButton
               type="button"
@@ -1056,35 +1066,24 @@ export default function CifradoEditorMobile({
                 <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
               )}
             </TapButton>
-          ) : backHref ? (
+          ) : (
             <TapLink
-              href={backHref}
-              ariaLabel={backAriaLabel}
+              href={backHref ?? fallbackBackHref}
+              ariaLabel={
+                backHref
+                  ? backAriaLabel
+                  : desdeCancionero
+                    ? "Volver al cancionero"
+                    : "Volver a Canciones"
+              }
               className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
             >
               <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
             </TapLink>
-          ) : desdeCancionero ? (
-            <TapLink
-              href="/canciones/cancionero"
-              ariaLabel="Volver al cancionero"
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-            </TapLink>
-          ) : null}
+          )}
           <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
             Editor
           </h1>
-          {!backHref && !desdeCancionero && !onClose ? (
-            <TapLink
-              href="/canciones"
-              ariaLabel="Cerrar"
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
-            >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
-            </TapLink>
-          ) : null}
         </header>
       ) : null}
 
@@ -1336,21 +1335,19 @@ export default function CifradoEditorMobile({
               >
                 <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
               </TapLink>
-            ) : desdeCancionero ? (
-              <TapLink
-                href="/canciones/cancionero"
-                ariaLabel="Volver al cancionero"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
-              >
-                <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
-              </TapLink>
             ) : (
               <TapLink
-                href="/canciones"
-                ariaLabel="Cerrar"
+                href={fallbackBackHref}
+                ariaLabel={
+                  desdeCancionero ? "Volver al cancionero" : "Volver a Canciones"
+                }
                 className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
               >
-                <X className="size-4 text-text-primary" aria-hidden="true" />
+                {desdeCancionero || desdeHub ? (
+                  <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
+                ) : (
+                  <X className="size-4 text-text-primary" aria-hidden="true" />
+                )}
               </TapLink>
             )}
 

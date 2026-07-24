@@ -26,7 +26,7 @@ export default function EntrenadorVocalPageClient() {
   }, [stop]);
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+    <div className="tool-page-layout flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
       <EntrenadorVocalModal
         open
         presentation="page"

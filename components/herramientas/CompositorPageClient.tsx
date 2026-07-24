@@ -54,7 +54,7 @@ export default function CompositorPageClient() {
   }, [compositor.stop]);
 
   return (
-    <div className="tool-page-layout flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
+    <div className="tool-page-layout flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-app">
       <CompositorModal
         open
         presentation="page"

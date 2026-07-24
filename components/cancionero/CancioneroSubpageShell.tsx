@@ -1,6 +1,6 @@
 "use client";
 
-import { TapLink } from "@/components/ui/TapFeedback";
+import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
@@ -11,6 +11,8 @@ type CancioneroSubpageShellProps = {
   children: ReactNode;
   /** Destino del botón volver (móvil). Por defecto /canciones. */
   backHref?: string;
+  /** Si se pasa, el volver llama a esto en vez de navegar con backHref. */
+  onBack?: () => void;
   backAriaLabel?: string;
   /** @deprecated El bloqueo de scroll con modales lo hace cada modal en `document.body`. */
   modalOpen?: boolean;
@@ -21,26 +23,37 @@ export default function CancioneroSubpageShell({
   headerAction,
   children,
   backHref = "/canciones",
+  onBack,
   backAriaLabel = "Volver al cancionero",
 }: CancioneroSubpageShellProps) {
   const isDesktop = useIsDesktop();
 
+  const backControl = onBack ? (
+    <TapButton
+      type="button"
+      aria-label={backAriaLabel}
+      onClick={onBack}
+      className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95"
+    >
+      <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+    </TapButton>
+  ) : (
+    <TapLink
+      href={backHref}
+      ariaLabel={backAriaLabel}
+      className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95"
+    >
+      <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+    </TapLink>
+  );
+
   return (
     <div className="relative flex min-h-full w-full min-w-0 flex-1 flex-col overflow-x-clip bg-bg-app">
-      {/* Mobile-only integrated header */}
+      {/* Mobile-only integrated header (bajo AppTopHeader del layout) */}
       {!isDesktop ? (
-        <header
-          className="shrink-0 border-b border-border/80 bg-bg-dark px-4 pb-2.5"
-          style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
-        >
-          <div className="app-page-container flex items-center gap-3 min-h-11">
-            <TapLink
-              href={backHref}
-              ariaLabel={backAriaLabel}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95"
-            >
-              <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
-            </TapLink>
+        <header className="shrink-0 border-b border-border/80 bg-bg-dark px-4 py-2.5">
+          <div className="app-page-container flex min-h-11 items-center gap-3">
+            {backControl}
             <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-text-primary">
               {title}
             </h1>
@@ -53,10 +66,13 @@ export default function CancioneroSubpageShell({
         <div className="app-page-container flex w-full min-w-0 flex-col gap-4">
           {/* Desktop-only floating integrated header */}
           {isDesktop ? (
-            <header className="flex items-center justify-between gap-3 mb-2">
-              <h1 className="text-2xl lg:text-[1.75rem] font-extrabold tracking-tight text-text-primary">
-                {title}
-              </h1>
+            <header className="mb-2 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                {onBack ? backControl : null}
+                <h1 className="text-2xl font-extrabold tracking-tight text-text-primary lg:text-[1.75rem]">
+                  {title}
+                </h1>
+              </div>
               {headerAction}
             </header>
           ) : null}

@@ -62,7 +62,7 @@ export function ToolPresentationRoot({
         <button
           type="button"
           aria-label={closeAriaLabel}
-          className="absolute inset-0 bg-black/60"
+          className="absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
         {panel}

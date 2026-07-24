@@ -18,7 +18,7 @@ import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { CancionCancionero } from "@/types";
-import { Music, Plus, Search, Trash2, X } from "lucide-react";
+import { Music, Plus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -265,153 +265,140 @@ export default function EntrenadorCancionesPageClient() {
 
   return (
     <>
-      <CancioneroSubpageShell
-        title="Entrenador de canciones"
-        backHref="/practica"
-        backAriaLabel="Volver a Práctica"
-        headerAction={
-          <div className="flex shrink-0 items-center gap-2">
-            <TapButton
-              aria-label="Agregar desde el cancionero"
-              onClick={() => void openPicker()}
-              className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm font-semibold text-text-primary"
-            >
-              Cancionero
-            </TapButton>
-            <TapButton
-              aria-label="Crear canción nueva"
-              onClick={() =>
-                navigateWithProgress("/practica/entrenador-canciones/editor")
-              }
-              className="flex size-11 items-center justify-center rounded-full bg-[var(--accent-entrenador-canciones)] text-[var(--text-on-light)]"
-            >
-              <Plus className="size-5" aria-hidden="true" />
-            </TapButton>
-          </div>
-        }
-      >
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-text-muted"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar en mi práctica"
-            className={inputClassName}
-            aria-label="Buscar canciones de práctica"
-          />
-        </div>
-
-        {error ? (
-          <p className="rounded-[10px] border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </p>
-        ) : null}
-
-        {loading ? (
-          <CancioneroListSkeleton />
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-[14px] border border-dashed border-border px-4 py-10 text-center">
-            <Music
-              className="size-8 text-[var(--accent-entrenador-canciones)]"
+      {pickerOpen ? (
+        <CancioneroSubpageShell
+          title="Desde el Cancionero"
+          onBack={() => setPickerOpen(false)}
+          backAriaLabel="Volver al entrenador"
+        >
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-text-muted"
               aria-hidden="true"
             />
-            <p className="text-base font-semibold text-text-primary">
-              Todavía no tenés canciones de práctica
-            </p>
-            <p className="max-w-sm text-sm text-text-muted">
-              Traé una del Cancionero o creá una nueva. Quedan solo para vos; no
-              se publican en el Cancionero Global.
-            </p>
+            <input
+              type="search"
+              value={pickerQuery}
+              onChange={(event) => setPickerQuery(event.target.value)}
+              placeholder="Buscar en el cancionero"
+              className={inputClassName}
+              aria-label="Buscar en el cancionero"
+            />
           </div>
-        ) : (
-          <ul className="app-list-grid list-none p-0">
-            {filtered.map((cancion) => (
-              <li key={cancion.id}>
-                <PracticaCancionListItem
-                  cancion={cancion}
-                  onOpen={() =>
-                    navigateWithProgress(
-                      `/practica/entrenador-canciones/ver?id=${cancion.id}`,
-                    )
-                  }
-                  onDelete={() => setDeleteTarget(cancion)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </CancioneroSubpageShell>
 
-      {pickerOpen ? (
-        <div className="fixed inset-0 z-50 flex flex-col bg-bg-app/95 backdrop-blur-sm">
-          <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-            <h2 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
-              Desde el Cancionero
-            </h2>
-            <TapButton
-              aria-label="Cerrar"
-              onClick={() => setPickerOpen(false)}
-              className="flex size-11 items-center justify-center rounded-full bg-bg-card"
-            >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
-            </TapButton>
-          </header>
+          {pickerLoading ? (
+            <CancioneroListSkeleton />
+          ) : pickerFiltered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-text-muted">
+              No hay canciones para mostrar.
+            </p>
+          ) : (
+            <ul className="app-list-grid list-none p-0">
+              {pickerFiltered.map((cancion) => (
+                <li key={cancion.id}>
+                  <TapButton
+                    aria-label={`Agregar ${cancion.nombre}`}
+                    disabled={cloningId !== null}
+                    onClick={() => void handleClone(cancion)}
+                    className="w-full rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left disabled:opacity-50"
+                  >
+                    <p className="truncate text-base font-bold text-text-primary">
+                      {cancion.nombre}
+                      {cloningId === cancion.id ? "…" : ""}
+                    </p>
+                    {cancion.artista ? (
+                      <p className="truncate text-sm text-text-muted">
+                        {cancion.artista}
+                      </p>
+                    ) : null}
+                  </TapButton>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CancioneroSubpageShell>
+      ) : (
+        <CancioneroSubpageShell
+          title="Entrenador de canciones"
+          backHref="/practica"
+          backAriaLabel="Volver a Práctica"
+          headerAction={
+            <div className="flex shrink-0 items-center gap-2">
+              <TapButton
+                aria-label="Agregar desde el cancionero"
+                onClick={() => void openPicker()}
+                className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm font-semibold text-text-primary"
+              >
+                Cancionero
+              </TapButton>
+              <TapButton
+                aria-label="Crear canción nueva"
+                onClick={() =>
+                  navigateWithProgress("/practica/entrenador-canciones/editor")
+                }
+                className="flex size-11 items-center justify-center rounded-full bg-[var(--accent-entrenador-canciones)] text-[var(--text-on-light)]"
+              >
+                <Plus className="size-5" aria-hidden="true" />
+              </TapButton>
+            </div>
+          }
+        >
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-text-muted"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar en mi práctica"
+              className={inputClassName}
+              aria-label="Buscar canciones de práctica"
+            />
+          </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-4">
-            <div className="relative shrink-0">
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-text-muted"
+          {error ? (
+            <p className="rounded-[10px] border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {error}
+            </p>
+          ) : null}
+
+          {loading ? (
+            <CancioneroListSkeleton />
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-[14px] border border-dashed border-border px-4 py-10 text-center">
+              <Music
+                className="size-8 text-[var(--accent-entrenador-canciones)]"
                 aria-hidden="true"
               />
-              <input
-                type="search"
-                value={pickerQuery}
-                onChange={(event) => setPickerQuery(event.target.value)}
-                placeholder="Buscar en el cancionero"
-                className={inputClassName}
-                aria-label="Buscar en el cancionero"
-              />
+              <p className="text-base font-semibold text-text-primary">
+                Todavía no tenés canciones de práctica
+              </p>
+              <p className="max-w-sm text-sm text-text-muted">
+                Traé una del Cancionero o creá una nueva. Quedan solo para vos; no
+                se publican en el Cancionero Global.
+              </p>
             </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {pickerLoading ? (
-                <CancioneroListSkeleton />
-              ) : pickerFiltered.length === 0 ? (
-                <p className="py-8 text-center text-sm text-text-muted">
-                  No hay canciones para mostrar.
-                </p>
-              ) : (
-                <ul className="flex list-none flex-col gap-2 p-0">
-                  {pickerFiltered.map((cancion) => (
-                    <li key={cancion.id}>
-                      <TapButton
-                        aria-label={`Agregar ${cancion.nombre}`}
-                        disabled={cloningId !== null}
-                        onClick={() => void handleClone(cancion)}
-                        className="w-full rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left disabled:opacity-50"
-                      >
-                        <p className="truncate text-base font-bold text-text-primary">
-                          {cancion.nombre}
-                          {cloningId === cancion.id ? "…" : ""}
-                        </p>
-                        {cancion.artista ? (
-                          <p className="truncate text-sm text-text-muted">
-                            {cancion.artista}
-                          </p>
-                        ) : null}
-                      </TapButton>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+          ) : (
+            <ul className="app-list-grid list-none p-0">
+              {filtered.map((cancion) => (
+                <li key={cancion.id}>
+                  <PracticaCancionListItem
+                    cancion={cancion}
+                    onOpen={() =>
+                      navigateWithProgress(
+                        `/practica/entrenador-canciones/ver?id=${cancion.id}`,
+                      )
+                    }
+                    onDelete={() => setDeleteTarget(cancion)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CancioneroSubpageShell>
+      )}
 
       <ConfirmDialog
         open={deleteTarget != null}

@@ -484,7 +484,7 @@ export default function CompositorModal({
         title={editorOpen ? undefined : modalTitle}
         headerContent={editorHeaderContent}
         accentVar="--accent-compositor"
-        density={editorOpen ? "compact" : "default"}
+        density="default"
         closeAriaLabel="Cerrar compositor"
         onClose={requestClose}
         onBack={
@@ -553,9 +553,9 @@ export default function CompositorModal({
           className={`flex min-h-0 flex-1 flex-col ${
             editorOpen && isDesktop
               ? "overflow-hidden px-4 py-2 lg:px-5 lg:py-2"
-              : editorOpen
-                ? `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-2`
-                : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} py-4 lg:py-5`
+              : `touch-pan-y overflow-y-auto overscroll-y-contain ${TOOL_MODAL_MOBILE_GUTTER_CLASS} ${
+                  editorOpen ? "py-2" : "py-4 lg:py-5"
+                }`
           }`}
         >
           {editorOpen ? (

@@ -303,6 +303,8 @@ function MobileLineRow({
 
     measurePositions();
   }, [
+    arribaOffsetMobile,
+    abajoOffsetMobile,
     barDragCharOffset,
     barDragOriginOffset,
     dragCharOffset,
@@ -549,6 +551,12 @@ function MobileLineRow({
     ? ANOTACIONES_ARRIBA_BANDA_PX
     : 0;
 
+  const abajoOffsetMobile = lineAnotaciones.some((anotacion) =>
+    anotacionVaAbajo(anotacion.tipo),
+  )
+    ? 18
+    : 0;
+
   const lineBody = (
     <>
       <div
@@ -575,11 +583,10 @@ function MobileLineRow({
         ) : null}
         <div
           className="relative flex w-full min-w-0 items-baseline pt-5 leading-relaxed"
-          style={
-            arribaOffsetMobile
-              ? { paddingTop: 20 + arribaOffsetMobile }
-              : undefined
-          }
+          style={{
+            paddingTop: arribaOffsetMobile ? 20 + arribaOffsetMobile : undefined,
+            paddingBottom: abajoOffsetMobile ? abajoOffsetMobile : undefined,
+          }}
         >
           {characters.length === 0 ? (
             <span className={`${CIFRADO_LINE_LANE_CONTAINER_CLASS} w-full`}>

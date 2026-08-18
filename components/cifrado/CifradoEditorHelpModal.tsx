@@ -22,7 +22,7 @@ import { CifradoUnlockIcon } from "@/components/cifrado/CifradoUnlockIcon";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
-const HELP_ICON_CLASS = "size-4 shrink-0 text-compositor-config";
+const HELP_ICON_CLASS = "size-4 shrink-0 text-accent";
 
 type CifradoEditorHelpModalProps = {
   open: boolean;
@@ -88,12 +88,12 @@ export function CifradoEditorHelpModal({ open, onClose }: CifradoEditorHelpModal
               className="flex size-11 items-center justify-center rounded-full border"
               style={{
                 backgroundColor:
-                  "color-mix(in srgb, var(--compositor-config) 12%, transparent)",
+                  "color-mix(in srgb, var(--accent) 12%, transparent)",
                 borderColor:
-                  "color-mix(in srgb, var(--compositor-config) 25%, transparent)",
+                  "color-mix(in srgb, var(--accent) 25%, transparent)",
               }}
             >
-              <Music2 className="size-5 text-compositor-config" aria-hidden="true" />
+              <Music2 className="size-5 text-accent" aria-hidden="true" />
             </div>
             <h2
               id="cifrado-editor-help-titulo"
@@ -223,13 +223,13 @@ export function CifradoEditorHelpButton({ onClick }: { onClick: () => void }) {
         onClick();
       }}
       aria-label="Ayuda del editor de canciones"
-      className="flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors hover:bg-compositor-config/15"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors hover:bg-accent/15"
       style={{
         borderColor:
-          "color-mix(in srgb, var(--compositor-config) 35%, var(--border))",
-        color: "var(--compositor-config)",
+          "color-mix(in srgb, var(--accent) 35%, var(--border))",
+        color: "var(--accent)",
         backgroundColor:
-          "color-mix(in srgb, var(--compositor-config) 10%, transparent)",
+          "color-mix(in srgb, var(--accent) 10%, transparent)",
       }}
     >
       <HelpCircle className="size-4" strokeWidth={2.5} aria-hidden="true" />

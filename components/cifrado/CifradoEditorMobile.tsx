@@ -101,7 +101,7 @@ type PickerTarget = {
 const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 
   const textareaClassName =
-  "min-h-0 w-full flex-1 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
+  "min-h-0 w-full flex-1 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
 type CifradoEditorMobileProps = {
   session?: CifradoEditorSession | null;

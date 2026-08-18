@@ -5,6 +5,7 @@ import {
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS,
+  CIFRADO_EDITOR_PC_LABEL_CLASS,
   cifradoEditorPcTabClass,
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
@@ -127,9 +128,9 @@ function GuardadoCycleControls({
               const next = event.target.value;
               onSelectSavedCycle(next ? next : null);
             }}
-            className={`mt-1.5 w-full rounded-[10px] border bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-compositor-config disabled:opacity-50 ${
+            className={`mt-1.5 w-full rounded-[10px] border bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-accent disabled:opacity-50 ${
               activeCycleId
-                ? "border-compositor-config/45 ring-1 ring-compositor-config/25"
+                ? "border-accent/45 ring-1 ring-accent/25"
                 : "border-border"
             }`}
           >
@@ -215,7 +216,7 @@ function PlacementCycleControls({
 >) {
   const labelClass =
     variant === "desktop"
-      ? ritmoDesktopSectionTitleClass("compositor")
+      ? CIFRADO_EDITOR_PC_LABEL_CLASS
       : CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS;
 
   if (variant === "desktop") {
@@ -342,7 +343,7 @@ export function CifradoCompasToolPanel({
 }: CifradoCompasToolPanelProps) {
   const sectionLabelClass =
     variant === "desktop"
-      ? ritmoDesktopSectionTitleClass("compositor")
+      ? CIFRADO_EDITOR_PC_LABEL_CLASS
       : CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS;
 
   if (variant === "desktop") {

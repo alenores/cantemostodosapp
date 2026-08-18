@@ -113,7 +113,7 @@ export default function CifradoIntensidadPatternRow({
 
           );
 
-          const barAppearance = getBeatLevelBarAppearance(level);
+          const barAppearance = getBeatLevelBarAppearance(level, "--accent");
 
 
 

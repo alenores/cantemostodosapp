@@ -275,7 +275,7 @@ const labelClassName =
 const inputClassName = CIFRADO_CONTROLS_INPUT_CLASS;
 
 const textareaClassName =
-  "min-h-[200px] w-full resize-y rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-compositor-config-border";
+  "min-h-[200px] w-full resize-y rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
 /** Ancho exterior del armado en vista celular (max-w del contenedor). */
 const CELULAR_ARMADO_OUTER_WIDTH_PX = 390;
@@ -1476,9 +1476,9 @@ function CifradoLineEditor({
           }}
           className={`absolute right-1.5 top-1.5 z-40 flex size-6 items-center justify-center rounded-md transition-colors ${
             isLineEditing
-              ? "bg-compositor-config text-white"
+              ? "bg-accent text-white"
               : hasLineCopyPending
-                ? "bg-bg-card text-text-secondary ring-1 ring-compositor-config-border"
+                ? "bg-bg-card text-text-secondary ring-1 ring-accent"
                 : "text-text-muted hover:bg-bg-card hover:text-text-secondary"
           }`}
           aria-label={isLineEditing ? "Dejar de editar línea" : "Editar línea"}
@@ -1498,7 +1498,7 @@ function CifradoLineEditor({
           }}
           className={`absolute bottom-1.5 right-1.5 z-40 flex size-6 items-center justify-center rounded-md transition-colors ${
             isLineLocked
-              ? "bg-compositor-config text-white"
+              ? "bg-accent text-white"
               : "text-text-muted hover:bg-bg-card hover:text-text-secondary"
           }`}
           aria-label={
@@ -1559,7 +1559,7 @@ function CifradoLineEditor({
               <div
                 contentEditable
                 suppressContentEditableWarning
-                className="inline-block min-w-[1ch] shrink-0 whitespace-pre outline-none focus:ring-1 focus:ring-compositor-config/40"
+                className="inline-block min-w-[1ch] shrink-0 whitespace-pre outline-none focus:ring-1 focus:ring-accent"
                 onBlur={(event) =>
                   onLineTextChange?.(
                     lineIndex,
@@ -1578,7 +1578,7 @@ function CifradoLineEditor({
                     key={`lane-${slot}`}
                     data-char-index={laneStart + slot}
                     className={`${CIFRADO_LINE_LANE_SLOT_CLASS} ${
-                      laneClickable ? "hover:bg-compositor-config-bg/60" : ""
+                      laneClickable ? "hover:bg-bg-card" : ""
                     }`}
                   >
                     {"\u00a0"}
@@ -1593,7 +1593,7 @@ function CifradoLineEditor({
                   key={`lane-${slot}`}
                   data-char-index={slot}
                   className={`${CIFRADO_LINE_LANE_SLOT_CLASS} ${
-                    laneClickable ? "hover:bg-compositor-config-bg/60" : ""
+                    laneClickable ? "hover:bg-bg-card" : ""
                   } ${slot === 0 ? "text-text-muted" : ""}`}
                 >
                   {slot === 0 ? " " : "\u00a0"}
@@ -1618,7 +1618,7 @@ function CifradoLineEditor({
                     key={`lane-${slot}`}
                     data-char-index={laneStart + slot}
                     className={`${CIFRADO_LINE_LANE_SLOT_CLASS} ${
-                      laneClickable ? "hover:bg-compositor-config-bg/60" : ""
+                      laneClickable ? "hover:bg-bg-card" : ""
                     }`}
                   >
                     {"\u00a0"}
@@ -1756,7 +1756,7 @@ function CifradoLineEditor({
                     aria-label={`Compás ${barra.compasNumero}. Tocá para editar intensidad. Arrastrá para mover.`}
                     aria-pressed={isSelected}
                     className={`absolute bottom-0 z-30 h-3 w-4 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent p-0 ${
-                      isSelected ? "ring-2 ring-compositor-config ring-offset-1" : ""
+                      isSelected ? "ring-2 ring-accent ring-offset-1" : ""
                     }`}
                     style={{ left }}
                     onPointerDown={(event) => {
@@ -2396,7 +2396,7 @@ function CifradoPreviewOverlay({
           type="button"
           onClick={onTogglePlayback}
           disabled={!canPlay}
-          className={`shrink-0 flex items-center justify-center rounded-full bg-compositor-config text-white shadow-lg disabled:opacity-40 ${
+          className={`shrink-0 flex items-center justify-center rounded-full bg-accent text-white shadow-lg disabled:opacity-40 ${
             isContained ? "size-9" : "size-11"
           }`}
           aria-label={playing ? "Pausar compás" : "Reproducir compás"}
@@ -4849,7 +4849,7 @@ export default function CifradoEditor({
         </div>
 
         {phase === "cifrado" && (
-          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0 lg:bg-[color-mix(in_srgb,var(--compositor-config)_5%,var(--bg-card))]">
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0 lg:bg-bg-card">
             <EditorSidebarHeader
               onClose={onClose}
               loading={loading}
@@ -4861,7 +4861,7 @@ export default function CifradoEditor({
               className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain touch-pan-y"
             >
               <div className="space-y-3 p-3">
-                <VozPcConfigCard title="Vista previa">
+                <VozPcConfigCard title="Vista previa" accentVar="var(--accent)">
                   <div className={CIFRADO_CONTROLS_SEGMENTED_CLASS}>
                     <button
                       type="button"
@@ -4892,7 +4892,7 @@ export default function CifradoEditor({
               </div>
 
               <div className="space-y-3 px-3 pb-3">
-                <VozPcConfigCard title="Canción">
+                <VozPcConfigCard title="Canción" accentVar="var(--accent)">
                   <label
                     className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
                     htmlFor="cifrado-nombre"
@@ -4927,7 +4927,7 @@ export default function CifradoEditor({
                   />
                 </VozPcConfigCard>
 
-                <VozPcConfigCard title="Tonalidad">
+                <VozPcConfigCard title="Tonalidad" accentVar="var(--accent)">
                   <CifradoTonalidadFields
                     idPrefix="cifrado-sidebar"
                     notacion={notacion === "numero" ? "es" : notacion}
@@ -4938,7 +4938,7 @@ export default function CifradoEditor({
                   />
                 </VozPcConfigCard>
 
-                <VozPcConfigCard title="Tempo">
+                <VozPcConfigCard title="Tempo" accentVar="var(--accent)">
                   <label
                     className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
                     htmlFor="cifrado-bpm-sidebar"

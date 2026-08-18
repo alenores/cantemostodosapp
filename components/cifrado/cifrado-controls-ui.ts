@@ -1,16 +1,16 @@
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 
-/** Paleta alineada al Compositor (config celeste + superficies oscuras). */
-export const CIFRADO_COMPOSITOR_ACTIVE_CLASS = "bg-compositor-config text-white";
+/** Paleta alineada a la app principal. */
+export const CIFRADO_COMPOSITOR_ACTIVE_CLASS = "bg-accent text-white";
 
-export const CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS = "text-compositor-config";
+export const CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS = "text-accent";
 
 /** Estilos compartidos entre CifradoViewerModal (expandido) y CifradoEditor. */
 export const CIFRADO_CONTROLS_INPUT_CLASS =
-  "min-h-10 w-full rounded-[10px] border border-border bg-bg-dark/60 px-3 text-sm text-text-primary outline-none focus:border-compositor-config-border";
+  "min-h-10 w-full rounded-[10px] border border-border bg-bg-dark/60 px-3 text-sm text-text-primary outline-none focus:border-accent";
 
 export const CIFRADO_CONTROLS_SECTION_LABEL_CLASS =
-  "mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-compositor-config";
+  "mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-secondary";
 
 export const CIFRADO_CONTROLS_SEGMENTED_CLASS =
   "h-[44px] flex w-full gap-1 rounded-full border border-border bg-bg-darker p-1";
@@ -45,7 +45,7 @@ export function cifradoSegmentedIconButtonClass(active: boolean): string {
 
 /** Selector de notación compacto (debajo del BPM). */
 export const CIFRADO_NOTACION_LABEL_CLASS =
-  "mb-1 block text-[9px] font-bold uppercase tracking-wide text-compositor-config";
+  "mb-1 block text-[9px] font-bold uppercase tracking-wide text-text-secondary";
 
 export const CIFRADO_NOTACION_SEGMENTED_CLASS =
   "h-[36px] flex gap-0.5 rounded-full border border-border bg-bg-darker p-0.5";
@@ -60,7 +60,7 @@ export function cifradoNotacionButtonClass(active: boolean): string {
 
 /** Toolbar compacto del editor (modo edición / compás). */
 export const CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS =
-  "mb-0.5 block text-[10px] font-bold uppercase leading-none tracking-wide text-compositor-config";
+  "mb-0.5 block text-[10px] font-bold uppercase leading-none tracking-wide text-text-secondary";
 
 export const CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS =
   "h-[44px] flex w-full gap-1 rounded-full border border-border bg-bg-darker p-1";
@@ -74,7 +74,7 @@ export function cifradoEditorToolbarSegmentedButtonClass(active: boolean): strin
 }
 
 export const CIFRADO_EDITOR_COMPAS_PANEL_CLASS =
-  "shrink-0 rounded-[12px] border border-compositor-config-border bg-compositor-config-bg px-3 py-2";
+  "shrink-0 rounded-[12px] border border-border bg-bg-card px-3 py-2";
 
 export const CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS =
   "rounded-[10px] border border-border/70 bg-bg-card/90 px-3 py-2.5";
@@ -84,15 +84,15 @@ export const CIFRADO_EDITOR_PC_TOOLBAR_SHELL_CLASS =
   "shrink-0 border-b border-border/80 bg-bg-darker";
 
 export const CIFRADO_EDITOR_PC_COMPAS_STRIP_CLASS =
-  "border-t border-border/60 bg-[color-mix(in_srgb,var(--compositor-config)_5%,var(--bg-card))] px-4 py-3";
+  "border-t border-border/60 bg-bg-darker px-4 py-3";
 
 export const CIFRADO_EDITOR_PC_LABEL_CLASS =
-  "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-compositor-config";
+  "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-text-secondary";
 
 export function cifradoEditorPcTabClass(active: boolean): string {
   return `shrink-0 h-full inline-flex items-center rounded-full px-3.5 text-xs font-bold leading-none transition-all ${
     active
-      ? "bg-compositor-config text-white shadow-sm"
+      ? "bg-accent text-white shadow-sm"
       : "text-text-muted hover:bg-bg-card/70 hover:text-text-primary"
   }`;
 }
@@ -107,10 +107,10 @@ export const CIFRADO_EDITOR_SHEET_BG_CLASS = "bg-[var(--cifrado-editor-sheet-bg)
 export const CIFRADO_EDITOR_LINE_BG_CLASS = "bg-letra-bg";
 
 export const CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS =
-  "rounded-lg bg-compositor-config py-3 text-sm font-bold text-white disabled:opacity-50";
+  "rounded-lg bg-accent py-3 text-sm font-bold text-white disabled:opacity-50";
 
 export const CIFRADO_EDITOR_PLAY_BUTTON_CLASS =
-  "flex size-11 items-center justify-center rounded-full bg-compositor-config text-white shadow-lg";
+  "flex size-11 items-center justify-center rounded-full bg-accent text-white shadow-lg";
 
 export const CIFRADO_INTENSIDAD_PATTERN_CLASS =
   "flex min-w-[8.5rem] items-end justify-center gap-1 rounded-[10px] border border-border/70 bg-bg-card/90 px-2 py-1.5 sm:min-w-[10rem]";

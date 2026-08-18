@@ -101,7 +101,8 @@ export async function countCancionesCancionero(
   const { count, error } = await supabase
     .from("canciones_guardadas")
     .select("id", { count: "exact", head: true })
-    .is("sala_id", null);
+    .is("sala_id", null)
+    .not("letra", "is", null);
 
   if (error) {
     throw error;
@@ -117,6 +118,7 @@ export async function fetchCancionesCancionero(
     .from("canciones_guardadas")
     .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
     .is("sala_id", null)
+    .not("letra", "is", null)
     .order("nombre", { ascending: true });
 
   if (error) {

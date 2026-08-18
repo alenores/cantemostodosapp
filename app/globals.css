@@ -108,10 +108,10 @@
   --text-on-light: #1a1a1a;
 
   /* Entrenador vocal — paleta de configuración */
-  --voz-config: #0077B6;
-  --voz-config-dim: rgba(0, 119, 182, 0.12);
-  --voz-config-border: rgba(0, 119, 182, 0.38);
-  --voz-config-bg: rgba(0, 119, 182, 0.08);
+  --voz-config: #38bdf8;
+  --voz-config-dim: rgba(56, 189, 248, 0.16);
+  --voz-config-border: rgba(56, 189, 248, 0.45);
+  --voz-config-bg: rgba(56, 189, 248, 0.10);
 
   /* Compositor — paleta de configuración (independiente del entrenador vocal) */
   --compositor-config: #24756B;

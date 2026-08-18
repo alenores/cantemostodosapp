@@ -91,13 +91,11 @@ function ToolModalSection({
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
         <span
-          className="size-2 shrink-0 rounded-full"
-          style={{ backgroundColor: styles.accentColor }}
+          className="size-2.5 shrink-0 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(56,189,248,0.7)]"
           aria-hidden="true"
         />
         <h3
-          className="text-xs font-bold uppercase tracking-wide"
-          style={{ color: styles.accentColor }}
+          className="text-xs font-black uppercase tracking-wider text-cyan-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.4)]"
         >
           {title}
         </h3>
@@ -113,11 +111,7 @@ function ToolModalSection({
 
   return (
     <section
-      className="rounded-[12px] border px-3 py-3"
-      style={{
-        borderColor: styles.sectionBorder,
-        backgroundColor: styles.sectionBg,
-      }}
+      className="rounded-[16px] border border-cyan-500/25 bg-gradient-to-b from-bg-card/90 via-bg-dark/95 to-bg-card/85 px-3.5 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-md"
     >
       <div className="flex items-start gap-1.5">
         {collapsible ? (
@@ -129,7 +123,7 @@ function ToolModalSection({
           >
             {headerContent}
             <ChevronDown
-              className={`size-5 shrink-0 text-text-muted transition-transform ${
+              className={`size-5 shrink-0 text-cyan-400 transition-transform ${
                 expanded ? "rotate-180" : ""
               }`}
               aria-hidden="true"
@@ -142,8 +136,7 @@ function ToolModalSection({
       {expanded ? (
         <>
           <div
-            className="mt-2.5 border-b"
-            style={{ borderColor: styles.dividerBorder }}
+            className="mt-2.5 border-b border-cyan-500/20"
             aria-hidden="true"
           />
           {subtitle ? (

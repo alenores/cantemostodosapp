@@ -1048,7 +1048,7 @@ function VozCalibrePicker({
   }
 
   return (
-    <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+    <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-b from-bg-card/85 via-bg-dark/95 to-bg-card/85 px-3 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
         Calibre de afinación
       </p>
@@ -1152,7 +1152,7 @@ function OctavasQueDigaPicker({
   }
 
   return (
-    <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+    <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-b from-bg-card/85 via-bg-dark/95 to-bg-card/85 px-3 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
         Ciclo
       </p>

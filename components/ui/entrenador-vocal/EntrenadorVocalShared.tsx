@@ -26,7 +26,7 @@ import { TOOL_MODAL_MOBILE_BLEED_CLASS } from "@/components/ui/ToolModalSections
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 
 const TARGET_PICKER_PANEL_CLASS =
-  "rounded-[10px] border border-border bg-bg-dark/60 px-3 py-3";
+  "rounded-xl border border-cyan-500/20 bg-gradient-to-b from-bg-card/85 via-bg-dark/95 to-bg-card/85 px-3 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.25)] backdrop-blur-sm";
 
 const TARGET_PICKER_PANEL_TITLE_CLASS =
   "text-xs font-semibold uppercase tracking-wide";

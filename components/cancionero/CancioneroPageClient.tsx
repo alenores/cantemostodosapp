@@ -138,7 +138,8 @@ export default function CancioneroPageClient({
   }, [supabase, usuarioLogueado]);
 
   const loadLocalCanciones = useCallback(async () => {
-    const data = await getCancioneroLocalAsCancionero();
+    const allData = await getCancioneroLocalAsCancionero();
+    const data = allData.filter((c) => Boolean(c.letra?.trim()));
 
     if (!hadLoadedRef.current && data.length > 0) {
       hadLoadedRef.current = true;

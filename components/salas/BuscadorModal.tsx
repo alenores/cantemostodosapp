@@ -389,12 +389,6 @@ export default function BuscadorModal({
   const [misCanciones, setMisCanciones] = useState<UsuarioCancion[]>([]);
   const [loadingMisCanciones, setLoadingMisCanciones] = useState(false);
   const [previewEsMisCanciones, setPreviewEsMisCanciones] = useState(false);
-  const [promptMisCanciones, setPromptMisCanciones] = useState<{
-    nombre: string;
-    artista: string | null;
-    cancion_guardada_id?: number | null;
-    url_letra?: string | null;
-  } | null>(null);
   const [promptVerAhoraSala, setPromptVerAhoraSala] = useState(false);
   const [guardadoRecienteId, setGuardadoRecienteId] = useState<number | null>(
     null,
@@ -435,7 +429,6 @@ export default function BuscadorModal({
     setMisCanciones([]);
     setLoadingMisCanciones(false);
     setPreviewEsMisCanciones(false);
-    setPromptMisCanciones(null);
     setPromptVerAhoraSala(false);
     setGuardadoRecienteId(null);
 
@@ -926,23 +919,7 @@ export default function BuscadorModal({
     }
   }
 
-  function maybePromptMisCanciones(
-    nombre: string,
-    artista: string | null,
-    cancionGuardadaId?: number | null,
-    urlLetra?: string | null,
-  ) {
-    if (!isHome || !usuarioLogueado) {
-      return;
-    }
 
-    setPromptMisCanciones({
-      nombre,
-      artista,
-      cancion_guardada_id: cancionGuardadaId ?? guardadoRecienteId,
-      url_letra: urlLetra ?? seleccionado?.url ?? null,
-    });
-  }
 
   async function handleGuardarLink() {
     if (!seleccionado || accionLoading) {
@@ -968,7 +945,6 @@ export default function BuscadorModal({
       await onDataChange?.();
       setFabGuardarAbierto(false);
       mostrarConfirmacion("link");
-      maybePromptMisCanciones(nombre, artista || null, null, seleccionado.url);
     } catch (actionError) {
       setError(
         actionError instanceof Error
@@ -1577,7 +1553,7 @@ export default function BuscadorModal({
                 {isHome ? (
                   <div
                     className={`grid gap-1.5 ${
-                      previewEsMisCanciones ? "grid-cols-2" : "grid-cols-3"
+                      previewEsMisCanciones ? "grid-cols-2" : "grid-cols-[2fr_2fr_1fr]"
                     }`}
                   >
                     <button
@@ -1619,7 +1595,7 @@ export default function BuscadorModal({
                     ) : null}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-[2fr_2fr_1fr] gap-1.5">
                     <button
                       type="button"
                       disabled={accionLoading}
@@ -1676,14 +1652,6 @@ export default function BuscadorModal({
             void onDataChange?.();
             void cargarCancionesCancionero();
             mostrarConfirmacion("letra");
-            if (guardarLetraModal) {
-              maybePromptMisCanciones(
-                guardarLetraModal.nombre,
-                guardarLetraModal.artista || null,
-                guardadoRecienteId,
-                guardarLetraModal.url,
-              );
-            }
             setGuardarLetraModal(null);
           }}
         />
@@ -1701,27 +1669,7 @@ export default function BuscadorModal({
         }}
       />
 
-      <ConfirmDialog
-        open={promptMisCanciones !== null}
-        message="¿Querés sumarla a Favoritas?"
-        confirmLabel="Sí, sumar"
-        cancelLabel="No, gracias"
-        zIndex={60}
-        onCancel={() => setPromptMisCanciones(null)}
-        onConfirm={() => {
-          if (!promptMisCanciones) {
-            return;
-          }
 
-          const payload = promptMisCanciones;
-          setPromptMisCanciones(null);
-          const supabase = createClient();
-
-          void agregarAMisCanciones(supabase, payload).catch((error) => {
-            console.error("[mis-canciones] error al agregar", error);
-          });
-        }}
-      />
     </div>
   );
 }

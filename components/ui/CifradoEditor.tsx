@@ -28,6 +28,7 @@ import {
   CifradoEditorHelpButton,
   CifradoEditorHelpModal,
 } from "@/components/cifrado/CifradoEditorHelpModal";
+import { CifradoEditorSavedLinksModal } from "@/components/cifrado/CifradoEditorSavedLinksModal";
 import { CifradoLineMergePicker } from "@/components/cifrado/CifradoLineMergePicker";
 import { CifradoUnlockIcon } from "@/components/cifrado/CifradoUnlockIcon";
 import {
@@ -186,7 +187,7 @@ import {
   CIFRADO_LABEL_PEGAR_EN_RENGLON,
   getCifradoConfirmAplicarCiclosTodosRenglonesMessage,
 } from "@/lib/ritmo-terminologia";
-import { Copy, CornerDownRight, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
+import { Copy, CornerDownRight, Link2, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -2573,6 +2574,7 @@ export default function CifradoEditor({
     null,
   );
   const [editorHelpOpen, setEditorHelpOpen] = useState(false);
+  const [linksModalOpen, setLinksModalOpen] = useState(false);
   const [applyCyclesToAllLinesConfirmOpen, setApplyCyclesToAllLinesConfirmOpen] =
     useState(false);
   const [lineDeleteConfirm, setLineDeleteConfirm] =
@@ -4465,12 +4467,23 @@ export default function CifradoEditor({
 
                 {ingresoTab === "pegar" ? (
                   <>
-                    <label
-                      className={labelClassName}
-                      htmlFor="cifrado-letra-pegar"
-                    >
-                      Letra con acordes
-                    </label>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label
+                        className={labelClassName}
+                        style={{ marginBottom: 0 }}
+                        htmlFor="cifrado-letra-pegar"
+                      >
+                        Letra con acordes
+                      </label>
+                      <TapButton
+                        type="button"
+                        onClick={() => setLinksModalOpen(true)}
+                        className="flex items-center gap-1.5 rounded-full border border-border bg-bg-card px-2.5 py-1 text-[11px] font-semibold text-text-primary shadow-sm"
+                      >
+                        <Link2 className="size-3.5 text-accent" aria-hidden="true" />
+                        Ver links guardados
+                      </TapButton>
+                    </div>
                     <textarea
                       id="cifrado-letra-pegar"
                       value={draftPasteTraditional}
@@ -5246,6 +5259,11 @@ export default function CifradoEditor({
       <CifradoEditorHelpModal
         open={editorHelpOpen}
         onClose={() => setEditorHelpOpen(false)}
+      />
+
+      <CifradoEditorSavedLinksModal
+        open={linksModalOpen}
+        onClose={() => setLinksModalOpen(false)}
       />
 
       <CifradoIngresoTonalidadInferModal

@@ -18,6 +18,10 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
   createSerwistRoute({
     swSrc: "app/sw.ts",
     useNativeEsbuild: true,
+    globIgnores: [
+      "**/node_modules/**/*",
+      "public/samples/compositor/**/*",
+    ],
     additionalPrecacheEntries: [
       { url: "/pwa-boot.html", revision },
       { url: "/", revision },

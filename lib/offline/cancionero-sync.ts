@@ -5,6 +5,9 @@ import {
 } from "@/lib/offline/cancionero-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export const CANCIONERO_OFFLINE_CONTENT_VERSION = 2;
+const CANCIONERO_PAGE_SIZE = 500;
+
 export type CancioneroRemoteSnapshot = {
   maxUpdatedAt: string | null;
   count: number;
@@ -34,6 +37,10 @@ export function needsCancioneroSync(
   local: Awaited<ReturnType<typeof getCancioneroLocalMeta>>,
 ): boolean {
   if (local.syncedAt === null) {
+    return true;
+  }
+
+  if (local.contentVersion !== CANCIONERO_OFFLINE_CONTENT_VERSION) {
     return true;
   }
 
@@ -88,27 +95,49 @@ export async function fetchCancioneroRemoteSnapshot(
 export async function fetchCancioneroRemoteAll(
   supabase: SupabaseClient,
 ): Promise<CancioneroLocalRecord[]> {
-  const { data, error } = await supabase
-    .from("canciones_guardadas")
-    .select(
-      "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id",
-    )
-    .is("sala_id", null);
+  const records: CancioneroLocalRecord[] = [];
 
-  if (error) {
-    throw error;
+  for (let from = 0; ; from += CANCIONERO_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("canciones_guardadas")
+      .select(
+        "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default",
+      )
+      .is("sala_id", null)
+      .order("id", { ascending: true })
+      .range(from, from + CANCIONERO_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = data ?? [];
+
+    records.push(
+      ...page.map((row) => ({
+        id: row.id,
+        nombre: row.nombre,
+        artista: row.artista,
+        letra: row.letra,
+        url_letra: row.url_letra ?? "",
+        updated_at:
+          normalizeTimestamp(row.updated_at) ?? new Date().toISOString(),
+        tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+        user_id: row.user_id ?? null,
+        cifrado: row.cifrado ?? null,
+        compas_config: row.compas_config ?? null,
+        tonalidad_default: row.tonalidad_default ?? null,
+        modo_tonal_default: row.modo_tonal_default ?? null,
+        bpm_default: row.bpm_default ?? null,
+      })),
+    );
+
+    if (page.length < CANCIONERO_PAGE_SIZE) {
+      break;
+    }
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    artista: row.artista,
-    letra: row.letra,
-    url_letra: row.url_letra ?? "",
-    updated_at: normalizeTimestamp(row.updated_at) ?? new Date().toISOString(),
-    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
-    user_id: row.user_id ?? null,
-  }));
+  return records;
 }
 
 export async function syncCancioneroLocal(
@@ -130,10 +159,17 @@ export async function syncCancioneroLocal(
 
   const records = await fetchCancioneroRemoteAll(supabase);
 
+  if (records.length !== remoteSnapshot.count) {
+    throw new Error(
+      `La descarga del cancionero quedó incompleta (${records.length}/${remoteSnapshot.count}).`,
+    );
+  }
+
   await replaceCancioneroLocalAll(records, {
     lastRemoteUpdatedAt: remoteSnapshot.maxUpdatedAt,
     lastRemoteCount: remoteSnapshot.count,
     syncedAt: new Date().toISOString(),
+    contentVersion: CANCIONERO_OFFLINE_CONTENT_VERSION,
   });
 
   return { status: "synced", count: records.length };

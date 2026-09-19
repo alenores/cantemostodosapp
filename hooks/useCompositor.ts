@@ -257,6 +257,12 @@ export function useCompositor({
     }, EDITOR_NOTICE_DISMISS_MS);
   }, []);
 
+  const notifyAudioUnavailable = useCallback(() => {
+    if (!navigator.onLine) {
+      showEditorNotice("Conectate a internet para escuchar los instrumentos.");
+    }
+  }, [showEditorNotice]);
+
   const notifyTrackOverflowIfNeeded = useCallback(
     (nextPiece: CompositorPiece) => {
       if (!pieceHasTrackOverflow(nextPiece)) {
@@ -325,6 +331,10 @@ export function useCompositor({
   }, []);
 
   const ensureAudioContext = useCallback(async () => {
+    if (!navigator.onLine) {
+      throw new Error("Los sonidos del Compositor requieren conexión");
+    }
+
     if (audioContextRef.current) {
       if (audioContextRef.current.state === "suspended") {
         await audioContextRef.current.resume();
@@ -451,9 +461,16 @@ export function useCompositor({
       setIsPlaying(true);
       isPlayingRef.current = true;
     } catch {
+      notifyAudioUnavailable();
       stop();
     }
-  }, [ensureAudioContext, getPlaybackPiece, handleProgress, stop]);
+  }, [
+    ensureAudioContext,
+    getPlaybackPiece,
+    handleProgress,
+    notifyAudioUnavailable,
+    stop,
+  ]);
 
   const previewActiveTrack = useCallback(async () => {
     if (isPlayingRef.current) {
@@ -482,9 +499,16 @@ export function useCompositor({
         },
       );
     } catch {
+      notifyAudioUnavailable();
       stop();
     }
-  }, [activeTrackId, handleProgress, prepareSamplesForPlayback, stop]);
+  }, [
+    activeTrackId,
+    handleProgress,
+    notifyAudioUnavailable,
+    prepareSamplesForPlayback,
+    stop,
+  ]);
 
   const previewPieceOnce = useCallback(
     async (previewPiece: CompositorPiece) => {
@@ -509,10 +533,11 @@ export function useCompositor({
           setCycleProgress(null);
         });
       } catch {
+        notifyAudioUnavailable();
         stop();
       }
     },
-    [handleProgress, prepareSamplesForPiece, stop],
+    [handleProgress, notifyAudioUnavailable, prepareSamplesForPiece, stop],
   );
 
   const previewPieceTrackOnce = useCallback(
@@ -559,12 +584,13 @@ export function useCompositor({
           },
         );
       } catch {
+        notifyAudioUnavailable();
         stop();
       } finally {
         setSamplesLoading(false);
       }
     },
-    [ensureAudioContext, handleProgress, stop],
+    [ensureAudioContext, handleProgress, notifyAudioUnavailable, stop],
   );
 
   const stopDrumPatternPreview = useCallback(() => {
@@ -627,10 +653,17 @@ export function useCompositor({
           },
         );
       } catch {
+        notifyAudioUnavailable();
         stop();
       }
     },
-    [prepareSamplesForPiece, previewingDrumPatternId, stop, stopDrumPatternPreview],
+    [
+      notifyAudioUnavailable,
+      prepareSamplesForPiece,
+      previewingDrumPatternId,
+      stop,
+      stopDrumPatternPreview,
+    ],
   );
 
   const stopMelodicPatternPreview = useCallback(() => {
@@ -701,12 +734,14 @@ export function useCompositor({
           },
         );
       } catch {
+        notifyAudioUnavailable();
         stop();
       }
     },
     [
       prepareSamplesForPiece,
       previewingMelodicPatternId,
+      notifyAudioUnavailable,
       stop,
       stopMelodicPatternPreview,
     ],
@@ -1060,7 +1095,7 @@ export function useCompositor({
   }, [restartIfPlaying, updatePiece]);
 
   useEffect(() => {
-    if (!hydrated) {
+    if (!hydrated || !navigator.onLine) {
       return;
     }
 

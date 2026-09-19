@@ -6,6 +6,7 @@ import {
   CacheFirst,
   ExpirationPlugin,
   NetworkFirst,
+  NetworkOnly,
   Serwist,
 } from "serwist";
 
@@ -21,6 +22,7 @@ const APP_SHELL_PATHS =
   /^\/($|salas(\/.*)?|cancionero(\/.*)?|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
 
 const SHELL_CACHE = "app-shell-offline-v1";
+const LEGACY_AUDIO_CACHE = "static-audio-assets";
 const SHELL_URLS = [
   "/pwa-boot.html",
   "/",
@@ -81,6 +83,10 @@ async function populateShellCache(): Promise<void> {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(populateShellCache());
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(caches.delete(LEGACY_AUDIO_CACHE));
 });
 
 self.addEventListener("fetch", (event) => {
@@ -164,6 +170,11 @@ const serwist = new Serwist({
     navigateFallbackDenylist: [/^\/api\//, /^\/serwist\//],
   },
   runtimeCaching: [
+    {
+      matcher: ({ url: { pathname }, sameOrigin }) =>
+        sameOrigin && pathname.startsWith("/samples/compositor/"),
+      handler: new NetworkOnly(),
+    },
     {
       matcher: ({ request, url: { pathname }, sameOrigin }) =>
         sameOrigin &&

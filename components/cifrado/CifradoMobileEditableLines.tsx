@@ -14,6 +14,7 @@ import AnotacionesLineLayer, {
 import type { RangoPendiente } from "@/components/cifrado/AnotacionPickers";
 import {
   DEFAULT_ANOTACION_VISIBILITY,
+  anotacionVaAbajo,
   anotacionVaArriba,
   type Anotacion,
   type AnotacionTipo,
@@ -296,6 +297,18 @@ function MobileLineRow({
     .map((barra) => `${barra.charOffset}:${barra.compasNumero}`)
     .join("|");
 
+  const arribaOffsetMobile = lineAnotaciones.some((anotacion) =>
+    anotacionVaArriba(anotacion.tipo),
+  )
+    ? ANOTACIONES_ARRIBA_BANDA_PX
+    : 0;
+
+  const abajoOffsetMobile = lineAnotaciones.some((anotacion) =>
+    anotacionVaAbajo(anotacion.tipo),
+  )
+    ? 18
+    : 0;
+
   useLayoutEffect(() => {
     if (freezeChordLayout) {
       return;
@@ -544,18 +557,6 @@ function MobileLineRow({
       ? `rounded-[12px] border border-accent/70 px-3 pt-1 shadow-[0_0_0_2px_rgba(232,145,90,0.18)] ${CIFRADO_EDITOR_LINE_BG_CLASS}`
       : `rounded-[8px] border border-border/80 px-3 pt-1 ${CIFRADO_EDITOR_LINE_BG_CLASS}`
   } ${isDimmed ? (isDragMode ? "opacity-30" : "opacity-45") : ""}`;
-
-  const arribaOffsetMobile = lineAnotaciones.some((anotacion) =>
-    anotacionVaArriba(anotacion.tipo),
-  )
-    ? ANOTACIONES_ARRIBA_BANDA_PX
-    : 0;
-
-  const abajoOffsetMobile = lineAnotaciones.some((anotacion) =>
-    anotacionVaAbajo(anotacion.tipo),
-  )
-    ? 18
-    : 0;
 
   const lineBody = (
     <>

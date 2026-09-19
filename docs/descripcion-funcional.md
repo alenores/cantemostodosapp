@@ -193,7 +193,7 @@ Al sumar una canción aparece el aviso: **"Canción sumada a la lista"**.
 
 ### 6.3 Funcionamiento sin conexión
 
-Individual funciona **sin internet** usando la copia local de canciones que ya se sincronizaron cuando hubo conexión.
+Individual funciona **sin internet** con una copia completa del Cancionero. La app descarga automáticamente todas las canciones cuando tiene conexión y mantiene esa copia actualizada, sin que el usuario tenga que elegirlas una por una.
 
 ---
 
@@ -584,6 +584,7 @@ Herramienta para **armar y experimentar** con ritmos y melodías propias. Los ci
 - **Ciclo compartido:** golpes y figura comunes a todas las capas.
 - **Capas (instrumentos):** Batería, Guitarra, Piano, Viento (cada una activable).
 - Hasta **24 bloques por capa**.
+- La edición de ciclos guardados sigue disponible sin conexión, pero escuchar los instrumentos requiere internet porque los sonidos no se descargan al celular.
 
 **Por cada bloque se configura:**
 
@@ -706,7 +707,7 @@ Solo disponible **con cuenta iniciada**.
 ### 14.4 Modo invitado (sin cuenta)
 
 - Nombre mostrado: **"Invitado"**.
-- Puede: usar copia local del cancionero, Individual offline, afinador, metrónomo, entrenador vocal, compositor local.
+- Puede: usar el Cancionero descargado, Individual offline, afinador, metrónomo, entrenador vocal y editar ciclos locales del Compositor. Los sonidos de instrumentos requieren conexión.
 - No puede: Favoritas, editor, entrenador de canciones, salas, guardar canciones, comunidad del compositor.
 
 ---
@@ -715,7 +716,7 @@ Solo disponible **con cuenta iniciada**.
 
 ### 15.1 Requisito inicial
 
-La primera vez se necesita **conexión a internet** para descargar la app y sincronizar el cancionero. Después, muchas funciones siguen disponibles sin red.
+La primera vez se necesita **conexión a internet** para descargar la app y el Cancionero completo. Después, la app mantiene automáticamente actualizadas todas las canciones y permite usarlas sin red.
 
 Si se abre sin conexión y nunca se cacheó nada:
 
@@ -726,9 +727,9 @@ Si se abre sin conexión y nunca se cacheó nada:
 
 | Área | Qué se puede hacer |
 |------|-------------------|
-| Inicio / Individual | Buscar en copia local, ver letras, modo lectura |
-| Cancionero global | Ver copia local (solo lectura; no editar ni guardar) |
-| Práctica | Metrónomo, afinador, entrenador vocal, compositor con ciclos guardados en el dispositivo |
+| Inicio / Individual | Buscar en el Cancionero completo descargado, ver letras y acordes, modo lectura |
+| Cancionero global | Ver todas las canciones descargadas (solo lectura; no editar ni guardar) |
+| Práctica | Metrónomo, afinador, entrenador vocal y edición de ciclos guardados del Compositor |
 | Login | Continuar sin conexión como invitado |
 
 ### 15.3 Qué NO funciona sin internet
@@ -741,6 +742,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 | Favoritas (escritura) | Bloqueado |
 | Entrenador de canciones | Datos en la nube |
 | Comunidad del Compositor | Requiere conexión |
+| Sonidos de instrumentos del Compositor | Requieren conexión; no se descargan al celular |
 | Búsqueda en internet de letras nuevas | No disponible |
 | Sincronización de fila en sala | No disponible |
 
@@ -784,10 +786,10 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 | Afinador | Sí | Sí |
 | Metrónomo | Sí | Sí |
 | Entrenador Vocal | Sí | Sí |
-| Compositor (ciclos locales) | Sí | Sí (+ sincronización en la nube) |
+| Compositor (ciclos locales) | Sí, edición; sonidos con internet | Sí, edición; sonidos con internet (+ sincronización en la nube) |
 | Compositor (comunidad) | No | Sí (con internet) |
 | Perfil | No | Sí |
-| Uso offline parcial | Sí | Sí (+ más datos si ya sincronizó) |
+| Uso offline | Sí, con Cancionero completo descargado | Sí, con Cancionero completo descargado |
 
 ---
 

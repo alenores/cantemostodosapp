@@ -1,5 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { EstadoCola, Sala, UsuarioActivo } from "@/types";
+import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
+import type { ModoTonal } from "@/lib/cifrado-escala";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
 export const OFFLINE_DB_VERSION = 3;
@@ -13,12 +15,18 @@ export type CancioneroLocalRecord = {
   updated_at: string;
   tiene_cifrado_avanzado?: boolean;
   user_id?: string | null;
+  cifrado?: CifradoData | null;
+  compas_config?: CompasConfig | null;
+  tonalidad_default?: NotaIndex | null;
+  modo_tonal_default?: ModoTonal | null;
+  bpm_default?: number | null;
 };
 
 export type CancioneroLocalMeta = {
   lastRemoteUpdatedAt: string | null;
   lastRemoteCount: number;
   syncedAt: string | null;
+  contentVersion: number;
 };
 
 export type ColaLocalRecord = {

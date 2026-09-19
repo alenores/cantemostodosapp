@@ -114,25 +114,41 @@ export async function countCancionesCancionero(
 export async function fetchCancionesCancionero(
   supabase: SupabaseClient,
 ): Promise<CancionCancionero[]> {
-  const { data, error } = await supabase
-    .from("canciones_guardadas")
-    .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
-    .is("sala_id", null)
-    .not("letra", "is", null)
-    .order("nombre", { ascending: true });
+  const pageSize = 500;
+  const canciones: CancionCancionero[] = [];
 
-  if (error) {
-    throw error;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("canciones_guardadas")
+      .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
+      .is("sala_id", null)
+      .not("letra", "is", null)
+      .order("nombre", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = data ?? [];
+    canciones.push(
+      ...page.map((row) => ({
+        id: row.id,
+        nombre: row.nombre,
+        artista: row.artista,
+        letra: row.letra,
+        tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+        user_id: row.user_id ?? null,
+      })),
+    );
+
+    if (page.length < pageSize) {
+      break;
+    }
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    artista: row.artista,
-    letra: row.letra,
-    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
-    user_id: row.user_id ?? null,
-  }));
+  return canciones;
 }
 
 function parseCifradoData(value: unknown): CifradoData | null {

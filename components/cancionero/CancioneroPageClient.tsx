@@ -33,6 +33,7 @@ import {
 } from "@/lib/offline/cancionero-events";
 import {
   getCancioneroLocalAsCancionero,
+  getCancioneroLocalCifradoDetalle,
   patchCancioneroLocalRecord,
 } from "@/lib/offline/cancionero-store";
 import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
@@ -381,38 +382,53 @@ export default function CancioneroPageClient({
 
     setCifradoDetalle(null);
     setCancionViendo(cancion);
-
-    if (cancion.tiene_cifrado_avanzado && online) {
-      void refreshCifradoDetalle(cancion.id);
-    }
   }
 
   useEffect(() => {
-    if (!cancionViendo?.tiene_cifrado_avanzado || !online) {
-      setCifradoDetalle(null);
-      setCifradoLoading(false);
-      return;
-    }
-
     let cancelled = false;
-    setCifradoLoading(true);
 
-    void fetchCancionCifradoDetalle(supabase, cancionViendo.id)
-      .then((detalle) => {
-        if (!cancelled) {
-          setCifradoDetalle(detalle);
-        }
-      })
-      .catch(() => {
+    void (async () => {
+      if (!cancionViendo?.tiene_cifrado_avanzado) {
         if (!cancelled) {
           setCifradoDetalle(null);
+          setCifradoLoading(false);
         }
-      })
-      .finally(() => {
+        return;
+      }
+
+      setCifradoLoading(true);
+      const local = await getCancioneroLocalCifradoDetalle(cancionViendo.id);
+
+      if (cancelled) {
+        return;
+      }
+
+      setCifradoDetalle(local);
+
+      if (!online) {
+        setCifradoLoading(false);
+        return;
+      }
+
+      try {
+        const remote = await fetchCancionCifradoDetalle(
+          supabase,
+          cancionViendo.id,
+        );
+
+        if (!cancelled) {
+          setCifradoDetalle(remote ?? local);
+        }
+      } catch {
+        if (!cancelled) {
+          setCifradoDetalle(local);
+        }
+      } finally {
         if (!cancelled) {
           setCifradoLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

@@ -631,6 +631,11 @@ Copias **privadas** de canciones solo para practicar. **No se publican** en el c
 
 **Requiere cuenta.** Sin cuenta, redirige al inicio.
 
+Las canciones de práctica se guardan en la cuenta y también en una copia privada
+del celular. Después de la primera descarga se pueden listar, abrir, leer y editar
+sin conexión. Los cambios quedan pendientes en el dispositivo y se sincronizan
+automáticamente al recuperar internet. Cada cuenta ve únicamente su propia copia.
+
 #### Listado
 
 - Título: **Entrenador de canciones**.
@@ -738,7 +743,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 |------|-------------------|
 | Inicio / Individual | Buscar en el Cancionero completo descargado, ver letras y acordes, modo lectura |
 | Cancionero global | Ver todas las canciones descargadas (solo lectura; no editar ni guardar) |
-| Práctica | Metrónomo, afinador, entrenador vocal y edición de ciclos guardados del Compositor |
+| Práctica | Metrónomo, afinador, entrenador vocal, canciones de práctica descargadas y edición de ciclos guardados del Compositor |
 | Login | Continuar sin conexión como invitado |
 
 ### 15.3 Qué NO funciona sin internet
@@ -749,7 +754,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 | Login y registro | Requieren conexión |
 | Guardar, editar, sincronizar canciones | Bloqueado |
 | Favoritas (escritura) | Bloqueado |
-| Entrenador de canciones | Datos en la nube |
+| Entrenador de canciones | La primera descarga y la sincronización entre dispositivos requieren conexión |
 | Comunidad del Compositor | Requiere conexión |
 | Sonidos de instrumentos del Compositor | Requieren conexión; no se descargan al celular |
 | Búsqueda en internet de letras nuevas | No disponible |

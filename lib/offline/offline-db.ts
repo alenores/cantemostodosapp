@@ -2,9 +2,10 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { EstadoCola, Sala, UsuarioActivo } from "@/types";
 import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
+import type { Anotacion } from "@/lib/anotaciones-practica";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 3;
+export const OFFLINE_DB_VERSION = 4;
 
 export type CancioneroLocalRecord = {
   id: number;
@@ -50,6 +51,30 @@ export type AppSnapshotRecord = {
   savedAt: string;
 };
 
+export type CancionPracticaLocalRecord = {
+  local_key: string;
+  local_id: number;
+  remote_id: number | null;
+  owner_user_id: string;
+  origen_cancion_id: number | null;
+  nombre: string;
+  artista: string | null;
+  letra: string | null;
+  cifrado: CifradoData | null;
+  compas_config: CompasConfig | null;
+  tonalidad_default: NotaIndex | null;
+  modo_tonal_default: ModoTonal;
+  bpm_default: number | null;
+  tiene_cifrado_avanzado: boolean;
+  nota_general: string | null;
+  anotaciones: Anotacion[];
+  dominio: "no_visto" | "practicando" | "dominado" | null;
+  created_at: string;
+  updated_at: string;
+  remote_updated_at: string | null;
+  sync_state: "synced" | "pending-upsert" | "pending-delete";
+};
+
 export interface OfflineDB extends DBSchema {
   canciones: {
     key: number;
@@ -68,6 +93,11 @@ export interface OfflineDB extends DBSchema {
   app_snapshot: {
     key: "current";
     value: AppSnapshotRecord;
+  };
+  canciones_practica: {
+    key: string;
+    value: CancionPracticaLocalRecord;
+    indexes: { "by-user": string };
   };
 }
 
@@ -100,6 +130,13 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
 
         if (oldVersion < 3 && !db.objectStoreNames.contains("app_snapshot")) {
           db.createObjectStore("app_snapshot", { keyPath: "id" });
+        }
+
+        if (oldVersion < 4 && !db.objectStoreNames.contains("canciones_practica")) {
+          const practica = db.createObjectStore("canciones_practica", {
+            keyPath: "local_key",
+          });
+          practica.createIndex("by-user", "owner_user_id");
         }
       },
     });

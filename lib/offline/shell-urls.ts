@@ -5,6 +5,9 @@ export const OFFLINE_SHELL_URLS = [
   "/salas",
   "/~offline",
   "/auth/login",
+  "/practica/entrenador-canciones",
+  "/practica/entrenador-canciones/editor",
+  "/practica/entrenador-canciones/ver",
 ] as const;
 
 export const OFFLINE_SHELL_CACHE = "app-shell-offline-v1";

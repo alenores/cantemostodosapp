@@ -6,6 +6,9 @@ export const OFFLINE_NAVIGABLE_PATHS = new Set([
   "/cancionero",
   "/cancionero/global",
   "/canciones/cancionero",
+  "/practica/entrenador-canciones",
+  "/practica/entrenador-canciones/editor",
+  "/practica/entrenador-canciones/ver",
   "/~offline",
   "/pwa-boot.html",
 ]);
@@ -24,4 +27,7 @@ export const OFFLINE_PREFETCH_ROUTES = [
   "/individual",
   "/canciones/cancionero",
   "/salas",
+  "/practica/entrenador-canciones",
+  "/practica/entrenador-canciones/editor",
+  "/practica/entrenador-canciones/ver",
 ] as const;

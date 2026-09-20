@@ -5,6 +5,7 @@ import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShe
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import {
@@ -14,7 +15,11 @@ import {
   type CancionPracticaListItem,
 } from "@/lib/canciones-practica";
 import { fetchCancionCifradoDetalle, filterCancionesCancionero } from "@/lib/cancionero";
-import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
+import {
+  getCancioneroLocalAsCancionero,
+  getCancioneroLocalCifradoDetalle,
+} from "@/lib/offline/cancionero-store";
+import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { CancionCancionero } from "@/types";
@@ -114,6 +119,7 @@ export default function EntrenadorCancionesPageClient() {
   const router = useRouter();
   const navigateWithProgress = useNavigateWithProgress();
   const supabase = useMemo(() => createClient(), []);
+  const online = useOnlineStatus();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [canciones, setCanciones] = useState<CancionPracticaListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,12 +144,12 @@ export default function EntrenadorCancionesPageClient() {
     [cancionero, pickerQuery],
   );
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (skipSync = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await listCancionesPractica(supabase);
+      const data = await listCancionesPractica(supabase, { skipSync });
       setCanciones(data);
     } catch (loadError) {
       const message =
@@ -155,6 +161,12 @@ export default function EntrenadorCancionesPageClient() {
       setLoading(false);
     }
   }, [supabase]);
+
+  useEffect(() => {
+    const handleLocalChange = () => { void refresh(true); };
+    window.addEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleLocalChange);
+    return () => window.removeEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleLocalChange);
+  }, [refresh]);
 
   useEffect(() => {
     async function loadSession() {
@@ -211,7 +223,10 @@ export default function EntrenadorCancionesPageClient() {
       let detalle = null;
 
       if (cancion.tiene_cifrado_avanzado) {
-        detalle = await fetchCancionCifradoDetalle(supabase, cancion.id);
+        detalle = await getCancioneroLocalCifradoDetalle(cancion.id);
+        if (!detalle && online) {
+          detalle = await fetchCancionCifradoDetalle(supabase, cancion.id);
+        }
       }
 
       const practicaId = await cloneCancioneroToPractica(
@@ -286,6 +301,12 @@ export default function EntrenadorCancionesPageClient() {
             />
           </div>
 
+          {!online ? (
+            <p className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm text-text-muted">
+              Sin conexión · los cambios se guardan en este celular y se sincronizan después.
+            </p>
+          ) : null}
+
           {pickerLoading ? (
             <CancioneroListSkeleton />
           ) : pickerFiltered.length === 0 ? (
@@ -357,6 +378,12 @@ export default function EntrenadorCancionesPageClient() {
               aria-label="Buscar canciones de práctica"
             />
           </div>
+
+          {!online ? (
+            <p className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm text-text-muted">
+              Sin conexión · podés abrir y editar tu práctica. Los cambios se sincronizan después.
+            </p>
+          ) : null}
 
           {error ? (
             <p className="rounded-[10px] border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { Loader2 } from "lucide-react";
+import { isOfflineNavigableRoute } from "@/lib/offline/offline-routes";
 import {
   Suspense,
   type ButtonHTMLAttributes,
@@ -67,6 +68,12 @@ export function TapLink({
     <Link
       href={href}
       aria-label={ariaLabel}
+      onNavigate={(event) => {
+        if (!navigator.onLine && isOfflineNavigableRoute(href)) {
+          event.preventDefault();
+          window.location.assign(href);
+        }
+      }}
       {...(noGlobalFeedback ? { "data-no-tap-feedback": true } : {})}
       className={`relative active:scale-[0.96] transition-transform duration-100 ease-out ${className}`.trim()}
     >

@@ -2,6 +2,10 @@
 export const OFFLINE_SHELL_URLS = [
   "/pwa-boot.html",
   "/",
+  "/individual",
+  "/canciones",
+  "/canciones/cancionero",
+  "/practica",
   "/salas",
   "/~offline",
   "/auth/login",

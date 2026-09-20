@@ -26,6 +26,10 @@ const LEGACY_AUDIO_CACHE = "static-audio-assets";
 const SHELL_URLS = [
   "/pwa-boot.html",
   "/",
+  "/individual",
+  "/canciones",
+  "/canciones/cancionero",
+  "/practica",
   "/salas",
   "/~offline",
   "/auth/login",
@@ -185,8 +189,10 @@ const serwist = new Serwist({
           pathname === "/~offline" ||
           pathname === "/auth/login" ||
           pathname === "/" ||
+          pathname === "/canciones" ||
           pathname.startsWith("/canciones/") ||
           pathname.startsWith("/herramientas/") ||
+          pathname === "/practica" ||
           pathname.startsWith("/practica/")),
       handler: shellCacheFirst,
     },

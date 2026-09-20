@@ -10,10 +10,8 @@ import { useCompositor } from "@/hooks/useCompositor";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useMetronomo } from "@/hooks/useMetronomo";
 import { useVoz } from "@/hooks/useVoz";
-import { dispatchCancioneroSyncFinished } from "@/lib/offline/cancionero-events";
-import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
-import { createClient } from "@/lib/supabase/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { requestCancioneroUpdateCheck } from "@/lib/offline/cancionero-events";
+import { useCallback, useEffect } from "react";
 
 export type CancioneroHubToolsLayerProps = {
   isLoggedIn: boolean;
@@ -46,7 +44,6 @@ export default function CancioneroHubToolsLayer({
   onEditorOpenChange,
   onGlobalCountRefresh,
 }: CancioneroHubToolsLayerProps) {
-  const supabase = useMemo(() => createClient(), []);
   const compositor = useCompositor({
     isLoggedIn,
     online,
@@ -181,17 +178,9 @@ export default function CancioneroHubToolsLayer({
   });
 
   const handleEditorSaved = useCallback(async () => {
-    if (online) {
-      try {
-        await syncCancioneroLocal(supabase, { force: true });
-      } catch {
-        // El listado se refrescará en la próxima sync automática.
-      }
-    }
-
-    dispatchCancioneroSyncFinished();
+    if (online) requestCancioneroUpdateCheck();
     await onGlobalCountRefresh();
-  }, [online, onGlobalCountRefresh, supabase]);
+  }, [online, onGlobalCountRefresh]);
 
   return (
     <>

@@ -7,7 +7,8 @@ function readNavigatorOnline(): boolean {
 }
 
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState(readNavigatorOnline);
+  // El primer render coincide con el servidor; el efecto lee la conexión real al montar.
+  const [online, setOnline] = useState(true);
 
   useEffect(() => {
     function syncOnlineStatus() {

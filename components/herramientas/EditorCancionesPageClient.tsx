@@ -15,8 +15,7 @@ import {
 } from "@/lib/cifrado-editor-session";
 import { clampBpm } from "@/lib/cifrado";
 import { normalizeModoTonal } from "@/lib/cifrado-escala";
-import { dispatchCancioneroSyncFinished } from "@/lib/offline/cancionero-events";
-import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
+import { requestCancioneroUpdateCheck } from "@/lib/offline/cancionero-events";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -143,16 +142,8 @@ export default function EditorCancionesPageClient() {
   );
 
   const syncCancionero = useCallback(async () => {
-    if (online) {
-      try {
-        await syncCancioneroLocal(supabase, { force: true });
-      } catch {
-        // La sync automática cubrirá el refresco.
-      }
-    }
-
-    dispatchCancioneroSyncFinished();
-  }, [online, supabase]);
+    if (online) requestCancioneroUpdateCheck();
+  }, [online]);
 
   const handleSavedMobile = useCallback(async () => {
     await syncCancionero();

@@ -22,13 +22,13 @@ export const { dynamic, dynamicParams, revalidate, generateStaticParams, GET } =
       "**/node_modules/**/*",
       "public/samples/compositor/**/*",
     ],
+    // Los archivos de public (pwa-boot.html y manifest.json) ya se incluyen automáticamente.
+    // Repetirlos con otra revisión impide que arranque el service worker.
     additionalPrecacheEntries: [
-      { url: "/pwa-boot.html", revision },
       { url: "/", revision },
       { url: "/~offline", revision },
       { url: "/salas", revision },
       { url: "/auth/login", revision },
       { url: "/individual", revision },
-      { url: "/manifest.json", revision },
     ],
   });

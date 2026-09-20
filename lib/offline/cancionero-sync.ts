@@ -1,176 +1,128 @@
 import {
+  getCancioneroLocalAll,
   getCancioneroLocalMeta,
-  replaceCancioneroLocalAll,
+  mergeCancioneroLocalUpdates,
   type CancioneroLocalRecord,
 } from "@/lib/offline/cancionero-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const CANCIONERO_OFFLINE_CONTENT_VERSION = 2;
-const CANCIONERO_PAGE_SIZE = 500;
+const CONTENT_VERSION = 2;
+const PAGE_SIZE = 500;
+const DOWNLOAD_BATCH_SIZE = 100;
+const SONG_COLUMNS =
+  "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default";
 
-export type CancioneroRemoteSnapshot = {
-  maxUpdatedAt: string | null;
-  count: number;
+type RemoteSnapshot = { maxUpdatedAt: string | null; count: number };
+type RemoteVersion = { id: number; updated_at: string };
+export type CancioneroUpdate = RemoteVersion & {
+  nombre: string;
+  artista: string | null;
+  kind: "new" | "updated";
+};
+export type CancioneroUpdatePlan = {
+  snapshot: RemoteSnapshot;
+  songs: CancioneroUpdate[];
 };
 
-export type CancioneroSyncResult =
-  | { status: "skipped"; reason: "offline" | "unchanged" }
-  | { status: "synced"; count: number }
-  | { status: "error"; message: string };
-
-function normalizeTimestamp(value: string | null | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed.toISOString();
+function timestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const time = new Date(value);
+  return Number.isNaN(time.getTime()) ? null : time.toISOString();
 }
 
-export function needsCancioneroSync(
-  remote: CancioneroRemoteSnapshot,
-  local: Awaited<ReturnType<typeof getCancioneroLocalMeta>>,
-): boolean {
-  if (local.syncedAt === null) {
-    return true;
-  }
-
-  if (local.contentVersion !== CANCIONERO_OFFLINE_CONTENT_VERSION) {
-    return true;
-  }
-
-  const remoteMax = normalizeTimestamp(remote.maxUpdatedAt);
-  const localMax = normalizeTimestamp(local.lastRemoteUpdatedAt);
-
-  if (remote.count !== local.lastRemoteCount) {
-    return true;
-  }
-
-  if (remoteMax !== localMax) {
-    return true;
-  }
-
-  return false;
+function needsDownload(remote: RemoteVersion, local?: CancioneroLocalRecord) {
+  return !local || timestamp(remote.updated_at) !== timestamp(local.updated_at) ||
+    (local.tiene_cifrado_avanzado && local.cifrado === undefined);
 }
 
-export async function fetchCancioneroRemoteSnapshot(
-  supabase: SupabaseClient,
-): Promise<CancioneroRemoteSnapshot> {
-  const [countResult, latestResult] = await Promise.all([
-    supabase
-      .from("canciones_guardadas")
-      .select("id", { count: "exact", head: true })
-      .is("sala_id", null),
-    supabase
-      .from("canciones_guardadas")
-      .select("updated_at")
-      .is("sala_id", null)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+async function fetchSnapshot(supabase: SupabaseClient): Promise<RemoteSnapshot> {
+  const [count, latest] = await Promise.all([
+    supabase.from("canciones_guardadas").select("id", { count: "exact", head: true }).is("sala_id", null),
+    supabase.from("canciones_guardadas").select("updated_at").is("sala_id", null)
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-
-  if (countResult.error) {
-    throw countResult.error;
-  }
-
-  if (latestResult.error) {
-    throw latestResult.error;
-  }
-
-  const count = countResult.count ?? 0;
-
-  return {
-    count,
-    maxUpdatedAt:
-      count > 0 ? normalizeTimestamp(latestResult.data?.updated_at ?? null) : null,
-  };
+  if (count.error) throw count.error;
+  if (latest.error) throw latest.error;
+  if (count.count === null) throw new Error("No se pudo comprobar el Cancionero.");
+  return { count: count.count, maxUpdatedAt: timestamp(latest.data?.updated_at) };
 }
 
-export async function fetchCancioneroRemoteAll(
+/** Solo consulta versiones y títulos. Nunca descarga letras ni modifica la copia local. */
+export async function checkCancioneroUpdates(
   supabase: SupabaseClient,
-): Promise<CancioneroLocalRecord[]> {
+): Promise<CancioneroUpdatePlan> {
+  const [snapshot, meta, local] = await Promise.all([
+    fetchSnapshot(supabase), getCancioneroLocalMeta(), getCancioneroLocalAll(),
+  ]);
+  if (meta.syncedAt && meta.contentVersion === CONTENT_VERSION &&
+      meta.lastRemoteCount === snapshot.count && local.length === snapshot.count &&
+      timestamp(meta.lastRemoteUpdatedAt) === snapshot.maxUpdatedAt) {
+    return { snapshot, songs: [] };
+  }
+
+  const versions: RemoteVersion[] = [];
+  for (let from = 0; from < snapshot.count; from += PAGE_SIZE) {
+    const { data, error } = await supabase.from("canciones_guardadas")
+      .select("id, updated_at").is("sala_id", null)
+      .order("id", { ascending: true }).range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    versions.push(...(data ?? []));
+  }
+  if (versions.length !== snapshot.count || new Set(versions.map((row) => row.id)).size !== snapshot.count) {
+    throw new Error("El Cancionero cambió durante la consulta. Volvé a comprobar las novedades.");
+  }
+
+  const localById = new Map(local.map((row) => [row.id, row]));
+  const pending = versions.filter((row) => needsDownload(row, localById.get(row.id)));
+  const songs: CancioneroUpdate[] = [];
+  for (let from = 0; from < pending.length; from += DOWNLOAD_BATCH_SIZE) {
+    const ids = pending.slice(from, from + DOWNLOAD_BATCH_SIZE).map((row) => row.id);
+    const { data, error } = await supabase.from("canciones_guardadas")
+      .select("id, nombre, artista, updated_at").is("sala_id", null).in("id", ids);
+    if (error) throw error;
+    if (data?.length !== ids.length) {
+      throw new Error("El Cancionero cambió durante la consulta. Volvé a comprobar las novedades.");
+    }
+    songs.push(...data.map((row) => ({
+      ...row, kind: localById.has(row.id) ? "updated" as const : "new" as const,
+    })));
+  }
+  return { snapshot, songs: songs.sort((a, b) => a.nombre.localeCompare(b.nombre, "es")) };
+}
+
+/** Única entrada para descargar: recibe el listado que el usuario acaba de aceptar. */
+export async function downloadCancioneroUpdates(
+  supabase: SupabaseClient,
+  plan: CancioneroUpdatePlan,
+  onProgress?: (completed: number, total: number) => void,
+): Promise<number> {
+  const localById = new Map((await getCancioneroLocalAll()).map((row) => [row.id, row]));
+  // Otra pestaña puede haber descargado estas versiones mientras se mostraba el listado.
+  const pending = plan.songs.filter((row) => needsDownload(row, localById.get(row.id)));
   const records: CancioneroLocalRecord[] = [];
+  onProgress?.(0, pending.length);
 
-  for (let from = 0; ; from += CANCIONERO_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("canciones_guardadas")
-      .select(
-        "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default",
-      )
-      .is("sala_id", null)
-      .order("id", { ascending: true })
-      .range(from, from + CANCIONERO_PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
+  for (let from = 0; from < pending.length; from += DOWNLOAD_BATCH_SIZE) {
+    const ids = pending.slice(from, from + DOWNLOAD_BATCH_SIZE).map((row) => row.id);
+    const { data, error } = await supabase.from("canciones_guardadas")
+      .select(SONG_COLUMNS).is("sala_id", null).in("id", ids);
+    if (error) throw error;
+    if (data?.length !== ids.length || new Set(data.map((row) => row.id)).size !== ids.length ||
+        data.some((row) => !ids.includes(row.id) || !timestamp(row.updated_at))) {
+      throw new Error("La descarga quedó incompleta. Tu Cancionero anterior sigue disponible.");
     }
-
-    const page = data ?? [];
-
-    records.push(
-      ...page.map((row) => ({
-        id: row.id,
-        nombre: row.nombre,
-        artista: row.artista,
-        letra: row.letra,
-        url_letra: row.url_letra ?? "",
-        updated_at:
-          normalizeTimestamp(row.updated_at) ?? new Date().toISOString(),
-        tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
-        user_id: row.user_id ?? null,
-        cifrado: row.cifrado ?? null,
-        compas_config: row.compas_config ?? null,
-        tonalidad_default: row.tonalidad_default ?? null,
-        modo_tonal_default: row.modo_tonal_default ?? null,
-        bpm_default: row.bpm_default ?? null,
-      })),
-    );
-
-    if (page.length < CANCIONERO_PAGE_SIZE) {
-      break;
-    }
+    records.push(...data.map((row) => ({
+      ...row, url_letra: row.url_letra ?? "", updated_at: timestamp(row.updated_at)!,
+    })));
+    onProgress?.(records.length, pending.length);
   }
 
-  return records;
-}
-
-export async function syncCancioneroLocal(
-  supabase: SupabaseClient,
-  options?: { force?: boolean },
-): Promise<CancioneroSyncResult> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return { status: "skipped", reason: "offline" };
-  }
-
-  const [remoteSnapshot, localMeta] = await Promise.all([
-    fetchCancioneroRemoteSnapshot(supabase),
-    getCancioneroLocalMeta(),
-  ]);
-
-  if (!options?.force && !needsCancioneroSync(remoteSnapshot, localMeta)) {
-    return { status: "skipped", reason: "unchanged" };
-  }
-
-  const records = await fetchCancioneroRemoteAll(supabase);
-
-  if (records.length !== remoteSnapshot.count) {
-    throw new Error(
-      `La descarga del cancionero quedó incompleta (${records.length}/${remoteSnapshot.count}).`,
-    );
-  }
-
-  await replaceCancioneroLocalAll(records, {
-    lastRemoteUpdatedAt: remoteSnapshot.maxUpdatedAt,
-    lastRemoteCount: remoteSnapshot.count,
+  // Una transacción: ningún cambio parcial y ningún borrado del Cancionero anterior.
+  await mergeCancioneroLocalUpdates(records, {
+    lastRemoteUpdatedAt: plan.snapshot.maxUpdatedAt,
+    lastRemoteCount: plan.snapshot.count,
     syncedAt: new Date().toISOString(),
-    contentVersion: CANCIONERO_OFFLINE_CONTENT_VERSION,
+    contentVersion: CONTENT_VERSION,
   });
-
-  return { status: "synced", count: records.length };
+  return records.length;
 }

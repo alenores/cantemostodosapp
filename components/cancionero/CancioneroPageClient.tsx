@@ -30,13 +30,13 @@ import {
 import {
   CANCIONERO_SYNC_EVENT,
   dispatchCancioneroSyncFinished,
+  requestCancioneroUpdateCheck,
 } from "@/lib/offline/cancionero-events";
 import {
   getCancioneroLocalAsCancionero,
   getCancioneroLocalCifradoDetalle,
-  patchCancioneroLocalRecord,
+  deleteCancioneroLocalRecord,
 } from "@/lib/offline/cancionero-store";
-import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
 import { buildCifradoEditorSession } from "@/lib/cifrado-editor-session";
 import type {
   CifradoEditorSession,
@@ -186,15 +186,9 @@ export default function CancioneroPageClient({
   }, [cascadeActive, canciones.length]);
 
   const reloadCanciones = useCallback(async () => {
-    if (!online) {
-      await loadLocalCanciones();
-      return;
-    }
-
-    await syncCancioneroLocal(supabase, { force: true });
+    if (online) requestCancioneroUpdateCheck();
     await loadLocalCanciones();
-    dispatchCancioneroSyncFinished();
-  }, [loadLocalCanciones, online, supabase]);
+  }, [loadLocalCanciones, online]);
 
   const sumarAMisCanciones = useCallback(
     async (cancion: CancionCancionero) => {
@@ -331,13 +325,6 @@ export default function CancioneroPageClient({
 
   async function handleEditorSaved(result?: CifradoSaveResult) {
     if (result) {
-      await patchCancioneroLocalRecord(result.id, {
-        nombre: result.nombre,
-        artista: result.artista,
-        letra: result.letra,
-        tiene_cifrado_avanzado: result.tiene_cifrado_avanzado,
-      });
-
       setCanciones((prev) =>
         prev.map((cancion) =>
           cancion.id === result.id
@@ -477,6 +464,8 @@ export default function CancioneroPageClient({
 
     try {
       await deleteCancionCancionero(supabase, cancionAEliminar.id);
+      await deleteCancioneroLocalRecord(cancionAEliminar.id);
+      dispatchCancioneroSyncFinished();
       await reloadCanciones();
       setCancionAEliminar(null);
 
@@ -611,10 +600,8 @@ export default function CancioneroPageClient({
                 <Music className="size-10 text-text-faint" aria-hidden="true" />
                 <p className="max-w-xs text-sm text-text-muted">
                   {online
-                    ? usuarioLogueado
-                      ? "Aún no hay canciones. Tocá + para agregar la primera."
-                      : "Aún no hay canciones en el cancionero."
-                    : "No hay copia local todavía. Conectate a internet para sincronizar."}
+                    ? "Todavía no hay canciones descargadas. Abrí las novedades del Cancionero y aceptá la descarga."
+                    : "No hay copia local todavía. Conectate y aceptá la descarga del Cancionero."}
                 </p>
               </div>
             ) : cancionesFiltradas.length === 0 ? (

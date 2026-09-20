@@ -193,7 +193,7 @@ Al sumar una canción aparece el aviso: **"Canción sumada a la lista"**.
 
 ### 6.3 Funcionamiento sin conexión
 
-Individual funciona **sin internet** con una copia completa del Cancionero. La app descarga automáticamente todas las canciones cuando tiene conexión y mantiene esa copia actualizada, sin que el usuario tenga que elegirlas una por una.
+Individual funciona **sin internet** con el Cancionero descargado. Cuando hay conexión, la app consulta si hay novedades y las muestra en un listado. El usuario acepta con **Descargar todo**: se bajan todas las canciones nuevas y modificadas del listado, sin selección individual. Las que no cambiaron permanecen en el celular.
 
 ---
 
@@ -266,8 +266,8 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 | Situación | Mensaje |
 |-----------|---------|
 | Sin conexión | *"Sin conexión · mostrando copia local (solo lectura)"* |
-| Vacío con cuenta y conexión | *"Aún no hay canciones. Tocá + para agregar la primera."* |
-| Vacío sin conexión previa | *"No hay copia local todavía. Conectate a internet para sincronizar."* |
+| Sin canciones descargadas, con conexión | *"Todavía no hay canciones descargadas. Abrí las novedades del Cancionero y aceptá la descarga."* |
+| Vacío sin conexión previa | *"No hay copia local todavía. Conectate y aceptá la descarga del Cancionero."* |
 
 ### 8.2 Acciones por canción
 
@@ -716,7 +716,16 @@ Solo disponible **con cuenta iniciada**.
 
 ### 15.1 Requisito inicial
 
-La primera vez se necesita **conexión a internet** para descargar la app y el Cancionero completo. Después, la app mantiene automáticamente actualizadas todas las canciones y permite usarlas sin red.
+La primera vez se necesita **conexión a internet** para abrir la app. La descarga inicial del Cancionero también requiere aceptación: todas las canciones aparecen como nuevas.
+
+- Al abrir la app o recuperar conexión se comprueba si hay novedades mediante una consulta liviana, sin descargar las letras.
+- Un aviso **Novedades del Cancionero** permite abrir el listado de canciones **Nuevas** y **Actualizadas**.
+- **Descargar todo** acepta todas las novedades juntas. No hay casillas ni elección por canción.
+- **Más tarde** cierra el listado sin descargar; el aviso sigue disponible.
+- Solo se descargan las canciones nuevas o modificadas. Las demás no se vuelven a bajar ni se borran.
+- Durante la descarga se muestra el progreso. La copia anterior se conserva hasta completar y guardar las novedades.
+- Si falla la conexión o el guardado, se avisa y el usuario puede reintentar. Recuperar conexión no reanuda una descarga sin confirmación.
+- Guardar o editar una canción vuelve a comprobar las novedades; no dispara una descarga completa.
 
 Si se abre sin conexión y nunca se cacheó nada:
 

@@ -1,58 +1,93 @@
 "use client";
 
-import { dispatchCancioneroSyncFinished } from "@/lib/offline/cancionero-events";
-import { syncCancioneroLocal } from "@/lib/offline/cancionero-sync";
+import {
+  CANCIONERO_CHECK_EVENT,
+  dispatchCancioneroSyncFinished,
+} from "@/lib/offline/cancionero-events";
+import {
+  checkCancioneroUpdates,
+  downloadCancioneroUpdates,
+  type CancioneroUpdatePlan,
+} from "@/lib/offline/cancionero-sync";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-async function runCancioneroSync(): Promise<void> {
-  const supabase = createClient();
+export function useCancioneroSync() {
+  const [plan, setPlan] = useState<CancioneroUpdatePlan | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  const busy = useRef(false);
+  const checkRequested = useRef(false);
 
-  try {
-    const result = await syncCancioneroLocal(supabase);
-
-    if (result.status === "synced") {
-      console.info(
-        `[cancionero-sync] Copia local actualizada (${result.count} canciones)`,
-      );
+  const check = useCallback(async () => {
+    if (!navigator.onLine) return;
+    if (busy.current) {
+      checkRequested.current = true;
+      return;
     }
-  } catch (error) {
-    console.warn("[cancionero-sync] Error al sincronizar:", error);
-  } finally {
-    dispatchCancioneroSyncFinished();
-  }
-}
+    busy.current = true;
+    setChecking(true);
+    try {
+      do {
+        checkRequested.current = false;
+        setPlan(await checkCancioneroUpdates(createClient()));
+      } while (checkRequested.current && navigator.onLine);
+      setError(null);
+    } catch {
+      setError("No se pudieron comprobar las novedades. Tu Cancionero sigue disponible.");
+    } finally {
+      busy.current = false;
+      setChecking(false);
+    }
+  }, []);
 
-export function useCancioneroSync(): void {
-  const syncingRef = useRef(false);
+  const download = useCallback(async () => {
+    if (!plan?.songs.length || busy.current) return false;
+    if (!navigator.onLine) {
+      setError("Conectate a internet para descargar las novedades.");
+      return false;
+    }
+    busy.current = true;
+    setDownloading(true);
+    setError(null);
+    let downloaded = false;
+    try {
+      await downloadCancioneroUpdates(createClient(), plan, (completed, total) => {
+        setProgress({ completed, total });
+      });
+      setPlan(null);
+      dispatchCancioneroSyncFinished();
+      downloaded = true;
+      return true;
+    } catch {
+      setError("No se completó la descarga. Conservamos tu Cancionero anterior. Podés volver a intentar.");
+      return false;
+    } finally {
+      busy.current = false;
+      setDownloading(false);
+      // Solo vuelve a consultar títulos y versiones, nunca reintenta la descarga automáticamente.
+      if (downloaded) void check();
+    }
+  }, [check, plan]);
 
   useEffect(() => {
-    async function syncSafely() {
-      if (syncingRef.current || !navigator.onLine) {
-        return;
-      }
-
-      syncingRef.current = true;
-
-      try {
-        await runCancioneroSync();
-      } catch (error) {
-        console.warn("[cancionero-sync] Error al sincronizar:", error);
-      } finally {
-        syncingRef.current = false;
-      }
+    // Agrupa eventos de guardado y evita duplicar la consulta al montar en Strict Mode.
+    let timer: ReturnType<typeof setTimeout>;
+    function scheduleCheck() {
+      clearTimeout(timer);
+      timer = setTimeout(() => { void check(); }, 300);
     }
-
-    void syncSafely();
-
-    function handleOnline() {
-      void syncSafely();
-    }
-
-    window.addEventListener("online", handleOnline);
-
+    scheduleCheck();
+    window.addEventListener("online", scheduleCheck);
+    window.addEventListener(CANCIONERO_CHECK_EVENT, scheduleCheck);
     return () => {
-      window.removeEventListener("online", handleOnline);
+      clearTimeout(timer);
+      window.removeEventListener("online", scheduleCheck);
+      window.removeEventListener(CANCIONERO_CHECK_EVENT, scheduleCheck);
     };
-  }, []);
+  }, [check]);
+
+  return { plan, checking, downloading, error, progress, check, download };
 }

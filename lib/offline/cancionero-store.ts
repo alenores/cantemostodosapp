@@ -125,12 +125,12 @@ export async function setCancioneroLocalMeta(
   });
 }
 
-export async function replaceCancioneroLocalAll(
+export async function mergeCancioneroLocalUpdates(
   records: CancioneroLocalRecord[],
   meta?: Partial<CancioneroLocalMeta>,
 ): Promise<void> {
   if (!isOfflineBrowser()) {
-    return;
+    throw new Error("No se pudo guardar el Cancionero en este dispositivo.");
   }
 
   const db = await getOfflineDb();
@@ -138,10 +138,12 @@ export async function replaceCancioneroLocalAll(
   const cancionesStore = tx.objectStore("canciones");
   const metaStore = tx.objectStore("meta");
 
-  await cancionesStore.clear();
-
   for (const record of records) {
-    await cancionesStore.put(record);
+    const existing = await cancionesStore.get(record.id);
+    // No sobrescribir una versión más nueva guardada desde otra pestaña.
+    if (!existing || new Date(existing.updated_at) <= new Date(record.updated_at)) {
+      await cancionesStore.put(record);
+    }
   }
 
   if (meta) {
@@ -179,31 +181,13 @@ export async function clearCancioneroLocal(): Promise<void> {
   await tx.done;
 }
 
-export async function patchCancioneroLocalRecord(
-  id: number,
-  patch: Partial<
-    Pick<
-      CancioneroLocalRecord,
-      "nombre" | "artista" | "letra" | "tiene_cifrado_avanzado" | "updated_at"
-    >
-  >,
-): Promise<void> {
+export async function deleteCancioneroLocalRecord(id: number): Promise<void> {
   if (!isOfflineBrowser()) {
     return;
   }
 
   const db = await getOfflineDb();
-  const existing = await db.get("canciones", id);
-
-  if (!existing) {
-    return;
-  }
-
-  await db.put("canciones", {
-    ...existing,
-    ...patch,
-    updated_at: patch.updated_at ?? new Date().toISOString(),
-  });
+  await db.delete("canciones", id);
 }
 
 export function getCancioneroLocalForBusqueda(

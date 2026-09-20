@@ -29,6 +29,7 @@ import {
   type AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
+import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
   cancionPracticaToDetalle,
   getCancionPractica,
@@ -37,7 +38,6 @@ import {
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { getLetraTextScrollEndPadding } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import {
   NotebookPen,
   Pencil,
@@ -177,8 +177,11 @@ export default function EntrenadorCancionesVerPageClient() {
   ]);
 
   useEffect(() => {
-    setAnotacionesVisibility(DEFAULT_ANOTACION_VISIBILITY);
-    setOcultarPanelAbierto(false);
+    const timer = window.setTimeout(() => {
+      setAnotacionesVisibility(DEFAULT_ANOTACION_VISIBILITY);
+      setOcultarPanelAbierto(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [id]);
 
   useHardwareBack(!notaGeneralOpen && !afinadorOpen, handleLecturaBack);
@@ -194,13 +197,9 @@ export default function EntrenadorCancionesVerPageClient() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const activeUserId = await getActiveUserId(supabase);
       const loggedIn = Boolean(
-        session?.user &&
-          mapUserToUsuarioActivo(session.user).id !== OFFLINE_GUEST_USUARIO.id,
+        activeUserId && activeUserId !== OFFLINE_GUEST_USUARIO.id,
       );
 
       setIsLoggedIn(loggedIn);

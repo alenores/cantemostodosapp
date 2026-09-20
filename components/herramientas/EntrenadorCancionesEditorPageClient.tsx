@@ -8,6 +8,7 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
+import { getActiveUserId } from "@/lib/auth/offline-user";
 import type {
   CifradoEditorSession,
   CifradoSaveResult,
@@ -20,7 +21,6 @@ import {
   updateCancionPracticaNota,
 } from "@/lib/canciones-practica";
 import { createClient } from "@/lib/supabase/client";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -63,14 +63,9 @@ export default function EntrenadorCancionesEditorPageClient() {
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { session: authSession },
-      } = await supabase.auth.getSession();
-
+      const activeUserId = await getActiveUserId(supabase);
       const loggedIn = Boolean(
-        authSession?.user &&
-          mapUserToUsuarioActivo(authSession.user).id !==
-            OFFLINE_GUEST_USUARIO.id,
+        activeUserId && activeUserId !== OFFLINE_GUEST_USUARIO.id,
       );
 
       setIsLoggedIn(loggedIn);

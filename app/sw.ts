@@ -21,7 +21,8 @@ declare const self: ServiceWorkerGlobalScope;
 const APP_SHELL_PATHS =
   /^\/($|salas(\/.*)?|cancionero(\/.*)?|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
 
-const SHELL_CACHE = "app-shell-offline-v1";
+const SHELL_CACHE = "app-shell-offline-v2";
+const LEGACY_SHELL_CACHE = "app-shell-offline-v1";
 const LEGACY_AUDIO_CACHE = "static-audio-assets";
 const SHELL_URLS = [
   "/pwa-boot.html",
@@ -29,7 +30,15 @@ const SHELL_URLS = [
   "/individual",
   "/canciones",
   "/canciones/cancionero",
+  "/canciones/favoritas",
   "/practica",
+  "/practica/metronomo",
+  "/practica/entrenador-vocal",
+  "/practica/compositor",
+  "/practica/entrenador-canciones",
+  "/practica/entrenador-canciones/editor",
+  "/practica/entrenador-canciones/ver",
+  "/herramientas/afinador",
   "/salas",
   "/~offline",
   "/auth/login",
@@ -90,7 +99,12 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(caches.delete(LEGACY_AUDIO_CACHE));
+  event.waitUntil(
+    Promise.all([
+      caches.delete(LEGACY_AUDIO_CACHE),
+      caches.delete(LEGACY_SHELL_CACHE),
+    ]),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -156,7 +170,7 @@ const shellCacheFirst = new CacheFirst({
   cacheName: SHELL_CACHE,
   plugins: [
     new ExpirationPlugin({
-      maxEntries: 16,
+      maxEntries: 32,
       maxAgeSeconds: 365 * 24 * 60 * 60,
       maxAgeFrom: "last-used",
     }),

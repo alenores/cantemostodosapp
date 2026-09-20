@@ -743,7 +743,8 @@ Si se abre sin conexión y nunca se cacheó nada:
 |------|-------------------|
 | Inicio / Individual | Buscar en el Cancionero completo descargado, ver letras y acordes, modo lectura |
 | Cancionero global | Ver todas las canciones descargadas (solo lectura; no editar ni guardar) |
-| Práctica | Metrónomo, afinador, entrenador vocal, canciones de práctica descargadas y edición de ciclos guardados del Compositor |
+| Favoritas | Ver el listado privado guardado en el celular y abrir sus canciones descargadas; agregar o quitar requiere conexión |
+| Práctica | Entrar y volver entre sus pantallas; usar metrónomo, afinador, entrenador vocal, canciones de práctica descargadas y edición de ciclos guardados del Compositor |
 | Login | Continuar sin conexión como invitado |
 
 ### 15.3 Qué NO funciona sin internet
@@ -753,7 +754,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 | Salas | Listado, entrar, tiempo real, presencia, QR |
 | Login y registro | Requieren conexión |
 | Guardar, editar, sincronizar canciones | Bloqueado |
-| Favoritas (escritura) | Bloqueado |
+| Favoritas (agregar o quitar) | Bloqueado; la consulta y lectura local siguen disponibles |
 | Entrenador de canciones | La primera descarga y la sincronización entre dispositivos requieren conexión |
 | Comunidad del Compositor | Requiere conexión |
 | Sonidos de instrumentos del Compositor | Requieren conexión; no se descargan al celular |

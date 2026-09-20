@@ -1,6 +1,13 @@
 import type { CancionInput } from "@/lib/cola-logic";
+import {
+  deleteMiCancionLocal,
+  getMisCancionesLocal,
+  putMiCancionLocal,
+  replaceMisCancionesLocal,
+} from "@/lib/offline/mis-canciones-store";
 import type { CancionCancionero, UsuarioCancion } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getActiveUserId } from "@/lib/auth/offline-user";
 
 export async function countMisCanciones(
   supabase: SupabaseClient,
@@ -19,16 +26,30 @@ export async function countMisCanciones(
 export async function getMisCanciones(
   supabase: SupabaseClient,
 ): Promise<UsuarioCancion[]> {
+  const userId = await getActiveUserId(supabase);
+
+  if (!userId) {
+    return [];
+  }
+
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return getMisCancionesLocal(userId);
+  }
+
   const { data, error } = await supabase
     .from("usuarios_canciones")
     .select("*")
     .order("nombre", { ascending: true });
 
   if (error) {
+    const local = await getMisCancionesLocal(userId);
+    if (local.length > 0) return local;
     throw error;
   }
 
-  return data ?? [];
+  const canciones = data ?? [];
+  await replaceMisCancionesLocal(userId, canciones);
+  return canciones;
 }
 
 export function yaExisteEnMisCanciones(
@@ -59,16 +80,24 @@ export async function agregarAMisCanciones(
     throw new Error("Se requiere sesión activa para guardar en Favoritas");
   }
 
-  const { error } = await supabase.from("usuarios_canciones").insert({
-    user_id: userId,
-    nombre: item.nombre.trim(),
-    artista: item.artista?.trim() || null,
-    cancion_guardada_id: item.cancion_guardada_id ?? null,
-    url_letra: item.url_letra ?? null,
-  });
+  const { data, error } = await supabase
+    .from("usuarios_canciones")
+    .insert({
+      user_id: userId,
+      nombre: item.nombre.trim(),
+      artista: item.artista?.trim() || null,
+      cancion_guardada_id: item.cancion_guardada_id ?? null,
+      url_letra: item.url_letra ?? null,
+    })
+    .select("*")
+    .single();
 
   if (error) {
     throw error;
+  }
+
+  if (data) {
+    await putMiCancionLocal(userId, data);
   }
 }
 
@@ -76,6 +105,11 @@ export async function eliminarDeMisCanciones(
   supabase: SupabaseClient,
   id: number,
 ): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+
   const { error } = await supabase
     .from("usuarios_canciones")
     .delete()
@@ -83,6 +117,10 @@ export async function eliminarDeMisCanciones(
 
   if (error) {
     throw error;
+  }
+
+  if (userId) {
+    await deleteMiCancionLocal(userId, id);
   }
 }
 

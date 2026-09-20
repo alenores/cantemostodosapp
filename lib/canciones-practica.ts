@@ -28,6 +28,7 @@ import {
 import type { CancionPracticaLocalRecord } from "@/lib/offline/offline-db";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getActiveUserId } from "@/lib/auth/offline-user";
 
 export type DominioPractica = "no_visto" | "practicando" | "dominado";
 
@@ -226,11 +227,7 @@ function isOnline(): boolean {
 }
 
 async function requireUserId(supabase: SupabaseClient): Promise<string> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const userId = session?.user?.id;
+  const userId = await getActiveUserId(supabase);
 
   if (!userId) {
     throw new Error("Se requiere sesión activa para el Entrenador de canciones");

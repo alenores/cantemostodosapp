@@ -10,6 +10,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import type { ResultadoIconoTipo } from "@/lib/buscador";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -258,6 +259,7 @@ function MiCancionItem({
 
 export default function MisCancionesPageClient() {
   const navigateWithProgress = useNavigateWithProgress();
+  const online = useOnlineStatus();
   const supabase = useMemo(() => createClient(), []);
   const cola = useColaIndividual();
   const [canciones, setCanciones] = useState<UsuarioCancion[]>([]);
@@ -373,11 +375,19 @@ export default function MisCancionesPageClient() {
   }, [supabase]);
 
   useEffect(() => {
-    void loadCanciones();
+    const timer = window.setTimeout(() => void loadCanciones(), 0);
+    return () => window.clearTimeout(timer);
   }, [loadCanciones]);
 
   const resolveGlobalCancion = useCallback(
     async (cancionGuardadaId: number): Promise<CancionCancionero | null> => {
+      const local = await getCancioneroLocalAsCancionero();
+      const cached = local.find((item) => item.id === cancionGuardadaId);
+
+      if (!online) {
+        return cached ?? null;
+      }
+
       const { data, error } = await supabase
         .from("canciones_guardadas")
         .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
@@ -395,9 +405,6 @@ export default function MisCancionesPageClient() {
         };
       }
 
-      const local = await getCancioneroLocalAsCancionero();
-      const cached = local.find((item) => item.id === cancionGuardadaId);
-
       if (cached) {
         return cached;
       }
@@ -408,7 +415,7 @@ export default function MisCancionesPageClient() {
 
       return null;
     },
-    [supabase],
+    [online, supabase],
   );
 
   const handleVer = useCallback(
@@ -501,6 +508,10 @@ export default function MisCancionesPageClient() {
   );
 
   function handleEliminar(cancion: UsuarioCancion) {
+    if (!online) {
+      setActionError("Conectate a internet para quitar canciones de Favoritas.");
+      return;
+    }
     setCancionAEliminar(cancion);
   }
 
@@ -560,12 +571,19 @@ export default function MisCancionesPageClient() {
         headerAction={
           <AddButton
             ariaLabel="Agregar canción desde el cancionero"
+            disabled={!online}
+            className={!online ? "cursor-not-allowed opacity-45" : ""}
             onClick={() =>
               navigateWithProgress("/canciones/cancionero?seleccionar=1")
             }
           />
         }
       >
+        {!online ? (
+          <p className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm text-text-muted">
+            Sin conexión · mostrando las Favoritas guardadas en este celular.
+          </p>
+        ) : null}
         {loading ? (
           <CancioneroListSkeleton includeSearch cardCount={5} trailing="listPlus" />
         ) : (

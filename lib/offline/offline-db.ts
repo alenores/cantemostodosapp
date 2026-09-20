@@ -1,11 +1,11 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { EstadoCola, Sala, UsuarioActivo } from "@/types";
+import type { EstadoCola, Sala, UsuarioActivo, UsuarioCancion } from "@/types";
 import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 4;
+export const OFFLINE_DB_VERSION = 5;
 
 export type CancioneroLocalRecord = {
   id: number;
@@ -75,6 +75,11 @@ export type CancionPracticaLocalRecord = {
   sync_state: "synced" | "pending-upsert" | "pending-delete";
 };
 
+export type MiCancionLocalRecord = UsuarioCancion & {
+  local_key: string;
+  owner_user_id: string;
+};
+
 export interface OfflineDB extends DBSchema {
   canciones: {
     key: number;
@@ -97,6 +102,11 @@ export interface OfflineDB extends DBSchema {
   canciones_practica: {
     key: string;
     value: CancionPracticaLocalRecord;
+    indexes: { "by-user": string };
+  };
+  mis_canciones: {
+    key: string;
+    value: MiCancionLocalRecord;
     indexes: { "by-user": string };
   };
 }
@@ -137,6 +147,13 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
             keyPath: "local_key",
           });
           practica.createIndex("by-user", "owner_user_id");
+        }
+
+        if (oldVersion < 5 && !db.objectStoreNames.contains("mis_canciones")) {
+          const favoritas = db.createObjectStore("mis_canciones", {
+            keyPath: "local_key",
+          });
+          favoritas.createIndex("by-user", "owner_user_id");
         }
       },
     });

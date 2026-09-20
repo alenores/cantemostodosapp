@@ -8,6 +8,7 @@ import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
+import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
   cloneCancioneroToPractica,
   deleteCancionPractica,
@@ -21,7 +22,6 @@ import {
 } from "@/lib/offline/cancionero-store";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import { createClient } from "@/lib/supabase/client";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { CancionCancionero } from "@/types";
 import { Music, Plus, Search, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -170,13 +170,9 @@ export default function EntrenadorCancionesPageClient() {
 
   useEffect(() => {
     async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const activeUserId = await getActiveUserId(supabase);
       const loggedIn = Boolean(
-        session?.user &&
-          mapUserToUsuarioActivo(session.user).id !== OFFLINE_GUEST_USUARIO.id,
+        activeUserId && activeUserId !== OFFLINE_GUEST_USUARIO.id,
       );
 
       setIsLoggedIn(loggedIn);

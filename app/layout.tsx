@@ -4,6 +4,7 @@ import AppFooter from "@/components/ui/AppFooter";
 import AppSidebar from "@/components/ui/AppSidebar";
 import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
 import CancionesPracticaSyncRunner from "@/components/offline/CancionesPracticaSyncRunner";
+import MisCancionesSyncRunner from "@/components/offline/MisCancionesSyncRunner";
 import OfflinePrefetchRunner from "@/components/offline/OfflinePrefetchRunner";
 import OfflineWarmRunner from "@/components/offline/OfflineWarmRunner";
 import SerwistProvider from "@/components/offline/SerwistProvider";
@@ -116,6 +117,7 @@ export default function RootLayout({
               <NavigationProgressProvider>
                 <CancioneroSyncRunner />
                 <CancionesPracticaSyncRunner />
+                <MisCancionesSyncRunner />
                 <OfflinePrefetchRunner />
                 <OfflineWarmRunner />
                 <AuthSessionListener />

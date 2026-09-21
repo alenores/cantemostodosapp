@@ -769,6 +769,12 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 - Mensaje: usar siempre el **ícono de inicio** de Cantemos Todos, no el navegador.
 - Ayuda si se abrió desde un link externo: buscar el ícono en la pantalla de inicio.
 
+### 15.5 Preparación offline completa
+
+- Al aceptar **Descargar todo**, la app guarda las canciones nuevas y actualizadas y luego prepara las pantallas necesarias para navegar sin conexión.
+- La ventana permanece abierta y no se puede cerrar mientras se realiza este proceso.
+- El mensaje **“Todo listo”** aparece únicamente después de comprobar que ambas tareas terminaron. Desde ese momento no hace falta recorrer previamente cada pantalla ni cada canción.
+
 ---
 
 ## 16. Comparativa: celular vs computadora

@@ -24,13 +24,13 @@ function cacheUrlsInServiceWorker(urls: readonly string[]): void {
   });
 }
 
-async function fetchWarmRoutes(urls: readonly string[]): Promise<void> {
+async function fetchWarmRoutes(urls: readonly string[]): Promise<boolean> {
   const cache =
     typeof caches !== "undefined"
       ? await caches.open(OFFLINE_SHELL_CACHE)
       : null;
 
-  await Promise.all(
+  const results = await Promise.all(
     urls.map(async (url) => {
       try {
         const response = await fetch(url, {
@@ -41,19 +41,25 @@ async function fetchWarmRoutes(urls: readonly string[]): Promise<void> {
         if (cache && response.ok) {
           await cache.put(url, response.clone());
         }
+        return response.ok;
       } catch {
-        // Sin red o fallo puntual: el SW puede tener copia previa.
+        return false;
       }
     }),
   );
+
+  if (!cache || results.some((ok) => !ok)) return false;
+
+  const saved = await Promise.all(urls.map((url) => cache.match(url)));
+  return saved.every(Boolean);
 }
 
 /** Guarda en el celular las pantallas clave (con sesión si existe). */
-export async function warmOfflineCache(): Promise<void> {
+export async function warmOfflineCache(): Promise<boolean> {
   if (typeof window === "undefined" || !navigator.onLine) {
-    return;
+    return false;
   }
 
   cacheUrlsInServiceWorker(OFFLINE_WARM_ROUTES);
-  await fetchWarmRoutes(OFFLINE_WARM_ROUTES);
+  return fetchWarmRoutes(OFFLINE_WARM_ROUTES);
 }

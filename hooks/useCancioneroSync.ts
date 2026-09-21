@@ -9,6 +9,7 @@ import {
   downloadCancioneroUpdates,
   type CancioneroUpdatePlan,
 } from "@/lib/offline/cancionero-sync";
+import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -17,6 +18,8 @@ export function useCancioneroSync() {
   const [checking, setChecking] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [preparingOffline, setPreparingOffline] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const busy = useRef(false);
   const checkRequested = useRef(false);
@@ -51,21 +54,29 @@ export function useCancioneroSync() {
     }
     busy.current = true;
     setDownloading(true);
+    setReady(false);
     setError(null);
     let downloaded = false;
     try {
       await downloadCancioneroUpdates(createClient(), plan, (completed, total) => {
         setProgress({ completed, total });
       });
+      setPreparingOffline(true);
+      const offlineReady = await warmOfflineCache();
+      if (!offlineReady) {
+        throw new Error("offline-preparation-incomplete");
+      }
       setPlan(null);
       dispatchCancioneroSyncFinished();
+      setReady(true);
       downloaded = true;
       return true;
     } catch {
-      setError("No se completó la descarga. Conservamos tu Cancionero anterior. Podés volver a intentar.");
+      setError("No se pudo completar toda la preparación offline. Mantené la conexión y volvé a intentar.");
       return false;
     } finally {
       busy.current = false;
+      setPreparingOffline(false);
       setDownloading(false);
       // Solo vuelve a consultar títulos y versiones, nunca reintenta la descarga automáticamente.
       if (downloaded) void check();
@@ -89,5 +100,8 @@ export function useCancioneroSync() {
     };
   }, [check]);
 
-  return { plan, checking, downloading, error, progress, check, download };
+  return {
+    plan, checking, downloading, preparingOffline, ready, error, progress,
+    check, download, dismissReady: () => setReady(false),
+  };
 }

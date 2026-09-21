@@ -2,6 +2,8 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import HubModuleCard from "@/components/ui/HubModuleCard";
+import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
+import { Bell } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -51,6 +53,7 @@ export default function HubSectionPageClient({
   const pathname = usePathname();
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const novedades = useCancioneroNovedades();
   const isDesktop = useIsDesktop();
   const [globalCount, setGlobalCount] = useState(globalCountInicial);
   const [favoritasCount, setFavoritasCount] = useState(favoritasCountInicial);
@@ -283,6 +286,12 @@ export default function HubSectionPageClient({
 
             <div className="app-hub-grid">
               {visibleModules.map((module) => renderModuleCard(module))}
+              {section === "canciones" ? (
+                <HubModuleCard moduleId="cancionero" label="Novedades" icon={Bell}
+                  ariaLabel="Ver novedades del Cancionero" onClick={novedades.open}
+                  badge={novedades.count ? String(novedades.count) : undefined}
+                  cta={<div className="hub-module-card__cta hub-module-card__cta--soft hub-module-card__cta--text-accent">Ver novedades</div>} />
+              ) : null}
             </div>
 
             {section === "canciones" && !isLoggedIn ? (

@@ -115,7 +115,7 @@ export default function RootLayout({
           <TapFeedbackProvider>
             <Suspense fallback={null}>
               <NavigationProgressProvider>
-                <CancioneroSyncRunner />
+                <CancioneroSyncRunner>
                 <CancionesPracticaSyncRunner />
                 <MisCancionesSyncRunner />
                 <OfflinePrefetchRunner />
@@ -127,6 +127,7 @@ export default function RootLayout({
                   {children}
                 </div>
                 <AppFooter />
+                </CancioneroSyncRunner>
               </NavigationProgressProvider>
             </Suspense>
           </TapFeedbackProvider>

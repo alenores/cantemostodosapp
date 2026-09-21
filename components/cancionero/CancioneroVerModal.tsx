@@ -280,6 +280,13 @@ function CancionSlide({
                 />
               </div>
             </div>
+          ) : tieneCifradoAvanzado && isCurrent ? (
+            <div>
+              <p role="status" className="px-4 py-3 text-sm text-text-muted">
+                Falta la edición avanzada en esta copia. Conectate y aceptá las Novedades del Cancionero para descargar acordes y compases.
+              </p>
+              {tieneLetra ? <LetraTexto texto={cancion.letra!} edgeToEdge /> : null}
+            </div>
           ) : tieneLetra ? (
             <LetraTexto texto={cancion.letra!} edgeToEdge />
           ) : (

@@ -724,13 +724,15 @@ Solo disponible **con cuenta iniciada**.
 La primera vez se necesita **conexión a internet** para abrir la app. La descarga inicial del Cancionero también requiere aceptación: todas las canciones aparecen como nuevas.
 
 - Al abrir la app o recuperar conexión se comprueba si hay novedades mediante una consulta liviana, sin descargar las letras.
-- Un aviso **Novedades del Cancionero** permite abrir el listado de canciones **Nuevas** y **Actualizadas**.
+- En Inicio, una **campanita en la esquina superior derecha de la tarjeta Cancionero** indica novedades o un aviso pendiente y abre el listado de canciones **Nuevas** y **Actualizadas**. No hay un cartel flotante en las demás pantallas.
+- Dentro del hub de Cancionero hay una tarjeta **Novedades** que abre el mismo listado. En computadora está dentro del listado del Cancionero.
 - **Descargar todo** acepta todas las novedades juntas. No hay casillas ni elección por canción.
-- **Más tarde** cierra el listado sin descargar; el aviso sigue disponible.
+- **Más tarde**, la **X** y tocar fuera del modal cierran el listado sin descargar; las novedades siguen disponibles. Durante la descarga y preparación estos cierres quedan bloqueados hasta que termine o se informe un error.
 - Solo se descargan las canciones nuevas o modificadas. Las demás no se vuelven a bajar ni se borran.
 - Durante la descarga se muestra el progreso. La copia anterior se conserva hasta completar y guardar las novedades.
 - Si falla la conexión o el guardado, se avisa y el usuario puede reintentar. Recuperar conexión no reanuda una descarga sin confirmación.
 - Guardar o editar una canción vuelve a comprobar las novedades; no dispara una descarga completa.
+- Las copias antiguas a las que les falten acordes o compases se ofrecen como actualizaciones aunque su fecha coincida. Al aceptar se repara solamente el contenido incompleto. Las canciones con compases y sin acordes también se muestran sin conexión.
 
 Si se abre sin conexión y nunca se cacheó nada:
 

@@ -1,6 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
 import CancioneroListSkeleton, {
   CASCADE_MAX_DELAY_MS,
@@ -44,7 +45,7 @@ import type {
 } from "@/lib/cifrado-editor-session";
 import { createClient } from "@/lib/supabase/client";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import { Music, Search, WifiOff, X } from "lucide-react";
+import { Bell, Music, Search, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
@@ -64,6 +65,7 @@ export default function CancioneroPageClient({
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
   const isDesktop = useIsDesktop();
+  const novedades = useCancioneroNovedades();
   const supabase = useMemo(() => createClient(), []);
   const usuarioLogueado = usuarioId !== null;
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
@@ -537,6 +539,13 @@ export default function CancioneroPageClient({
           />
         }
       >
+        {isDesktop ? (
+          <button type="button" onClick={novedades.open} aria-label="Ver novedades del Cancionero"
+            className="flex min-h-14 items-center gap-3 rounded-xl border border-border bg-bg-card px-4 py-3 text-left">
+            <Bell className="size-5 text-accent" aria-hidden="true" />
+            <span>Novedades{novedades.count ? ` (${novedades.count})` : ""}</span>
+          </button>
+        ) : null}
         {modoSeleccionMisCanciones && (
           <div
             className="flex items-start gap-2 rounded-[10px] border border-accent/40 bg-accent-dim px-3 py-2.5 text-sm text-text-primary"

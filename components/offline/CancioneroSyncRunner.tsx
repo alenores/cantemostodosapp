@@ -4,16 +4,16 @@ import { useCancioneroSync } from "@/hooks/useCancioneroSync";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CancioneroNovedadesContext } from "./CancioneroNovedadesContext";
 
-export default function CancioneroSyncRunner() {
+export default function CancioneroSyncRunner({ children }: { children: ReactNode }) {
   const {
     plan, checking, downloading, preparingOffline, ready, error, progress,
     check, download, dismissReady,
   } = useCancioneroSync();
   const online = useOnlineStatus();
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const songs = plan?.songs ?? [];
@@ -41,20 +41,12 @@ export default function CancioneroSyncRunner() {
   }
 
   return (
-    <>
-      {!pathname.startsWith("/auth/") && (songs.length > 0 || error) && !open ? (
-        <div className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-center gap-3 rounded-xl border border-border bg-bg-card p-3 shadow-lg [body[data-modo-lectura=true]_&]:hidden">
-          <p className="min-w-0 flex-1 text-sm text-text-primary" role="status">
-            {downloading ? "Descargando novedades…" : songs.length > 0
-              ? `${songs.length} novedades del Cancionero`
-              : error}
-          </p>
-          <button type="button" onClick={() => setOpen(true)}
-            className="min-h-11 shrink-0 rounded-lg bg-accent px-3 text-sm font-semibold text-white">
-            {songs.length > 0 ? "Ver novedades" : "Ver aviso"}
-          </button>
-        </div>
-      ) : null}
+    <CancioneroNovedadesContext.Provider value={{
+      count: songs.length,
+      hasNotice: songs.length > 0 || Boolean(error),
+      open: () => { setOpen(true); void check(); },
+    }}>
+      {children}
       <dialog ref={dialogRef} onCancel={(event) => {
         if (downloading) event.preventDefault();
         else closeDialog();
@@ -64,11 +56,23 @@ export default function CancioneroSyncRunner() {
           setOpen(false);
         }
       }}
+        onClick={(event) => {
+          if (event.target !== event.currentTarget) return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (event.clientX < bounds.left || event.clientX > bounds.right ||
+              event.clientY < bounds.top || event.clientY > bounds.bottom) closeDialog();
+        }}
         aria-labelledby="cancionero-updates-title"
         aria-describedby="cancionero-updates-description"
         className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-hidden rounded-xl border border-border bg-bg-card p-0 text-text-primary backdrop:bg-black/60">
         <div className="flex max-h-[85dvh] flex-col p-5">
-          <h2 id="cancionero-updates-title" className="text-lg font-semibold">Novedades del Cancionero</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="cancionero-updates-title" className="text-lg font-semibold">Novedades del Cancionero</h2>
+            <button type="button" aria-label="Cerrar novedades" onClick={closeDialog} disabled={downloading}
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-app disabled:opacity-40">
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
           <p id="cancionero-updates-description" className="mt-2 text-sm text-text-muted">
             {ready
               ? "Las canciones y las pantallas para usar sin conexión ya quedaron preparadas."
@@ -135,6 +139,6 @@ export default function CancioneroSyncRunner() {
           </div>
         </div>
       </dialog>
-    </>
+    </CancioneroNovedadesContext.Provider>
   );
 }

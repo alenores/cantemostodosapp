@@ -66,7 +66,7 @@ export async function getCancioneroLocalCifradoDetalle(
   const db = await getOfflineDb();
   const record = await db.get("canciones", id);
 
-  if (!record?.tiene_cifrado_avanzado || !record.cifrado) {
+  if (!record?.tiene_cifrado_avanzado || record.cifrado === undefined) {
     return null;
   }
 

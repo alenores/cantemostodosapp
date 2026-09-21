@@ -32,7 +32,15 @@ function timestamp(value: string | null | undefined): string | null {
 
 function needsDownload(remote: RemoteVersion, local?: CancioneroLocalRecord) {
   return !local || timestamp(remote.updated_at) !== timestamp(local.updated_at) ||
-    (local.tiene_cifrado_avanzado && local.cifrado === undefined);
+    !hasCompleteContent(local);
+}
+
+/** Las copias antiguas pueden tener la fecha correcta pero solo la letra. */
+function hasCompleteContent(local: CancioneroLocalRecord): boolean {
+  return typeof local.tiene_cifrado_avanzado === "boolean" &&
+    local.cifrado !== undefined && local.compas_config !== undefined &&
+    (!local.tiene_cifrado_avanzado || local.cifrado === null ||
+      Array.isArray(local.cifrado.acordes));
 }
 
 async function fetchSnapshot(supabase: SupabaseClient): Promise<RemoteSnapshot> {
@@ -56,7 +64,7 @@ export async function checkCancioneroUpdates(
   ]);
   if (meta.syncedAt && meta.contentVersion === CONTENT_VERSION &&
       meta.lastRemoteCount === snapshot.count && local.length === snapshot.count &&
-      timestamp(meta.lastRemoteUpdatedAt) === snapshot.maxUpdatedAt) {
+      timestamp(meta.lastRemoteUpdatedAt) === snapshot.maxUpdatedAt && local.every(hasCompleteContent)) {
     return { snapshot, songs: [] };
   }
 
@@ -108,7 +116,7 @@ export async function downloadCancioneroUpdates(
       .select(SONG_COLUMNS).is("sala_id", null).in("id", ids);
     if (error) throw error;
     if (data?.length !== ids.length || new Set(data.map((row) => row.id)).size !== ids.length ||
-        data.some((row) => !ids.includes(row.id) || !timestamp(row.updated_at))) {
+        data.some((row) => !ids.includes(row.id) || !timestamp(row.updated_at) || !hasCompleteContent(row))) {
       throw new Error("La descarga quedó incompleta. Tu Cancionero anterior sigue disponible.");
     }
     records.push(...data.map((row) => ({

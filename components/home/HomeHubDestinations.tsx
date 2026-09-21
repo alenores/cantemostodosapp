@@ -1,6 +1,7 @@
 "use client";
 
 import HomeDestinationCard from "@/components/home/HomeDestinationCard";
+import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
@@ -24,7 +25,7 @@ import {
   HUB_WELCOME_TITLE,
 } from "@/lib/herramientas-product";
 import type { UsuarioActivo } from "@/types";
-import { Gauge, Library, MicVocal, Music2, Users, WifiOff } from "lucide-react";
+import { Bell, Gauge, Library, MicVocal, Music2, Users, WifiOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const CASCADE_STEP_MS = 140;
@@ -44,6 +45,7 @@ export default function HomeHubDestinations({
 }: HomeHubDestinationsProps) {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const novedades = useCancioneroNovedades();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [titleInviteIndex, setTitleInviteIndex] = useState<number | null>(null);
 
@@ -132,6 +134,7 @@ export default function HomeHubDestinations({
       </p>
 
       <div className="flex flex-col gap-3">
+        <div className="relative">
         <HomeDestinationCard
           label={HUB_DESTINATION_CANCIONERO_LABEL}
           description={HUB_DESTINATION_CANCIONERO_DESCRIPTION}
@@ -145,6 +148,15 @@ export default function HomeHubDestinations({
           cascadeDelayMs={cascadeDelays.cards[0]}
           titleInviteActive={titleInviteIndex === 0}
         />
+        {novedades.hasNotice ? (
+          <button type="button" onClick={novedades.open}
+            aria-label={`Ver novedades del Cancionero${novedades.count ? ` (${novedades.count})` : ""}`}
+            className="absolute right-1 top-1 z-10 flex size-11 items-center justify-center rounded-full bg-bg-card text-accent">
+            <Bell className="size-5" aria-hidden="true" />
+            <span className="absolute right-2 top-2 size-2 rounded-full bg-accent" aria-hidden="true" />
+          </button>
+        ) : null}
+        </div>
 
         <HomeDestinationCard
           label={HUB_DESTINATION_INDIVIDUAL_LABEL}

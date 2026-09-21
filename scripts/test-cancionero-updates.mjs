@@ -121,6 +121,35 @@ await test("sin novedades solo consulta cantidad y fecha", async () => {
   assert.equal(state.merges, 0);
 });
 
+await test("repara copias sin acordes o compases aunque coincidan fecha y cantidad", async () => {
+  const remote = [song(1), song(2), song(3)];
+  remote[0].cifrado.acordes = [{ id: "acorde", lineIndex: 0, charIndex: 0, nota: 0, quality: "" }];
+  remote[0].compas_config = { tipoCompas: "4-4", barras: [{ id: "compas", lineIndex: 0, charIndex: 0 }] };
+  const state = fixture(remote);
+  delete state.rows[0].cifrado;
+  delete state.rows[1].compas_config;
+  const supabase = client(remote);
+  const plan = await checkCancioneroUpdates(supabase);
+  assert.deepEqual(plan.songs.map((row) => row.id), [1, 2]);
+  assert.ok(supabase.requests.every((r) => !r.columns.split(", ").includes("letra")));
+  assert.equal(state.merges, 0);
+  await downloadCancioneroUpdates(supabase, plan);
+  assert.deepEqual(state.rows[0].cifrado, remote[0].cifrado);
+  assert.deepEqual(state.rows[0].compas_config, remote[0].compas_config);
+  assert.deepEqual(state.rows[2], remote[2]);
+  assert.equal((await checkCancioneroUpdates(client(remote))).songs.length, 0);
+});
+
+await test("una respuesta sin los datos avanzados no se anuncia como descarga completa", async () => {
+  const state = fixture([]);
+  const remote = [song(1)];
+  delete remote[0].compas_config;
+  const supabase = client(remote);
+  const plan = await checkCancioneroUpdates(supabase);
+  await assert.rejects(downloadCancioneroUpdates(supabase, plan), /incompleta/);
+  assert.equal(state.merges, 0);
+});
+
 await test("descarga inicial también espera confirmación y pagina más de 1000 canciones", async () => {
   const state = fixture([]);
   const supabase = client(Array.from({ length: 1201 }, (_, i) => song(i + 1)));

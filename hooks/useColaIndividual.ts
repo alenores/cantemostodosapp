@@ -28,6 +28,8 @@ import {
   volverAPendienteIndividual,
 } from "@/lib/cola-individual";
 import { createClient } from "@/lib/supabase/client";
+import { getActiveUserId } from "@/lib/auth/offline-user";
+import { readColaIndividual } from "@/lib/offline/cola-individual-store";
 import type { CancionActivaData } from "@/lib/sala-data";
 import type { ColaIndividualItem } from "@/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -45,6 +47,10 @@ export function useColaIndividual() {
   const items: ColaIndividualRow[] = isGuest ? guestItems : authItems;
 
   const loadAuthCola = useCallback(async () => {
+    const userId = await getActiveUserId(supabase);
+    if (!userId) return;
+    const saved = await readColaIndividual(userId);
+    if (saved) setAuthItems(saved.items);
     const cola = await getColaIndividual(supabase);
     setAuthItems(cola);
   }, [supabase]);
@@ -63,15 +69,13 @@ export function useColaIndividual() {
     async function bootstrap() {
       setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const userId = await getActiveUserId(supabase);
 
       if (cancelled) {
         return;
       }
 
-      if (!user) {
+      if (!userId) {
         setUsuarioLogueado(false);
         setAuthItems([]);
         setLoading(false);
@@ -89,19 +93,21 @@ export function useColaIndividual() {
       }
     }
 
-    void bootstrap();
+    void bootstrap().catch(() => { if (!cancelled) setLoading(false); });
 
     function handleColaChanged() {
       if (!cancelled) {
-        void loadAuthCola();
+        void loadAuthCola().catch(() => {});
       }
     }
 
     window.addEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
+    window.addEventListener("online", handleColaChanged);
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!navigator.onLine && event !== "SIGNED_OUT") return;
       if (!session?.user) {
         setUsuarioLogueado(false);
         setAuthItems([]);
@@ -111,12 +117,14 @@ export function useColaIndividual() {
 
       setUsuarioLogueado(true);
       setGuestItems([]);
-      void loadAuthCola();
+      // No consultar Auth dentro de su propio callback.
+      window.setTimeout(() => { void loadAuthCola().catch(() => {}); }, 0);
     });
 
     return () => {
       cancelled = true;
       window.removeEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
+      window.removeEventListener("online", handleColaChanged);
       subscription.unsubscribe();
     };
   }, [loadAuthCola, supabase]);

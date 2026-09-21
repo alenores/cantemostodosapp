@@ -9,6 +9,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function getActiveUserId(
   supabase: SupabaseClient,
 ): Promise<string | null> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    const snapshot = await getAppSnapshot();
+    const id = snapshot?.usuario.id;
+    if (id && id !== OFFLINE_GUEST_USUARIO.id) return id;
+  }
   const {
     data: { session },
   } = await supabase.auth.getSession();

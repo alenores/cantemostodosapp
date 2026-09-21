@@ -1,3 +1,4 @@
+import AppLoadingSkeleton from "@/components/ui/AppLoadingSkeleton";
 import SplashScreen from "@/components/SplashScreen";
 import AuthSessionListener from "@/components/auth/AuthSessionListener";
 import AppFooter from "@/components/ui/AppFooter";
@@ -70,47 +71,7 @@ export default function RootLayout({
         className="flex min-h-full flex-col"
         style={{ backgroundColor: APP_SHELL_BG }}
       >
-        <div
-          id="inline-splash"
-          className="splash-screen fixed inset-0 z-[100] flex flex-col items-center justify-center"
-          style={{ backgroundColor: APP_SHELL_BG }}
-          role="status"
-          aria-live="polite"
-          aria-label="Cargando CantemosTodos"
-        >
-          <div className="flex flex-col items-center gap-8">
-            <div className="splash-logo-wrap relative flex items-center justify-center">
-              <div className="splash-glow" aria-hidden="true" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.svg"
-                alt=""
-                width={160}
-                height={160}
-                className="splash-logo relative z-10 size-40"
-                fetchPriority="high"
-              />
-            </div>
-            <div
-              className="splash-eq flex items-end justify-center gap-1.5"
-              aria-hidden="true"
-            >
-              {[0, 1, 2, 3, 4].map((index) => (
-                <span
-                  key={index}
-                  className="splash-eq-bar"
-                  style={{ animationDelay: `${index * 0.12}s` }}
-                />
-              ))}
-            </div>
-          </div>
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-accent/20"
-            aria-hidden="true"
-          >
-            <div className="splash-progress-bar h-full w-1/3 bg-accent" />
-          </div>
-        </div>
+        <div id="inline-splash"><AppLoadingSkeleton /></div>
         <SerwistProvider>
           <TapFeedbackProvider>
             <Suspense fallback={null}>

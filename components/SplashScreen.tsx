@@ -1,149 +1,26 @@
 "use client";
 
-import {
-  APP_READY_EVENT,
-  APP_SHELL_BG,
-  SPLASH_FADE_OUT_MS,
-  SPLASH_MAX_VISIBLE_MS,
-  SPLASH_MIN_VISIBLE_MS,
-} from "@/lib/splash-theme";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { APP_READY_EVENT, SPLASH_MAX_VISIBLE_MS } from "@/lib/splash-theme";
+import { useEffect } from "react";
 
-const INLINE_SPLASH_ID = "inline-splash";
-
-/** Oculta el splash del layout sin sacarlo del DOM (remove() rompe la reconciliación de React). */
-function hideInlineSplash() {
-  const inlineSplash = document.getElementById(INLINE_SPLASH_ID);
-
-  if (!inlineSplash) {
-    return;
-  }
-
-  inlineSplash.style.display = "none";
-  inlineSplash.setAttribute("aria-hidden", "true");
-}
-
-function isRouteSettled(pathname: string): boolean {
-  if (pathname !== "") {
-    return true;
-  }
-
-  return typeof window !== "undefined" && window.location.pathname !== "";
-}
-
+/** Retira el skeleton inicial al estar lista la pantalla, sin espera mínima. */
 export default function SplashScreen() {
-  const pathname = usePathname();
-  const [visible, setVisible] = useState(true);
-  const [fadeOut, setFadeOut] = useState(false);
-  const appReadyRef = useRef(false);
-
   useEffect(() => {
-    hideInlineSplash();
-    document.documentElement.classList.add("splash-active");
-
-    return () => {
+    function dismiss() {
+      const skeleton = document.getElementById("inline-splash");
+      if (skeleton) {
+        skeleton.style.display = "none";
+        skeleton.setAttribute("aria-hidden", "true");
+      }
       document.documentElement.classList.remove("splash-active");
+    }
+    window.addEventListener(APP_READY_EVENT, dismiss);
+    if (document.documentElement.dataset.appReady === "true") dismiss();
+    const timer = window.setTimeout(dismiss, SPLASH_MAX_VISIBLE_MS);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener(APP_READY_EVENT, dismiss);
     };
   }, []);
-
-  useEffect(() => {
-    let dismissed = false;
-    let minElapsed = false;
-
-    const dismiss = () => {
-      if (
-        dismissed ||
-        !minElapsed ||
-        !appReadyRef.current ||
-        !isRouteSettled(pathname)
-      ) {
-        return;
-      }
-
-      dismissed = true;
-      setFadeOut(true);
-      window.setTimeout(() => {
-        setVisible(false);
-        document.documentElement.classList.remove("splash-active");
-      }, SPLASH_FADE_OUT_MS);
-    };
-
-    const onAppReady = () => {
-      appReadyRef.current = true;
-      dismiss();
-    };
-
-    const minTimer = window.setTimeout(() => {
-      minElapsed = true;
-      dismiss();
-    }, SPLASH_MIN_VISIBLE_MS);
-
-    const maxTimer = window.setTimeout(() => {
-      appReadyRef.current = true;
-      minElapsed = true;
-      dismiss();
-    }, SPLASH_MAX_VISIBLE_MS);
-
-    window.addEventListener(APP_READY_EVENT, onAppReady);
-    dismiss();
-
-    return () => {
-      window.clearTimeout(minTimer);
-      window.clearTimeout(maxTimer);
-      window.removeEventListener(APP_READY_EVENT, onAppReady);
-    };
-  }, [pathname]);
-
-  if (!visible) {
-    return null;
-  }
-
-  return (
-    <div
-      className={`splash-screen fixed inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-300 ${
-        fadeOut ? "opacity-0" : "opacity-100"
-      }`}
-      style={{ backgroundColor: APP_SHELL_BG }}
-      role="status"
-      aria-live="polite"
-      aria-label="Cargando CantemosTodos"
-      aria-hidden={fadeOut}
-    >
-      <div className="flex flex-col items-center gap-8">
-        <div className="splash-logo-wrap relative flex items-center justify-center">
-          <div className="splash-glow" aria-hidden="true" />
-          <Image
-            src="/logo.svg"
-            alt="CantemosTodos"
-            width={160}
-            height={160}
-            priority
-            className="splash-logo relative z-10 size-40"
-          />
-        </div>
-
-        <div
-          className="splash-eq flex items-end justify-center gap-1.5"
-          aria-hidden="true"
-        >
-          {[0, 1, 2, 3, 4].map((index) => (
-            <span
-              key={index}
-              className="splash-eq-bar"
-              style={{ animationDelay: `${index * 0.12}s` }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-accent/20"
-        aria-hidden="true"
-      >
-        <div className="splash-progress-bar h-full w-1/3 bg-accent" />
-      </div>
-    </div>
-  );
+  return null;
 }

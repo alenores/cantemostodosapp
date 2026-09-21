@@ -1,5 +1,5 @@
-import { HomeWelcomeLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
+import AppLoadingSkeleton from "@/components/ui/AppLoadingSkeleton";
 
 export default function Loading() {
-  return <HomeWelcomeLoadingSkeleton />;
+  return <AppLoadingSkeleton />;
 }

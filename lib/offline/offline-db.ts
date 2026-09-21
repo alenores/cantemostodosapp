@@ -1,11 +1,11 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { EstadoCola, Sala, UsuarioActivo, UsuarioCancion } from "@/types";
+import type { ColaIndividualItem, EstadoCola, Sala, UsuarioActivo, UsuarioCancion } from "@/types";
 import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 5;
+export const OFFLINE_DB_VERSION = 6;
 
 export type CancioneroLocalRecord = {
   id: number;
@@ -81,6 +81,14 @@ export type MiCancionLocalRecord = UsuarioCancion & {
 };
 
 export interface OfflineDB extends DBSchema {
+  cola_individual_snapshot: {
+    key: string;
+    value: {
+      userId: string;
+      items: ColaIndividualItem[];
+      pending: { id: number; estado: EstadoCola; orden: number }[];
+    };
+  };
   canciones: {
     key: number;
     value: CancioneroLocalRecord;
@@ -154,6 +162,9 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
             keyPath: "local_key",
           });
           favoritas.createIndex("by-user", "owner_user_id");
+        }
+        if (oldVersion < 6) {
+          db.createObjectStore("cola_individual_snapshot", { keyPath: "userId" });
         }
       },
     });

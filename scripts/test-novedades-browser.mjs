@@ -2,6 +2,11 @@
 // node scripts/test-novedades-browser.mjs <baseURL> <ruta a playwright/index.mjs>
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
+import { build } from "esbuild";
+const colaBundle = await build({
+  entryPoints: ["lib/cola-individual.ts"], bundle: true, platform: "browser",
+  format: "iife", globalName: "QueueService", write: false,
+});
 const { chromium } = await import(pathToFileURL(process.argv[3]).href);
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -33,10 +38,11 @@ await context.route("**/rest/v1/canciones_guardadas*", async route => {
 try {
   await page.goto(process.argv[2]);
   await page.getByRole("button", { name: "Ir a Cancionero", exact: true }).waitFor();
+  assert.equal(await page.locator(".splash-logo").count(), 0);
   await page.getByRole("button", { name: "Ver novedades del Cancionero (1)", exact: true }).waitFor();
   await page.evaluate(async ({ songs, fecha }) => {
     const db = await new Promise((resolve, reject) => {
-      const request = indexedDB.open("cantemostodos-offline", 5);
+      const request = indexedDB.open("cantemostodos-offline");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -67,16 +73,60 @@ try {
   const novedades = page.getByRole("button", { name: "Ver novedades del Cancionero", exact: true });
   await novedades.click();
   await page.getByRole("button", { name: "Descargar todo", exact: true }).click();
-  await page.getByRole("button", { name: "Entendido" }).waitFor({ timeout: 90000 });
+  await page.getByRole("heading", { name: "Todo listo en tu celular" }).waitFor({ timeout: 90000 });
   assert.equal(downloads, 1);
-  await page.getByRole("button", { name: "Entendido" }).click();
+  assert.equal(await page.locator("dialog[open]").innerText(), "Todo listo en tu celular");
+  await page.getByRole("button", { name: "Cerrar novedades" }).click();
+  await novedades.waitFor({ state: "hidden" });
+  await page.screenshot({ path: "test-sin-novedades.png" });
+  // Servicio real, con servidor ficticio y almacenamiento real del navegador.
+  await page.addScriptTag({ content: colaBundle.outputFiles[0].text });
+  const queueRows = [1, 2, 3].map((id) => ({
+    id, user_id: "offline-test-user", created_at: fecha, nombre: ["Primera canción", "Segunda canción", "Tercera canción"][id - 1],
+    artista: "Prueba local", letra_texto: "Letra guardada " + id, url_letra: null,
+    estado: id === 1 ? "activa" : "pendiente", orden: id,
+  }));
+  const makeClient = (rows) => ({
+    auth: { getSession: async () => ({ data: { session: { user: { id: "offline-test-user" } } } }) },
+    from: () => {
+      let patch = null;
+      const filters = {};
+      const q = {
+        select: () => q, order: () => q,
+        update: (value) => { patch = value; return q; },
+        eq: (key, value) => { filters[key] = value; return q; },
+        then: (resolve, reject) => {
+          const matched = rows.filter(row => Object.entries(filters).every(([key, value]) => row[key] === value));
+          if (patch) matched.forEach(row => Object.assign(row, patch));
+          return Promise.resolve({ data: structuredClone(matched), error: null }).then(resolve, reject);
+        },
+      };
+      return q;
+    },
+  });
+  await page.evaluate(async ({ rows, clientSource, fecha }) => {
+    const client = (0, eval)("(" + clientSource + ")")(rows);
+    const saved = await QueueService.getColaIndividual(client);
+    if (saved.length !== 3) throw new Error("No se guardó la lista online");
+    const db = await new Promise(resolve => {
+      const request = indexedDB.open("cantemostodos-offline");
+      request.onsuccess = () => resolve(request.result);
+    });
+    const tx = db.transaction("app_snapshot", "readwrite");
+    tx.objectStore("app_snapshot").put({
+      id: "current", usuario: { id: "offline-test-user", nombre: "Prueba", email: "", avatar_url: null },
+      salas: [], savedAt: fecha,
+    });
+    await new Promise(resolve => { tx.oncomplete = resolve; });
+    db.close();
+  }, { rows: queueRows, clientSource: makeClient.toString(), fecha });
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
   offline = true;
   await context.setOffline(true);
   // Chromium puede conservar onLine=true tras navegar con un service worker.
   // Bloqueamos la red y además mantenemos la señal offline entre documentos.
-  await context.addInitScript(() => Object.defineProperty(navigator, "onLine", { get: () => false }));
+  await context.addInitScript(() => Object.defineProperty(navigator, "onLine", { get: () => false, configurable: true }));
   await page.evaluate(() => {
     Object.defineProperty(navigator, "onLine", { get: () => false, configurable: true });
     window.dispatchEvent(new Event("offline"));
@@ -93,8 +143,27 @@ try {
   await page.getByRole("button", { name: "Abrir controles de modo lectura" }).waitFor();
   await page.screenshot({ path: "test-acordes-lectura-offline.png" });
   assert.equal(await page.evaluate(() => navigator.onLine), false);
+  await page.goto(process.argv[2] + "/individual");
+  await page.getByText("Primera canción", { exact: true }).first().waitFor();
+  await page.getByRole("button", { name: /Fila/ }).first().click();
+  await page.getByRole("dialog", { name: "Fila de canciones" }).getByRole("button", { name: "Siguiente canción", exact: true }).click();
+  await page.getByRole("dialog", { name: "Fila de canciones" }).waitFor({ state: "hidden" });
+  await page.getByText("Segunda canción", { exact: true }).first().waitFor();
+  await page.reload();
+  await page.getByText("Segunda canción", { exact: true }).first().waitFor();
+  assert.equal(await page.locator(".splash-logo").count(), 0);
+  await page.screenshot({ path: "test-individual-offline.png" });
+  await page.addScriptTag({ content: colaBundle.outputFiles[0].text });
+  const synced = await page.evaluate(async ({ rows, clientSource }) => {
+    Object.defineProperty(navigator, "onLine", { get: () => true, configurable: true });
+    const client = (0, eval)("(" + clientSource + ")")(rows);
+    const result = await QueueService.getColaIndividual(client);
+    return { result, remote: rows };
+  }, { rows: queueRows, clientSource: makeClient.toString() });
+  assert.equal(synced.result.find(row => row.estado === "activa").id, 2);
+  assert.equal(synced.remote.find(row => row.estado === "activa").id, 2);
   assert.deepEqual(errors, []);
-  console.log("OK: campana, tarjeta, X, fondo, Más tarde, reparación aprobada y lectura avanzada en modo avión.");
+  console.log("OK: novedades condicionales, confirmación mínima, navegación sin guitarra, acordes offline, Siguiente, persistencia tras recargar y sincronización.");
 } catch (error) {
   console.log("Estado al fallar:", page.url(), await page.locator("body").innerText(), errors);
   await page.screenshot({ path: "test-offline-error.png" });

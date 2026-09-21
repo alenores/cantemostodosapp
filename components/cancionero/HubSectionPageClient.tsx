@@ -286,7 +286,7 @@ export default function HubSectionPageClient({
 
             <div className="app-hub-grid">
               {visibleModules.map((module) => renderModuleCard(module))}
-              {section === "canciones" ? (
+              {section === "canciones" && novedades.count > 0 ? (
                 <HubModuleCard moduleId="cancionero" label="Novedades" icon={Bell}
                   ariaLabel="Ver novedades del Cancionero" onClick={novedades.open}
                   badge={novedades.count ? String(novedades.count) : undefined}

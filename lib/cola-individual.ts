@@ -1,5 +1,7 @@
 import type { ColaIndividualItem, EstadoCola } from "@/types";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { getActiveUserId } from "@/lib/auth/offline-user";
+import { acknowledgeColaPatch, advanceColaIndividualLocal, cacheColaIndividual, readColaIndividual } from "@/lib/offline/cola-individual-store";
 
 function throwColaIndividualError(
   error: PostgrestError,
@@ -13,11 +15,7 @@ function throwColaIndividualError(
 }
 
 async function getUserId(supabase: SupabaseClient): Promise<string> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const userId = session?.user?.id;
+  const userId = await getActiveUserId(supabase);
 
   if (!userId) {
     throw new Error("Se requiere sesión activa para operar la fila individual");
@@ -48,16 +46,35 @@ async function getMaxOrden(
 export async function getColaIndividual(
   supabase: SupabaseClient,
 ): Promise<ColaIndividualItem[]> {
-  const { data, error } = await supabase
-    .from("cola_individual")
-    .select("*")
-    .order("orden", { ascending: true });
+  const userId = await getUserId(supabase);
+  const local = await readColaIndividual(userId);
+  if (!navigator.onLine) return local?.items ?? [];
+  try {
+    const pending = [...(local?.pending ?? [])].sort((a, b) =>
+      Number(a.estado === "activa") - Number(b.estado === "activa"));
+    for (const patch of pending) {
+      const { error } = await supabase.from("cola_individual")
+        .update({ estado: patch.estado, orden: patch.orden })
+        .eq("user_id", userId).eq("id", patch.id);
+      if (error) throw error;
+      await acknowledgeColaPatch(userId, patch);
+    }
+    const { data, error } = await supabase
+      .from("cola_individual")
+      .select("*")
+      .eq("user_id", userId)
+      .order("orden", { ascending: true });
 
-  if (error) {
-    throwColaIndividualError(error, "No se pudo leer cola_individual");
+    if (error) {
+      throwColaIndividualError(error, "No se pudo leer cola_individual");
+    }
+
+    await cacheColaIndividual(userId, data ?? []);
+    return (await readColaIndividual(userId))?.items ?? data ?? [];
+  } catch (error) {
+    if (local) return (await readColaIndividual(userId))?.items ?? local.items;
+    throw error;
   }
-
-  return data ?? [];
 }
 
 export async function agregarAColaIndividual(
@@ -122,6 +139,12 @@ export async function avanzarColaIndividual(
   supabase: SupabaseClient,
 ): Promise<void> {
   const userId = await getUserId(supabase);
+  if (!navigator.onLine) {
+    await advanceColaIndividualLocal(userId);
+    return;
+  }
+  // Aplica primero los avances pendientes de una sesión offline.
+  await getColaIndividual(supabase);
 
   const { data: activa, error: activaError } = await supabase
     .from("cola_individual")

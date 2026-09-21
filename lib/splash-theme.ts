@@ -9,6 +9,7 @@ export const APP_READY_EVENT = "cantemos:app-ready";
 
 export function markAppReady() {
   if (typeof window !== "undefined") {
+    document.documentElement.dataset.appReady = "true";
     window.dispatchEvent(new CustomEvent(APP_READY_EVENT));
   }
 }

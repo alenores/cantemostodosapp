@@ -4,7 +4,7 @@ import { useCancioneroSync } from "@/hooks/useCancioneroSync";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
-import { X } from "lucide-react";
+import { CheckCircle2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CancioneroNovedadesContext } from "./CancioneroNovedadesContext";
 
@@ -63,9 +63,19 @@ export default function CancioneroSyncRunner({ children }: { children: ReactNode
               event.clientY < bounds.top || event.clientY > bounds.bottom) closeDialog();
         }}
         aria-labelledby="cancionero-updates-title"
-        aria-describedby="cancionero-updates-description"
+        aria-describedby={ready ? undefined : "cancionero-updates-description"}
         className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-hidden rounded-xl border border-border bg-bg-card p-0 text-text-primary backdrop:bg-black/60">
         <div className="flex max-h-[85dvh] flex-col p-5">
+          {ready ? (
+            <div className="flex items-center gap-3 py-4" role="status">
+              <CheckCircle2 className="size-9 shrink-0 text-green-500" aria-hidden="true" />
+              <h2 id="cancionero-updates-title" className="text-lg font-semibold">Todo listo en tu celular</h2>
+              <button type="button" aria-label="Cerrar novedades" onClick={closeDialog}
+                className="ml-auto flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-app">
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : <>
           <div className="flex items-center justify-between gap-2">
             <h2 id="cancionero-updates-title" className="text-lg font-semibold">Novedades del Cancionero</h2>
             <button type="button" aria-label="Cerrar novedades" onClick={closeDialog} disabled={downloading}
@@ -137,6 +147,7 @@ export default function CancioneroSyncRunner({ children }: { children: ReactNode
               </button>
             ) : null}
           </div>
+          </>}
         </div>
       </dialog>
     </CancioneroNovedadesContext.Provider>

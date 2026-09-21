@@ -188,7 +188,7 @@ Si la fila está vacía, se muestra: *"La fila está vacía · Agregá una canci
 
 Al sumar una canción aparece el aviso: **"Canción sumada a la lista"**.
 
-**Con cuenta:** la fila se **guarda** entre sesiones.  
+**Con cuenta:** la fila se **guarda** entre sesiones y conserva una copia privada en el celular al cargar Individual. Sin conexión, **Siguiente** avanza sobre esa copia y conserva la canción activa al salir y volver. Los avances pendientes se sincronizan al recuperar internet.
 **Sin cuenta (invitado):** la fila se **pierde** al recargar o cerrar la app.
 
 ### 6.3 Funcionamiento sin conexión
@@ -725,7 +725,7 @@ La primera vez se necesita **conexión a internet** para abrir la app. La descar
 
 - Al abrir la app o recuperar conexión se comprueba si hay novedades mediante una consulta liviana, sin descargar las letras.
 - En Inicio, una **campanita en la esquina superior derecha de la tarjeta Cancionero** indica novedades o un aviso pendiente y abre el listado de canciones **Nuevas** y **Actualizadas**. No hay un cartel flotante en las demás pantallas.
-- Dentro del hub de Cancionero hay una tarjeta **Novedades** que abre el mismo listado. En computadora está dentro del listado del Cancionero.
+- Dentro del hub de Cancionero hay una tarjeta **Novedades** que abre el mismo listado, solo cuando hay canciones nuevas o actualizadas pendientes. Desaparece al terminar la descarga. En computadora está dentro del listado del Cancionero.
 - **Descargar todo** acepta todas las novedades juntas. No hay casillas ni elección por canción.
 - **Más tarde**, la **X** y tocar fuera del modal cierran el listado sin descargar; las novedades siguen disponibles. Durante la descarga y preparación estos cierres quedan bloqueados hasta que termine o se informe un error.
 - Solo se descargan las canciones nuevas o modificadas. Las demás no se vuelven a bajar ni se borran.
@@ -775,7 +775,8 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 - Al aceptar **Descargar todo**, la app guarda las canciones nuevas y actualizadas y luego prepara las pantallas necesarias para navegar sin conexión.
 - La ventana permanece abierta y no se puede cerrar mientras se realiza este proceso.
-- El mensaje **“Todo listo”** aparece únicamente después de comprobar que ambas tareas terminaron. Desde ese momento no hace falta recorrer previamente cada pantalla ni cada canción.
+- Al terminar ambas tareas se muestra únicamente un check verde y **“Todo listo en tu celular”**, con una X para cerrar. Desde ese momento no hace falta recorrer previamente cada pantalla ni cada canción.
+- La carga inicial y las transiciones que necesitan espera muestran un skeleton de contenido, sin la pantalla de guitarra ni un tiempo mínimo artificial. La navegación online conserva el contenido mientras prepara el destino; la offline abre la copia local.
 
 ---
 

@@ -14,6 +14,7 @@ import type { CancionCancionero } from "@/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 async function loadCancioneroPool(): Promise<CancionCancionero[]> {
+  if (!navigator.onLine) return (await getCancioneroLocalAsCancionero()).filter(song => song.letra?.trim());
   try {
     const supabase = createClient();
     const remote = await fetchCancionesCancionero(supabase);

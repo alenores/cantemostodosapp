@@ -60,6 +60,7 @@ import {
 import { createPortal } from "react-dom";
 
 const COLA_MODAL_LAYER_Z = 100;
+const NONE_UNAVAILABLE: ReadonlySet<number> = new Set();
 const COLA_DRAG_DELETE_ID = "cola-drag-delete";
 
 const colaDragCollisionDetection: CollisionDetection = (args) => {
@@ -129,6 +130,7 @@ function ColaDragDeleteZone({ visible, highlighted }: ColaDragDeleteZoneProps) {
 
 type ColaIndividualSheetProps = {
   items: ColaIndividualRow[];
+  noDisponibles?: ReadonlySet<number>;
   onOpenBuscador: () => void;
   presentacionOculta?: boolean;
   onRequestOpen?: (open: () => void) => void;
@@ -142,6 +144,7 @@ type ColaIndividualSheetProps = {
 };
 
 type SortableRowProps = {
+  requiereConexion?: boolean;
   item: ColaIndividualRow;
   items: ColaIndividualRow[];
   listIndex: number;
@@ -155,6 +158,7 @@ function SortableColaIndividualRow({
   listIndex,
   nombreRevealGeneration,
   premiumIds,
+  requiereConexion,
 }: SortableRowProps) {
   const variant = getIndividualVariant(item, items);
   const {
@@ -183,6 +187,7 @@ function SortableColaIndividualRow({
       ref={setNodeRef}
       item={item}
       variant={variant}
+      requiereConexion={requiereConexion}
       premium={isColaItemPremium(item, premiumIds)}
       showAgregadoAvatar={false}
       nombreRevealGeneration={nombreRevealGeneration}
@@ -194,6 +199,7 @@ function SortableColaIndividualRow({
 
 export default function ColaIndividualSheet({
   items,
+  noDisponibles = NONE_UNAVAILABLE,
   onOpenBuscador,
   presentacionOculta = false,
   onRequestOpen,
@@ -242,7 +248,7 @@ export default function ColaIndividualSheet({
     [pendientes],
   );
 
-  const pendientesCount = pendientes.length;
+  const pendientesCount = pendientes.filter(item => !noDisponibles.has(item.id)).length;
 
   const { aleatorioActivo, toggleAleatorio, apagarAleatorio } = useColaAleatorio({
     items: sortedItems,
@@ -414,6 +420,7 @@ export default function ColaIndividualSheet({
                       key={item.id}
                       item={item}
                       variant="tocada"
+                      requiereConexion={noDisponibles.has(item.id)}
                       showAgregadoAvatar={false}
                       onVolverAPendiente={(id) => void onVolverAPendiente(id)}
                     />
@@ -430,6 +437,7 @@ export default function ColaIndividualSheet({
                   <ColaJuntadaItem
                     item={activaItem}
                     variant="activa"
+                    requiereConexion={noDisponibles.has(activaItem.id)}
                     showAgregadoAvatar={false}
                   />
                 </div>
@@ -445,7 +453,8 @@ export default function ColaIndividualSheet({
                       <SortableColaIndividualRow
                         key={item.id}
                         item={item}
-                        items={items}
+                        items={items.filter(row => !noDisponibles.has(row.id))}
+                        requiereConexion={noDisponibles.has(item.id)}
                         listIndex={index}
                         nombreRevealGeneration={nombreRevealGeneration}
                         premiumIds={premiumIds}
@@ -489,6 +498,7 @@ export default function ColaIndividualSheet({
           onClose={onClose}
         />
         {renderColaListBody()}
+        {pendientes.length > 0 && pendientesCount === 0 ? <p role="status" className="px-4 py-2 text-sm text-text-muted">No hay más canciones disponibles sin conexión.</p> : null}
       </div>
     );
   }

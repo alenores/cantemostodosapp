@@ -32,6 +32,7 @@ type ColaJuntadaItemProps = {
   item: ColaDisplayItem;
   variant: ColaJuntadaItemVariant;
   premium?: boolean;
+  requiereConexion?: boolean;
   showAgregadoAvatar?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
   onVolverAPendiente?: (id: number) => void;
@@ -45,6 +46,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       item,
       variant,
       premium = false,
+      requiereConexion = false,
       dragHandleProps,
       onVolverAPendiente,
       nombreRevealGeneration,
@@ -60,6 +62,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
           <p className="pointer-events-none min-w-0 flex-1 truncate text-xs text-text-muted line-through">
             {item.nombre}
           </p>
+          {requiereConexion ? <span className="text-xs">Requiere conexión</span> : null}
           {onVolverAPendiente ? (
             <button
               type="button"
@@ -85,6 +88,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
             <p className="pointer-events-none truncate text-[15px] font-semibold leading-snug text-gray-900">
               {item.nombre}
             </p>
+            {requiereConexion ? <p className="text-xs text-amber-700">Requiere conexión</p> : null}
             {item.artista ? (
               <p className="pointer-events-none truncate text-[13px] leading-snug text-gray-500">
                 {item.artista}
@@ -207,6 +211,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
             {item.artista ? (
               <p className={COLA_ITEM_ARTIST_CLASS}>{item.artista}</p>
             ) : null}
+            {requiereConexion ? <p className="text-xs text-amber-500">Requiere conexión</p> : null}
           </div>
         </div>
 

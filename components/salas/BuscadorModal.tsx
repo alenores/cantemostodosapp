@@ -461,7 +461,7 @@ export default function BuscadorModal({
 
   const syncMisCancionesResultados = useCallback(
     (searchQuery: string, animate = false) => {
-      const filtradas = filterMisCanciones(misCanciones, searchQuery).map(
+      const filtradas = filterMisCanciones(misCanciones, searchQuery).filter(cancion => online || cancionesCancionero.some(local => local.id === cancion.cancion_guardada_id && Boolean(local.letra?.trim()))).map(
         (cancion) => mapMisCancionAResultado(cancion, premiumIds),
       );
 
@@ -484,7 +484,7 @@ export default function BuscadorModal({
         );
       }
     },
-    [misCanciones, premiumIds],
+    [misCanciones, premiumIds, online, cancionesCancionero],
   );
 
   const handleClose = useCallback(() => {

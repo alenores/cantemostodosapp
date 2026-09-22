@@ -6,6 +6,7 @@ import {
   type CompasConfig,
   type NotaIndex,
   normalizeNotaIndex,
+  transponerCifrado,
 } from "@/lib/cifrado";
 import {
   DEFAULT_MODO_TONAL,
@@ -29,6 +30,7 @@ import type { CancionPracticaLocalRecord } from "@/lib/offline/offline-db";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getActiveUserId } from "@/lib/auth/offline-user";
+import { readTonoLectura } from "@/lib/tono-lectura-local";
 
 export type DominioPractica = "no_visto" | "practicando" | "dominado";
 
@@ -378,6 +380,22 @@ export async function updateCancionPractica(
   }
 }
 
+/** Transpone únicamente la copia privada, preservando notas y anotaciones. */
+export async function updateCancionPracticaTono(supabase: SupabaseClient, id: number, tono: NotaIndex) {
+  const userId = await requireUserId(supabase);
+  const current = await getCancionPracticaLocalRecord(userId, id);
+  if (!current) throw new Error("No se encontró la canción de práctica.");
+  await putCancionPracticaLocalRecord({
+    ...current,
+    cifrado: transponerCifrado(current.cifrado ?? createEmptyCifrado(), tono - (current.tonalidad_default ?? DEFAULT_TONALIDAD)),
+    tonalidad_default: tono,
+    updated_at: new Date().toISOString(),
+    sync_state: "pending-upsert",
+  });
+  dispatchCancionesPracticaLocalChange();
+  if (isOnline()) void syncCancionesPractica(supabase).catch(() => {});
+}
+
 /** Guarda solo la nota general (no toca cifrado/compases). */
 export async function updateCancionPracticaNota(
   supabase: SupabaseClient,
@@ -456,6 +474,12 @@ async function runCancionesPracticaSync(supabase: SupabaseClient): Promise<void>
     const { data, error } = await request.select("*").single();
     if (error) throw error;
     const remote = mapCancionPracticaRow(data as Record<string, unknown>);
+    const latest = await getCancionPracticaLocalRecord(userId, local.local_id);
+    if (latest && latest.updated_at !== local.updated_at) {
+      // Un guardado más reciente (tono/anotaciones) no debe perderse mientras se envía el anterior.
+      await putCancionPracticaLocalRecord({ ...latest, remote_id: remote.id, remote_updated_at: remote.updated_at });
+      continue;
+    }
     await putCancionPracticaLocalRecord(
       cancionToLocalRecord(remote, {
         localId: local.local_id,
@@ -504,7 +528,10 @@ export async function cloneCancioneroDetalleToPractica(
     return existing.id;
   }
 
-  const cifrado = detalle.cifrado ?? createEmptyCifrado();
+  const userId = await requireUserId(supabase);
+  const tonoOriginal = detalle.tonalidad_default ?? DEFAULT_TONALIDAD;
+  const tono = readTonoLectura(userId, origenCancionId) ?? tonoOriginal;
+  const cifrado = transponerCifrado(detalle.cifrado ?? createEmptyCifrado(), tono - tonoOriginal);
   const bpm = detalle.bpm_default ?? DEFAULT_BPM;
   const compasConfig = detalle.compas_config
     ? normalizeCompasConfig({
@@ -519,7 +546,7 @@ export async function cloneCancioneroDetalleToPractica(
     letra: detalle.letra ?? "",
     cifrado,
     compas_config: compasConfig,
-    tonalidad_default: detalle.tonalidad_default ?? DEFAULT_TONALIDAD,
+    tonalidad_default: tono,
     modo_tonal_default: detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL,
     bpm_default: bpm,
     origen_cancion_id: origenCancionId,

@@ -29,9 +29,12 @@ import {
 } from "@/lib/cola-individual";
 import { createClient } from "@/lib/supabase/client";
 import { getActiveUserId } from "@/lib/auth/offline-user";
-import { readColaIndividual } from "@/lib/offline/cola-individual-store";
+import { readColaIndividual, addColaIndividualLocal } from "@/lib/offline/cola-individual-store";
 import type { CancionActivaData } from "@/lib/sala-data";
 import type { ColaIndividualItem } from "@/types";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { getCancioneroLocalAll } from "@/lib/offline/cancionero-store";
+import { cancionDisponibleOffline } from "@/lib/cola-offline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type ColaIndividualRow = ColaIndividualItem | GuestColaItem;
@@ -42,9 +45,20 @@ export function useColaIndividual() {
   const [authItems, setAuthItems] = useState<ColaIndividualItem[]>([]);
   const [guestItems, setGuestItems] = useState<GuestColaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const online = useOnlineStatus();
+  const [descargadas, setDescargadas] = useState<ReadonlySet<number>>(new Set());
+  useEffect(() => {
+    let cancelled = false;
+    void getCancioneroLocalAll().then(songs => {
+      if (!cancelled) setDescargadas(new Set(songs.filter(song => song.letra?.trim()).map(song => song.id)));
+    });
+    return () => { cancelled = true; };
+  }, [online]);
 
   const isGuest = usuarioLogueado === false;
   const items: ColaIndividualRow[] = isGuest ? guestItems : authItems;
+  const noDisponibles = useMemo(() => new Set(items.filter(item => !online && !cancionDisponibleOffline(item, descargadas)).map(item => item.id)), [items, online, descargadas]);
+  const activaNoDisponible = items.some(item => item.estado === "activa" && noDisponibles.has(item.id));
 
   const loadAuthCola = useCallback(async () => {
     const userId = await getActiveUserId(supabase);
@@ -145,8 +159,8 @@ export function useColaIndividual() {
   }, [authItems, guestItems, isGuest]);
 
   const pendientesCount = useMemo(
-    () => items.filter((item) => item.estado === "pendiente").length,
-    [items],
+    () => items.filter((item) => item.estado === "pendiente" && !noDisponibles.has(item.id)).length,
+    [items, noDisponibles],
   );
 
   const setItems = useCallback(
@@ -163,18 +177,22 @@ export function useColaIndividual() {
 
   const verAhora = useCallback(
     async (cancion: CancionInput) => {
+      if (!navigator.onLine && !cancionDisponibleOffline(cancion, descargadas)) throw new Error("Esta canción requiere conexión.");
       if (isGuest) {
         setGuestItems((current) => verAhoraGuestCola(current, cancion));
         return;
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      const userId = await getActiveUserId(supabase);
 
       if (!userId) {
         throw new Error("Se requiere sesión activa");
+      }
+
+      if (!navigator.onLine) {
+        await addColaIndividualLocal(userId, cancion, true);
+        await loadAuthCola();
+        return;
       }
 
       const cola = await getColaIndividual(supabase);
@@ -214,11 +232,12 @@ export function useColaIndividual() {
       await loadAuthCola();
       dispatchColaIndividualChanged();
     },
-    [isGuest, loadAuthCola, supabase],
+    [isGuest, loadAuthCola, supabase, descargadas],
   );
 
   const agregarALista = useCallback(
     async (cancion: CancionInput) => {
+      if (!navigator.onLine && !cancionDisponibleOffline(cancion, descargadas)) throw new Error("Esta canción requiere conexión.");
       if (isGuest) {
         setGuestItems((current) => agregarGuestCola(current, cancion));
         dispatchColaIndividualChanged();
@@ -229,18 +248,18 @@ export function useColaIndividual() {
       await loadAuthCola();
       dispatchColaIndividualChanged();
     },
-    [isGuest, loadAuthCola, supabase],
+    [isGuest, loadAuthCola, supabase, descargadas],
   );
 
   const avanzar = useCallback(async () => {
     if (isGuest) {
-      setGuestItems((current) => avanzarGuestCola(current));
+      setGuestItems((current) => avanzarGuestCola(current, item => online || cancionDisponibleOffline(item, descargadas)));
       return;
     }
 
     await avanzarColaIndividual(supabase);
     await loadAuthCola();
-  }, [isGuest, loadAuthCola, supabase]);
+  }, [isGuest, loadAuthCola, supabase, online, descargadas]);
 
   const activarItem = useCallback(
     async (itemId: number) => {
@@ -355,6 +374,8 @@ export function useColaIndividual() {
 
   return {
     items,
+    noDisponibles,
+    activaNoDisponible,
     loading,
     isGuest,
     usuarioLogueado: usuarioLogueado === true,

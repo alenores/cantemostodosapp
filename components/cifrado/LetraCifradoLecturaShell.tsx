@@ -31,6 +31,8 @@ export type LecturaTonalidadState = {
 
 type LetraCifradoLecturaShellProps = {
   detalle: CancionCifradoDetalle;
+  tonoPersonal?: boolean;
+  onGuardarTono?: (tono: NotaIndex) => void;
   scrollRef: RefObject<HTMLDivElement | null>;
   scrollEndPadding: string;
   letraZoomStyle?: CSSProperties;
@@ -53,6 +55,8 @@ type LetraCifradoLecturaShellProps = {
 
 export default function LetraCifradoLecturaShell({
   detalle,
+  tonoPersonal = true,
+  onGuardarTono,
   scrollRef,
   scrollEndPadding,
   letraZoomStyle,
@@ -81,6 +85,8 @@ export default function LetraCifradoLecturaShell({
     detalle,
     scrollRef,
     enabled: hasCompases,
+    tonoPersonal,
+    onGuardarTono,
   });
 
   useEffect(() => {
@@ -140,8 +146,9 @@ export default function LetraCifradoLecturaShell({
   useEffect(() => {
     return () => {
       onTonalidadStateChange?.(null);
+      onCompasPlaybackStateChange?.(null);
     };
-  }, [onTonalidadStateChange]);
+  }, [onTonalidadStateChange, onCompasPlaybackStateChange]);
 
   const anotacionTiposPresentes = anotaciones
     ? Array.from(new Set(anotaciones.map((anotacion) => anotacion.tipo)))

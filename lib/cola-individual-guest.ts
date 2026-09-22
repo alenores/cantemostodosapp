@@ -95,7 +95,7 @@ export function agregarGuestCola(
   return [...items, createItem(cancion, estado, maxOrden(items) + 1)];
 }
 
-export function avanzarGuestCola(items: GuestColaItem[]): GuestColaItem[] {
+export function avanzarGuestCola(items: GuestColaItem[], disponible: (item: GuestColaItem) => boolean = () => true): GuestColaItem[] {
   const activa = items.find((item) => item.estado === "activa");
 
   if (!activa) {
@@ -103,7 +103,7 @@ export function avanzarGuestCola(items: GuestColaItem[]): GuestColaItem[] {
   }
 
   const primerPendiente = items
-    .filter((item) => item.estado === "pendiente")
+    .filter((item) => item.estado === "pendiente" && disponible(item))
     .sort((a, b) => a.orden - b.orden)[0];
 
   if (!primerPendiente) {
@@ -116,7 +116,7 @@ export function avanzarGuestCola(items: GuestColaItem[]): GuestColaItem[] {
 
   let next = items.map((item) => {
     if (item.id === activa.id) {
-      return { ...item, estado: "tocada" as const };
+      return { ...item, estado: disponible(item) ? "tocada" as const : "pendiente" as const };
     }
 
     if (item.id === primerPendiente.id) {

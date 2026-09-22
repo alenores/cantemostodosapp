@@ -193,6 +193,8 @@ Al sumar una canción aparece el aviso: **"Canción sumada a la lista"**.
 
 ### 6.3 Funcionamiento sin conexión
 
+La fila conserva también los enlaces externos del día anterior: aparecen como **Requiere conexión**, sin borrarlos ni marcarlos como tocados. **Siguiente** los saltea y avanza a la próxima canción disponible en el celular. Si no quedan canciones disponibles, se informa y no se intenta cargar internet. El buscador y Favoritas solo ofrecen canciones disponibles localmente al estar sin conexión. Agregar canciones descargadas o usar **Ver ahora** guarda los cambios en la fila local y los sincroniza al reconectar.
+
 Individual funciona **sin internet** con el Cancionero descargado. Cuando hay conexión, la app consulta si hay novedades y las muestra en un listado. El usuario acepta con **Descargar todo**: se bajan todas las canciones nuevas y modificadas del listado, sin selección individual. Las que no cambiaron permanecen en el celular.
 
 ---
@@ -459,6 +461,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 - **Activar compases** (si estaban ocultos)
 - **Mostrar / Ocultar acordes**
 - **Cambiar de tono** (si la canción tiene tonalidad definida)
+- En Individual y Cancionero, el tono elegido se recuerda como preferencia personal del dispositivo: no cambia la canción original, ni en la nube ni en el Cancionero descargado.
 - **Tamaño de letra** (zoom)
 - **Afinador**
 - **Tema visual**: cicla entre **Claro → Sepia → Escenario**
@@ -646,6 +649,7 @@ automáticamente al recuperar internet. Cada cuenta ve únicamente su propia cop
 #### Origen de las canciones de práctica
 
 1. **Desde el Cancionero:** elegir una canción existente; se clona letra, acordes, compases y anotaciones a una copia privada.
+   La nueva copia toma el tono personal elegido en lectura. Si ya existe una copia, se abre la existente sin sobrescribir sus cambios. En el Entrenador, cambiar el tono sí queda guardado en esa copia privada, junto con las anotaciones y la nota general; nunca modifica el original.
 2. **Nueva:** editor vacío con la misma herramienta que el editor de canciones, guardado en práctica.
 
 #### Editor de práctica

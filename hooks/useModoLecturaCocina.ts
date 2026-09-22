@@ -98,8 +98,6 @@ export function useModoLecturaCocina({
   useEffect(() => {
     setCompasesOcultos(false);
     setAcordesOcultos(false);
-    setLecturaCompasPlayback(null);
-    setLecturaTonalidad(null);
     setZoomPanelAbierto(false);
     setTonoPanelAbierto(false);
     setOverlayAbierto(false);
@@ -145,8 +143,6 @@ export function useModoLecturaCocina({
     setAfinadorOpen(false);
     setCompasesOcultos(false);
     setAcordesOcultos(false);
-    setLecturaCompasPlayback(null);
-    setLecturaTonalidad(null);
   }, []);
 
   return {

@@ -23,6 +23,9 @@ import {
   type NotacionAcordes,
 } from "@/lib/notacion-acordes";
 import type { CancionCifradoDetalle } from "@/types";
+import { getActiveUserId } from "@/lib/auth/offline-user";
+import { createClient } from "@/lib/supabase/client";
+import { readTonoLectura, writeTonoLectura } from "@/lib/tono-lectura-local";
 import {
   useCallback,
   useEffect,
@@ -41,13 +44,19 @@ type UseCifradoPlaybackOptions = {
   detalle: CancionCifradoDetalle | null;
   scrollRef: RefObject<HTMLDivElement | null>;
   enabled: boolean;
+  tonoPersonal?: boolean;
+  onGuardarTono?: (tono: NotaIndex) => void;
 };
 
 export function useCifradoPlayback({
   detalle,
   scrollRef,
   enabled,
+  tonoPersonal = true,
+  onGuardarTono,
 }: UseCifradoPlaybackOptions) {
+  const toneOwnerRef = useRef<Promise<string | null> | null>(null);
+  const toneEditedRef = useRef(false);
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
@@ -126,15 +135,34 @@ export function useCifradoPlayback({
     if (!detalle) {
       return;
     }
-
+    let cancelled = false;
+    toneEditedRef.current = false;
     setTonalidadIndex(detalle.tonalidad_default);
+    if (tonoPersonal) {
+      const ownerPromise = getActiveUserId(createClient()).catch(() => null);
+      toneOwnerRef.current = ownerPromise;
+      void ownerPromise.then(owner => {
+        if (cancelled || toneEditedRef.current) return;
+        setTonalidadIndex(readTonoLectura(owner, detalle.id) ?? detalle.tonalidad_default);
+      }).catch(() => {});
+    }
     setModoTonal(detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL);
     setBpm(detalle.bpm_default);
     setPlaying(false);
     setActiveBeat(null);
     setMarkersByLine({});
     lineRefs.current = {};
-  }, [detalle?.id, detalle]);
+    return () => { cancelled = true; };
+  }, [detalle?.id, detalle, tonoPersonal]);
+
+  const handleTonalidadChange = useCallback((next: NotaIndex) => {
+    toneEditedRef.current = true;
+    setTonalidadIndex(next);
+    if (detalle && tonoPersonal) {
+      void (toneOwnerRef.current ?? Promise.resolve(null)).then(owner => writeTonoLectura(owner, detalle.id, next));
+    }
+    onGuardarTono?.(next);
+  }, [detalle, tonoPersonal, onGuardarTono]);
 
   useEffect(() => {
     bpmRef.current = bpm;
@@ -351,7 +379,7 @@ export function useCifradoPlayback({
     activeBeatAnchors,
     activePlaybackLineIndex,
     handleNotacionChange,
-    handleTonalidadChange: setTonalidadIndex,
+    handleTonalidadChange,
     handleModoTonalChange: setModoTonal,
     handleBpmChange: setBpm,
     handleTapTempo,

@@ -33,6 +33,7 @@ import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
   cancionPracticaToDetalle,
   getCancionPractica,
+  updateCancionPracticaTono,
   type CancionPractica,
 } from "@/lib/canciones-practica";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
@@ -47,6 +48,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { NotaIndex } from "@/lib/cifrado";
 
 export default function EntrenadorCancionesVerPageClient() {
   const router = useRouter();
@@ -62,6 +64,12 @@ export default function EntrenadorCancionesVerPageClient() {
   const [cancion, setCancion] = useState<CancionPractica | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const tonoSaveRef = useRef(Promise.resolve());
+  const guardarTono = useCallback((tono: NotaIndex) => {
+    if (id == null) return;
+    tonoSaveRef.current = tonoSaveRef.current.then(() => updateCancionPracticaTono(supabase, id, tono))
+      .catch(() => setError("No se pudo guardar el tono. Volvé a intentarlo."));
+  }, [id, supabase]);
 
   const [anotacionesVisibility, setAnotacionesVisibility] =
     useState<AnotacionVisibility>(DEFAULT_ANOTACION_VISIBILITY);
@@ -305,6 +313,8 @@ export default function EntrenadorCancionesVerPageClient() {
             nombreRevealClass=""
           />
           <LetraCifradoLecturaShell
+            tonoPersonal={false}
+            onGuardarTono={guardarTono}
             detalle={detalle}
             scrollRef={scrollRef}
             scrollEndPadding={getLetraTextScrollEndPadding()}

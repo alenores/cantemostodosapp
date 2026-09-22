@@ -255,6 +255,15 @@ export default function HomePageShell() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {cola.loading ? (
             <SalaColaBootstrapSkeleton />
+          ) : cola.activaNoDisponible ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+              <h2>{cola.cancionActiva?.nombre}</h2>
+              <p>Requiere conexión</p>
+              <p className="text-sm text-text-muted">La canción sigue en tu lista. Sin internet podés usar las que están guardadas en el celular.</p>
+              <TapButton onClick={() => void cola.avanzar()} disabled={cola.pendientesCount === 0}>Siguiente disponible</TapButton>
+              <TapButton onClick={() => setBuscadorOpen(true)}>Buscar canción descargada</TapButton>
+              <TapButton onClick={() => openColaRef.current?.()}>Ver fila</TapButton>
+            </div>
           ) : (
             <CancionActivaSection
               cancionNombre={cola.cancionActiva?.nombre ?? null}
@@ -298,6 +307,7 @@ export default function HomePageShell() {
 
         <ColaIndividualSheet
           items={cola.items}
+          noDisponibles={cola.noDisponibles}
           onOpenBuscador={() => setBuscadorOpen(true)}
           presentacionOculta={lecturaPantallaCompleta}
           onRequestOpen={(open) => {

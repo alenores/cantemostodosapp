@@ -2,6 +2,7 @@ import type { ColaIndividualItem, EstadoCola } from "@/types";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getActiveUserId } from "@/lib/auth/offline-user";
 import { acknowledgeColaPatch, advanceColaIndividualLocal, cacheColaIndividual, readColaIndividual } from "@/lib/offline/cola-individual-store";
+import { addColaIndividualLocal, remapColaIndividualLocal } from "@/lib/offline/cola-individual-store";
 
 function throwColaIndividualError(
   error: PostgrestError,
@@ -43,7 +44,19 @@ async function getMaxOrden(
   return maxRow?.orden ?? -1;
 }
 
-export async function getColaIndividual(
+const colaSyncs = new Map<string, Promise<ColaIndividualItem[]>>();
+export async function getColaIndividual(supabase: SupabaseClient): Promise<ColaIndividualItem[]> {
+  const userId = await getUserId(supabase);
+  if (!navigator.onLine) return (await readColaIndividual(userId))?.items ?? [];
+  let job = colaSyncs.get(userId);
+  if (!job) {
+    job = syncColaIndividual(supabase).finally(() => colaSyncs.delete(userId));
+    colaSyncs.set(userId, job);
+  }
+  return job;
+}
+
+async function syncColaIndividual(
   supabase: SupabaseClient,
 ): Promise<ColaIndividualItem[]> {
   const userId = await getUserId(supabase);
@@ -53,6 +66,20 @@ export async function getColaIndividual(
     const pending = [...(local?.pending ?? [])].sort((a, b) =>
       Number(a.estado === "activa") - Number(b.estado === "activa"));
     for (const patch of pending) {
+      if (patch.id < 0) {
+        const item = local?.items.find(row => row.id === patch.id);
+        if (!item) continue;
+        // La fecha estable permite reconocer un alta cuyo resultado se perdió al cortar la red.
+        const previous = await supabase.from("cola_individual").select("id")
+          .eq("user_id", userId).eq("created_at", item.created_at).maybeSingle();
+        if (previous.error) throw previous.error;
+        const { id: localId, ...values } = item;
+        const inserted = previous.data ? { data: previous.data, error: null } :
+          await supabase.from("cola_individual").insert(values).select("id").single();
+        if (inserted.error) throw inserted.error;
+        await remapColaIndividualLocal(userId, localId, inserted.data.id);
+        patch.id = inserted.data.id;
+      }
       const { error } = await supabase.from("cola_individual")
         .update({ estado: patch.estado, orden: patch.orden })
         .eq("user_id", userId).eq("id", patch.id);
@@ -87,6 +114,12 @@ export async function agregarAColaIndividual(
   },
 ): Promise<void> {
   const userId = await getUserId(supabase);
+
+  if (!navigator.onLine) {
+    await addColaIndividualLocal(userId, { ...item, artista: item.artista ?? null, url_letra: item.url_letra ?? "" });
+    return;
+  }
+  await getColaIndividual(supabase);
 
   const { count, error: countError } = await supabase
     .from("cola_individual")

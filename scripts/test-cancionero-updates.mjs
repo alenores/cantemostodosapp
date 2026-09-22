@@ -40,7 +40,7 @@ const song = (id, updated_at = before) => ({
 function fixture(rows) {
   const state = {
     rows: structuredClone(rows), merges: 0,
-    meta: { syncedAt: before, contentVersion: 2, lastRemoteCount: rows.length,
+    meta: { syncedAt: before, contentVersion: 3, lastRemoteCount: rows.length,
       lastRemoteUpdatedAt: rows.length ? before : null },
     async merge(records, meta) {
       state.merges++;
@@ -128,15 +128,16 @@ await test("repara copias sin acordes o compases aunque coincidan fecha y cantid
   const state = fixture(remote);
   delete state.rows[0].cifrado;
   delete state.rows[1].compas_config;
+  state.rows[2].cifrado = null;
   const supabase = client(remote);
   const plan = await checkCancioneroUpdates(supabase);
-  assert.deepEqual(plan.songs.map((row) => row.id), [1, 2]);
+  assert.deepEqual(plan.songs.map((row) => row.id), [1, 2, 3]);
   assert.ok(supabase.requests.every((r) => !r.columns.split(", ").includes("letra")));
   assert.equal(state.merges, 0);
   await downloadCancioneroUpdates(supabase, plan);
   assert.deepEqual(state.rows[0].cifrado, remote[0].cifrado);
   assert.deepEqual(state.rows[0].compas_config, remote[0].compas_config);
-  assert.deepEqual(state.rows[2], remote[2]);
+  assert.deepEqual(state.rows[2].cifrado, remote[2].cifrado);
   assert.equal((await checkCancioneroUpdates(client(remote))).songs.length, 0);
 });
 

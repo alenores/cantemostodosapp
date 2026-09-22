@@ -34,7 +34,11 @@ export function useCifradoDetalle(cancioneroId: number | null) {
         return;
       }
 
-      setDetalle(local);
+      setDetalle((current) => {
+        if (local) return local;
+        if (!online && current?.id === cancioneroId) return current;
+        return null;
+      });
 
       if (!online) {
         setLoading(false);
@@ -52,7 +56,9 @@ export function useCifradoDetalle(cancioneroId: number | null) {
         }
       } catch {
         if (!cancelled) {
-          setDetalle(local);
+          setDetalle((current) =>
+            local ?? (current?.id === cancioneroId ? current : null),
+          );
         }
       } finally {
         if (!cancelled) {

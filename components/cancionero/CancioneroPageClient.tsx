@@ -386,13 +386,20 @@ export default function CancioneroPageClient({
       }
 
       setCifradoLoading(true);
-      const local = await getCancioneroLocalCifradoDetalle(cancionViendo.id);
+      const songId = cancionViendo.id;
+      const local = await getCancioneroLocalCifradoDetalle(songId);
 
       if (cancelled) {
         return;
       }
 
-      setCifradoDetalle(local);
+      // Sin red: usá la copia local; si no hay, no borres la que ya se veía
+      // (pasa al cortar WiFi con la canción abierta).
+      setCifradoDetalle((current) => {
+        if (local) return local;
+        if (!online && current?.id === songId) return current;
+        return null;
+      });
 
       if (!online) {
         setCifradoLoading(false);
@@ -400,17 +407,14 @@ export default function CancioneroPageClient({
       }
 
       try {
-        const remote = await fetchCancionCifradoDetalle(
-          supabase,
-          cancionViendo.id,
-        );
+        const remote = await fetchCancionCifradoDetalle(supabase, songId);
 
         if (!cancelled) {
           setCifradoDetalle(remote ?? local);
         }
       } catch {
         if (!cancelled) {
-          setCifradoDetalle(local);
+          setCifradoDetalle((current) => local ?? (current?.id === songId ? current : null));
         }
       } finally {
         if (!cancelled) {

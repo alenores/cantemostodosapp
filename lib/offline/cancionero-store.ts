@@ -2,8 +2,8 @@ import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import {
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
-  createEmptyCifrado,
   normalizeNotaIndex,
+  type CifradoData,
 } from "@/lib/cifrado";
 import {
   DEFAULT_MODO_TONAL,
@@ -56,6 +56,20 @@ export async function getCancioneroLocalAsCancionero(): Promise<CancionCancioner
   return rows.map(toCancionCancionero);
 }
 
+function parseLocalCifrado(
+  value: CancioneroLocalRecord["cifrado"],
+): CifradoData | null {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !Array.isArray(value.acordes)
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
 export async function getCancioneroLocalCifradoDetalle(
   id: number,
 ): Promise<CancionCifradoDetalle | null> {
@@ -66,7 +80,12 @@ export async function getCancioneroLocalCifradoDetalle(
   const db = await getOfflineDb();
   const record = await db.get("canciones", id);
 
-  if (!record?.tiene_cifrado_avanzado || record.cifrado === undefined) {
+  if (!record?.tiene_cifrado_avanzado) {
+    return null;
+  }
+
+  const cifrado = parseLocalCifrado(record.cifrado);
+  if (!cifrado) {
     return null;
   }
 
@@ -75,7 +94,7 @@ export async function getCancioneroLocalCifradoDetalle(
     nombre: record.nombre,
     artista: record.artista,
     letra: record.letra,
-    cifrado: record.cifrado ?? createEmptyCifrado(),
+    cifrado,
     compas_config: record.compas_config ?? null,
     tonalidad_default: normalizeNotaIndex(
       record.tonalidad_default ?? DEFAULT_TONALIDAD,

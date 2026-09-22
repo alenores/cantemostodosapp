@@ -64,7 +64,9 @@ export default function CancioneroModoLectura({
   useBodyScrollLock(open);
 
   const showCifradoAvanzado = Boolean(
-    cifradoDetalle?.letra?.trim() && cancion.tiene_cifrado_avanzado,
+    cifradoDetalle &&
+      cancion.tiene_cifrado_avanzado &&
+      (cifradoDetalle.letra?.trim() || cancion.letra?.trim()),
   );
   const textoPlano = cancion.letra?.trim() ?? "";
   const contentKey = `${cancion.id}::${cancion.nombre}`;

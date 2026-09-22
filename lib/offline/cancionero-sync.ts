@@ -6,7 +6,8 @@ import {
 } from "@/lib/offline/cancionero-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const CONTENT_VERSION = 2;
+/** 3: exige acordes reales en canciones avanzadas (antes null contaba como “completo”). */
+const CONTENT_VERSION = 3;
 const PAGE_SIZE = 500;
 const DOWNLOAD_BATCH_SIZE = 100;
 const SONG_COLUMNS =
@@ -37,10 +38,11 @@ function needsDownload(remote: RemoteVersion, local?: CancioneroLocalRecord) {
 
 /** Las copias antiguas pueden tener la fecha correcta pero solo la letra. */
 function hasCompleteContent(local: CancioneroLocalRecord): boolean {
-  return typeof local.tiene_cifrado_avanzado === "boolean" &&
-    local.cifrado !== undefined && local.compas_config !== undefined &&
-    (!local.tiene_cifrado_avanzado || local.cifrado === null ||
-      Array.isArray(local.cifrado.acordes));
+  if (typeof local.tiene_cifrado_avanzado !== "boolean") return false;
+  if (local.cifrado === undefined || local.compas_config === undefined) return false;
+  if (!local.tiene_cifrado_avanzado) return true;
+  // Edición avanzada: hace falta el objeto de acordes (puede estar vacío, no null).
+  return local.cifrado !== null && Array.isArray(local.cifrado.acordes);
 }
 
 async function fetchSnapshot(supabase: SupabaseClient): Promise<RemoteSnapshot> {

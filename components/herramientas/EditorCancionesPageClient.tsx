@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import CifradoEditorMobile from "@/components/cifrado/CifradoEditorMobile";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -36,7 +37,7 @@ export default function EditorCancionesPageClient() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [session, setSession] = useState<CifradoEditorSession | null>(null);
   const [ready, setReady] = useState(false);
-  const online = typeof navigator !== "undefined" ? navigator.onLine : true;
+  const online = hayConexion();
 
   useEffect(() => {
     async function loadSession() {

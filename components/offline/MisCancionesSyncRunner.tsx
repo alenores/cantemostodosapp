@@ -1,5 +1,6 @@
 "use client";
 
+import { EVENTO_CONEXION, hayConexion } from "@/lib/conexion";
 import { rememberActiveUserForOffline } from "@/lib/auth/offline-user";
 import { getMisCanciones } from "@/lib/mis-canciones";
 import { createClient } from "@/lib/supabase/client";
@@ -12,7 +13,7 @@ export default function MisCancionesSyncRunner() {
     let cancelled = false;
 
     async function sync() {
-      if (cancelled || !navigator.onLine) return;
+      if (cancelled || !hayConexion()) return;
       try {
         await rememberActiveUserForOffline(supabase);
         await getMisCanciones(supabase);
@@ -23,6 +24,8 @@ export default function MisCancionesSyncRunner() {
 
     void sync();
     window.addEventListener("online", sync);
+    /** Vuelve la señal que sirve sin que el teléfono avise «online» (salía de señal débil). */
+    window.addEventListener(EVENTO_CONEXION, sync);
 
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
@@ -33,6 +36,7 @@ export default function MisCancionesSyncRunner() {
     return () => {
       cancelled = true;
       window.removeEventListener("online", sync);
+      window.removeEventListener(EVENTO_CONEXION, sync);
       data.subscription.unsubscribe();
     };
   }, [supabase]);

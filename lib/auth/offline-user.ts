@@ -1,3 +1,4 @@
+import { hayConexion } from "@/lib/conexion";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import {
   getAppSnapshot,
@@ -9,7 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function getActiveUserId(
   supabase: SupabaseClient,
 ): Promise<string | null> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
+  if (!hayConexion()) {
     const snapshot = await getAppSnapshot();
     const id = snapshot?.usuario.id;
     if (id && id !== OFFLINE_GUEST_USUARIO.id) return id;
@@ -19,7 +20,7 @@ export async function getActiveUserId(
   } = await supabase.auth.getSession();
 
   if (session?.user?.id) return session.user.id;
-  if (typeof navigator === "undefined" || navigator.onLine) return null;
+  if (hayConexion()) return null;
 
   const snapshot = await getAppSnapshot();
   const userId = snapshot?.usuario.id;

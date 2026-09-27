@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { isOfflineNavigableRoute } from "@/lib/offline/offline-routes";
 import { useRouter } from "next/navigation";
@@ -13,7 +14,7 @@ export function useNavigateWithProgress() {
     (href: string) => {
       startNavigation();
 
-      if (!navigator.onLine && isOfflineNavigableRoute(href)) {
+      if (!hayConexion() && isOfflineNavigableRoute(href)) {
         window.location.assign(href);
         return;
       }

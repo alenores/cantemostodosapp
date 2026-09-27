@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import { fetchCancionesCancionero } from "@/lib/cancionero";
 import {
   COLA_ALEATORIO_CARGA_INICIAL,
@@ -14,7 +15,7 @@ import type { CancionCancionero } from "@/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 async function loadCancioneroPool(): Promise<CancionCancionero[]> {
-  if (!navigator.onLine) return (await getCancioneroLocalAsCancionero()).filter(song => song.letra?.trim());
+  if (!hayConexion()) return (await getCancioneroLocalAsCancionero()).filter(song => song.letra?.trim());
   try {
     const supabase = createClient();
     const remote = await fetchCancionesCancionero(supabase);

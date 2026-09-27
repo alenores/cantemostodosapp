@@ -1,5 +1,6 @@
 "use client";
 
+import { EVENTO_CONEXION, hayConexion } from "@/lib/conexion";
 import {
   agregarGuestCola,
   activarGuestColaItem,
@@ -117,11 +118,12 @@ export function useColaIndividual() {
 
     window.addEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
     window.addEventListener("online", handleColaChanged);
+    window.addEventListener(EVENTO_CONEXION, handleColaChanged);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!navigator.onLine && event !== "SIGNED_OUT") return;
+      if (!hayConexion() && event !== "SIGNED_OUT") return;
       if (!session?.user) {
         setUsuarioLogueado(false);
         setAuthItems([]);
@@ -139,6 +141,7 @@ export function useColaIndividual() {
       cancelled = true;
       window.removeEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
       window.removeEventListener("online", handleColaChanged);
+      window.removeEventListener(EVENTO_CONEXION, handleColaChanged);
       subscription.unsubscribe();
     };
   }, [loadAuthCola, supabase]);
@@ -177,7 +180,7 @@ export function useColaIndividual() {
 
   const verAhora = useCallback(
     async (cancion: CancionInput) => {
-      if (!navigator.onLine && !cancionDisponibleOffline(cancion, descargadas)) throw new Error("Esta canción requiere conexión.");
+      if (!hayConexion() && !cancionDisponibleOffline(cancion, descargadas)) throw new Error("Esta canción requiere conexión.");
       if (isGuest) {
         setGuestItems((current) => verAhoraGuestCola(current, cancion));
         return;
@@ -189,7 +192,7 @@ export function useColaIndividual() {
         throw new Error("Se requiere sesión activa");
       }
 
-      if (!navigator.onLine) {
+      if (!hayConexion()) {
         await addColaIndividualLocal(userId, cancion, true);
         await loadAuthCola();
         return;
@@ -237,7 +240,7 @@ export function useColaIndividual() {
 
   const agregarALista = useCallback(
     async (cancion: CancionInput) => {
-      if (!navigator.onLine && !cancionDisponibleOffline(cancion, descargadas)) throw new Error("Esta canción requiere conexión.");
+      if (!hayConexion() && !cancionDisponibleOffline(cancion, descargadas)) throw new Error("Esta canción requiere conexión.");
       if (isGuest) {
         setGuestItems((current) => agregarGuestCola(current, cancion));
         dispatchColaIndividualChanged();

@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import { splitLyricsLines } from "@/components/cifrado/CifradoLyricsView";
 import {
   computeTapBpm,
@@ -82,7 +83,7 @@ export function useCifradoPlayback({
   >(new Map());
 
   const { cyclesById } = useCifradoCycles({
-    online: typeof navigator !== "undefined" ? navigator.onLine : true,
+    online: hayConexion(),
     enabled,
   });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import {
   createCompositorCycleFromPiece,
   fetchRemoteCompositorCycles,
@@ -26,7 +27,7 @@ type UseCifradoCyclesOptions = {
 
 export function useCifradoCycles({
   isLoggedIn: isLoggedInProp,
-  online = typeof navigator !== "undefined" ? navigator.onLine : true,
+  online = hayConexion(),
   enabled,
 }: UseCifradoCyclesOptions) {
   const supabase = useMemo(() => createClient(), []);

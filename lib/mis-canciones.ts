@@ -1,3 +1,4 @@
+import { hayConexion } from "@/lib/conexion";
 import type { CancionInput } from "@/lib/cola-logic";
 import {
   deleteMiCancionLocal,
@@ -32,7 +33,7 @@ export async function getMisCanciones(
     return [];
   }
 
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
+  if (!hayConexion()) {
     return getMisCancionesLocal(userId);
   }
 

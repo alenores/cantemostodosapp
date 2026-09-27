@@ -197,6 +197,8 @@ La fila conserva también los enlaces externos del día anterior: aparecen como 
 
 Individual funciona **sin internet** con el Cancionero descargado. Cuando hay conexión, la app consulta si hay novedades y las muestra en un listado. El usuario acepta con **Descargar todo**: se bajan todas las canciones nuevas y modificadas del listado, sin selección individual. Las que no cambiaron permanecen en el celular.
 
+**Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
+
 ---
 
 ## 7. Búsqueda de canciones

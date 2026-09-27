@@ -54,7 +54,13 @@ async function fetchWarmRoutes(urls: readonly string[]): Promise<boolean> {
   return saved.every(Boolean);
 }
 
-/** Guarda en el celular las pantallas clave (con sesión si existe). */
+/**
+ * Guarda en el celular las pantallas clave (con sesión si existe).
+ *
+ * Mira solo si el teléfono tiene red, no el detector de señal débil: la llama también el final de
+ * la descarga que pidió la persona, que no se frena por el detector. El calentado de fondo
+ * (`OfflineWarmRunner`) pregunta `hayConexion()` antes de llamarla.
+ */
 export async function warmOfflineCache(): Promise<boolean> {
   if (typeof window === "undefined" || !navigator.onLine) {
     return false;

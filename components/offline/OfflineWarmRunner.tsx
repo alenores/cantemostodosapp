@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { useEffect } from "react";
 
@@ -16,7 +17,7 @@ function scheduleIdle(callback: () => void): () => void {
 export default function OfflineWarmRunner() {
   useEffect(() => {
     const cancelWarm = scheduleIdle(() => {
-      void warmOfflineCache();
+      if (hayConexion()) void warmOfflineCache();
     });
 
     function handleInstalled() {
@@ -24,7 +25,7 @@ export default function OfflineWarmRunner() {
     }
 
     function handleVisible() {
-      if (document.visibilityState === "visible" && navigator.onLine) {
+      if (document.visibilityState === "visible" && hayConexion()) {
         void warmOfflineCache();
       }
     }

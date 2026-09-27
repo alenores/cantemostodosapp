@@ -1,5 +1,6 @@
 "use client";
 
+import { EVENTO_CONEXION, hayConexion } from "@/lib/conexion";
 import {
   CANCIONERO_CHECK_EVENT,
   dispatchCancioneroSyncFinished,
@@ -25,7 +26,7 @@ export function useCancioneroSync() {
   const checkRequested = useRef(false);
 
   const check = useCallback(async () => {
-    if (!navigator.onLine) return;
+    if (!hayConexion()) return;
     if (busy.current) {
       checkRequested.current = true;
       return;
@@ -36,7 +37,7 @@ export function useCancioneroSync() {
       do {
         checkRequested.current = false;
         setPlan(await checkCancioneroUpdates(createClient()));
-      } while (checkRequested.current && navigator.onLine);
+      } while (checkRequested.current && hayConexion());
       setError(null);
     } catch {
       setError("No se pudieron comprobar las novedades. Tu Cancionero sigue disponible.");
@@ -48,6 +49,10 @@ export function useCancioneroSync() {
 
   const download = useCallback(async () => {
     if (!plan?.songs.length || busy.current) return false;
+    /**
+     * La descarga la pidió la persona: se frena solo si el teléfono no tiene red, nunca por el
+     * detector de señal débil (sus pedidos fallan solos si no hay señal).
+     */
     if (!navigator.onLine) {
       setError("Conectate a internet para descargar las novedades.");
       return false;
@@ -92,10 +97,12 @@ export function useCancioneroSync() {
     }
     scheduleCheck();
     window.addEventListener("online", scheduleCheck);
+    window.addEventListener(EVENTO_CONEXION, scheduleCheck);
     window.addEventListener(CANCIONERO_CHECK_EVENT, scheduleCheck);
     return () => {
       clearTimeout(timer);
       window.removeEventListener("online", scheduleCheck);
+      window.removeEventListener(EVENTO_CONEXION, scheduleCheck);
       window.removeEventListener(CANCIONERO_CHECK_EVENT, scheduleCheck);
     };
   }, [check]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -13,7 +14,7 @@ export default function AuthSessionListener() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_OUT" || !navigator.onLine) {
+      if (event !== "SIGNED_OUT" || !hayConexion()) {
         return;
       }
 

@@ -1,3 +1,4 @@
+import { hayConexion } from "@/lib/conexion";
 import {
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
@@ -225,7 +226,7 @@ function payloadFromLocal(record: CancionPracticaLocalRecord) {
 }
 
 function isOnline(): boolean {
-  return typeof navigator === "undefined" || navigator.onLine;
+  return hayConexion();
 }
 
 async function requireUserId(supabase: SupabaseClient): Promise<string> {

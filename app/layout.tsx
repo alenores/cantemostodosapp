@@ -4,6 +4,7 @@ import AuthSessionListener from "@/components/auth/AuthSessionListener";
 import AppFooter from "@/components/ui/AppFooter";
 import AppSidebar from "@/components/ui/AppSidebar";
 import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
+import ConexionRunner from "@/components/offline/ConexionRunner";
 import CancionesPracticaSyncRunner from "@/components/offline/CancionesPracticaSyncRunner";
 import MisCancionesSyncRunner from "@/components/offline/MisCancionesSyncRunner";
 import OfflinePrefetchRunner from "@/components/offline/OfflinePrefetchRunner";
@@ -72,6 +73,7 @@ export default function RootLayout({
         style={{ backgroundColor: APP_SHELL_BG }}
       >
         <div id="inline-splash"><AppLoadingSkeleton /></div>
+        <ConexionRunner />
         <SerwistProvider>
           <TapFeedbackProvider>
             <Suspense fallback={null}>

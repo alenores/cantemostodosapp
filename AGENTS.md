@@ -200,6 +200,26 @@ Tres herramientas, tres preguntas:
 - ¿Canto bien en X situación? → Entrenador Vocal
 - ¿Qué quiero que suene? → Compositor
 
+### Señal que sirve, no red enganchada (2026-09-27)
+
+Con una rayita de cobertura el teléfono dice que hay red (`navigator.onLine = true`) aunque no pase
+nada: la app se creía con internet y quedaba en un limbo (pantallas trabadas al pasar de una a otra,
+cola y cancionero cargando para siempre). Mismo arreglo que Vías de Escalada.
+
+- **Para decidir «intento internet o uso lo guardado» se pregunta `hayConexion()`**
+  (`lib/conexion.ts`) o, en componentes, `useOnlineStatus()`. **Nunca `navigator.onLine`.**
+- **Señal débil = sin señal**, exactamente el modo de siempre. No se inventa un tercer modo.
+- La prueba: `/api/senal` (204 vacío, `no-store`) con tope de 4 s; dos fallas seguidas = débil, una
+  respuesta a tiempo = vuelve. Se prueba al arrancar, al volver a la app, con el evento `online` y
+  cuando un pedido a la base falla o vence. Con señal débil, cada 20 s. Los cambios se avisan con
+  `EVENTO_CONEXION`: todo lo que escucha `online` para sincronizar escucha también ese.
+- Todo pedido a la base desde el navegador tiene tope de 15 s (`lib/supabase/client.ts`), salvo
+  subidas de archivos.
+- `/api/senal` va **NetworkOnly**, primera regla de `app/sw.ts`, y fuera del `middleware`. Si cae en
+  la regla de `/api/` de `defaultCache`, contesta una copia guardada y la app cree que hay señal.
+- **Excepción a propósito:** la descarga de novedades del cancionero que pidió la persona (y el
+  calentado de pantallas que la cierra) mira solo `navigator.onLine`: no se frena por el detector.
+
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida
   en Supabase si hay sesión; en memoria (efímera) para invitados.

@@ -1,5 +1,6 @@
 "use client";
 
+import { EVENTO_CONEXION, hayConexion } from "@/lib/conexion";
 import { syncCancionesPractica } from "@/lib/canciones-practica";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect } from "react";
@@ -11,7 +12,7 @@ export default function CancionesPracticaSyncRunner() {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     function scheduleSync() {
-      if (!navigator.onLine) return;
+      if (!hayConexion()) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         void syncCancionesPractica(supabase).catch(() => undefined);
@@ -20,6 +21,8 @@ export default function CancionesPracticaSyncRunner() {
 
     scheduleSync();
     window.addEventListener("online", scheduleSync);
+    /** Vuelve la señal que sirve sin que el teléfono avise «online» (salía de señal débil). */
+    window.addEventListener(EVENTO_CONEXION, scheduleSync);
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
@@ -29,6 +32,7 @@ export default function CancionesPracticaSyncRunner() {
     return () => {
       if (timer) clearTimeout(timer);
       window.removeEventListener("online", scheduleSync);
+      window.removeEventListener(EVENTO_CONEXION, scheduleSync);
       subscription.unsubscribe();
     };
   }, []);

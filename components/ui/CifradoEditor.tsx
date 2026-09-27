@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
@@ -2601,7 +2602,7 @@ export default function CifradoEditor({
   const { savedCycles, cyclesById, cyclesLoading, cyclesError, refreshCycles } =
     useCifradoCycles({
     isLoggedIn,
-    online: typeof navigator !== "undefined" ? navigator.onLine : true,
+    online: hayConexion(),
     enabled: open && phase === "cifrado",
   });
 

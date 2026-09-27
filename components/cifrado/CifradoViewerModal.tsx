@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import {
   CifradoLyricsBlock,
   splitLyricsLines,
@@ -203,7 +204,7 @@ export default function CifradoViewerModal({
   const showCompas = Boolean(compasConfig?.barras?.length);
 
   const { cyclesById } = useCifradoCycles({
-    online: typeof navigator !== "undefined" ? navigator.onLine : true,
+    online: hayConexion(),
     enabled: open && showCompas,
   });
 

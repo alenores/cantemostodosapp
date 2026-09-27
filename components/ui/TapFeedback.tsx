@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { Loader2 } from "lucide-react";
@@ -69,7 +70,7 @@ export function TapLink({
       href={href}
       aria-label={ariaLabel}
       onNavigate={(event) => {
-        if (!navigator.onLine && isOfflineNavigableRoute(href)) {
+        if (!hayConexion() && isOfflineNavigableRoute(href)) {
           event.preventDefault();
           window.location.assign(href);
         }

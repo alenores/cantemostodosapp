@@ -1,3 +1,4 @@
+import { hayConexion } from "@/lib/conexion";
 import type { ColaIndividualItem, EstadoCola } from "@/types";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getActiveUserId } from "@/lib/auth/offline-user";
@@ -47,7 +48,7 @@ async function getMaxOrden(
 const colaSyncs = new Map<string, Promise<ColaIndividualItem[]>>();
 export async function getColaIndividual(supabase: SupabaseClient): Promise<ColaIndividualItem[]> {
   const userId = await getUserId(supabase);
-  if (!navigator.onLine) return (await readColaIndividual(userId))?.items ?? [];
+  if (!hayConexion()) return (await readColaIndividual(userId))?.items ?? [];
   let job = colaSyncs.get(userId);
   if (!job) {
     job = syncColaIndividual(supabase).finally(() => colaSyncs.delete(userId));
@@ -61,7 +62,7 @@ async function syncColaIndividual(
 ): Promise<ColaIndividualItem[]> {
   const userId = await getUserId(supabase);
   const local = await readColaIndividual(userId);
-  if (!navigator.onLine) return local?.items ?? [];
+  if (!hayConexion()) return local?.items ?? [];
   try {
     const pending = [...(local?.pending ?? [])].sort((a, b) =>
       Number(a.estado === "activa") - Number(b.estado === "activa"));
@@ -115,7 +116,7 @@ export async function agregarAColaIndividual(
 ): Promise<void> {
   const userId = await getUserId(supabase);
 
-  if (!navigator.onLine) {
+  if (!hayConexion()) {
     await addColaIndividualLocal(userId, { ...item, artista: item.artista ?? null, url_letra: item.url_letra ?? "" });
     return;
   }
@@ -172,7 +173,7 @@ export async function avanzarColaIndividual(
   supabase: SupabaseClient,
 ): Promise<void> {
   const userId = await getUserId(supabase);
-  if (!navigator.onLine) {
+  if (!hayConexion()) {
     await advanceColaIndividualLocal(userId);
     return;
   }

@@ -189,6 +189,16 @@ const serwist = new Serwist({
   },
   runtimeCaching: [
     {
+      /**
+       * Prueba de señal (`lib/conexion.ts`): **NetworkOnly**, siempre, y primera. Sin esta regla caía
+       * en la de `/api/` de `defaultCache` (NetworkFirst con 10 s de espera y copia guardada), que con
+       * señal débil respondería lo guardado: la app creería que hay señal justo cuando no la hay.
+       */
+      matcher: ({ url: { pathname }, sameOrigin }) =>
+        sameOrigin && pathname === "/api/senal",
+      handler: new NetworkOnly(),
+    },
+    {
       matcher: ({ url: { pathname }, sameOrigin }) =>
         sameOrigin && pathname.startsWith("/samples/compositor/"),
       handler: new NetworkOnly(),

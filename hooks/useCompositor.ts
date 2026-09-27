@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import {
   addCompositorTrackEvent,
   applyCompositorListenMutes,
@@ -258,7 +259,7 @@ export function useCompositor({
   }, []);
 
   const notifyAudioUnavailable = useCallback(() => {
-    if (!navigator.onLine) {
+    if (!hayConexion()) {
       showEditorNotice("Conectate a internet para escuchar los instrumentos.");
     }
   }, [showEditorNotice]);
@@ -331,7 +332,7 @@ export function useCompositor({
   }, []);
 
   const ensureAudioContext = useCallback(async () => {
-    if (!navigator.onLine) {
+    if (!hayConexion()) {
       throw new Error("Los sonidos del Compositor requieren conexión");
     }
 
@@ -1095,7 +1096,7 @@ export function useCompositor({
   }, [restartIfPlaying, updatePiece]);
 
   useEffect(() => {
-    if (!hydrated || !navigator.onLine) {
+    if (!hydrated || !hayConexion()) {
       return;
     }
 

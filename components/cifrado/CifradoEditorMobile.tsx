@@ -28,6 +28,7 @@ import {
 } from "@/components/cifrado/cifrado-controls-ui";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { buildIntensidadForGolpes } from "@/lib/cifrado-barra-cycles";
@@ -100,8 +101,9 @@ type PickerTarget = {
 
 const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 
+  // Alto mínimo: que se vean al menos diez renglones de letra con acordes.
   const textareaClassName =
-  "min-h-0 w-full flex-1 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-[240px] w-full flex-1 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
 type CifradoEditorMobileProps = {
   session?: CifradoEditorSession | null;
@@ -1233,6 +1235,14 @@ export default function CifradoEditorMobile({
                   }}
                   className={CIFRADO_CONTROLS_INPUT_CLASS}
                   placeholder="Nombre de la canción"
+                />
+                <IntercambiarNombreArtista
+                  disabled={!nombre.trim() && !artista.trim()}
+                  onIntercambiar={() => {
+                    setNombre(artista);
+                    setArtista(nombre);
+                    clearError();
+                  }}
                 />
                 <label
                   className={`${labelClassName} mt-3`}

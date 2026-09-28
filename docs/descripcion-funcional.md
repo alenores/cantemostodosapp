@@ -341,6 +341,8 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 ### 10.5 Datos de la canción y guardado
 
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
+- **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
 - Botón **Guardar**.
 - **Reproducir compás** para revisar el ritmo sobre la letra antes de guardar.
 

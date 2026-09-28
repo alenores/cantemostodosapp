@@ -18,8 +18,17 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
+/**
+ * Pantallas que, si no están guardadas, se abren con el inicio (`navigateFallback`).
+ *
+ * **Solo las que se abren desde lo guardado.** Una pantalla de esta lista que no tenga su copia
+ * propia abre el inicio aunque haya señal: la app «se iba al inicio» al volver de segundo plano
+ * (2026-09-28, editor de canciones). Por eso quedan afuera las salas abiertas, el link de
+ * invitación y las direcciones viejas del cancionero: van a internet y, sin señal, a su copia.
+ * Pantalla nueva que deba abrir sin señal → a `SHELL_URLS`, no solo acá.
+ */
 const APP_SHELL_PATHS =
-  /^\/($|salas(\/.*)?|cancionero(\/.*)?|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
+  /^\/($|salas|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
 
 const SHELL_CACHE = "app-shell-offline-v2";
 const LEGACY_SHELL_CACHE = "app-shell-offline-v1";
@@ -31,6 +40,7 @@ const SHELL_URLS = [
   "/canciones",
   "/canciones/cancionero",
   "/canciones/favoritas",
+  "/canciones/editor",
   "/practica",
   "/practica/metronomo",
   "/practica/entrenador-vocal",

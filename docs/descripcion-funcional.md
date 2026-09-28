@@ -197,6 +197,8 @@ La fila conserva también los enlaces externos del día anterior: aparecen como 
 
 Individual funciona **sin internet** con el Cancionero descargado. Cuando hay conexión, la app consulta si hay novedades y las muestra en un listado. El usuario acepta con **Descargar todo**: se bajan todas las canciones nuevas y modificadas del listado, sin selección individual. Las que no cambiaron permanecen en el celular.
 
+**Volver a la app la deja donde estaba.** Si la app queda en segundo plano y el celular la rearma, vuelve a la misma pantalla (cancionero, editor, sala, etc.), nunca al inicio. Cerrarla a mano y abrirla desde el ícono sí arranca en el inicio.
+
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
 
 ---
@@ -339,6 +341,8 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 ### 10.5 Datos de la canción y guardado
 
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
+- **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
 - Botón **Guardar**.
 - **Reproducir compás** para revisar el ritmo sobre la letra antes de guardar.
 

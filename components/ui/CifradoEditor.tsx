@@ -68,6 +68,7 @@ import {
 } from "@/components/cifrado/cifrado-controls-ui";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
+import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import { VozPcConfigCard } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
@@ -4913,6 +4914,16 @@ export default function CifradoEditor({
                     className={inputClassName}
                     placeholder="Nombre de la canción"
                   />
+                  <IntercambiarNombreArtista
+                    disabled={!nombre.trim() && !artista.trim()}
+                    onIntercambiar={() => {
+                      setNombre(artista);
+                      setArtista(nombre);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
+                  />
                   <label
                     className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
                     htmlFor="cifrado-artista"
@@ -5048,6 +5059,16 @@ export default function CifradoEditor({
                     }}
                     className={inputClassName}
                     placeholder="Nombre de la canción"
+                  />
+                  <IntercambiarNombreArtista
+                    disabled={!nombre.trim() && !artista.trim()}
+                    onIntercambiar={() => {
+                      setNombre(artista);
+                      setArtista(nombre);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
                   />
                   <label
                     className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}

@@ -220,6 +220,17 @@ cola y cancionero cargando para siempre). Mismo arreglo que Vías de Escalada.
 - **Excepción a propósito:** la descarga de novedades del cancionero que pidió la persona (y el
   calentado de pantallas que la cierra) mira solo `navigator.onLine`: no se frena por el detector.
 
+### Al volver de segundo plano, la app sigue donde estaba (2026-09-28)
+
+El celular congela o cierra la app en segundo plano y, al volver, rearma la pantalla desde cero.
+Tiene que rearmarse **en la misma pantalla**, nunca en el inicio. Pasó con el editor de canciones:
+volvía al inicio y se perdía lo que no estaba guardado.
+
+- Toda pantalla que se abre desde lo guardado va en `SHELL_URLS` de `app/sw.ts`.
+- `APP_SHELL_PATHS` (el `navigateFallback` al inicio) lista **solo** pantallas que están en
+  `SHELL_URLS`. Una pantalla ahí sin copia propia abre el inicio **aunque haya señal**.
+- Cerrar la app a mano y abrirla desde el ícono sí arranca en el inicio: eso lo decide el teléfono.
+
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida
   en Supabase si hay sesión; en memoria (efímera) para invitados.

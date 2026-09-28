@@ -94,12 +94,16 @@ export function isChordLine(line: string): boolean {
   return parsedCount > 0 && parsedCount / tokens.length >= 0.6;
 }
 
-function clampCharOffset(charOffset: number, lyricLine: string): number {
-  if (lyricLine.length === 0) {
-    return 0;
-  }
-
-  return Math.max(0, Math.min(charOffset, lyricLine.length - 1));
+/**
+ * El acorde queda en la columna donde venía, haya letra debajo o no.
+ *
+ * Pasado el final del texto (o en un renglón sin letra, como la introducción) la posición cae en
+ * las casillas libres del renglón (`getLineLaneStart` en `lib/cifrado.ts`), las mismas donde se
+ * coloca un acorde a mano. Antes se ajustaba a la última letra y todos los acordes de la
+ * introducción quedaban apilados al principio (2026-09-28).
+ */
+function charOffsetEnColumnaOriginal(column: number): number {
+  return Math.max(0, column);
 }
 
 function parseChordLinePair(
@@ -120,7 +124,7 @@ function parseChordLinePair(
 
     acordes.push({
       lineIndex,
-      charOffset: clampCharOffset(start, lyricLine),
+      charOffset: charOffsetEnColumnaOriginal(start),
       noteIndex: parsed.noteIndex,
       modifier: parsed.modifier,
       ...(parsed.bassNoteIndex !== undefined

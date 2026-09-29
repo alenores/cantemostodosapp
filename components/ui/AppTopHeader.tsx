@@ -1,3 +1,4 @@
+import QrDeLaApp from "@/components/ui/QrDeLaApp";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { TapLink } from "@/components/ui/TapFeedback";
 import type { UsuarioActivo } from "@/types";
@@ -5,9 +6,14 @@ import Image from "next/image";
 
 type AppTopHeaderProps = {
   usuario: UsuarioActivo;
+  /** Solo el inicio muestra el ícono del código QR. */
+  mostrarQr?: boolean;
 };
 
-export default function AppTopHeader({ usuario }: AppTopHeaderProps) {
+export default function AppTopHeader({
+  usuario,
+  mostrarQr = false,
+}: AppTopHeaderProps) {
   const displayName = usuario.nombre.trim() || "Mi perfil";
 
   return (
@@ -27,6 +33,7 @@ export default function AppTopHeader({ usuario }: AppTopHeaderProps) {
         <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-bg-darker">
           CantemosTodosApp
         </h1>
+        {mostrarQr ? <QrDeLaApp /> : null}
         <TapLink
           href="/perfil"
           ariaLabel="Mi perfil"

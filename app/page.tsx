@@ -25,7 +25,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
       <DesktopHomeRedirect />
-      <AppTopHeader usuario={usuario} />
+      <AppTopHeader usuario={usuario} mostrarQr />
       <CancioneroHubPageClient usuario={usuario} avisoInicial={aviso} />
     </div>
   );

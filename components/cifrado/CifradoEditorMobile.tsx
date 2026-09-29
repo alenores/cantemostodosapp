@@ -128,6 +128,7 @@ type CifradoEditorMobileProps = {
   onClose?: () => void;
   /** Icono del botón de salida cuando hay onClose. Por defecto flecha atrás. */
   exitIcon?: "back" | "close";
+  showBasicSongsTab?: boolean;
   onPersist?: CifradoEditorPersistFn;
   onSaved?: (result?: CifradoSaveResult) => void;
   anotaciones?: AnotacionesControl | null;
@@ -144,10 +145,12 @@ export default function CifradoEditorMobile({
   backAriaLabel = "Volver",
   onClose,
   exitIcon = "back",
+  showBasicSongsTab,
   onPersist,
   onSaved,
   anotaciones,
 }: CifradoEditorMobileProps = {}) {
+  const basicSongsTabVisible = showBasicSongsTab ?? !onPersist;
   const searchParams = useSearchParams();
   const desdeParam = searchParams.get("desde");
   const desdeCancionero = desdeParam === "cancionero";
@@ -1234,7 +1237,7 @@ export default function CifradoEditorMobile({
             >
               Pegar letra+acordes
             </button>
-            {onPersist ? null : <button
+            {basicSongsTabVisible ? <button
               type="button"
               role="tab"
               aria-selected={ingresoTab === "basicas"}
@@ -1248,7 +1251,7 @@ export default function CifradoEditorMobile({
               style={{ fontSize: "0.65rem", lineHeight: 1.1 }}
             >
               Cancionero (letras básicas)
-            </button>}
+            </button> : null}
           </div>
 
           <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
@@ -1259,7 +1262,7 @@ export default function CifradoEditorMobile({
                   : "flex min-h-0 flex-1 flex-col"
               }
             >
-              {ingresoTab === "basicas" && !onPersist ? (
+              {ingresoTab === "basicas" && basicSongsTabVisible ? (
                 <CifradoEditorBasicSongsTab onSelect={handleSelectBasicSong} />
               ) : null}
 

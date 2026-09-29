@@ -175,6 +175,7 @@ export default function EditorCancionesPageClient() {
         <CifradoEditorMobile
           session={session}
           isLoggedIn
+          showBasicSongsTab
           backHref={backHref}
           backAriaLabel={backAriaLabel}
           onPersist={persistCancionero}

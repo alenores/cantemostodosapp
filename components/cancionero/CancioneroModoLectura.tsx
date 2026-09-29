@@ -20,13 +20,14 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
+  getLecturaFabMenuTopCss,
   getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
   getLetraTextScrollEndPadding,
   MODO_LECTURA_OVERLAY_Z_CLASS,
 } from "@/lib/sala-layout";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import { SlidersHorizontal, X } from "lucide-react";
+import { Minimize2, SlidersHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -73,6 +74,8 @@ export default function CancioneroModoLectura({
   const lecturaConListaLateral = open && isDesktop;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConListaLateral);
   const menuCompacto = lecturaConListaLateral;
+  const lecturaFilterTopCss = getLecturaFabMenuTopCss();
+  const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
 
   const {
     overlayAbierto,
@@ -251,6 +254,22 @@ export default function CancioneroModoLectura({
 
       <TapButton
         type="button"
+        aria-label="Contraer"
+        onClick={() => {
+          setOverlayAbierto(false);
+          onContraer();
+        }}
+        className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
+        style={{
+          top: getLecturaTopChromeTopCss(),
+          right: lecturaFixedRightCss,
+        }}
+      >
+        <Minimize2 className="size-4 text-accent" aria-hidden="true" />
+      </TapButton>
+
+      <TapButton
+        type="button"
         aria-label={
           overlayAbierto
             ? "Cerrar controles"
@@ -265,7 +284,7 @@ export default function CancioneroModoLectura({
           overlayAbierto ? "border-accent/45" : ""
         }`}
         style={{
-          top: getLecturaTopChromeTopCss(),
+          top: lecturaFilterTopCss,
           right: lecturaFixedRightCss,
         }}
       >
@@ -283,6 +302,8 @@ export default function CancioneroModoLectura({
         abierto={overlayAbierto}
         fixedRightCss={lecturaFixedRightCss}
         mobileOnly
+        showContraerOption={false}
+        menuTopCss={lecturaOverlayMenuTopCss}
         navItems={lecturaNavItems}
         hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
         compasesOcultos={compasesOcultos}

@@ -110,7 +110,7 @@ Además, en el inicio pueden aparecer:
 
 ### 5.2 Navegación en celular
 
-La barra superior muestra el nombre de la persona debajo de su foto de perfil.
+La barra superior muestra solo la foto de perfil (sin el nombre).
 
 En la parte inferior hay una **barra fija con cinco pestañas**:
 
@@ -473,7 +473,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 
 ### 12.2 Controles en celular (menú flotante)
 
-- **Contraer** (salir del modo lectura). En Individual y Salas queda como botón independiente, arriba del filtro.
+- **Contraer** (salir del modo lectura). En Individual, Salas y Cancionero queda como botón independiente, arriba del filtro.
 - **Buscar**, **Siguiente**, **Fila · N** (cantidad de pendientes) — en individual y sala
 - **Anterior**, **Siguiente** — en cancionero (solo celular)
 - **Activar compases** (si estaban ocultos)

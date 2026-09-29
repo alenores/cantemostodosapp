@@ -4,6 +4,7 @@ import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
+import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
 import {
   CifradoCompasToolPanel,
   type CifradoCompasToolTab,
@@ -177,6 +178,7 @@ import type {
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
 import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
+import type { CancionCancionero } from "@/types";
 import {
   buildDisplayedPreviewPlaybackBeats,
   type PreviewPlaybackAnchor,
@@ -239,7 +241,7 @@ type CifradoEditorProps = {
 
 type EditorPhase = "ingreso" | "cifrado";
 
-type IngresoTab = "letra" | "web" | "pegar";
+type IngresoTab = "letra" | "web" | "pegar" | "basicas";
 
 type PickerState = {
   lineIndex: number;
@@ -620,6 +622,7 @@ type CifradoLineEditorProps = {
   selectedBarraKey: string | null;
   activeBeatAnchors?: PreviewPlaybackAnchor[];
   onOpenPicker: (lineIndex: number, charOffset: number, rect: DOMRect) => void;
+  pendingChordOffset?: number | null;
   onInsertBarra: (lineIndex: number, charOffset: number) => void;
   onSelectBarra: (barra: BarraCompas) => void;
   onMoveAcorde: (
@@ -863,6 +866,7 @@ function CifradoLineEditor({
   selectedBarraKey,
   activeBeatAnchors = [],
   onOpenPicker,
+  pendingChordOffset = null,
   onInsertBarra,
   onSelectBarra,
   onMoveAcorde,
@@ -1712,6 +1716,34 @@ function CifradoLineEditor({
               />
             );
           })}
+
+        {modoInsercion === "acordes" &&
+        pendingChordOffset !== null &&
+        !acordes.some((acorde) => acorde.charOffset === pendingChordOffset)
+          ? (() => {
+              const position = charPositions[pendingChordOffset];
+              if (!position) return null;
+              const dotTop = position.bottom + 2;
+              const stemTop = 18 + arribaOffsetEditor;
+              return (
+                <div
+                  key={`pending-chord-${lineIndex}-${pendingChordOffset}`}
+                  className="pointer-events-none absolute top-0"
+                  style={{ left: position.left }}
+                  aria-hidden="true"
+                >
+                  <span
+                    className="absolute w-px bg-accent"
+                    style={{ top: stemTop, left: 0, height: Math.max(4, dotTop - stemTop) }}
+                  />
+                  <span
+                    className="absolute size-1 rounded-full bg-accent"
+                    style={{ top: dotTop, left: 0 }}
+                  />
+                </div>
+              );
+            })()
+          : null}
 
         {anotaciones.length > 0 ? (
           <AnotacionesLineLayer
@@ -3303,6 +3335,20 @@ export default function CifradoEditor({
     setError(null);
   }
 
+  function handleSelectBasicSong(
+    cancion: CancionCancionero,
+    isOwner: boolean,
+  ) {
+    editingCancionIdRef.current = isOwner ? cancion.id : 0;
+    setNombre(cancion.nombre);
+    setArtista(cancion.artista ?? "");
+    setIngresoTab("basicas");
+    applyImportedCifrado(cancion.letra ?? "", createEmptyCifrado(), {
+      nombre: cancion.nombre,
+      artista: cancion.artista ?? "",
+    });
+  }
+
   function handleConfirmWebImport() {
     if (!pendingWebImport) {
       return;
@@ -3786,14 +3832,11 @@ export default function CifradoEditor({
       lineAcordes,
       lineBarras,
     );
-    const offsets =
-      placementCycleCount === 1
-        ? [clampedOffset]
-        : computeEvenCompasPlacementOffsets(
-            placementCycleCount,
-            clampedOffset,
-            contentEnd,
-          );
+    const offsets = computeEvenCompasPlacementOffsets(
+      placementCycleCount,
+      clampedOffset,
+      contentEnd,
+    );
 
     setCompasConfig((current) => {
       const template = resolvePlacementBarraTemplate(current);
@@ -3900,7 +3943,7 @@ export default function CifradoEditor({
       }
 
       setToast(
-        `Se aplicaron ${placementCycleCount} compases en ${lines.length} renglones.`,
+        `Se aplicaron ${placementCycleCount} ciclos en ${lines.length} renglones.`,
       );
 
       return next;
@@ -4196,7 +4239,10 @@ export default function CifradoEditor({
     setSaveValidation(null);
 
     const supabase = createClient();
-    const cancionIdToSave = editingCancionIdRef.current ?? session?.cancionId;
+    const cancionIdToSave =
+      editingCancionIdRef.current === 0
+        ? undefined
+        : editingCancionIdRef.current ?? session?.cancionId;
 
     try {
       const {
@@ -4382,7 +4428,28 @@ export default function CifradoEditor({
                   >
                     Pegar letra+acordes
                   </button>
+                  {!onPersist ? (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={ingresoTab === "basicas"}
+                      onClick={() => {
+                        setIngresoTab("basicas");
+                        setError(null);
+                      }}
+                      className={`${cifradoEditorToolbarSegmentedButtonClass(
+                        ingresoTab === "basicas",
+                      )} min-w-0 whitespace-normal px-1`}
+                      style={{ fontSize: "clamp(0.65rem, 1vw, 0.75rem)", lineHeight: 1.1 }}
+                    >
+                      Cancionero (letras básicas)
+                    </button>
+                  ) : null}
                 </div>
+
+                {ingresoTab === "basicas" && !onPersist ? (
+                  <CifradoEditorBasicSongsTab onSelect={handleSelectBasicSong} />
+                ) : null}
 
                 {ingresoTab === "letra" ? (
                   <>
@@ -4788,6 +4855,11 @@ export default function CifradoEditor({
                             handleToggleLineLock(lineIndex)
                           }
                           onOpenPicker={handleOpenPicker}
+                          pendingChordOffset={
+                            picker?.lineIndex === lineIndex
+                              ? picker.charOffset
+                              : null
+                          }
                           onInsertBarra={handleInsertBarra}
                           onSelectBarra={handleSelectBarra}
                           onMoveAcorde={handleMoveAcorde}

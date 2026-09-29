@@ -213,6 +213,7 @@ export default function EntrenadorCancionesEditorPageClient() {
           nota={nota}
           onSave={handleSaveNota}
           saving={notaSaving}
+          side="editor"
         />
       ) : null}
     </div>

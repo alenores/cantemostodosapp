@@ -26,7 +26,7 @@ import {
   getLecturaTopChromeTopCss,
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Minimize2, Search, SlidersHorizontal, X } from "lucide-react";
 import AppTopHeader from "@/components/ui/AppTopHeader";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { createClient } from "@/lib/supabase/client";
@@ -70,6 +70,12 @@ export default function HomePageShell() {
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
+  const lecturaFilterTopCss = getLecturaFabMenuTopCss();
+  const lecturaSearchTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
+  const lecturaOverlayMenuTopCss = `calc(${lecturaSearchTopCss} + 44px)`;
+  const cancionActivaDelCancionero = Boolean(
+    cola.cancionActiva?.url_letra.startsWith("cancionero://"),
+  );
   const [colaAviso, setColaAviso] = useState<string | null>(null);
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
   const [cancionNombreRevealGen, setCancionNombreRevealGen] = useState(0);
@@ -327,6 +333,19 @@ export default function HomePageShell() {
 
       {modoLectura ? (
         <>
+          <TapButton
+            type="button"
+            aria-label="Contraer"
+            onClick={() => {
+              setOverlayAbierto(false);
+              salirModoLectura();
+            }}
+            className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
+            style={{ top: getLecturaTopChromeTopCss(), right: lecturaFixedRightCss }}
+          >
+            <Minimize2 className="size-4 text-accent" aria-hidden="true" />
+          </TapButton>
+
           <LecturaPcTopChrome
             fixedRightCss={lecturaFixedRightCss}
             onContraer={salirModoLectura}
@@ -349,7 +368,7 @@ export default function HomePageShell() {
               overlayAbierto ? "border-accent/45" : ""
             }`}
             style={{
-              top: getLecturaTopChromeTopCss(),
+              top: lecturaFilterTopCss,
               right: lecturaFixedRightCss,
             }}
           >
@@ -370,7 +389,7 @@ export default function HomePageShell() {
               onClick={() => setBuscadorOpen(true)}
               className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
               style={{
-                top: getLecturaFabMenuTopCss(),
+                top: lecturaSearchTopCss,
                 right: lecturaFixedRightCss,
               }}
             >
@@ -381,6 +400,8 @@ export default function HomePageShell() {
           <ModoLecturaOverlay
             abierto={overlayAbierto}
             fixedRightCss={lecturaFixedRightCss}
+            showContraerOption={false}
+            menuTopCss={lecturaOverlayMenuTopCss}
             navItems={lecturaNavItems}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
@@ -395,8 +416,10 @@ export default function HomePageShell() {
             onToggleAcordesOcultos={toggleAcordesOcultos}
             onAbrirZoom={abrirZoom}
             onAbrirTono={abrirTono}
-            temaLectura={temaLectura}
-            onTemaLecturaChange={cambiarTemaLectura}
+            temaLectura={cancionActivaDelCancionero ? temaLectura : undefined}
+            onTemaLecturaChange={
+              cancionActivaDelCancionero ? cambiarTemaLectura : undefined
+            }
           />
 
           <LecturaZoomPanel

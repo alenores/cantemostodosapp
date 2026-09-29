@@ -65,6 +65,7 @@ type CifradoMobileEditableLinesProps = {
   activeLineIndex: number | null;
   modoInsercion: MobileModoInsercion;
   selectedKey?: string | null;
+  pendingChordTarget?: LinePos | null;
   positionSelectEnabled?: boolean;
   /** Congela medidas del renglón (p. ej. con el sheet de acorde abierto). */
   freezeChordLayout?: boolean;
@@ -77,6 +78,12 @@ type CifradoMobileEditableLinesProps = {
   barDragTarget?: LinePos | null;
   barDragOrigin?: LinePos | null;
   onActivateLine: (lineIndex: number) => void;
+  onLongPressLine?: (lineIndex: number) => void;
+  lineActionsLineIndex?: number | null;
+  onRequestDeleteLine?: (lineIndex: number) => void;
+  onRequestClearLineAcordes?: (lineIndex: number) => void;
+  onRequestClearLineCompases?: (lineIndex: number) => void;
+  onInsertLineBelow?: (lineIndex: number) => void;
   onModoInsercionChange: (modo: MobileModoInsercion) => void;
   onSelectPosition: (lineIndex: number, charOffset: number) => void;
   onLineTextChange?: (lineIndex: number, newText: string) => void;
@@ -129,12 +136,14 @@ type MobileLineRowProps = {
   isLetraEdit: boolean;
   freezeChordLayout: boolean;
   selectedKey: string | null;
+  pendingChordOffset: number | null;
   selectedBarraOffset: number | null;
   dragCharOffset: number | null;
   dragOriginOffset: number | null;
   barDragCharOffset: number | null;
   barDragOriginOffset: number | null;
   onClick: (event: MouseEvent<HTMLElement>) => void;
+  onLongPress?: () => void;
   onLineTextChange?: (lineIndex: number, newText: string) => void;
   onDragMove?: (toCharOffset: number) => void;
   onBarDragMove?: (toCharOffset: number) => void;
@@ -159,12 +168,14 @@ function MobileLineRow({
   isLetraEdit,
   freezeChordLayout,
   selectedKey,
+  pendingChordOffset,
   selectedBarraOffset,
   dragCharOffset,
   dragOriginOffset,
   barDragCharOffset,
   barDragOriginOffset,
   onClick,
+  onLongPress,
   onLineTextChange,
   onDragMove,
   onBarDragMove,
@@ -176,6 +187,9 @@ function MobileLineRow({
   const lineRef = useRef<HTMLElement | null>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
   const letraInputRef = useRef<HTMLInputElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
   const [laneSlotCount, setLaneSlotCount] = useState(8);
   const [letraDraft, setLetraDraft] = useState(text);
@@ -185,6 +199,33 @@ function MobileLineRow({
   const isChordDragMode = dragCharOffset !== null;
   const isBarDragMode = barDragCharOffset !== null;
   const isDragMode = isChordDragMode || isBarDragMode;
+
+  function clearLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+  }
+
+  function handleLongPressStart(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerType !== "touch" || !onLongPress || isDragMode) return;
+    clearLongPress();
+    longPressTriggeredRef.current = false;
+    longPressStartRef.current = { x: event.clientX, y: event.clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      onLongPress();
+    }, 550);
+  }
+
+  function handleLongPressMove(event: ReactPointerEvent<HTMLElement>) {
+    const start = longPressStartRef.current;
+    if (!start) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) {
+      clearLongPress();
+    }
+  }
 
   const lineAcordesRef = useRef(lineAcordes);
   const lineBarrasRef = useRef(lineBarras);
@@ -717,6 +758,33 @@ function MobileLineRow({
           );
         })}
 
+        {pendingChordOffset !== null &&
+        !lineAcordes.some((acorde) => acorde.charOffset === pendingChordOffset)
+          ? (() => {
+              const position = resolvePosition(pendingChordOffset);
+              if (!position) return null;
+              const dotTop = position.bottom + 2;
+              const stemTop = 18 + arribaOffsetMobile;
+              return (
+                <div
+                  key={`pending-chord-${lineIndex}-${pendingChordOffset}`}
+                  className="pointer-events-none absolute top-0"
+                  style={{ left: position.left }}
+                  aria-hidden="true"
+                >
+                  <span
+                    className="absolute w-px bg-accent"
+                    style={{ top: stemTop, left: 0, height: Math.max(4, dotTop - stemTop) }}
+                  />
+                  <span
+                    className="absolute z-10 size-1 rounded-full bg-accent"
+                    style={{ top: dotTop, left: 0 }}
+                  />
+                </div>
+              );
+            })()
+          : null}
+
         {isChordDragMode && dragCharOffset !== null
           ? (() => {
               const position = resolvePosition(dragCharOffset);
@@ -891,7 +959,19 @@ function MobileLineRow({
       }}
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onPointerDown={handleLongPressStart}
+      onPointerMove={handleLongPressMove}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
+      onContextMenu={(event) => event.preventDefault()}
+      onClick={(event) => {
+        if (longPressTriggeredRef.current) {
+          longPressTriggeredRef.current = false;
+          event.preventDefault();
+          return;
+        }
+        onClick(event);
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -916,6 +996,7 @@ export function CifradoMobileEditableLines({
   activeLineIndex,
   modoInsercion,
   selectedKey = null,
+  pendingChordTarget = null,
   positionSelectEnabled = true,
   freezeChordLayout = false,
   dragTarget = null,
@@ -925,6 +1006,12 @@ export function CifradoMobileEditableLines({
   barDragTarget = null,
   barDragOrigin = null,
   onActivateLine,
+  onLongPressLine,
+  lineActionsLineIndex = null,
+  onRequestDeleteLine,
+  onRequestClearLineAcordes,
+  onRequestClearLineCompases,
+  onInsertLineBelow,
   onModoInsercionChange,
   onSelectPosition,
   onLineTextChange,
@@ -1087,6 +1174,11 @@ export function CifradoMobileEditableLines({
               }
               freezeChordLayout={freezeChordLayout}
               selectedKey={selectedKey}
+              pendingChordOffset={
+                pendingChordTarget?.lineIndex === lineIndex
+                  ? pendingChordTarget.charOffset
+                  : null
+              }
               selectedBarraOffset={
                 selectedBarra?.lineIndex === lineIndex
                   ? selectedBarra.charOffset
@@ -1122,6 +1214,7 @@ export function CifradoMobileEditableLines({
                   : null
               }
               onClick={(event) => handleLineClick(event, lineIndex)}
+              onLongPress={() => onLongPressLine?.(lineIndex)}
               onLineTextChange={onLineTextChange}
               onDragMove={isChordDragLine ? onDragMove : undefined}
               onBarDragMove={isBarDragLine ? onBarDragMove : undefined}
@@ -1131,6 +1224,39 @@ export function CifradoMobileEditableLines({
                   : undefined
               }
             />
+
+            {lineActionsLineIndex === lineIndex ? (
+              <div className="flex flex-wrap justify-center gap-2 rounded-xl border border-border bg-bg-card p-2">
+                <TapButton
+                  type="button"
+                  onClick={() => onRequestDeleteLine?.(lineIndex)}
+                  className="rounded-full bg-red-950/50 px-3 py-2 text-xs font-semibold text-red-200"
+                >
+                  Eliminar renglón
+                </TapButton>
+                <TapButton
+                  type="button"
+                  onClick={() => onRequestClearLineAcordes?.(lineIndex)}
+                  className="rounded-full bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary"
+                >
+                  Eliminar acordes
+                </TapButton>
+                <TapButton
+                  type="button"
+                  onClick={() => onRequestClearLineCompases?.(lineIndex)}
+                  className="rounded-full bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary"
+                >
+                  Eliminar compases
+                </TapButton>
+                <TapButton
+                  type="button"
+                  onClick={() => onInsertLineBelow?.(lineIndex)}
+                  className={`rounded-full px-3 py-2 text-xs font-semibold ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
+                >
+                  Insertar abajo
+                </TapButton>
+              </div>
+            ) : null}
 
             {isDragLine && (isChordDragLine ? onEndDrag : onEndBarDrag) ? (
               <div className="flex justify-center pt-1">

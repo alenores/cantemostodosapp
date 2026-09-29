@@ -37,6 +37,7 @@ type CifradoEditorIngresoWebSearchProps = {
   onImport: (data: CifradoEditorWebImportData) => void;
   onError: (message: string) => void;
   importDisabled?: boolean;
+  previewDisplay?: "pagina" | "texto";
 };
 
 type Pantalla = "busqueda" | "preview";
@@ -91,6 +92,7 @@ export default function CifradoEditorIngresoWebSearch({
   onImport,
   onError,
   importDisabled = false,
+  previewDisplay = "pagina",
 }: CifradoEditorIngresoWebSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pantalla, setPantalla] = useState<Pantalla>("busqueda");
@@ -103,6 +105,10 @@ export default function CifradoEditorIngresoWebSearch({
   const [importando, setImportando] = useState(false);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
   const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
+  const [previewTexto, setPreviewTexto] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const previewRequestRef = useRef<AbortController | null>(null);
 
   const seleccionadoDisplay = useMemo(() => {
     if (!seleccionado) {
@@ -193,13 +199,44 @@ export default function CifradoEditorIngresoWebSearch({
     }
   }
 
+  async function obtenerTexto(url: string, signal?: AbortSignal): Promise<string> {
+    const response = await fetch(
+      `/api/obtener-letra?url=${encodeURIComponent(url)}`,
+      { signal },
+    );
+    const data = (await response.json()) as { letra?: string; error?: string };
+    if (!response.ok || !data.letra?.trim()) {
+      throw new Error(data.error ?? "No se pudo extraer la letra de esta canción");
+    }
+    return data.letra.trim();
+  }
+
+  async function cargarPreviewTexto(resultado: ResultadoBusqueda) {
+    previewRequestRef.current?.abort();
+    const controller = new AbortController();
+    previewRequestRef.current = controller;
+    setPreviewTexto("");
+    setPreviewError(false);
+    setPreviewLoading(true);
+    try {
+      const texto = await obtenerTexto(resultado.url, controller.signal);
+      if (!controller.signal.aborted) setPreviewTexto(texto);
+    } catch {
+      if (!controller.signal.aborted) setPreviewError(true);
+    } finally {
+      if (!controller.signal.aborted) setPreviewLoading(false);
+    }
+  }
+
   function handleSelectResultado(resultado: ResultadoBusqueda) {
     setSeleccionado(resultado);
     setEmbedFullRevealed(false);
     setPantalla("preview");
+    if (previewDisplay === "texto") void cargarPreviewTexto(resultado);
   }
 
   function handleVolver() {
+    previewRequestRef.current?.abort();
     setPantalla("busqueda");
     setSeleccionado(null);
     setEmbedFullRevealed(false);
@@ -213,21 +250,10 @@ export default function CifradoEditorIngresoWebSearch({
     setImportando(true);
 
     try {
-      const response = await fetch(
-        `/api/obtener-letra?url=${encodeURIComponent(seleccionado.url)}`,
-      );
-      const data = (await response.json()) as {
-        letra?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !data.letra?.trim()) {
-        throw new Error(
-          data.error ?? "No se pudo extraer la letra de esta canción",
-        );
-      }
-
-      const textoTradicional = data.letra.trim();
+      const textoTradicional =
+        previewDisplay === "texto" && previewTexto
+          ? previewTexto
+          : await obtenerTexto(seleccionado.url);
       const imported = parseLetraTradicional(textoTradicional);
       const { nombre, artista } = resolverNombreArtistaDisplay(
         seleccionado.titulo,
@@ -282,30 +308,59 @@ export default function CifradoEditorIngresoWebSearch({
         </p>
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] bg-preview-frame">
-          {showAcordesPrimeraVezHint ? (
-            <AcordesEmbedPrimeraVezHint
-              onDismiss={dismissAcordesPrimeraVezHint}
-            />
-          ) : null}
-          <LetraViewer
-            url={seleccionado.url}
-            elevated
-            fill
-            initialScrollOffsetPx={previewEmbedOffsetPx}
-            initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
-            revealExpanded={embedFullRevealed}
-            onRevealFull={
-              previewIframeConRecorteInicial
-                ? handleRevealEmbedFull
-                : undefined
-            }
-          />
+          {previewDisplay === "texto" ? (
+            <div className="h-full overflow-y-auto bg-letra-bg px-4 py-5 text-letra-text">
+              {previewLoading ? (
+                <p className="text-sm">Cargando letra…</p>
+              ) : previewError ? (
+                <div className="flex flex-col items-start gap-3 text-sm">
+                  <p>No se pudo mostrar esta canción.</p>
+                  <button
+                    type="button"
+                    onClick={() => void cargarPreviewTexto(seleccionado)}
+                    className="font-semibold text-accent"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap break-words font-mono text-sm leading-6">
+                  {previewTexto}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {showAcordesPrimeraVezHint ? (
+                <AcordesEmbedPrimeraVezHint
+                  onDismiss={dismissAcordesPrimeraVezHint}
+                />
+              ) : null}
+              <LetraViewer
+                url={seleccionado.url}
+                elevated
+                fill
+                initialScrollOffsetPx={previewEmbedOffsetPx}
+                initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
+                revealExpanded={embedFullRevealed}
+                onRevealFull={
+                  previewIframeConRecorteInicial
+                    ? handleRevealEmbedFull
+                    : undefined
+                }
+              />
+            </>
+          )}
         </div>
 
         <TapButton
           type="button"
           onClick={() => void handleUsarCancion()}
-          disabled={importando || importDisabled}
+          disabled={
+            importando ||
+            importDisabled ||
+            (previewDisplay === "texto" && !previewTexto)
+          }
           className={`mt-3 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
         >
           {importando ? "Importando…" : "Confirmar e importar"}

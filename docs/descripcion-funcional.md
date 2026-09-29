@@ -201,6 +201,8 @@ Individual funciona **sin internet** con el Cancionero descargado. Cuando hay co
 
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
 
+En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. **Contraer** queda como botón independiente, arriba del filtro.
+
 ---
 
 ## 7. Búsqueda de canciones
@@ -232,6 +234,7 @@ Antes de confirmar una canción, se puede **previsualizar**:
 - La letra puede verse embebida (dentro de la app) o como texto local.
 - En sitios de acordes externos, la primera vez aparece una ayuda; se puede revelar la página completa.
 - Si aplica, hay opciones para **guardar letra completa**, **guardar link** o **guardar canción** al cancionero.
+- En resultados de **Acordes de Canciones**, **Guardar** extrae y guarda directamente la letra completa; no ofrece guardar solo el link.
 
 ### 7.4 Confirmación de canción
 
@@ -317,6 +320,9 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 
 - **Celular:** pantalla completa dedicada al editor.
 - **Computadora:** ventana superpuesta sobre el listado o el hub.
+- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. En ambos casos se puede revisar antes de importar.
+- En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
+- El ingreso tiene una cuarta pestaña, **Cancionero (letras básicas)**, con canciones que todavía no tienen edición avanzada; al elegir una propia, se abre para completarla, y una canción de otra persona se abre como copia.
 
 ### 10.2 Tres modos de edición
 
@@ -329,12 +335,15 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 ### 10.3 Herramienta de compás
 
 - **Componer:** definir golpes e **intensidad** por golpe (silencio, suave, medio, fuerte).
-- **Ciclo guardado** del Compositor para batería; si no hay ciclo, suena un click.
-- **Aplicar ciclos:** elegir cantidad por renglón o **Aplicar a todos los renglones** (con aviso si ya hay compases marcados).
+- La opción para usar ciclos guardados queda oculta temporalmente; los ciclos existentes se conservan.
+- **Aplicar ciclos:** elegir cantidad de ciclos completos por renglón o **Aplicar a todos los renglones** (con aviso si ya hay compases marcados). Se agrega una marca final para cerrar el último ciclo.
+
+Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese punto mientras se abre el selector.
 
 ### 10.4 Acciones por renglón
 
 - **Lápiz:** eliminar renglón, insertar abajo, copiar acordes/compás, unir renglones (con vista previa).
+- **Celular:** mantener presionado un renglón abre sus acciones; permite eliminar letra, acordes o compases, o insertar un renglón abajo.
 - **Candado:** bloquear el renglón contra edición accidental.
 - Confirmaciones al borrar letra, acordes o compases de un renglón.
 
@@ -391,6 +400,7 @@ Todos los participantes conectados comparten:
 - Agregar canción, aleatorio, siguiente, borrar toda la lista, reordenar.
 - En cada canción de la fila se puede ver **quién la agregó** (avatar o nombre).
 - Arrastrar para reordenar pendientes o eliminar (zona de eliminar al soltar fuera, en celular).
+- En modo lectura, los temas Claro, Sepia y Escenario solo están disponibles para canciones del Cancionero.
 
 **Si se pierde la conexión estando adentro:**
 
@@ -461,7 +471,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 
 ### 12.2 Controles en celular (menú flotante)
 
-- **Contraer** (salir del modo lectura)
+- **Contraer** (salir del modo lectura). En Individual y Salas queda como botón independiente, arriba del filtro.
 - **Buscar**, **Siguiente**, **Fila · N** (cantidad de pendientes) — en individual y sala
 - **Anterior**, **Siguiente** — en cancionero (solo celular)
 - **Activar compases** (si estaban ocultos)
@@ -470,7 +480,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 - En Individual y Cancionero, el tono elegido se recuerda como preferencia personal del dispositivo: no cambia la canción original, ni en la nube ni en el Cancionero descargado.
 - **Tamaño de letra** (zoom)
 - **Afinador**
-- **Tema visual**: cicla entre **Claro → Sepia → Escenario**
+- **Tema visual**: cicla entre **Claro → Sepia → Escenario** para canciones del Cancionero en Individual y Salas; en otras fuentes no se muestra.
 - En entrenador de canciones: mostrar/ocultar tipos de anotación, **Nota de la canción**, **Editar**
 
 ### 12.3 Controles inferiores y en computadora
@@ -663,6 +673,7 @@ automáticamente al recuperar internet. Cada cuenta ve únicamente su propia cop
 - Mismos modos **Acordes / Compás / Letra** que el editor de canciones.
 - Modo **Canto** para agregar anotaciones (ver tabla abajo).
 - **Nota de la canción** (botón flotante): nota general libre, separada de las anotaciones en la letra.
+- En computadora, el botón **Nota** queda junto al editor, fuera del panel de guardado.
 
 #### Tipos de anotaciones de canto
 

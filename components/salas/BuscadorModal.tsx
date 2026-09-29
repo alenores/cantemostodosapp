@@ -999,6 +999,21 @@ export default function BuscadorModal({
         seleccionado.artista,
       );
 
+      if (esAcordesDeCanciones(seleccionado.sitio, seleccionado.url)) {
+        const supabase = createClient();
+        await guardarLetraEnCancionero(supabase, {
+          nombre,
+          artista: artista || null,
+          letra: data.letra,
+          url_letra: seleccionado.url,
+        });
+        await onDataChange?.();
+        await cargarCancionesCancionero();
+        setFabGuardarAbierto(false);
+        mostrarConfirmacion("letra");
+        return;
+      }
+
       setGuardarLetraModal({
         nombre,
         artista,
@@ -1060,7 +1075,9 @@ export default function BuscadorModal({
         duplicadoCompletoEnPreview,
     );
 
-  const guardarAccionDirecta = Boolean(esInternetPreview && esCifraSitio);
+  const guardarAccionDirecta = Boolean(
+    esInternetPreview && (esCifraSitio || esAcordesSitio),
+  );
 
   const guardarAbreFab = Boolean(
     (esInternetPreview && esAcordesSitio) ||
@@ -1140,7 +1157,11 @@ export default function BuscadorModal({
     }
 
     if (guardarAccionDirecta) {
-      void handleGuardarLink();
+      if (esAcordesSitio) {
+        void handleGuardarLetraCompleta();
+      } else {
+        void handleGuardarLink();
+      }
       return;
     }
 

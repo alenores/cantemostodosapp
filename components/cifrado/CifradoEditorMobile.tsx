@@ -3,6 +3,7 @@
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
+import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
 import {
   CifradoIngresoTonalidadInferModal,
   type PasteIngresoConfirmResult,
@@ -37,9 +38,15 @@ import {
   computeTapBpm,
   createEmptyCifrado,
   createDefaultCompasConfig,
+  clearAcordesOnLine,
+  clearBarrasOnLine,
+  deleteCifradoLine,
+  deleteCompasLine,
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
   findAcordeAt,
+  insertCifradoLineBelow,
+  insertCompasLineBelow,
   getCompasCycleGolpes,
   isCharOffsetInsideCompasCycle,
   moveAcordeSwap,
@@ -79,6 +86,7 @@ import type {
   CifradoEditorSession,
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
+import type { CancionCancionero } from "@/types";
 import {
   AnotacionPickerHost,
   AnotacionTipoMenu,
@@ -86,13 +94,19 @@ import {
   type AnotacionesControl,
 } from "@/components/cifrado/AnotacionPickers";
 import { DEFAULT_ANOTACION_VISIBILITY } from "@/lib/anotaciones-practica";
-import { CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE } from "@/lib/ritmo-terminologia";
+import {
+  CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE,
+  CIFRADO_CONFIRM_DELETE_LINE_MESSAGE,
+  CIFRADO_CONFIRM_DELETE_LINE_ACORDES_MESSAGE,
+  CIFRADO_CONFIRM_DELETE_LINE_COMPASES_MESSAGE,
+} from "@/lib/ritmo-terminologia";
 import { ArrowLeft, Eye, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type IngresoTab = "letra" | "web" | "pegar";
+type IngresoTab = "letra" | "web" | "pegar" | "basicas";
 type MobilePhase = "ingreso" | "cifrado";
+type MobileLineDeleteKind = "line" | "acordes" | "compases";
 
 type PickerTarget = {
   lineIndex: number;
@@ -179,6 +193,11 @@ export default function CifradoEditorMobile({
   const [barDragTarget, setBarDragTarget] = useState<PickerTarget | null>(null);
   const [barDragOrigin, setBarDragOrigin] = useState<PickerTarget | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
+  const [lineActionsLineIndex, setLineActionsLineIndex] = useState<number | null>(null);
+  const [lineDeleteConfirm, setLineDeleteConfirm] = useState<{
+    kind: MobileLineDeleteKind;
+    lineIndex: number;
+  } | null>(null);
   const [modoInsercion, setModoInsercion] =
     useState<MobileModoInsercion>("acordes");
   const anotacionesEnabled = Boolean(anotaciones);
@@ -194,6 +213,22 @@ export default function CifradoEditorMobile({
   const [pendingWebImport, setPendingWebImport] =
     useState<CifradoEditorWebImportData | null>(null);
   const [webSearchResetKey, setWebSearchResetKey] = useState(0);
+
+  useEffect(() => {
+    if (!pendingWebImport) {
+      return;
+    }
+
+    const textarea = document.getElementById(
+      "cifrado-mobile-web-revisar",
+    ) as HTMLTextAreaElement | null;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.max(textarea.scrollHeight, 220)}px`;
+  }, [draftPaste, pendingWebImport]);
 
   const lastPasteProposeSignatureRef = useRef<string | null>(null);
   const pasteProposeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -390,7 +425,10 @@ export default function CifradoEditorMobile({
         40,
         Math.min(240, compasConfig.bpm || DEFAULT_BPM),
       );
-      const editingId = editingCancionIdRef.current ?? session?.cancionId;
+      const editingId =
+        editingCancionIdRef.current === 0
+          ? undefined
+          : editingCancionIdRef.current ?? session?.cancionId;
       const savedId = await onPersist(editingId, {
         nombre: nombre.trim(),
         artista: artista.trim() || null,
@@ -499,8 +537,52 @@ export default function CifradoEditorMobile({
     }
 
     setActiveLineIndex(lineIndex);
+    setLineActionsLineIndex(null);
     setPickerTarget(null);
     setSelectedBarra(null);
+  }
+
+  function handleLongPressLine(lineIndex: number) {
+    if (dragTarget || barDragTarget || modoInsercion === "letra") return;
+    setActiveLineIndex(lineIndex);
+    setLineActionsLineIndex(lineIndex);
+    setPickerTarget(null);
+    setSelectedBarra(null);
+  }
+
+  function handleInsertLineBelow(lineIndex: number) {
+    setLyricsText((current) => {
+      const lines = splitLyricsLines(current);
+      lines.splice(lineIndex + 1, 0, "");
+      return lines.join("\n");
+    });
+    setCifrado((current) => insertCifradoLineBelow(current, lineIndex));
+    setCompasConfig((current) => insertCompasLineBelow(current, lineIndex));
+    setActiveLineIndex(lineIndex + 1);
+    setLineActionsLineIndex(null);
+  }
+
+  function handleConfirmLineDelete() {
+    if (!lineDeleteConfirm) return;
+    const { kind, lineIndex } = lineDeleteConfirm;
+    if (kind === "line") {
+      const lines = splitLyricsLines(lyricsText);
+      if (lines.length <= 1) {
+        setError("La canción debe tener al menos un renglón.");
+      } else {
+        lines.splice(lineIndex, 1);
+        setLyricsText(lines.join("\n"));
+        setCifrado((current) => deleteCifradoLine(current, lineIndex));
+        setCompasConfig((current) => deleteCompasLine(current, lineIndex));
+        setActiveLineIndex(null);
+        setLineActionsLineIndex(null);
+      }
+    } else if (kind === "acordes") {
+      setCifrado((current) => clearAcordesOnLine(current, lineIndex));
+    } else {
+      setCompasConfig((current) => clearBarrasOnLine(current, lineIndex));
+    }
+    setLineDeleteConfirm(null);
   }
 
   const deactivateActiveLine = useCallback(() => {
@@ -512,6 +594,7 @@ export default function CifradoEditorMobile({
     }
 
     setActiveLineIndex(null);
+    setLineActionsLineIndex(null);
     setPickerTarget(null);
     setSelectedBarra(null);
   }, []);
@@ -1016,6 +1099,19 @@ export default function CifradoEditorMobile({
     setError(null);
   }
 
+  function handleSelectBasicSong(
+    cancion: CancionCancionero,
+    isOwner: boolean,
+  ) {
+    editingCancionIdRef.current = isOwner ? cancion.id : 0;
+    setNombre(cancion.nombre);
+    setArtista(cancion.artista ?? "");
+    setTonalidadIndex(DEFAULT_TONALIDAD);
+    setModoTonal(DEFAULT_MODO_TONAL);
+    setIngresoTab("basicas");
+    enterCifrado(cancion.letra ?? "", createEmptyCifrado());
+  }
+
   function handleConfirmWebImport() {
     if (!pendingWebImport) {
       return;
@@ -1138,10 +1234,35 @@ export default function CifradoEditorMobile({
             >
               Pegar letra+acordes
             </button>
+            {onPersist ? null : <button
+              type="button"
+              role="tab"
+              aria-selected={ingresoTab === "basicas"}
+              onClick={() => {
+                setIngresoTab("basicas");
+                clearError();
+              }}
+              className={`${cifradoEditorToolbarSegmentedButtonClass(
+                ingresoTab === "basicas",
+              )} min-w-0 whitespace-normal px-1`}
+              style={{ fontSize: "0.65rem", lineHeight: 1.1 }}
+            >
+              Cancionero (letras básicas)
+            </button>}
           </div>
 
           <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div
+              className={
+                ingresoTab === "web" && pendingWebImport
+                  ? "flex shrink-0 flex-col"
+                  : "flex min-h-0 flex-1 flex-col"
+              }
+            >
+              {ingresoTab === "basicas" && !onPersist ? (
+                <CifradoEditorBasicSongsTab onSelect={handleSelectBasicSong} />
+              ) : null}
+
               {ingresoTab === "letra" ? (
                 <>
                   <label className={labelClassName} htmlFor="cifrado-mobile-letra">
@@ -1187,7 +1308,8 @@ export default function CifradoEditorMobile({
                         setDraftPaste(event.target.value);
                         clearError();
                       }}
-                      className={textareaClassName}
+                      className={`${textareaClassName} shrink-0 overflow-hidden`}
+                      style={{ flex: "none", height: "auto", minHeight: 220 }}
                       placeholder="Letra con los acordes encima de cada renglón…"
                     />
                   </>
@@ -1196,6 +1318,7 @@ export default function CifradoEditorMobile({
                     key={webSearchResetKey}
                     onImport={handleWebImport}
                     onError={setError}
+                    previewDisplay="texto"
                   />
                 )
               ) : null}
@@ -1424,7 +1547,7 @@ export default function CifradoEditorMobile({
 
               {!dragTarget && !barDragTarget ? (
                 <p className="mb-3 text-xs text-text-muted">
-                  Tocá un renglón para activarlo y editarlo.
+                  Tocá un renglón para editarlo; mantenelo presionado para ver sus acciones.
                 </p>
               ) : null}
               <CifradoMobileEditableLines
@@ -1434,6 +1557,7 @@ export default function CifradoEditorMobile({
                 activeLineIndex={activeLineIndex}
                 modoInsercion={modoInsercion}
                 selectedKey={pickerSelectedKey}
+                pendingChordTarget={pickerTarget}
                 positionSelectEnabled={
                   pickerTarget === null && !dragTarget && !barDragTarget
                 }
@@ -1445,6 +1569,30 @@ export default function CifradoEditorMobile({
                 barDragTarget={barDragTarget}
                 barDragOrigin={barDragOrigin}
                 onActivateLine={handleActivateLine}
+                onLongPressLine={handleLongPressLine}
+                lineActionsLineIndex={lineActionsLineIndex}
+                onRequestDeleteLine={(lineIndex) => {
+                  if (splitLyricsLines(lyricsText).length <= 1) {
+                    setError("La canción debe tener al menos un renglón.");
+                    return;
+                  }
+                  setLineDeleteConfirm({ kind: "line", lineIndex });
+                }}
+                onRequestClearLineAcordes={(lineIndex) => {
+                  if (!cifrado.acordes.some((item) => item.lineIndex === lineIndex)) {
+                    setError("Este renglón no tiene acordes.");
+                    return;
+                  }
+                  setLineDeleteConfirm({ kind: "acordes", lineIndex });
+                }}
+                onRequestClearLineCompases={(lineIndex) => {
+                  if (!compasConfig.barras.some((item) => item.lineIndex === lineIndex)) {
+                    setError("Este renglón no tiene compases.");
+                    return;
+                  }
+                  setLineDeleteConfirm({ kind: "compases", lineIndex });
+                }}
+                onInsertLineBelow={handleInsertLineBelow}
                 onModoInsercionChange={handleModoInsercionChange}
                 onSelectPosition={handleSelectPosition}
                 onLineTextChange={handleLineTextChange}
@@ -1690,6 +1838,20 @@ export default function CifradoEditorMobile({
         zIndex={80}
         onConfirm={handleConfirmAbandonExigencia}
         onCancel={() => setExigenciaAbandonConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={lineDeleteConfirm !== null}
+        message={
+          lineDeleteConfirm?.kind === "line"
+            ? CIFRADO_CONFIRM_DELETE_LINE_MESSAGE
+            : lineDeleteConfirm?.kind === "acordes"
+              ? CIFRADO_CONFIRM_DELETE_LINE_ACORDES_MESSAGE
+              : CIFRADO_CONFIRM_DELETE_LINE_COMPASES_MESSAGE
+        }
+        deleteConfirm
+        confirmLabel="Eliminar"
+        onConfirm={handleConfirmLineDelete}
+        onCancel={() => setLineDeleteConfirm(null)}
       />
     </div>
   );

@@ -51,6 +51,7 @@ type CifradoCompasToolPanelProps = {
   onPlacementCycleCountChange: (count: number) => void;
   onApplyCyclesToAllLines: () => void;
   variant?: "mobile" | "desktop";
+  showSavedCycles?: boolean;
 };
 
 function ComponerCycleControls({
@@ -340,7 +341,9 @@ export function CifradoCompasToolPanel({
   onPlacementCycleCountChange,
   onApplyCyclesToAllLines,
   variant = "mobile",
+  showSavedCycles = false,
 }: CifradoCompasToolPanelProps) {
+  const visibleTab = showSavedCycles ? tab : "componer";
   const sectionLabelClass =
     variant === "desktop"
       ? CIFRADO_EDITOR_PC_LABEL_CLASS
@@ -349,10 +352,12 @@ export function CifradoCompasToolPanel({
   if (variant === "desktop") {
     return (
       <div className="flex min-w-0 w-full flex-col items-start gap-2">
-        <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
+        {showSavedCycles ? (
+          <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
+        ) : null}
 
         <div className="flex min-w-0 w-full items-stretch">
-          {tab === "guardado" ? (
+          {visibleTab === "guardado" ? (
             <GuardadoCycleControls
               activeCycleId={activeCycleId}
               savedCycles={savedCycles}
@@ -388,7 +393,7 @@ export function CifradoCompasToolPanel({
           <p className="text-[11px] text-[var(--tuner-lejos)]">{cyclesError}</p>
         ) : null}
 
-        {!cyclesLoading && tab === "guardado" && savedCycles.length === 0 ? (
+        {!cyclesLoading && visibleTab === "guardado" && savedCycles.length === 0 ? (
           <p className="text-[11px] text-text-muted">
             No hay ciclos guardados. Creá uno en el Compositor.
           </p>
@@ -399,9 +404,11 @@ export function CifradoCompasToolPanel({
 
   return (
     <div className="space-y-2">
-      <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
+      {showSavedCycles ? (
+        <CompasToolTabs tab={tab} onTabChange={onTabChange} variant={variant} />
+      ) : null}
 
-      {tab === "guardado" ? (
+      {visibleTab === "guardado" ? (
         <GuardadoCycleControls
           activeCycleId={activeCycleId}
           savedCycles={savedCycles}
@@ -426,7 +433,7 @@ export function CifradoCompasToolPanel({
         <p className="text-[11px] text-[var(--tuner-lejos)]">{cyclesError}</p>
       ) : null}
 
-      {!cyclesLoading && tab === "guardado" && savedCycles.length === 0 ? (
+      {!cyclesLoading && visibleTab === "guardado" && savedCycles.length === 0 ? (
         <p className="text-[11px] text-text-muted">
           No hay ciclos guardados. Creá uno en el Compositor.
         </p>

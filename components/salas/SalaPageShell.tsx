@@ -48,6 +48,7 @@ import type { ColaItem, PresenceUsuario, SalaMiembro, SesionSala } from "@/types
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
   ArrowLeft,
+  Minimize2,
   Search,
   SlidersHorizontal,
   WifiOff,
@@ -101,6 +102,9 @@ export default function SalaPageShell({
   const lecturaPantallaCompleta = modoLectura && !colaSidePanel;
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
+  const lecturaFilterTopCss = getLecturaFabMenuTopCss();
+  const lecturaSearchTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
+  const lecturaOverlayMenuTopCss = `calc(${lecturaSearchTopCss} + 44px)`;
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -145,6 +149,9 @@ export default function SalaPageShell({
   const [buscadorOpen, setBuscadorOpen] = useState(false);
   const [cancionActiva, setCancionActiva] = useState<CancionActivaData | null>(
     null,
+  );
+  const cancionActivaDelCancionero = Boolean(
+    cancionActiva?.url_letra.startsWith("cancionero://"),
   );
   const [cancionNombreRevealGen, setCancionNombreRevealGen] = useState(0);
   const prevCancionRevealKeyRef = useRef<string | null>(null);
@@ -699,8 +706,10 @@ export default function SalaPageShell({
                 handleLecturaCompasPlaybackStateChange
               }
               onLecturaTonalidadStateChange={handleLecturaTonalidadStateChange}
-              temaLectura={temaLectura}
-              onTemaLecturaChange={cambiarTemaLectura}
+              temaLectura={cancionActivaDelCancionero ? temaLectura : undefined}
+              onTemaLecturaChange={
+                cancionActivaDelCancionero ? cambiarTemaLectura : undefined
+              }
               onExpand={
                 !modoLectura && cancionActiva && !disconnected
                   ? handleExpand
@@ -751,6 +760,19 @@ export default function SalaPageShell({
 
       {modoLectura ? (
         <>
+          <TapButton
+            type="button"
+            aria-label="Contraer"
+            onClick={() => {
+              setOverlayAbierto(false);
+              salirModoLectura();
+            }}
+            className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
+            style={{ top: getLecturaTopChromeTopCss(), right: lecturaFixedRightCss }}
+          >
+            <Minimize2 className="size-4 text-accent" aria-hidden="true" />
+          </TapButton>
+
           <LecturaPcTopChrome
             fixedRightCss={lecturaFixedRightCss}
             onContraer={salirModoLectura}
@@ -773,7 +795,7 @@ export default function SalaPageShell({
               overlayAbierto ? "border-accent/45" : ""
             }`}
             style={{
-              top: getLecturaTopChromeTopCss(),
+              top: lecturaFilterTopCss,
               right: lecturaFixedRightCss,
             }}
           >
@@ -794,7 +816,7 @@ export default function SalaPageShell({
               onClick={() => setBuscadorOpen(true)}
               className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
               style={{
-                top: getLecturaFabMenuTopCss(),
+                top: lecturaSearchTopCss,
                 right: lecturaFixedRightCss,
               }}
             >
@@ -805,6 +827,8 @@ export default function SalaPageShell({
           <ModoLecturaOverlay
             abierto={overlayAbierto}
             fixedRightCss={lecturaFixedRightCss}
+            showContraerOption={false}
+            menuTopCss={lecturaOverlayMenuTopCss}
             navItems={lecturaNavItems}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
@@ -820,8 +844,10 @@ export default function SalaPageShell({
             onToggleAcordesOcultos={toggleAcordesOcultos}
             onAbrirZoom={abrirZoom}
             onAbrirTono={abrirTono}
-            temaLectura={temaLectura}
-            onTemaLecturaChange={cambiarTemaLectura}
+            temaLectura={cancionActivaDelCancionero ? temaLectura : undefined}
+            onTemaLecturaChange={
+              cancionActivaDelCancionero ? cambiarTemaLectura : undefined
+            }
           />
 
           <LecturaZoomPanel

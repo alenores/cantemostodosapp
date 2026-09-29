@@ -502,28 +502,26 @@ export function computeLineMergePreview(
   };
 }
 
-/** Reparte offsets de compás de forma uniforme sobre el contenido útil del renglón. */
+/** Reparte los límites de los ciclos: cada ciclo completo necesita inicio y cierre. */
 export function computeEvenCompasPlacementOffsets(
   cycleCount: number,
   startOffset: number,
   contentEndOffset: number,
 ): number[] {
-  const count = Math.min(
+  const completeCycleCount = Math.min(
     MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
     Math.max(1, Math.floor(cycleCount)),
   );
+  const boundaryCount = completeCycleCount + 1;
   const normalizedStart = clampCompasCharOffset(startOffset);
   const rangeEnd = Math.max(normalizedStart, contentEndOffset);
 
-  if (count === 1) {
-    return [normalizedStart];
-  }
-
   const offsets: number[] = [];
 
-  for (let index = 0; index < count; index += 1) {
+  for (let index = 0; index < boundaryCount; index += 1) {
     const offset = Math.round(
-      normalizedStart + (index * (rangeEnd - normalizedStart)) / (count - 1),
+      normalizedStart +
+        (index * (rangeEnd - normalizedStart)) / (boundaryCount - 1),
     );
     offsets.push(clampCompasCharOffset(offset));
   }

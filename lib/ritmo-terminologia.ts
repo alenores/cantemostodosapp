@@ -360,7 +360,7 @@ export const CIFRADO_HELP_COLOCAR_CICLO =
 export const CIFRADO_LABEL_APLICAR_NUMERO_CICLOS = "Aplicar número de ciclos";
 
 export const CIFRADO_HELP_APLICAR_NUMERO_CICLOS =
-  "Al tocar un renglón se reparten sobre la letra y lo que ya tenga (acordes/compás). Después podés arrastrar cada uno.";
+  "El número indica ciclos completos; se agrega una marca final para cerrar el último. Se reparten sobre la letra y lo que ya tenga (acordes/compás). Después podés arrastrar cada marca.";
 
 export const CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES =
   "Aplicar a todos los renglones";

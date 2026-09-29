@@ -23,6 +23,8 @@ type ModoLecturaOverlayProps = {
   fixedRightCss: string;
   /** Oculta backdrop y menú en desktop (p. ej. cancionero). */
   mobileOnly?: boolean;
+  showContraerOption?: boolean;
+  menuTopCss?: string;
   /** Bloque del medio propio de cada pantalla (buscar/fila o anterior/siguiente). */
   navItems?: LecturaFabItem[];
   /** Ítems extra al final (p. ej. canto: anotaciones, nota, editar). */
@@ -52,6 +54,8 @@ export default function ModoLecturaOverlay({
   abierto,
   fixedRightCss,
   mobileOnly = false,
+  showContraerOption = true,
+  menuTopCss,
   navItems = [],
   extraItems = [],
   hasCompases = false,
@@ -79,16 +83,16 @@ export default function ModoLecturaOverlay({
 
   const showActivarCompases = Boolean(hasCompases && compasesOcultos);
 
-  const items: ResolvedItem[] = [
-    {
+  const items: ResolvedItem[] = showContraerOption
+    ? [{
       key: "contraer",
       icon: Minimize2,
       label: "Contraer",
       onClick: onContraer,
       closeOnClick: false,
-    },
-    ...navItems.map((item) => ({ ...item, closeOnClick: true })),
-  ];
+    }]
+    : [];
+  items.push(...navItems.map((item) => ({ ...item, closeOnClick: true })));
 
   if (showActivarCompases && onActivarCompases) {
     items.push({
@@ -195,7 +199,7 @@ export default function ModoLecturaOverlay({
           mobileOnly ? " lg:hidden" : ""
         }`}
         style={{
-          top: getLecturaFabMenuTopCss(),
+          top: menuTopCss ?? getLecturaFabMenuTopCss(),
           right: fixedRightCss,
         }}
         role="menu"

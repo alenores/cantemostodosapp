@@ -12,7 +12,7 @@ type NotaCancionFabProps = {
   nota: string;
   onSave?: (nota: string) => Promise<void> | void;
   saving?: boolean;
-  side?: "left" | "right";
+  side?: "left" | "right" | "editor";
   /** Si es true, no muestra el botón flotante (abrir con open/onOpenChange). */
   hideTrigger?: boolean;
   open?: boolean;
@@ -88,7 +88,11 @@ export default function NotaCancionFab({
 
   const tieneNota = nota.trim().length > 0;
   const sideClass =
-    side === "left" ? "left-4 lg:left-6" : "right-4 lg:right-6";
+    side === "left"
+      ? "left-4 lg:left-6"
+      : side === "editor"
+        ? "right-4 lg:right-[calc(20rem_+_1.5rem)]"
+        : "right-4 lg:right-6";
 
   function handleOpen() {
     setDraft(nota);

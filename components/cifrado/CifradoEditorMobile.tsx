@@ -1254,7 +1254,10 @@ export default function CifradoEditorMobile({
             </button> : null}
           </div>
 
-          <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
+          <div
+            className="mt-3 flex min-h-0 flex-1 touch-pan-y flex-col overflow-y-auto overscroll-y-contain"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             <div
               className={
                 ingresoTab === "web" && pendingWebImport

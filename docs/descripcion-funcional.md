@@ -110,6 +110,8 @@ Además, en el inicio pueden aparecer:
 
 ### 5.2 Navegación en celular
 
+La barra superior muestra el nombre de la persona debajo de su foto de perfil.
+
 En la parte inferior hay una **barra fija con cinco pestañas**:
 
 1. **Individual**

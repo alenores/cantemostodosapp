@@ -37,17 +37,17 @@ export default function AppTopHeader({
         <TapLink
           href="/perfil"
           ariaLabel="Mi perfil"
-          className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1"
+          className="flex shrink-0 flex-col items-center gap-0 rounded-full px-1 py-1"
         >
-          <span className="max-w-[7rem] truncate text-sm font-semibold text-bg-darker">
-            {displayName}
-          </span>
           <UserAvatar
             nombre={usuario.nombre}
             email={usuario.email}
             avatarUrl={usuario.avatar_url}
             size={32}
           />
+          <span className="max-w-[6rem] truncate text-[11px] font-semibold leading-tight text-bg-darker">
+            {displayName}
+          </span>
         </TapLink>
       </div>
     </header>

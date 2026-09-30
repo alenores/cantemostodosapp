@@ -170,6 +170,8 @@ La persona usuaria ve:
 
 La fila es una **cola personal** que no se comparte con nadie. Cada canción puede estar en uno de estos estados:
 
+En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera, o desde la lista cuando ya está arriba de todo. Igual en la fila de la juntada (Salas).
+
 | Estado | Significado |
 |--------|-------------|
 | **Activa** | La que se está cantando ahora |

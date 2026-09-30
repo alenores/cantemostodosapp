@@ -8,6 +8,7 @@ import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
 import { useColaAleatorio } from "@/hooks/useColaAleatorio";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import type { ColaIndividualRow } from "@/hooks/useColaIndividual";
 import type { CancionInput } from "@/lib/cola-logic";
@@ -327,6 +328,14 @@ export default function ColaIndividualSheet({
     closeCola();
   });
 
+  const activeDragIdRef = useRef(activeDragId);
+  activeDragIdRef.current = activeDragId;
+  useSwipeDownToClose(
+    sheetVisible && !sheetExiting && !colaSidePanelMode,
+    closeCola,
+    () => activeDragIdRef.current !== null,
+  );
+
   function handleOpenBuscador() {
     if (!colaSidePanelMode) {
       closeCola();
@@ -400,6 +409,7 @@ export default function ColaIndividualSheet({
     return (
       <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
         <div
+          data-swipe-close-scroll=""
           className="min-h-0 flex-1 touch-pan-y select-none overflow-y-auto overscroll-none px-3 py-3"
           style={{
             paddingBottom: activeDragId
@@ -486,6 +496,7 @@ export default function ColaIndividualSheet({
         className={shellClassName}
         style={shellStyle}
         aria-label={COLA_PANEL_ARIA_LABEL}
+        data-swipe-close-panel=""
         {...dialogProps}
       >
         <ColaPanelHeader

@@ -47,7 +47,7 @@ import { createClient } from "@/lib/supabase/client";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import { Bell, MicVocal, Music, Search, WifiOff, X } from "lucide-react";
+import { Bell, Music, Search, Star, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
@@ -691,7 +691,7 @@ export default function CancioneroPageClient({
                     onClick={() => navigateWithProgress(`/practica/entrenador-canciones/ver?id=${cancion.id}`)}
                     className="flex min-w-0 items-center gap-3 rounded-[12px] border border-border-card bg-bg-card px-4 py-3 text-left"
                   >
-                    <MicVocal className="size-6 shrink-0 text-accent" aria-label="Entrenador de canciones" />
+                    <Star className="size-6 shrink-0 fill-current text-[var(--accent-vocal)]" aria-label="Entrenador de canciones" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[17px] font-semibold text-text-primary">{cancion.nombre}</span>
                       {cancion.artista ? <span className="block truncate text-[13px] text-text-muted">{cancion.artista}</span> : null}

@@ -1,5 +1,5 @@
 import type { ResultadoIconoTipo } from "@/lib/buscador";
-import { FileText, Globe2, MicVocal, Star } from "lucide-react";
+import { Bookmark, FileText, Globe2, Star } from "lucide-react";
 
 const ICONO_STYLE: Record<
   ResultadoIconoTipo,
@@ -13,8 +13,10 @@ const ICONO_STYLE: Record<
 
 type LetraFuenteIconProps = {
   tipo: ResultadoIconoTipo;
-  /** Reemplaza el icono de fuente por la estrella de cifrado avanzado. */
+  /** Marca una canción con edición avanzada. */
   premium?: boolean;
+  /** Marca una canción guardada en Favoritas. */
+  favorita?: boolean;
   compact?: boolean;
   /** Mismo tamaño (size-5) para hoja y web — p. ej. cards de cola. */
   uniform?: boolean;
@@ -23,6 +25,7 @@ type LetraFuenteIconProps = {
 export default function LetraFuenteIcon({
   tipo,
   premium = false,
+  favorita = false,
   compact = false,
   uniform = false,
 }: LetraFuenteIconProps) {
@@ -30,10 +33,31 @@ export default function LetraFuenteIcon({
   const sizeClass = compact ? "size-4" : uniform ? "size-5" : base.sizeClass;
   const className = `${sizeClass} shrink-0`;
 
-  if (premium) {
+  if (favorita) {
+    return (
+      <Bookmark
+        className={`${className} fill-current`}
+        style={{ color: "var(--tuner-in-tune)" }}
+        aria-label="En Favoritas"
+      />
+    );
+  }
+
+  if (tipo === "practica") {
     return (
       <Star
-        className={`${className} fill-[var(--tuner-cerca)] text-[var(--tuner-cerca)]`}
+        className={`${className} fill-current`}
+        style={{ color: "var(--accent-vocal)" }}
+        aria-label="Entrenador de canciones"
+      />
+    );
+  }
+
+  if (premium) {
+    return (
+      <FileText
+        className={className}
+        style={{ color: "var(--tuner-cerca)" }}
         aria-label="Canción con cifrado avanzado"
       />
     );
@@ -49,8 +73,14 @@ export default function LetraFuenteIcon({
     );
   }
 
-  if (tipo === "practica") {
-    return <MicVocal className={className} style={{ color: base.color }} aria-label="Entrenador de canciones" />;
+  if (tipo === "cancionero") {
+    return (
+      <FileText
+        className={className}
+        style={{ color: "var(--text-faint)" }}
+        aria-label="Canción simple"
+      />
+    );
   }
 
   return (

@@ -49,6 +49,8 @@ import {
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
   CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
+  CIFRADO_DETAILS_CARD_TITLE_CLASS,
+  CIFRADO_DETAILS_FIELD_LABEL_CLASS,
   CIFRADO_CONTROLS_SEGMENTED_CLASS,
   CIFRADO_EDITOR_COMPAS_PANEL_CLASS,
   CIFRADO_EDITOR_PC_SHELL_CLASS,
@@ -4386,22 +4388,23 @@ export default function CifradoEditor({
                   role="tablist"
                   aria-label="Forma de ingreso"
                 >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={ingresoTab === "letra"}
-                    onClick={() => {
-                      setIngresoTab("letra");
-                      if (error) {
+                  {!onPersist ? (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={ingresoTab === "basicas"}
+                      onClick={() => {
+                        setIngresoTab("basicas");
                         setError(null);
-                      }
-                    }}
-                    className={cifradoEditorToolbarSegmentedButtonClass(
-                      ingresoTab === "letra",
-                    )}
-                  >
-                    Escribir letra
-                  </button>
+                      }}
+                      className={`${cifradoEditorToolbarSegmentedButtonClass(
+                        ingresoTab === "basicas",
+                      )} min-w-0 whitespace-normal px-1`}
+                      style={{ fontSize: "clamp(0.65rem, 1vw, 0.75rem)", lineHeight: 1.1 }}
+                    >
+                      Cancionero (simple)
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     role="tab"
@@ -4434,23 +4437,22 @@ export default function CifradoEditor({
                   >
                     Pegar letra+acordes
                   </button>
-                  {!onPersist ? (
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={ingresoTab === "basicas"}
-                      onClick={() => {
-                        setIngresoTab("basicas");
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ingresoTab === "letra"}
+                    onClick={() => {
+                      setIngresoTab("letra");
+                      if (error) {
                         setError(null);
-                      }}
-                      className={`${cifradoEditorToolbarSegmentedButtonClass(
-                        ingresoTab === "basicas",
-                      )} min-w-0 whitespace-normal px-1`}
-                      style={{ fontSize: "clamp(0.65rem, 1vw, 0.75rem)", lineHeight: 1.1 }}
-                    >
-                      Cancionero (letras básicas)
-                    </button>
-                  ) : null}
+                      }
+                    }}
+                    className={cifradoEditorToolbarSegmentedButtonClass(
+                      ingresoTab === "letra",
+                    )}
+                  >
+                    Escribir letra
+                  </button>
                 </div>
 
                 {ingresoTab === "basicas" && !onPersist ? (
@@ -4972,9 +4974,13 @@ export default function CifradoEditor({
               </div>
 
               <div className="space-y-3 px-3 pb-3">
-                <VozPcConfigCard title="Canción" accentVar="var(--accent)">
+                <VozPcConfigCard
+                  title="Nombre y artista"
+                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  accentVar="var(--accent)"
+                >
                   <label
-                    className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                    className={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
                     htmlFor="cifrado-nombre"
                   >
                     Nombre *
@@ -5003,7 +5009,7 @@ export default function CifradoEditor({
                     }}
                   />
                   <label
-                    className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
+                    className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-4`}
                     htmlFor="cifrado-artista"
                   >
                     Artista
@@ -5017,12 +5023,17 @@ export default function CifradoEditor({
                   />
                 </VozPcConfigCard>
 
-                <VozPcConfigCard title="Tonalidad" accentVar="var(--accent)">
+                <VozPcConfigCard
+                  title="Tono y modo"
+                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  accentVar="var(--accent)"
+                >
                   <CifradoTonalidadFields
                     idPrefix="cifrado-sidebar"
                     notacion={notacion === "numero" ? "es" : notacion}
                     tonalidadIndex={tonalidadIndex}
                     modoTonal={modoTonal}
+                    fieldLabelClassName={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
                     onTonalidadChange={setTonalidadIndex}
                     onModoTonalChange={setModoTonal}
                   />
@@ -5115,61 +5126,64 @@ export default function CifradoEditor({
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
               {ingresoTab !== "web" || pendingWebImport ? (
-                <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                  <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-                    Datos de la canción
-                  </p>
-                  <label
-                    className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
-                    htmlFor="cifrado-nombre-ingreso"
-                  >
-                    Nombre
-                  </label>
-                  <input
-                    id="cifrado-nombre-ingreso"
-                    ref={nombreInputRef}
-                    value={nombre}
-                    onChange={(event) => {
-                      setNombre(event.target.value);
-                      if (saveValidation) {
-                        setSaveValidation(null);
-                      }
-                    }}
-                    className={inputClassName}
-                    placeholder="Nombre de la canción"
-                  />
-                  <IntercambiarNombreArtista
-                    disabled={!nombre.trim() && !artista.trim()}
-                    onIntercambiar={() => {
-                      setNombre(artista);
-                      setArtista(nombre);
-                      if (saveValidation) {
-                        setSaveValidation(null);
-                      }
-                    }}
-                  />
-                  <label
-                    className={`${CIFRADO_CONTROLS_SECTION_LABEL_CLASS} mt-4`}
-                    htmlFor="cifrado-artista-ingreso"
-                  >
-                    Artista
-                  </label>
-                  <input
-                    id="cifrado-artista-ingreso"
-                    value={artista}
-                    onChange={(event) => setArtista(event.target.value)}
-                    className={inputClassName}
-                    placeholder="Artista"
-                  />
-                  <div className="mt-4">
-                    <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
-                      Tonalidad
+                <div className="space-y-4">
+                  <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                    <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
+                      Nombre y artista
+                    </p>
+                    <label
+                      className={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                      htmlFor="cifrado-nombre-ingreso"
+                    >
+                      Nombre
+                    </label>
+                    <input
+                      id="cifrado-nombre-ingreso"
+                      ref={nombreInputRef}
+                      value={nombre}
+                      onChange={(event) => {
+                        setNombre(event.target.value);
+                        if (saveValidation) {
+                          setSaveValidation(null);
+                        }
+                      }}
+                      className={inputClassName}
+                      placeholder="Nombre de la canción"
+                    />
+                    <IntercambiarNombreArtista
+                      disabled={!nombre.trim() && !artista.trim()}
+                      onIntercambiar={() => {
+                        setNombre(artista);
+                        setArtista(nombre);
+                        if (saveValidation) {
+                          setSaveValidation(null);
+                        }
+                      }}
+                    />
+                    <label
+                      className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-4`}
+                      htmlFor="cifrado-artista-ingreso"
+                    >
+                      Artista
+                    </label>
+                    <input
+                      id="cifrado-artista-ingreso"
+                      value={artista}
+                      onChange={(event) => setArtista(event.target.value)}
+                      className={inputClassName}
+                      placeholder="Artista"
+                    />
+                  </div>
+                  <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                    <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
+                      Tono y modo
                     </p>
                     <CifradoTonalidadFields
                       idPrefix="cifrado-ingreso"
                       notacion={notacion}
                       tonalidadIndex={ingresoTonalidadIndex}
                       modoTonal={ingresoModoTonal}
+                      fieldLabelClassName={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
                       requireSelection
                       onTonalidadChange={setIngresoTonalidadIndex}
                       onModoTonalChange={setIngresoModoTonal}

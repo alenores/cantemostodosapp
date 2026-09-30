@@ -251,7 +251,11 @@ function ResultadoItem({
           />
         </>
       )}
-      <LetraFuenteIcon tipo={iconoTipo} premium={premium} />
+      <LetraFuenteIcon
+        tipo={iconoTipo}
+        premium={premium}
+        favorita={resultado.sitio === "Favoritas"}
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[17px] font-semibold text-text-primary">
           {nombre}

@@ -81,6 +81,7 @@ export default function LecturaTonoPanel({
             tonalidadIndex={pendingTonalidadIndex}
             modoTonal={DEFAULT_MODO_TONAL}
             showModoTonal={false}
+            showTonalidadStepButtons
             onTonalidadChange={setPendingTonalidadIndex}
             onModoTonalChange={() => {}}
           />

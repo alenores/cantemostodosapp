@@ -110,7 +110,7 @@ Además, en el inicio pueden aparecer:
 
 ### 5.2 Navegación en celular
 
-La barra superior muestra solo la foto de perfil (sin el nombre).
+La cabecera superior se oculta en **Individual** y **Salas** para dejar más espacio a la canción.
 
 En la parte inferior hay una **barra fija con cinco pestañas**:
 
@@ -201,11 +201,13 @@ La fila conserva también los enlaces externos del día anterior: aparecen como 
 
 Individual funciona **sin internet** con el Cancionero descargado. Cuando hay conexión, la app consulta si hay novedades y las muestra en un listado. El usuario acepta con **Descargar todo**: se bajan todas las canciones nuevas y modificadas del listado, sin selección individual. Las que no cambiaron permanecen en el celular.
 
+Si el usuario edita desde el celular una canción que ya tenía descargada, la copia local se actualiza junto con el guardado. Esa misma edición no vuelve a aparecer como novedad para descargar.
+
 **Volver a la app la deja donde estaba.** Si la app queda en segundo plano y el celular la rearma, vuelve a la misma pantalla (cancionero, editor, sala, etc.), nunca al inicio. Cerrarla a mano y abrirla desde el ícono sí arranca en el inicio.
 
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
 
-En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. **Contraer** queda como botón independiente, arriba del filtro.
+En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. **Contraer** queda como botón independiente, arriba del filtro. El menú de controles comienza justo debajo del filtro. En los controles de tono, la flecha izquierda baja un semitono y la derecha lo sube.
 
 ---
 
@@ -225,7 +227,7 @@ El buscador se abre desde Individual, Salas o el modo lectura.
 
 Los resultados se agrupan en:
 
-1. **Del cancionero** (o **Favoritas** si estás en esa pestaña): canciones guardadas en la app. Las que tienen cifrado avanzado (acordes y compases) se distinguen visualmente.
+1. **Del cancionero** (o **Favoritas** si estás en esa pestaña): canciones guardadas en la app. Las simples usan una hoja gris y las avanzadas una hoja resaltada. En Favoritas se muestra el marcador de favorito.
 2. **En internet**: links guardados previamente y resultados de sitios web de acordes y letras (por ejemplo Cifra Club, sitios de acordes).
 
 Si no hay resultados: *"No encontramos resultados…"* o *"No tenés canciones guardadas en Favoritas"*.
@@ -273,7 +275,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
 - Botón **+** para **Agregar canción** (requiere cuenta y conexión).
-- Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con el micrófono. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
+- Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
 - El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.
 
 **Mensajes según situación:**
@@ -326,9 +328,9 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 
 - **Celular:** pantalla completa dedicada al editor.
 - **Computadora:** ventana superpuesta sobre el listado o el hub.
-- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. En ambos casos se puede revisar antes de importar.
+- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
 - En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
-- El ingreso tiene una cuarta pestaña, **Cancionero (letras básicas)**, con canciones que todavía no tienen edición avanzada; al elegir una propia, se abre para completarla, y una canción de otra persona se abre como copia.
+- El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una propia, se abre para completarla, y una canción de otra persona se abre como copia.
 
 ### 10.2 Tres modos de edición
 
@@ -356,6 +358,7 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 ### 10.5 Datos de la canción y guardado
 
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
+- Nombre y artista aparecen juntos en una tarjeta; tono y modo, en otra. Los títulos y campos usan mayúscula inicial y el resto en minúscula.
 - **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
 - Botón **Guardar**.

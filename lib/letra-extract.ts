@@ -213,8 +213,10 @@ export async function obtenerLetraDesdeUrl(url: string): Promise<string> {
     const html = await response.text();
     const letra = extractLetraFromHtml(html, url);
 
-    if (!letra) {
-      throw new Error("No se pudo extraer la letra del HTML");
+    if (!letra || !isUsefulExtractedLetra(letra)) {
+      throw new Error(
+        "No se pudo extraer una letra completa de esta canción. Revisá la página antes de volver a intentar.",
+      );
     }
 
     return letra;

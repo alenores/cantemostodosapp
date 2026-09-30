@@ -201,6 +201,7 @@ export default function CifradoLecturaSidePanel({
             tonalidadIndex={tonalidadIndex}
             modoTonal={modoTonal}
             showModoTonal={false}
+            showTonalidadStepButtons
             onTonalidadChange={onTonalidadChange}
             onModoTonalChange={onModoTonalChange}
           />

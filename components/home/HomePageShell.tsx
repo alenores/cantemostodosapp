@@ -27,11 +27,6 @@ import {
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
 import { Minimize2, Search, SlidersHorizontal, X } from "lucide-react";
-import AppTopHeader from "@/components/ui/AppTopHeader";
-import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { createClient } from "@/lib/supabase/client";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import type { UsuarioActivo } from "@/types";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
@@ -43,16 +38,6 @@ const LECTURA_TOP_CHIP =
 export default function HomePageShell() {
   const cola = useColaIndividual();
   const colaSidePanel = useColaSidePanel();
-  const [usuario, setUsuario] = useState<UsuarioActivo>(OFFLINE_GUEST_USUARIO);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUsuario(mapUserToUsuarioActivo(user));
-      }
-    });
-  }, []);
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -72,7 +57,7 @@ export default function HomePageShell() {
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
   const lecturaFilterTopCss = getLecturaFabMenuTopCss();
   const lecturaSearchTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
-  const lecturaOverlayMenuTopCss = `calc(${lecturaSearchTopCss} + 44px)`;
+  const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
   const cancionActivaDelCancionero = Boolean(
     cola.cancionActiva?.url_letra.startsWith("cancionero://"),
   );
@@ -245,7 +230,6 @@ export default function HomePageShell() {
       className="flex flex-col overflow-hidden bg-bg-sala"
       style={{ height: "100dvh" }}
     >
-      {!modoLectura ? <AppTopHeader usuario={usuario} /> : null}
       <main
         className={`sala-cantar-main relative flex min-h-0 flex-col ${
           lecturaPantallaCompleta

@@ -16,8 +16,8 @@ import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import {
   ChevronLeft,
   ChevronRight,
+  FileText,
   Maximize2,
-  Star,
   X,
 } from "lucide-react";
 import {
@@ -223,8 +223,8 @@ function CancionSlide({
             className="flex min-w-0 items-center gap-1.5 truncate text-lg font-extrabold text-accent"
           >
             {tieneCifradoAvanzado && (
-              <Star
-                className="size-3.5 shrink-0 fill-[var(--tuner-cerca)] text-[var(--tuner-cerca)]"
+              <FileText
+                className="size-3.5 shrink-0 text-[var(--tuner-cerca)]"
                 aria-hidden="true"
               />
             )}

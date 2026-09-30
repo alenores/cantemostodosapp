@@ -18,6 +18,12 @@ export const CIFRADO_CONTROLS_SEGMENTED_CLASS =
 export const CIFRADO_CONTROLS_PANEL_BOX_CLASS =
   "rounded-[10px] border border-border/70 bg-bg-dark/60 px-3 py-3";
 
+export const CIFRADO_DETAILS_CARD_TITLE_CLASS =
+  "mb-3 text-sm font-semibold normal-case text-text-primary";
+
+export const CIFRADO_DETAILS_FIELD_LABEL_CLASS =
+  "mb-1.5 block text-xs font-medium normal-case text-text-secondary";
+
 export const CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS =
   "w-full rounded-[10px] border border-border bg-bg-card py-2.5 text-sm font-semibold text-text-secondary";
 

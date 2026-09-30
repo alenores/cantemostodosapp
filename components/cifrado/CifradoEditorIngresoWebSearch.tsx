@@ -107,7 +107,7 @@ export default function CifradoEditorIngresoWebSearch({
   const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
   const [previewTexto, setPreviewTexto] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const previewRequestRef = useRef<AbortController | null>(null);
 
   const seleccionadoDisplay = useMemo(() => {
@@ -216,13 +216,19 @@ export default function CifradoEditorIngresoWebSearch({
     const controller = new AbortController();
     previewRequestRef.current = controller;
     setPreviewTexto("");
-    setPreviewError(false);
+    setPreviewError(null);
     setPreviewLoading(true);
     try {
       const texto = await obtenerTexto(resultado.url, controller.signal);
       if (!controller.signal.aborted) setPreviewTexto(texto);
-    } catch {
-      if (!controller.signal.aborted) setPreviewError(true);
+    } catch (previewError) {
+      if (!controller.signal.aborted) {
+        setPreviewError(
+          previewError instanceof Error
+            ? previewError.message
+            : "No se pudo mostrar esta canción. Probá con otra.",
+        );
+      }
     } finally {
       if (!controller.signal.aborted) setPreviewLoading(false);
     }
@@ -314,7 +320,7 @@ export default function CifradoEditorIngresoWebSearch({
                 <p className="text-sm">Cargando letra…</p>
               ) : previewError ? (
                 <div className="flex flex-col items-start gap-3 text-sm">
-                  <p>No se pudo mostrar esta canción.</p>
+                  <p>{previewError}</p>
                   <button
                     type="button"
                     onClick={() => void cargarPreviewTexto(seleccionado)}

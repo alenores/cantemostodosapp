@@ -203,6 +203,7 @@ function MiCancionItem({
         <LetraFuenteIcon
           tipo={getIconoTipo(cancion)}
           premium={tieneCifradoAvanzado}
+          favorita
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[17px] font-semibold text-text-primary">

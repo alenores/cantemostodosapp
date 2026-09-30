@@ -54,10 +54,6 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import AppTopHeader from "@/components/ui/AppTopHeader";
-import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import type { UsuarioActivo } from "@/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 
@@ -76,16 +72,6 @@ export default function SalaPageShell({
   const navigateWithProgress = useNavigateWithProgress();
   const colaSidePanel = useColaSidePanel();
   const online = useOnlineStatus();
-  const [usuario, setUsuario] = useState<UsuarioActivo>(OFFLINE_GUEST_USUARIO);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUsuario(mapUserToUsuarioActivo(user));
-      }
-    });
-  }, []);
   const disconnected = !online;
   const [hadOnlineSession, setHadOnlineSession] = useState(false);
   const colaAvisoShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,7 +90,7 @@ export default function SalaPageShell({
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
   const lecturaFilterTopCss = getLecturaFabMenuTopCss();
   const lecturaSearchTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
-  const lecturaOverlayMenuTopCss = `calc(${lecturaSearchTopCss} + 44px)`;
+  const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -635,7 +621,6 @@ export default function SalaPageShell({
       className="flex flex-col overflow-hidden bg-bg-sala"
       style={{ height: "100dvh" }}
     >
-      {!modoLectura ? <AppTopHeader usuario={usuario} /> : null}
       {disconnected && !modoLectura ? (
         <div
           className="shrink-0 border-b border-border bg-bg-card px-4 py-3"

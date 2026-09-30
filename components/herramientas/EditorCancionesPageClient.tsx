@@ -11,12 +11,20 @@ import {
 } from "@/lib/cancionero";
 import {
   buildCifradoEditorSession,
+  type CifradoSaveResult,
   type CifradoEditorPersistPayload,
   type CifradoEditorSession,
 } from "@/lib/cifrado-editor-session";
 import { clampBpm } from "@/lib/cifrado";
 import { normalizeModoTonal } from "@/lib/cifrado-escala";
-import { requestCancioneroUpdateCheck } from "@/lib/offline/cancionero-events";
+import {
+  dispatchCancioneroSyncFinished,
+  requestCancioneroUpdateCheck,
+} from "@/lib/offline/cancionero-events";
+import {
+  getCancioneroLocalAll,
+  mergeCancioneroLocalUpdates,
+} from "@/lib/offline/cancionero-store";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -161,14 +169,54 @@ export default function EditorCancionesPageClient() {
     [supabase],
   );
 
+  const actualizarCopiaLocalEditada = useCallback(
+    async (result?: CifradoSaveResult) => {
+      if (!result) return;
+
+      try {
+        const localSongs = await getCancioneroLocalAll();
+        if (!localSongs.some((song) => song.id === result.id)) return;
+
+        const { data, error } = await supabase
+          .from("canciones_guardadas")
+          .select(
+            "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default",
+          )
+          .eq("id", result.id)
+          .is("sala_id", null)
+          .maybeSingle();
+
+        if (error || !data?.updated_at) return;
+
+        await mergeCancioneroLocalUpdates([
+          {
+            ...data,
+            url_letra: data.url_letra ?? "",
+            updated_at: new Date(data.updated_at).toISOString(),
+          },
+        ]);
+        dispatchCancioneroSyncFinished();
+      } catch {
+        // La consulta general de novedades queda como respaldo.
+      }
+    },
+    [supabase],
+  );
+
   const syncCancionero = useCallback(async () => {
     if (online) requestCancioneroUpdateCheck();
   }, [online]);
 
-  const handleSavedMobile = useCallback(async () => {
+  const handleSavedMobile = useCallback(async (result?: CifradoSaveResult) => {
+    await actualizarCopiaLocalEditada(result);
     await syncCancionero();
     router.push(backHref);
-  }, [backHref, router, syncCancionero]);
+  }, [actualizarCopiaLocalEditada, backHref, router, syncCancionero]);
+
+  const handleSavedDesktop = useCallback(async (result?: CifradoSaveResult) => {
+    await actualizarCopiaLocalEditada(result);
+    await syncCancionero();
+  }, [actualizarCopiaLocalEditada, syncCancionero]);
 
   if (isLoggedIn !== true || (editingId != null && !ready)) {
     return null;
@@ -186,9 +234,7 @@ export default function EditorCancionesPageClient() {
             router.push(backHref);
           }}
           showPageClose
-          onSaved={() => {
-            void syncCancionero();
-          }}
+          onSaved={(result) => void handleSavedDesktop(result)}
         />
       ) : (
         <CifradoEditorMobile
@@ -198,9 +244,7 @@ export default function EditorCancionesPageClient() {
           backHref={backHref}
           backAriaLabel={backAriaLabel}
           onPersist={persistCancionero}
-          onSaved={() => {
-            void handleSavedMobile();
-          }}
+          onSaved={(result) => void handleSavedMobile(result)}
         />
       )}
     </div>

@@ -44,11 +44,13 @@ export function VozPcShellLayout({
 export function VozPcConfigCard({
   title,
   className,
+  titleClassName,
   accentVar = "var(--voz-config)",
   children,
 }: {
   title?: string;
   className?: string;
+  titleClassName?: string;
   accentVar?: string;
   children: ReactNode;
 }) {
@@ -58,7 +60,7 @@ export function VozPcConfigCard({
     >
       {title ? (
         <p
-          className="mb-4 text-[11px] font-bold uppercase tracking-wide"
+          className={titleClassName ?? "mb-4 text-[11px] font-bold uppercase tracking-wide"}
           style={{ color: accentVar }}
         >
           {title}

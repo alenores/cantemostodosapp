@@ -14,8 +14,6 @@ export default function AppTopHeader({
   usuario,
   mostrarQr = false,
 }: AppTopHeaderProps) {
-  const displayName = usuario.nombre.trim() || "Mi perfil";
-
   return (
     <header
       className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 pb-3 lg:hidden [body[data-hide-app-header='true']_&]:hidden"
@@ -37,7 +35,7 @@ export default function AppTopHeader({
         <TapLink
           href="/perfil"
           ariaLabel="Mi perfil"
-          className="flex shrink-0 flex-col items-center gap-0 rounded-full px-1 py-1"
+          className="flex shrink-0 items-center rounded-full py-1 pl-2 pr-1"
         >
           <UserAvatar
             nombre={usuario.nombre}
@@ -45,9 +43,6 @@ export default function AppTopHeader({
             avatarUrl={usuario.avatar_url}
             size={32}
           />
-          <span className="max-w-[6rem] truncate text-[11px] font-semibold leading-tight text-bg-darker">
-            {displayName}
-          </span>
         </TapLink>
       </div>
     </header>

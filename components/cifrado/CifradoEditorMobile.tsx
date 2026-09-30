@@ -117,7 +117,7 @@ const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 
   // Alto mínimo: que se vean al menos diez renglones de letra con acordes.
   const textareaClassName =
-  "min-h-[240px] w-full flex-1 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
+  "h-[50dvh] min-h-[240px] w-full shrink-0 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
 type CifradoEditorMobileProps = {
   session?: CifradoEditorSession | null;
@@ -1146,11 +1146,9 @@ export default function CifradoEditorMobile({
 
   return (
     <div
-      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app ${
-        phase === "cifrado"
-          ? "max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh"
-          : ""
-      }`}
+      // Alto fijo al de la pantalla en ambas fases: una sola zona de scroll
+      // (la de adentro), sin competir con el scroll de la página.
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh"
     >
       {phase === "ingreso" ? (
         <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
@@ -1189,7 +1187,7 @@ export default function CifradoEditorMobile({
       ) : null}
 
       {phase === "ingreso" ? (
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 pb-28">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-4 pb-4">
           <div
             className={`shrink-0 ${CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}`}
             role="tablist"
@@ -1260,9 +1258,10 @@ export default function CifradoEditorMobile({
           >
             <div
               className={
-                ingresoTab === "web" && pendingWebImport
-                  ? "flex shrink-0 flex-col"
-                  : "flex min-h-0 flex-1 flex-col"
+                ingresoTab === "basicas" ||
+                (ingresoTab === "web" && !pendingWebImport)
+                  ? "flex min-h-0 flex-1 flex-col"
+                  : "flex shrink-0 flex-col"
               }
             >
               {ingresoTab === "basicas" && basicSongsTabVisible ? (

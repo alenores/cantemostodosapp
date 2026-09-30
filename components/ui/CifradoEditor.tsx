@@ -4301,10 +4301,16 @@ export default function CifradoEditor({
           bpm_default: payload.bpm_default,
         });
       } else {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) {
+          throw new Error("Iniciá sesión para guardar la canción.");
+        }
+
         const { data: inserted, error: saveError } = await supabase
           .from("canciones_guardadas")
           .insert({
             sala_id: null,
+            user_id: authData.user.id,
             url_letra: null,
             ...payload,
           })

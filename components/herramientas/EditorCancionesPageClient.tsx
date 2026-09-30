@@ -65,6 +65,19 @@ export default function EditorCancionesPageClient() {
       }
 
       try {
+        const { data: ownerRow, error: ownerError } = await supabase
+          .from("canciones_guardadas")
+          .select("user_id")
+          .eq("id", editingId)
+          .is("sala_id", null)
+          .maybeSingle();
+
+        if (ownerError) throw ownerError;
+        if (!ownerRow || ownerRow.user_id !== authSession?.user.id) {
+          router.replace(backHref);
+          return;
+        }
+
         const detalle = await fetchCancionCifradoDetalle(supabase, editingId);
 
         if (detalle) {
@@ -106,7 +119,7 @@ export default function EditorCancionesPageClient() {
     }
 
     void loadSession();
-  }, [editingId, router, supabase]);
+  }, [backHref, editingId, router, supabase]);
 
   const persistCancionero = useCallback(
     async (id: number | undefined, payload: CifradoEditorPersistPayload) => {
@@ -115,10 +128,16 @@ export default function EditorCancionesPageClient() {
         return id;
       }
 
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        throw new Error("Iniciá sesión para guardar la canción.");
+      }
+
       const { data, error } = await supabase
         .from("canciones_guardadas")
         .insert({
           sala_id: null,
+          user_id: authData.user.id,
           url_letra: null,
           nombre: payload.nombre.trim(),
           artista: payload.artista?.trim() || null,

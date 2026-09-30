@@ -316,9 +316,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (count === 0) {
-    throw new Error(
-      "No se pudo actualizar la canción: faltan permisos UPDATE en Supabase. Ejecutá supabase/cifrado-avanzado.sql en el SQL Editor del proyecto.",
-    );
+    throw new Error("Solo quien subió la canción puede editarla.");
   }
 }
 
@@ -330,18 +328,19 @@ export async function updateCancionCancioneroMetadatos(
     artista: string;
   },
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("canciones_guardadas")
     .update({
       nombre: data.nombre.trim(),
       artista: data.artista.trim(),
-    })
+    }, { count: "exact" })
     .eq("id", id)
     .is("sala_id", null);
 
   if (error) {
     throw error;
   }
+  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
 }
 
 export async function updateCancionCancionero(
@@ -349,34 +348,36 @@ export async function updateCancionCancionero(
   id: number,
   form: CancioneroFormData,
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("canciones_guardadas")
     .update({
       nombre: form.nombre.trim(),
       artista: form.artista.trim(),
       letra: form.letra.trim(),
-    })
+    }, { count: "exact" })
     .eq("id", id)
     .is("sala_id", null);
 
   if (error) {
     throw error;
   }
+  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
 }
 
 export async function deleteCancionCancionero(
   supabase: SupabaseClient,
   id: number,
 ): Promise<void> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("canciones_guardadas")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", id)
     .is("sala_id", null);
 
   if (error) {
     throw error;
   }
+  if (count === 0) throw new Error("Solo quien subió la canción puede eliminarla.");
 }
 
 export async function guardarLinkEnCancionero(
@@ -442,7 +443,7 @@ export async function guardarLetraEnCancionero(
 
   const { data: existing, error: existingError } = await supabase
     .from("canciones_guardadas")
-    .select("id")
+    .select("id, user_id")
     .is("sala_id", null)
     .eq("nombre", data.nombre.trim())
     .eq("url_letra", urlLetra)
@@ -453,17 +454,20 @@ export async function guardarLetraEnCancionero(
   }
 
   if (existing) {
-    const { error } = await supabase
+    if (existing.user_id !== userId) return;
+
+    const { error, count } = await supabase
       .from("canciones_guardadas")
       .update({
         artista: data.artista?.trim() || null,
         letra: trimmedLetra,
-      })
+      }, { count: "exact" })
       .eq("id", existing.id);
 
     if (error) {
       throw error;
     }
+    if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
 
     return;
   }

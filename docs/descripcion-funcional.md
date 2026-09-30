@@ -846,9 +846,12 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 ### 18.1 A nivel de la aplicación
 
-No existe un rol de **administrador global**. Todos los usuarios tienen las mismas capacidades generales, con dos excepciones:
+Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. La categoría todavía no cambia las funciones disponibles; los beneficios concretos para cada grupo se definirán por separado.
+
+Todos los usuarios con cuenta tienen las mismas capacidades generales, con dos excepciones:
 
 1. **Canciones del cancionero:** solo el **autor** puede editarlas o eliminarlas del cancionero global. Cualquier usuario con cuenta puede guardarlas en Favoritas.
+   Al guardar una canción nueva, queda asociada a la cuenta que la subió. Abrir directamente el editor con una canción ajena no da permiso para modificarla.
 2. **Salas:** existen roles de **creador** y **miembro** (detallados en la sección 11.6).
 
 ### 18.2 Permisos sobre canciones

@@ -17,21 +17,5 @@ ALTER TABLE public.canciones_guardadas
 ALTER TABLE public.canciones_guardadas
   ALTER COLUMN url_letra DROP NOT NULL;
 
--- Permisos RLS para editar canciones del cancionero (requerido para Guardar en el editor).
--- Sin la política UPDATE, Postgres devuelve 0 filas actualizadas sin error.
+-- Los permisos de lectura y escritura se configuran en cancionero-propietario-solo.sql.
 GRANT SELECT, UPDATE ON public.canciones_guardadas TO authenticated;
-
-DROP POLICY IF EXISTS "auth lee guardadas" ON public.canciones_guardadas;
-CREATE POLICY "auth lee guardadas"
-  ON public.canciones_guardadas
-  FOR SELECT
-  TO authenticated
-  USING (true);
-
-DROP POLICY IF EXISTS "auth modifica guardadas" ON public.canciones_guardadas;
-CREATE POLICY "auth modifica guardadas"
-  ON public.canciones_guardadas
-  FOR UPDATE
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);

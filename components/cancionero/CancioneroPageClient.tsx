@@ -44,8 +44,10 @@ import type {
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
 import { createClient } from "@/lib/supabase/client";
+import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
+import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import { Bell, Music, Search, WifiOff, X } from "lucide-react";
+import { Bell, MicVocal, Music, Search, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
@@ -69,6 +71,7 @@ export default function CancioneroPageClient({
   const supabase = useMemo(() => createClient(), []);
   const usuarioLogueado = usuarioId !== null;
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
+  const [cancionesPractica, setCancionesPractica] = useState<CancionPracticaListItem[]>([]);
   const [localReady, setLocalReady] = useState(false);
   const [query, setQuery] = useState("");
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
@@ -99,6 +102,11 @@ export default function CancioneroPageClient({
     () => filterCancionesCancionero(canciones, query),
     [canciones, query],
   );
+  const practicaFiltradas = useMemo(() => {
+    if (!usuarioLogueado) return [];
+    const normalized = query.trim().toLowerCase();
+    return cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || Boolean(cancion.artista?.toLowerCase().includes(normalized)));
+  }, [cancionesPractica, query, usuarioLogueado]);
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {
@@ -152,6 +160,22 @@ export default function CancioneroPageClient({
     setCanciones(data);
     setLocalReady(true);
   }, []);
+
+  const loadPractica = useCallback(async (skipSync = false) => {
+    try {
+      setCancionesPractica(await listCancionesPractica(supabase, { skipSync }));
+    } catch {
+      setCancionesPractica([]);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!usuarioLogueado) return;
+    void Promise.resolve().then(() => loadPractica());
+    const handleChange = () => { void loadPractica(true); };
+    window.addEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleChange);
+    return () => window.removeEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleChange);
+  }, [loadPractica, usuarioLogueado]);
 
   useEffect(() => {
     void loadLocalCanciones();
@@ -608,7 +632,7 @@ export default function CancioneroPageClient({
               </p>
             )}
 
-            {canciones.length === 0 ? (
+            {canciones.length === 0 && (!usuarioLogueado || cancionesPractica.length === 0) ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
                 <Music className="size-10 text-text-faint" aria-hidden="true" />
                 <p className="max-w-xs text-sm text-text-muted">
@@ -617,7 +641,7 @@ export default function CancioneroPageClient({
                     : "No hay copia local todavía. Conectate y aceptá la descarga del Cancionero."}
                 </p>
               </div>
-            ) : cancionesFiltradas.length === 0 ? (
+            ) : cancionesFiltradas.length === 0 && practicaFiltradas.length === 0 ? (
               <p className="py-8 text-center text-sm text-text-muted">
                 No hay canciones que coincidan con tu búsqueda.
               </p>
@@ -645,6 +669,7 @@ export default function CancioneroPageClient({
                       isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
                       puedeEditarEliminar={esCancionDelUsuario(cancion, usuarioId)}
+                      isFavorita={misCancionesIds.has(cancion.id)}
                       mostrarSumarMisCanciones={mostrarSumarMisCanciones}
                       modoSeleccion={modoSeleccionMisCanciones}
                       actionsOpen={activeCardId === cancion.id}
@@ -658,6 +683,21 @@ export default function CancioneroPageClient({
                       onEliminar={handleEliminar}
                     />
                   </div>
+                ))}
+                {practicaFiltradas.map((cancion) => (
+                  <button
+                    key={`practica-${cancion.id}`}
+                    type="button"
+                    onClick={() => navigateWithProgress(`/practica/entrenador-canciones/ver?id=${cancion.id}`)}
+                    className="flex min-w-0 items-center gap-3 rounded-[12px] border border-border-card bg-bg-card px-4 py-3 text-left"
+                  >
+                    <MicVocal className="size-6 shrink-0 text-accent" aria-label="Entrenador de canciones" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[17px] font-semibold text-text-primary">{cancion.nombre}</span>
+                      {cancion.artista ? <span className="block truncate text-[13px] text-text-muted">{cancion.artista}</span> : null}
+                      <span className="block text-[11px] text-text-muted">Mi versión de práctica</span>
+                    </span>
+                  </button>
                 ))}
               </div>
             )}

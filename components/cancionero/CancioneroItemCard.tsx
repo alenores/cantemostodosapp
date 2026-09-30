@@ -5,7 +5,7 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import { COLA_AVISO_EXIT_MS } from "@/lib/sala-layout";
 import type { CancionCancionero } from "@/types";
-import { Bookmark, Pencil, Trash2 } from "lucide-react";
+import { Bookmark, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -37,6 +37,7 @@ type CancioneroItemCardProps = {
   isDesktop?: boolean;
   mutationsEnabled?: boolean;
   puedeEditarEliminar?: boolean;
+  isFavorita?: boolean;
   mostrarSumarMisCanciones?: boolean;
   modoSeleccion?: boolean;
   actionsOpen: boolean;
@@ -53,6 +54,7 @@ export default function CancioneroItemCard({
   isDesktop = false,
   mutationsEnabled = true,
   puedeEditarEliminar = false,
+  isFavorita = false,
   mostrarSumarMisCanciones = false,
   modoSeleccion = false,
   actionsOpen,
@@ -332,7 +334,9 @@ export default function CancioneroItemCard({
             className="flex shrink-0 items-center gap-px pb-px opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
             onClick={(event) => event.stopPropagation()}
           >
-            {onSumarAMisCanciones ? (
+            {isFavorita ? (
+              <Bookmark className="mx-2 size-3 fill-current text-[var(--tuner-in-tune)]" aria-label="En Favoritas" />
+            ) : onSumarAMisCanciones ? (
               <TapButton
                 type="button"
                 aria-label={`Guardar ${cancion.nombre} en Favoritas`}
@@ -343,7 +347,7 @@ export default function CancioneroItemCard({
                 disabled={!mostrarSumarMisCanciones}
                 className={`${DESKTOP_ACTION_BTN} hover:text-[var(--tuner-in-tune)]/85 disabled:opacity-40 disabled:hover:text-text-faint/55`}
               >
-                <Bookmark className="size-3" aria-hidden="true" />
+                <Plus className="size-3" aria-hidden="true" />
               </TapButton>
             ) : null}
             {puedeEditarEliminar ? (
@@ -375,13 +379,13 @@ export default function CancioneroItemCard({
               </>
             ) : null}
           </div>
-        ) : (
+        ) : isFavorita ? (
           <Bookmark
-            className="mb-px size-3 shrink-0 self-end"
+            className="mb-px size-3 shrink-0 self-end fill-current"
             style={{ color: "var(--tuner-in-tune)" }}
             aria-hidden="true"
           />
-        )}
+        ) : null}
       </div>
 
       {actionsOpen && actionButtons.length > 0 && !isDesktop && (

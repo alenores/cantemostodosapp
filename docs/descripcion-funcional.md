@@ -273,6 +273,8 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
 - Botón **+** para **Agregar canción** (requiere cuenta y conexión).
+- Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con el micrófono. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
+- El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.
 
 **Mensajes según situación:**
 
@@ -475,7 +477,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 
 ### 12.2 Controles en celular (menú flotante)
 
-- **Contraer** (salir del modo lectura). En Individual, Salas y Cancionero queda como botón independiente, arriba del filtro.
+- **Contraer** (salir del modo lectura). En Individual, Salas, Cancionero y Entrenador de canciones queda como botón independiente, arriba del filtro.
 - **Buscar**, **Siguiente**, **Fila · N** (cantidad de pendientes) — en individual y sala
 - **Anterior**, **Siguiente** — en cancionero (solo celular)
 - **Activar compases** (si estaban ocultos)
@@ -658,6 +660,7 @@ Las canciones de práctica se guardan en la cuenta y también en una copia priva
 del celular. Después de la primera descarga se pueden listar, abrir, leer y editar
 sin conexión. Los cambios quedan pendientes en el dispositivo y se sincronizan
 automáticamente al recuperar internet. Cada cuenta ve únicamente su propia copia.
+La versión privada también aparece en el Cancionero y en los resultados de búsqueda de Individual, con un micrófono para distinguirla. No aparece en búsquedas de Salas.
 
 #### Listado
 
@@ -737,7 +740,7 @@ Solo disponible **con cuenta iniciada**.
 ### 14.4 Modo invitado (sin cuenta)
 
 - Nombre mostrado: **"Invitado"**.
-- Puede: usar el Cancionero descargado, Individual offline, afinador, metrónomo, entrenador vocal y editar ciclos locales del Compositor. Los sonidos de instrumentos requieren conexión.
+- Puede: usar el Cancionero descargado, Individual offline, afinador, metrónomo y entrenador vocal.
 - No puede: Favoritas, editor, entrenador de canciones, salas, guardar canciones, comunidad del compositor.
 
 ---
@@ -771,7 +774,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 | Inicio / Individual | Buscar en el Cancionero completo descargado, ver letras y acordes, modo lectura |
 | Cancionero global | Ver todas las canciones descargadas (solo lectura; no editar ni guardar) |
 | Favoritas | Ver el listado privado guardado en el celular y abrir sus canciones descargadas; agregar o quitar requiere conexión |
-| Práctica | Entrar y volver entre sus pantallas; usar metrónomo, afinador, entrenador vocal, canciones de práctica descargadas y edición de ciclos guardados del Compositor |
+| Práctica | Entrar y volver entre sus pantallas; usar metrónomo, afinador, entrenador vocal y canciones de práctica descargadas. El dueño también puede editar sus ciclos guardados del Compositor. |
 | Login | Continuar sin conexión como invitado |
 
 ### 15.3 Qué NO funciona sin internet
@@ -835,8 +838,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 | Afinador | Sí | Sí |
 | Metrónomo | Sí | Sí |
 | Entrenador Vocal | Sí | Sí |
-| Compositor (ciclos locales) | Sí, edición; sonidos con internet | Sí, edición; sonidos con internet (+ sincronización en la nube) |
-| Compositor (comunidad) | No | Sí (con internet) |
+| Compositor | No | Solo dueño (sonidos con internet) |
 | Perfil | No | Sí |
 | Uso offline | Sí, con Cancionero completo descargado | Sí, con Cancionero completo descargado |
 
@@ -846,7 +848,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 ### 18.1 A nivel de la aplicación
 
-Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. La categoría todavía no cambia las funciones disponibles; los beneficios concretos para cada grupo se definirán por separado.
+Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. El dueño tiene un módulo **Usuarios** en Práctica para cambiar las demás cuentas entre amigos y público. Solo el dueño ve y puede abrir el **Compositor**. Los demás beneficios concretos para cada grupo se definirán por separado.
 
 Todos los usuarios con cuenta tienen las mismas capacidades generales, con dos excepciones:
 

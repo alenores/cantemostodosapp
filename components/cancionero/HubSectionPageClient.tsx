@@ -13,6 +13,8 @@ import {
   HUB_SECTION_PRACTICA_LABEL,
 } from "@/lib/herramientas-product";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
+import { getActiveUserId } from "@/lib/auth/offline-user";
+import { createClient } from "@/lib/supabase/client";
 import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
 import type { UsuarioActivo } from "@/types";
@@ -32,6 +34,7 @@ type HubSectionPageClientProps = {
   section: HubSection;
   globalCountInicial?: number;
   favoritasCountInicial?: number;
+  isOwner?: boolean;
 };
 
 function scheduleIdle(callback: () => void): () => void {
@@ -49,6 +52,7 @@ export default function HubSectionPageClient({
   section,
   globalCountInicial = 0,
   favoritasCountInicial = 0,
+  isOwner = false,
 }: HubSectionPageClientProps) {
   const pathname = usePathname();
   const navigateWithProgress = useNavigateWithProgress();
@@ -64,8 +68,22 @@ export default function HubSectionPageClient({
   const [editorOpen, setEditorOpen] = useState(false);
   const [toolsLayerMounted, setToolsLayerMounted] = useState(false);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
+  const [verifiedOwnerId, setVerifiedOwnerId] = useState<string | null>(null);
 
   const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
+  const canUseOwnerModules = isOwner && verifiedOwnerId === usuario.id;
+
+  useEffect(() => {
+    let active = true;
+    if (isOwner) {
+      void getActiveUserId(createClient()).then((currentUserId) => {
+        if (active) setVerifiedOwnerId(currentUserId === usuario.id ? usuario.id : null);
+      }).catch(() => {
+        if (active) setVerifiedOwnerId(null);
+      });
+    }
+    return () => { active = false; };
+  }, [isOwner, usuario.id]);
   const sectionLabel =
     section === "practica"
       ? HUB_SECTION_PRACTICA_LABEL
@@ -131,6 +149,9 @@ export default function HubSectionPageClient({
     }
 
     if (moduleDef.requiresAuth && !isLoggedIn) {
+      return;
+    }
+    if (moduleDef.requiresOwner && !canUseOwnerModules) {
       return;
     }
 
@@ -200,6 +221,7 @@ export default function HubSectionPageClient({
     (module) =>
       module.section === section &&
       (!module.requiresAuth || isLoggedIn) &&
+      (!module.requiresOwner || canUseOwnerModules) &&
       (!module.desktopOnly || isDesktop),
   );
 

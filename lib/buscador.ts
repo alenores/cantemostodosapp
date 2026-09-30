@@ -80,6 +80,10 @@ export function resultadoKey(resultado: ResultadoBusquedaBuscador): string {
     return `cancionero-${resultado.id}`;
   }
 
+  if (resultado.fuente === "practica") {
+    return `practica-${resultado.id}`;
+  }
+
   if (resultado.fuente === "link-guardado") {
     return `link-${resultado.id}`;
   }
@@ -98,13 +102,16 @@ export function esCifraClub(sitio: string, url: string): boolean {
   return sitio === "cifraclub" || url.includes("cifraclub");
 }
 
-export type ResultadoIconoTipo = "cancionero" | "acordes" | "cifra";
+export type ResultadoIconoTipo = "cancionero" | "practica" | "acordes" | "cifra";
 
 export function getResultadoIconoTipo(
   resultado: ResultadoBusquedaBuscador,
 ): ResultadoIconoTipo {
   if (resultado.fuente === "cancionero") {
     return "cancionero";
+  }
+  if (resultado.fuente === "practica") {
+    return "practica";
   }
 
   if (esAcordesDeCanciones(resultado.sitio, resultado.url)) {
@@ -118,6 +125,9 @@ export function getColaItemIconoTipo(item: {
   url_letra: string;
   letra_texto?: string | null;
 }): ResultadoIconoTipo {
+  if (item.url_letra?.trim().startsWith("practica://")) {
+    return "practica";
+  }
   if (item.letra_texto?.trim()) {
     return "cancionero";
   }
@@ -148,6 +158,10 @@ export function resolveCancionOrigen(item: {
 }): CancionOrigenInfo | null {
   const url = item.url_letra?.trim() ?? "";
   const letra = item.letra_texto?.trim() ?? "";
+
+  if (url.startsWith("practica://")) {
+    return { sitio: "Entrenador de canciones", url, iconoTipo: "practica" };
+  }
 
   if (!url && !letra) {
     return null;

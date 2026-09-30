@@ -15,5 +15,9 @@ export default async function PracticaHubPage() {
     ? mapUserToUsuarioActivo(user)
     : OFFLINE_GUEST_USUARIO;
 
-  return <HubSectionPageClient usuario={usuario} section="practica" />;
+  const { data: categoria } = user
+    ? await supabase.from("usuarios_categorias").select("categoria").eq("user_id", user.id).maybeSingle()
+    : { data: null };
+
+  return <HubSectionPageClient usuario={usuario} section="practica" isOwner={categoria?.categoria === "dueno"} />;
 }

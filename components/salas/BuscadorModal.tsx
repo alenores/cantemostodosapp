@@ -56,6 +56,7 @@ import {
   verAhoraColaLocal,
 } from "@/lib/offline/cola-local-store";
 import { createClient } from "@/lib/supabase/client";
+import { getCancionPractica, listCancionesPractica } from "@/lib/canciones-practica";
 import type {
   CancionCancionero,
   ResultadoBusquedaBuscador,
@@ -219,7 +220,7 @@ function ResultadoItem({
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
   premiumIds: ReadonlySet<number>;
 }) {
-  const esCancionero = resultado.fuente === "cancionero";
+  const esCancionero = resultado.fuente === "cancionero" || resultado.fuente === "practica";
   const esLinkGuardado = resultado.fuente === "link-guardado";
   const iconoTipo = getResultadoIconoTipo(resultado);
   const premium = isResultadoPremium(resultado, premiumIds);
@@ -643,21 +644,41 @@ export default function BuscadorModal({
       );
 
       const paso1 = buscarEnCancionero(trimmed, canciones, { conLetra: true });
+      const practica = isHome && usuarioLogueado
+        ? await (async () => {
+            const practicaClient = createClient();
+            const items = await listCancionesPractica(practicaClient);
+            const normalized = trimmed.toLowerCase();
+            const matched = items.filter((item) => item.nombre.toLowerCase().includes(normalized) || Boolean(item.artista?.toLowerCase().includes(normalized)));
+            const details = await Promise.all(matched.map((item) => getCancionPractica(practicaClient, item.id)));
+            return details.filter((item): item is NonNullable<typeof item> => item !== null && Boolean(item.letra?.trim())).map((item): ResultadoBusquedaBuscador => ({
+              id: item.id,
+              titulo: item.nombre,
+              artista: item.artista ?? "",
+              url: `practica://${item.id}`,
+              sitio: "Entrenador de canciones",
+              fuente: "practica",
+              letra: item.letra,
+              tiene_cifrado_avanzado: false,
+            }));
+          })().catch(() => [] as ResultadoBusquedaBuscador[])
+        : [];
       const paso2 = online
         ? buscarEnCancionero(trimmed, canciones, { soloLink: true })
         : [];
 
       setResultados({
-        cancionero: paso1.map((c) =>
-          mapCancionLocalAResultado(c, "cancionero"),
-        ),
+        cancionero: [
+          ...paso1.map((c) => mapCancionLocalAResultado(c, "cancionero")),
+          ...practica,
+        ],
         linksGuardados: paso2.map((c) =>
           mapCancionLocalAResultado(c, "link-guardado"),
         ),
         internet: [],
       });
       scheduleCascade(
-        paso1.length + paso2.length,
+        paso1.length + practica.length + paso2.length,
         setLocalCascadeActive,
         localCascadeTimerRef,
       );
@@ -733,7 +754,7 @@ export default function BuscadorModal({
   function handleSelectResultado(resultado: ResultadoBusquedaBuscador) {
     dismissKeyboard();
     setSeleccionado(resultado);
-    setPreviewEsMisCanciones(isHome && fuenteHome === "mis_canciones");
+    setPreviewEsMisCanciones((isHome && fuenteHome === "mis_canciones") || resultado.fuente === "practica");
     setConfirmacion(null);
     setFabGuardarAbierto(false);
     setEmbedFullRevealed(false);
@@ -1071,6 +1092,7 @@ export default function BuscadorModal({
     (isHome && !usuarioLogueado) ||
     Boolean(
       esCancioneroPreview ||
+        seleccionado?.fuente === "practica" ||
         (esLinkGuardadoPreview && esCifraSitio) ||
         duplicadoCompletoEnPreview,
     );
@@ -1092,6 +1114,7 @@ export default function BuscadorModal({
 
   const previewConLetraLocal =
     (seleccionado?.fuente === "cancionero" ||
+      seleccionado?.fuente === "practica" ||
       seleccionado?.fuente === "link-guardado") &&
     Boolean(seleccionado.letra?.trim());
 

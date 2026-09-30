@@ -8,6 +8,7 @@ import {
   NotebookPen,
   Pencil,
   Timer,
+  Users,
 } from "lucide-react";
 
 export type HubModuleKind =
@@ -31,6 +32,7 @@ export type HubModuleDef = {
   section: HubModuleSection;
   href?: string;
   requiresAuth?: boolean;
+  requiresOwner?: boolean;
   ctaLabel?: string;
   /** @deprecated Prefer ctaMode; kept for callers that still branch on accent/neutral. */
   ctaVariant?: "neutral" | "accent";
@@ -146,10 +148,25 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     kind: "compositor",
     section: "practica",
     href: "/practica/compositor",
+    requiresOwner: true,
     ctaLabel: "Abrir",
     ctaVariant: "accent",
     ctaMode: "solid",
     ctaTextTone: "on-light",
+  },
+  {
+    id: "usuarios",
+    label: "Usuarios",
+    icon: Users,
+    accentVar: "--accent",
+    accentDimVar: "--accent-dim",
+    kind: "route",
+    section: "practica",
+    href: "/practica/usuarios",
+    requiresOwner: true,
+    ctaLabel: "Administrar",
+    ctaMode: "soft",
+    ctaTextTone: "accent",
   },
   {
     id: "entrenador-canciones",

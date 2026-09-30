@@ -93,7 +93,7 @@ export type ResultadoBusqueda = {
   sitio: string;
 };
 
-export type FuenteBusqueda = "cancionero" | "link-guardado" | "internet";
+export type FuenteBusqueda = "cancionero" | "practica" | "link-guardado" | "internet";
 
 export type ResultadoBusquedaBuscador = ResultadoBusqueda & {
   fuente: FuenteBusqueda;

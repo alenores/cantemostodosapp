@@ -19,6 +19,7 @@ import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
+  getLecturaFabMenuTopCss,
   getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
 } from "@/lib/sala-layout";
@@ -40,6 +41,7 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { getLetraTextScrollEndPadding } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import {
+  Minimize2,
   NotebookPen,
   Pencil,
   SlidersHorizontal,
@@ -346,6 +348,19 @@ export default function EntrenadorCancionesVerPageClient() {
 
       <TapButton
         type="button"
+        aria-label="Contraer"
+        onClick={() => {
+          setOverlayAbierto(false);
+          goToList();
+        }}
+        className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
+        style={{ top: getLecturaTopChromeTopCss(), right: lecturaFixedRightCss }}
+      >
+        <Minimize2 className="size-4 text-accent" aria-hidden="true" />
+      </TapButton>
+
+      <TapButton
+        type="button"
         aria-label={
           overlayAbierto ? "Cerrar controles" : "Abrir controles de modo lectura"
         }
@@ -359,7 +374,7 @@ export default function EntrenadorCancionesVerPageClient() {
           overlayAbierto ? "border-accent/45" : ""
         }`}
         style={{
-          top: getLecturaTopChromeTopCss(),
+          top: getLecturaFabMenuTopCss(),
           right: lecturaFixedRightCss,
         }}
       >
@@ -374,6 +389,8 @@ export default function EntrenadorCancionesVerPageClient() {
         abierto={overlayAbierto}
         fixedRightCss={lecturaFixedRightCss}
         mobileOnly
+        showContraerOption={false}
+        menuTopCss={`calc(${getLecturaFabMenuTopCss()} + 44px)`}
         hasCompases={hasCompases}
         compasesOcultos={compasesOcultos}
         acordesOcultos={acordesOcultos}

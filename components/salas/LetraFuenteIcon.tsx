@@ -1,11 +1,12 @@
 import type { ResultadoIconoTipo } from "@/lib/buscador";
-import { FileText, Globe2, Star } from "lucide-react";
+import { FileText, Globe2, MicVocal, Star } from "lucide-react";
 
 const ICONO_STYLE: Record<
   ResultadoIconoTipo,
   { sizeClass: string; color: string }
 > = {
   cancionero: { sizeClass: "size-6", color: "var(--cancionero-icon)" },
+  practica: { sizeClass: "size-6", color: "var(--accent-vocal)" },
   acordes: { sizeClass: "size-5", color: "#4A9388" },
   cifra: { sizeClass: "size-5", color: "var(--voz-config)" },
 };
@@ -46,6 +47,10 @@ export default function LetraFuenteIcon({
         aria-hidden="true"
       />
     );
+  }
+
+  if (tipo === "practica") {
+    return <MicVocal className={className} style={{ color: base.color }} aria-label="Entrenador de canciones" />;
   }
 
   return (

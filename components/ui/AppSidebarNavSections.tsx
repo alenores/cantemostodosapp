@@ -2,6 +2,7 @@
 
 import { TapLink } from "@/components/ui/TapFeedback";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
+import { createClient } from "@/lib/supabase/client";
 import {
   getPcNavSectionForPath,
   isPcNavItemActive,
@@ -121,17 +122,19 @@ function SidebarExpandableSection({
   section,
   pathname,
   isLoggedIn,
+  isOwner,
   isExpanded,
   onToggle,
 }: {
   section: PcSidebarExpandableSection;
   pathname: string;
   isLoggedIn: boolean;
+  isOwner: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }) {
   const visibleItems = section.items.filter(
-    (item) => !item.requiresAuth || isLoggedIn,
+    (item) => (!item.requiresAuth || isLoggedIn) && (!item.requiresOwner || isOwner),
   );
 
   if (visibleItems.length === 0) {
@@ -216,6 +219,18 @@ export default function AppSidebarNavSections({
 }: AppSidebarNavSectionsProps) {
   const pathname = usePathname();
   const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
+  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
+  const isOwner = isLoggedIn && ownerUserId === usuario.id;
+
+  useEffect(() => {
+    let active = true;
+    if (isLoggedIn) {
+      void createClient().from("usuarios_categorias").select("categoria").eq("user_id", usuario.id).maybeSingle().then(({ data }) => {
+        if (active) setOwnerUserId(data?.categoria === "dueno" ? usuario.id : null);
+      });
+    }
+    return () => { active = false; };
+  }, [isLoggedIn, usuario.id]);
   const activeSection = getPcNavSectionForPath(pathname);
   const [expandedSection, setExpandedSection] = useState<string | null>(
     activeSection,
@@ -249,6 +264,7 @@ export default function AppSidebarNavSections({
             section={section}
             pathname={pathname}
             isLoggedIn={isLoggedIn}
+            isOwner={isOwner}
             isExpanded={expandedSection === section.id}
             onToggle={() =>
               setExpandedSection((current) =>

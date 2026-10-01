@@ -112,10 +112,11 @@ export default function CancioneroPageClient({
   const cancionesFiltradas = useMemo(() => {
     let list = filterCancionesCancionero(canciones, query);
     if (selectedArtistaIds.size > 0) {
-      list = list.filter(c => c.artista_id && selectedArtistaIds.has(c.artista_id));
+      const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
+      list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
     return list;
-  }, [canciones, query, selectedArtistaIds]);
+  }, [canciones, query, selectedArtistaIds, artistas]);
   const practicaFiltradas = useMemo(() => {
     if (!usuarioLogueado) return [];
     const normalized = query.trim().toLowerCase();

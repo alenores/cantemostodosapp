@@ -638,38 +638,73 @@ export default function CancioneroPageClient({
           <CancioneroListSkeleton includeSearch cardCount={6} />
         ) : (
           <>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search
-                  className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
-                  aria-hidden="true"
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setActiveCardId(null);
-                  }}
-                  placeholder="Buscar por nombre o artista..."
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  className={inputClassName}
-                />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search
+                    className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setActiveCardId(null);
+                    }}
+                    placeholder="Buscar por nombre o artista..."
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    className={inputClassName}
+                  />
+                </div>
+                <TapButton
+                  type="button"
+                  aria-label="Filtrar por Artista"
+                  onClick={() => setArtistasFilterOpen(true)}
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-[10px] border transition-colors ${
+                    selectedArtistaIds.size > 0 
+                      ? "border-brand-primary bg-brand-primary/10 text-brand-primary" 
+                      : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <Users className="size-5" />
+                </TapButton>
               </div>
-              <TapButton
-                type="button"
-                aria-label="Filtrar por Artista"
-                onClick={() => setArtistasFilterOpen(true)}
-                className={`flex size-11 shrink-0 items-center justify-center rounded-[10px] border transition-colors ${
-                  selectedArtistaIds.size > 0 
-                    ? "border-brand-primary bg-brand-primary/10 text-brand-primary" 
-                    : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                <Users className="size-5" />
-              </TapButton>
+              {selectedArtistaIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {Array.from(selectedArtistaIds).map(id => {
+                    const artista = artistas.find(a => a.id === id);
+                    if (!artista) return null;
+                    return (
+                      <div key={id} className="flex items-center gap-1.5 rounded-full border border-brand-primary/30 bg-brand-primary/10 pl-1.5 pr-2 py-1 text-sm text-brand-primary">
+                        {artista.avatar_url ? (
+                          <img src={artista.avatar_url} alt="" className="size-5 shrink-0 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-primary/20 text-[10px] font-bold">
+                            {artista.nombre.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="font-medium max-w-[120px] truncate">{artista.nombre}</span>
+                        <button 
+                          onClick={() => {
+                            setSelectedArtistaIds(prev => {
+                              const next = new Set(prev);
+                              next.delete(id);
+                              return next;
+                            });
+                          }}
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-brand-primary/20"
+                          aria-label={`Quitar filtro de ${artista.nombre}`}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {actionError && (

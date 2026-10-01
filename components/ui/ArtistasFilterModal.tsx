@@ -1,4 +1,4 @@
-﻿import { Search, X, Settings, Check } from "lucide-react";
+import { Search, X, Settings, Check } from "lucide-react";
 import { useState, useMemo } from "react";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { Artista } from "@/types";
@@ -127,13 +127,21 @@ export function ArtistasFilterModal({
           )}
         </div>
 
-        <div className="border-t border-border/50 p-4">
+        <div className="flex flex-col gap-2 border-t border-border/50 p-4">
           <TapButton
             onClick={() => onApply(draftSelected)}
             className="w-full rounded-xl bg-brand-primary py-3 font-semibold text-white shadow-lg shadow-brand-primary/20 hover:bg-brand-secondary"
           >
             Ver Resultados {draftSelected.size > 0 && `(${draftSelected.size})`}
           </TapButton>
+          {draftSelected.size > 0 && (
+            <TapButton
+              onClick={() => setDraftSelected(new Set())}
+              className="w-full rounded-xl py-2 font-medium text-text-muted hover:bg-bg-hover hover:text-text-primary"
+            >
+              Limpiar selección
+            </TapButton>
+          )}
         </div>
       </div>
     </div>

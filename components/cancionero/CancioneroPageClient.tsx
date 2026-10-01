@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
@@ -228,12 +228,12 @@ export default function CancioneroPageClient({
   const sumarAMisCanciones = useCallback(
     async (cancion: CancionCancionero) => {
       if (!usuarioLogueado || !online) {
-        showSnackbar("Iniciá sesión para guardar en Favoritas");
+        showSnackbar("IniciÃ¡ sesiÃ³n para guardar en Favoritas");
         return;
       }
 
       if (misCancionesIds.has(cancion.id)) {
-        showSnackbar("Ya está en Favoritas");
+        showSnackbar("Ya estÃ¡ en Favoritas");
         return;
       }
 
@@ -302,7 +302,7 @@ export default function CancioneroPageClient({
         detalle = await fetchCancionCifradoDetalle(supabase, cancion.id);
 
         if (!detalle) {
-          throw new Error("No se pudo cargar el cifrado guardado de esta canción.");
+          throw new Error("No se pudo cargar el cifrado guardado de esta canciÃ³n.");
         }
       }
 
@@ -426,8 +426,8 @@ export default function CancioneroPageClient({
         return;
       }
 
-      // Sin red: usá la copia local; si no hay, no borres la que ya se veía
-      // (pasa al cortar WiFi con la canción abierta).
+      // Sin red: usÃ¡ la copia local; si no hay, no borres la que ya se veÃ­a
+      // (pasa al cortar WiFi con la canciÃ³n abierta).
       setCifradoDetalle((current) => {
         if (local) return local;
         if (!online && current?.id === songId) return current;
@@ -515,7 +515,7 @@ export default function CancioneroPageClient({
       setActionError(
         confirmError instanceof Error
           ? confirmError.message
-          : "No se pudo eliminar la canción",
+          : "No se pudo eliminar la canciÃ³n",
       );
     } finally {
       setActionLoading(false);
@@ -562,11 +562,11 @@ export default function CancioneroPageClient({
         headerAction={
           <AddButton
             ariaLabel={
-              usuarioLogueado ? "Agregar canción" : "Iniciar sesión para agregar"
+              usuarioLogueado ? "Agregar canciÃ³n" : "Iniciar sesiÃ³n para agregar"
             }
             onClick={() => {
               if (!usuarioLogueado) {
-                showSnackbar("Iniciá sesión para agregar canciones");
+                showSnackbar("IniciÃ¡ sesiÃ³n para agregar canciones");
                 return;
               }
 
@@ -590,10 +590,10 @@ export default function CancioneroPageClient({
             role="status"
           >
             <p className="min-w-0 flex-1">
-              Seleccionar canción y sumar a &quot;Favoritas&quot;
+              Seleccionar canciÃ³n y sumar a &quot;Favoritas&quot;
             </p>
             <TapButton
-              aria-label="Cancelar selección"
+              aria-label="Cancelar selecciÃ³n"
               onClick={cancelarModoSeleccion}
               className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-card"
             >
@@ -608,7 +608,7 @@ export default function CancioneroPageClient({
             role="status"
           >
             <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-            Sin conexión · mostrando copia local (solo lectura)
+            Sin conexiÃ³n Â· mostrando copia local (solo lectura)
           </p>
         )}
 
@@ -616,25 +616,62 @@ export default function CancioneroPageClient({
           <CancioneroListSkeleton includeSearch cardCount={6} />
         ) : (
           <>
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setActiveCardId(null);
-                }}
-                placeholder="Buscar por nombre o artista..."
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                className={inputClassName}
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setActiveCardId(null);
+                  }}
+                  placeholder="Buscar por nombre o artista..."
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className={inputClassName}
+                />
+              </div>
+              {usuarioLogueado && (
+                <TapButton
+                  type="button"
+                  aria-label="Gestión de Artistas"
+                  onClick={() => setArtistasManagerOpen(true)}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-bg-card text-text-secondary hover:text-text-primary"
+                >
+                  <Settings className="size-5" />
+                </TapButton>
+              )}
             </div>
+
+            {artistas.length > 0 && (
+              <div className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {artistas.map(a => {
+                  const isSelected = selectedArtistaIds.has(a.id);
+                  return (
+                    <TapButton
+                      key={a.id}
+                      onClick={() => {
+                        setSelectedArtistaIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(a.id)) next.delete(a.id);
+                          else next.add(a.id);
+                          return next;
+                        });
+                      }}
+                      className={lex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors }
+                    >
+                      {a.avatar_url && <img src={a.avatar_url} alt="" className="size-5 rounded-full object-cover" />}
+                      {a.nombre}
+                    </TapButton>
+                  );
+                })}
+              </div>
+            )}
 
             {actionError && (
               <p className="text-sm text-accent" role="alert">
@@ -647,13 +684,13 @@ export default function CancioneroPageClient({
                 <Music className="size-10 text-text-faint" aria-hidden="true" />
                 <p className="max-w-xs text-sm text-text-muted">
                   {online
-                    ? "Todavía no hay canciones descargadas. Abrí las novedades del Cancionero y aceptá la descarga."
-                    : "No hay copia local todavía. Conectate y aceptá la descarga del Cancionero."}
+                    ? "TodavÃ­a no hay canciones descargadas. AbrÃ­ las novedades del Cancionero y aceptÃ¡ la descarga."
+                    : "No hay copia local todavÃ­a. Conectate y aceptÃ¡ la descarga del Cancionero."}
                 </p>
               </div>
             ) : cancionesFiltradas.length === 0 && practicaFiltradas.length === 0 ? (
               <p className="py-8 text-center text-sm text-text-muted">
-                No hay canciones que coincidan con tu búsqueda.
+                No hay canciones que coincidan con tu bÃºsqueda.
               </p>
             ) : (
               <div className="app-list-grid">
@@ -705,7 +742,7 @@ export default function CancioneroPageClient({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[17px] font-semibold text-text-primary">{cancion.nombre}</span>
                       {cancion.artista ? <span className="block truncate text-[13px] text-text-muted">{cancion.artista}</span> : null}
-                      <span className="block text-[11px] text-text-muted">Mi versión de práctica</span>
+                      <span className="block text-[11px] text-text-muted">Mi versiÃ³n de prÃ¡ctica</span>
                     </span>
                   </button>
                 ))}
@@ -774,7 +811,7 @@ export default function CancioneroPageClient({
 
       <ConfirmDialog
         open={cancionAEliminar !== null}
-        message="¿Eliminar esta canción del cancionero?"
+        message="Â¿Eliminar esta canciÃ³n del cancionero?"
         confirmLabel={actionLoading ? "Eliminando..." : "Eliminar"}
         deleteConfirm
         onConfirm={() => void handleConfirmEliminar()}

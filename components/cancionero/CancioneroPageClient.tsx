@@ -663,7 +663,7 @@ export default function CancioneroPageClient({
                           return next;
                         });
                       }}
-                      className={lex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors }
+                      className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${isSelected ? "border-brand-primary bg-brand-primary/10 text-brand-primary" : "border-border bg-bg-card text-text-secondary hover:text-text-primary"}`}
                     >
                       {a.avatar_url && <img src={a.avatar_url} alt="" className="size-5 rounded-full object-cover" />}
                       {a.nombre}

@@ -713,6 +713,7 @@ export default function CancioneroPageClient({
                   >
                     <CancioneroItemCard
                       cancion={cancion}
+                      artistaAvatarUrl={artistas.find(a => a.id === cancion.artista_id)?.avatar_url}
                       isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
                       puedeEditarEliminar={esCancionDelUsuario(cancion, usuarioId)}

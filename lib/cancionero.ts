@@ -1,4 +1,4 @@
-import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
+﻿import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import { agregarACola } from "@/lib/cola-logic";
 import {
   DEFAULT_BPM,
@@ -120,7 +120,7 @@ export async function fetchCancionesCancionero(
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("canciones_guardadas")
-      .select("id, nombre, artista, letra, tiene_cifrado_avanzado, user_id")
+      .select("id, nombre, artista, artista_id, letra, tiene_cifrado_avanzado, user_id")
       .is("sala_id", null)
       .not("letra", "is", null)
       .order("nombre", { ascending: true })
@@ -244,7 +244,7 @@ export async function insertCancionCancionero(
   const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("Se requiere sesión activa para agregar al cancionero");
+    throw new Error("Se requiere sesiÃ³n activa para agregar al cancionero");
   }
 
   const { error } = await supabase.from("canciones_guardadas").insert({
@@ -289,7 +289,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (!existing) {
-    throw new Error("No se encontró la canción para actualizar.");
+    throw new Error("No se encontrÃ³ la canciÃ³n para actualizar.");
   }
 
   const { error, count } = await supabase
@@ -316,7 +316,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (count === 0) {
-    throw new Error("Solo quien subió la canción puede editarla.");
+    throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
   }
 }
 
@@ -340,7 +340,7 @@ export async function updateCancionCancioneroMetadatos(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
+  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
 }
 
 export async function updateCancionCancionero(
@@ -361,7 +361,7 @@ export async function updateCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
+  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
 }
 
 export async function deleteCancionCancionero(
@@ -377,7 +377,7 @@ export async function deleteCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subió la canción puede eliminarla.");
+  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede eliminarla.");
 }
 
 export async function guardarLinkEnCancionero(
@@ -467,7 +467,7 @@ export async function guardarLetraEnCancionero(
     if (error) {
       throw error;
     }
-    if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
+    if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
 
     return;
   }

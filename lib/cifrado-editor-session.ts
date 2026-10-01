@@ -1,4 +1,4 @@
-import {
+﻿import {
   createDefaultCompasConfig,
   type CifradoData,
   type CompasConfig,
@@ -16,6 +16,7 @@ export type CifradoEditorSession = {
   cancionId?: number;
   nombre: string;
   artista: string;
+  artista_id?: string | null;
   letra: string;
   cifrado?: CifradoData;
   compas_config?: CompasConfig | null;
@@ -35,8 +36,8 @@ export type CifradoSaveResult = {
 };
 
 /**
- * Persistencia opcional del editor (p. ej. Entrenador → canciones_practica).
- * Si no se provee, el editor PC usa el flujo histórico del Cancionero.
+ * Persistencia opcional del editor (p. ej. Entrenador â†’ canciones_practica).
+ * Si no se provee, el editor PC usa el flujo histÃ³rico del Cancionero.
  */
 export type CifradoEditorPersistPayload = {
   nombre: string;
@@ -58,6 +59,7 @@ export function buildCifradoEditorSession(input: {
   cancionId?: number;
   nombre: string;
   artista: string;
+  artista_id?: string | null;
   letra: string;
   esAvanzada?: boolean;
   detalle?: CancionCifradoDetalle | null;

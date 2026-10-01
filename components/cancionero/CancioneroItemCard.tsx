@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -47,9 +47,11 @@ type CancioneroItemCardProps = {
   onSumarAMisCanciones?: (cancion: CancionCancionero) => void;
   onEditar: (cancion: CancionCancionero) => void;
   onEliminar: (cancion: CancionCancionero) => void;
+  artistaAvatarUrl?: string | null;
 };
 
 export default function CancioneroItemCard({
+  artistaAvatarUrl,
   cancion,
   isDesktop = false,
   mutationsEnabled = true,
@@ -324,9 +326,12 @@ export default function CancioneroItemCard({
             {cancion.nombre}
           </p>
           {cancion.artista && (
-            <p className="mt-0.5 truncate text-[13px] leading-tight text-text-muted">
-              {cancion.artista}
-            </p>
+            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] leading-tight text-text-muted">
+              {artistaAvatarUrl && (
+                <img src={artistaAvatarUrl} alt="" className="size-4 shrink-0 rounded-full object-cover" />
+              )}
+              <span className="truncate">{cancion.artista}</span>
+            </div>
           )}
         </div>
         {showDesktopActions ? (

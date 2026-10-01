@@ -316,22 +316,24 @@ export default function CancioneroItemCard({
       onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
-      <div className="flex items-end gap-2.5">
+      <div className="flex items-center gap-3">
         <LetraFuenteIcon
           tipo="cancionero"
           premium={cancion.tiene_cifrado_avanzado}
         />
-        <div className="min-w-0 flex-1 pb-px">
+        {artistaAvatarUrl && (
+          <img src={artistaAvatarUrl} alt="" className="size-9 shrink-0 rounded-full object-cover bg-bg-card" />
+        )}
+        <div className="min-w-0 flex-1">
           <p className="truncate text-[17px] font-semibold leading-tight text-text-primary">
             {cancion.nombre}
           </p>
           {cancion.artista && (
-            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] leading-tight text-text-muted">
-              {artistaAvatarUrl && (
-                <img src={artistaAvatarUrl} alt="" className="size-4 shrink-0 rounded-full object-cover" />
-              )}
-              <span className="truncate">{cancion.artista}</span>
-            </div>
+            <p className="mt-0.5 truncate text-[13px] leading-tight text-text-muted">
+              {cancion.artista}
+            </p>
+          )}
+        </div>
           )}
         </div>
         {showDesktopActions ? (

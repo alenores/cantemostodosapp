@@ -48,8 +48,9 @@ import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canci
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types";
 import { ArtistasManagerModal } from "@/components/ui/ArtistasManagerModal";
+import { ArtistasFilterModal } from "@/components/ui/ArtistasFilterModal";
 import { getArtistas } from "@/lib/artistas";
-import { Bell, Music, Search, Star, WifiOff, X, Settings } from "lucide-react";
+import { Bell, Music, Search, Star, WifiOff, X, Settings, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
@@ -100,6 +101,7 @@ export default function CancioneroPageClient({
   const [artistas, setArtistas] = useState<Artista[]>([]);
   const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
   const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
+  const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
 
   useEffect(() => {
     getArtistas(supabase).then(setArtistas);
@@ -107,15 +109,22 @@ export default function CancioneroPageClient({
   const hadLoadedRef = useRef(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const cancionesFiltradas = useMemo(
-    () => filterCancionesCancionero(canciones, query),
-    [canciones, query],
-  );
+  const cancionesFiltradas = useMemo(() => {
+    let list = filterCancionesCancionero(canciones, query);
+    if (selectedArtistaIds.size > 0) {
+      list = list.filter(c => c.artista_id && selectedArtistaIds.has(c.artista_id));
+    }
+    return list;
+  }, [canciones, query, selectedArtistaIds]);
   const practicaFiltradas = useMemo(() => {
     if (!usuarioLogueado) return [];
     const normalized = query.trim().toLowerCase();
-    return cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || Boolean(cancion.artista?.toLowerCase().includes(normalized)));
-  }, [cancionesPractica, query, usuarioLogueado]);
+    let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || Boolean(cancion.artista?.toLowerCase().includes(normalized)));
+    if (selectedArtistaIds.size > 0) {
+      list = list.filter(c => c.artista_id && selectedArtistaIds.has(c.artista_id));
+    }
+    return list;
+  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds]);
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {
@@ -636,42 +645,19 @@ export default function CancioneroPageClient({
                   className={inputClassName}
                 />
               </div>
-              {usuarioLogueado && (
-                <TapButton
-                  type="button"
-                  aria-label="Gestión de Artistas"
-                  onClick={() => setArtistasManagerOpen(true)}
-                  className="flex size-11 shrink-0 items-center justify-center rounded-[10px] border border-border bg-bg-card text-text-secondary hover:text-text-primary"
-                >
-                  <Settings className="size-5" />
-                </TapButton>
-              )}
+              <TapButton
+                type="button"
+                aria-label="Filtrar por Artista"
+                onClick={() => setArtistasFilterOpen(true)}
+                className={`flex size-11 shrink-0 items-center justify-center rounded-[10px] border transition-colors ${
+                  selectedArtistaIds.size > 0 
+                    ? "border-brand-primary bg-brand-primary/10 text-brand-primary" 
+                    : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <Users className="size-5" />
+              </TapButton>
             </div>
-
-            {artistas.length > 0 && (
-              <div className="flex w-full gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {artistas.map(a => {
-                  const isSelected = selectedArtistaIds.has(a.id);
-                  return (
-                    <TapButton
-                      key={a.id}
-                      onClick={() => {
-                        setSelectedArtistaIds(prev => {
-                          const next = new Set(prev);
-                          if (next.has(a.id)) next.delete(a.id);
-                          else next.add(a.id);
-                          return next;
-                        });
-                      }}
-                      className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${isSelected ? "border-brand-primary bg-brand-primary/10 text-brand-primary" : "border-border bg-bg-card text-text-secondary hover:text-text-primary"}`}
-                    >
-                      {a.avatar_url && <img src={a.avatar_url} alt="" className="size-5 rounded-full object-cover" />}
-                      {a.nombre}
-                    </TapButton>
-                  );
-                })}
-              </div>
-            )}
 
             {actionError && (
               <p className="text-sm text-accent" role="alert">

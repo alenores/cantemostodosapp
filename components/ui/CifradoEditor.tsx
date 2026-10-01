@@ -3359,7 +3359,8 @@ export default function CifradoEditor({
     setNombre(cancion.nombre);
     setArtista(cancion.artista ?? "");
     setIngresoTab("basicas");
-    applyImportedCifrado(cancion.letra ?? "", createEmptyCifrado(), {
+    const imported = parseLetraTradicional(cancion.letra ?? "");
+    applyImportedCifrado(imported.letra, imported.cifrado, {
       nombre: cancion.nombre,
       artista: cancion.artista ?? "",
     });

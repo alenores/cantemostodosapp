@@ -1121,7 +1121,8 @@ export default function CifradoEditorMobile({
     setTonalidadIndex(DEFAULT_TONALIDAD);
     setModoTonal(DEFAULT_MODO_TONAL);
     setIngresoTab("basicas");
-    enterCifrado(cancion.letra ?? "", createEmptyCifrado());
+    const imported = parseLetraTradicional(cancion.letra ?? "");
+    enterCifrado(imported.letra, imported.cifrado);
   }
 
   function handleConfirmWebImport() {

@@ -330,7 +330,7 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 - **Computadora:** ventana superpuesta sobre el listado o el hub.
 - Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
 - En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
-- El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una propia, se abre para completarla, y una canción de otra persona se abre como copia.
+- El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una, el editor reconoce los renglones tradicionales de acordes y letra y los integra. Una canción propia se abre para completarla, y una de otra persona se abre como copia.
 
 ### 10.2 Tres modos de edición
 

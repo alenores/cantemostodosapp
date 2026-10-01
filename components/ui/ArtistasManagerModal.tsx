@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { X, Plus, Pencil, Trash2, Upload, Save, User as UserIcon } from "lucide-react";
@@ -158,7 +158,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
       <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/50 p-4">
           <h2 className="text-xl font-bold text-text-primary">GestiÃ³n de Artistas</h2>

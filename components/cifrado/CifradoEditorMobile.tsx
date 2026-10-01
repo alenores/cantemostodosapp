@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
@@ -117,7 +117,7 @@ type PickerTarget = {
 
 const labelClassName = "mb-1.5 block text-sm font-medium text-text-secondary";
 
-  // Alto mínimo: que se vean al menos diez renglones de letra con acordes.
+  // Alto mÃ­nimo: que se vean al menos diez renglones de letra con acordes.
   const textareaClassName =
   "h-[50dvh] min-h-[240px] w-full shrink-0 resize-none rounded-estandar border border-border bg-letra-bg px-4 py-3 font-mono text-sm text-letra-text placeholder:italic placeholder:text-text-muted outline-none focus:border-accent";
 
@@ -128,7 +128,7 @@ type CifradoEditorMobileProps = {
   backAriaLabel?: string;
   /** Cierra/vuelve con callback (p. ej. Entrenador con icono X). */
   onClose?: () => void;
-  /** Icono del botón de salida cuando hay onClose. Por defecto flecha atrás. */
+  /** Icono del botÃ³n de salida cuando hay onClose. Por defecto flecha atrÃ¡s. */
   exitIcon?: "back" | "close";
   showBasicSongsTab?: boolean;
   onPersist?: CifradoEditorPersistFn;
@@ -316,7 +316,7 @@ export default function CifradoEditorMobile({
   }, []);
 
   const tonalidadLabel =
-    tonalidadIndex !== null ? getNotaLabel(tonalidadIndex, "es") : "—";
+    tonalidadIndex !== null ? getNotaLabel(tonalidadIndex, "es") : "â€”";
   const modoLabel = modoTonal === "menor" ? "menor" : "mayor";
 
   function clearError() {
@@ -334,7 +334,7 @@ export default function CifradoEditorMobile({
 
   function assertTonalidad(): boolean {
     if (!tonalidadLista) {
-      setError("Elegí el tono y el modo antes de continuar.");
+      setError("ElegÃ­ el tono y el modo antes de continuar.");
       return false;
     }
 
@@ -398,27 +398,27 @@ export default function CifradoEditorMobile({
     }
 
     if (!isLoggedIn) {
-      setError("Iniciá sesión para guardar.");
+      setError("IniciÃ¡ sesiÃ³n para guardar.");
       return;
     }
 
     if (phase !== "cifrado") {
-      setError("Aplicá la letra y empezá a cifrar antes de guardar.");
+      setError("AplicÃ¡ la letra y empezÃ¡ a cifrar antes de guardar.");
       return;
     }
 
     if (!nombre.trim()) {
-      setError("Completá el nombre de la canción.");
+      setError("CompletÃ¡ el nombre de la canciÃ³n.");
       return;
     }
 
     if (!lyricsText.trim()) {
-      setError("La letra no puede estar vacía.");
+      setError("La letra no puede estar vacÃ­a.");
       return;
     }
 
     if (tonalidadIndex === null || modoTonal === null) {
-      setError("Completá la tonalidad.");
+      setError("CompletÃ¡ la tonalidad.");
       return;
     }
 
@@ -461,7 +461,7 @@ export default function CifradoEditorMobile({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "No se pudo guardar la canción",
+          : "No se pudo guardar la canciÃ³n",
       );
     } finally {
       setSaveLoading(false);
@@ -505,7 +505,7 @@ export default function CifradoEditorMobile({
     };
 
     // Solo vista previa: no tocar el cifrado hasta "Listo",
-    // así no se borran los otros acordes al pasar por encima.
+    // asÃ­ no se borran los otros acordes al pasar por encima.
     dragTargetRef.current = nextTarget;
     setDragTarget(nextTarget);
   }
@@ -573,7 +573,7 @@ export default function CifradoEditorMobile({
     if (kind === "line") {
       const lines = splitLyricsLines(lyricsText);
       if (lines.length <= 1) {
-        setError("La canción debe tener al menos un renglón.");
+        setError("La canciÃ³n debe tener al menos un renglÃ³n.");
       } else {
         lines.splice(lineIndex, 1);
         setLyricsText(lines.join("\n"));
@@ -756,7 +756,7 @@ export default function CifradoEditorMobile({
     }
 
     if (isCharOffsetInsideCompasCycle(lineBarras, charOffset)) {
-      setError("No podés agregar un ciclo dentro de otro.");
+      setError("No podÃ©s agregar un ciclo dentro de otro.");
       return;
     }
 
@@ -1039,7 +1039,7 @@ export default function CifradoEditorMobile({
     const trimmed = draftLyrics.trim();
 
     if (!trimmed) {
-      setError("Pegá o escribí la letra para continuar.");
+      setError("PegÃ¡ o escribÃ­ la letra para continuar.");
       return;
     }
 
@@ -1054,7 +1054,7 @@ export default function CifradoEditorMobile({
     const trimmed = draftPaste.trim();
 
     if (!trimmed) {
-      setError("Pegá la letra con acordes para continuar.");
+      setError("PegÃ¡ la letra con acordes para continuar.");
       return;
     }
 
@@ -1136,7 +1136,7 @@ export default function CifradoEditorMobile({
     const trimmed = draftPaste.trim();
 
     if (!trimmed) {
-      setError("Revisá la letra con acordes antes de continuar.");
+      setError("RevisÃ¡ la letra con acordes antes de continuar.");
       return;
     }
 
@@ -1156,7 +1156,7 @@ export default function CifradoEditorMobile({
   return (
     <div
       // Alto fijo al de la pantalla en ambas fases: una sola zona de scroll
-      // (la de adentro), sin competir con el scroll de la página.
+      // (la de adentro), sin competir con el scroll de la pÃ¡gina.
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-app max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh"
     >
       {phase === "ingreso" ? (
@@ -1290,7 +1290,7 @@ export default function CifradoEditorMobile({
                       clearError();
                     }}
                     className={textareaClassName}
-                    placeholder="Pegá aquí la letra de la canción…"
+                    placeholder="PegÃ¡ aquÃ­ la letra de la canciÃ³nâ€¦"
                   />
                 </>
               ) : null}
@@ -1299,13 +1299,13 @@ export default function CifradoEditorMobile({
                 pendingWebImport ? (
                   <>
                     <p className="mb-2 shrink-0 text-sm text-text-muted">
-                      Revisá letra, acordes y datos. Si no es esta,{" "}
+                      RevisÃ¡ letra, acordes y datos. Si no es esta,{" "}
                       <TapButton
                         type="button"
                         onClick={handleClearWebImport}
                         className="font-semibold text-accent"
                       >
-                        buscá otra
+                        buscÃ¡ otra
                       </TapButton>
                       .
                     </p>
@@ -1324,7 +1324,7 @@ export default function CifradoEditorMobile({
                       }}
                       className={`${textareaClassName} shrink-0 overflow-hidden`}
                       style={{ flex: "none", height: "auto", minHeight: 220 }}
-                      placeholder="Letra con los acordes encima de cada renglón…"
+                      placeholder="Letra con los acordes encima de cada renglÃ³nâ€¦"
                     />
                   </>
                 ) : (
@@ -1349,7 +1349,7 @@ export default function CifradoEditorMobile({
                       handleDraftPasteChange(event.target.value);
                     }}
                     className={textareaClassName}
-                    placeholder="Pegá la letra con los acordes encima de cada renglón…"
+                    placeholder="PegÃ¡ la letra con los acordes encima de cada renglÃ³nâ€¦"
                   />
                 </>
               ) : null}
@@ -1375,7 +1375,7 @@ export default function CifradoEditorMobile({
                       clearError();
                     }}
                     className={CIFRADO_CONTROLS_INPUT_CLASS}
-                    placeholder="Nombre de la canción"
+                    placeholder="Nombre de la canciÃ³n"
                   />
                   <IntercambiarNombreArtista
                     disabled={!nombre.trim() && !artista.trim()}
@@ -1489,7 +1489,7 @@ export default function CifradoEditorMobile({
             ) : backHref && !session ? (
               <TapButton
                 type="button"
-                aria-label="Volver a la selecci�n de canci�n"
+                aria-label="Volver a la selección de canción"
                 onClick={() => setPhase("ingreso")}
                 className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
               >
@@ -1528,12 +1528,12 @@ export default function CifradoEditorMobile({
                 {nombre.trim() || "Sin nombre"}
               </span>
               <span className="text-[10px] text-text-muted">
-                {artista.trim() ? `${artista.trim()} · ` : ""}{tonalidadLabel} {modoLabel}
+                {artista.trim() ? `${artista.trim()} Â· ` : ""}{tonalidadLabel} {modoLabel}
               </span>
             </button>
             <TapButton
               type="button"
-              aria-label="Datos y ajustes de la canción"
+              aria-label="Datos y ajustes de la canciÃ³n"
               onClick={() => setConfigOpen(true)}
               className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card text-text-secondary"
             >
@@ -1555,7 +1555,7 @@ export default function CifradoEditorMobile({
                 onClick={() => void handleSave()}
                 className={`shrink-0 rounded-sutil px-3 py-1.5 text-xs font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
               >
-                {saveLoading ? "…" : "Guardar"}
+                {saveLoading ? "â€¦" : "Guardar"}
               </TapButton>
             ) : null}
           </div>
@@ -1582,7 +1582,7 @@ export default function CifradoEditorMobile({
 
               {!dragTarget && !barDragTarget ? (
                 <p className="mb-3 text-xs text-text-muted">
-                  Tocá un renglón para editarlo; mantenelo presionado para ver sus acciones.
+                  TocÃ¡ un renglÃ³n para editarlo; mantenelo presionado para ver sus acciones.
                 </p>
               ) : null}
               <CifradoMobileEditableLines
@@ -1608,21 +1608,21 @@ export default function CifradoEditorMobile({
                 lineActionsLineIndex={lineActionsLineIndex}
                 onRequestDeleteLine={(lineIndex) => {
                   if (splitLyricsLines(lyricsText).length <= 1) {
-                    setError("La canción debe tener al menos un renglón.");
+                    setError("La canciÃ³n debe tener al menos un renglÃ³n.");
                     return;
                   }
                   setLineDeleteConfirm({ kind: "line", lineIndex });
                 }}
                 onRequestClearLineAcordes={(lineIndex) => {
                   if (!cifrado.acordes.some((item) => item.lineIndex === lineIndex)) {
-                    setError("Este renglón no tiene acordes.");
+                    setError("Este renglÃ³n no tiene acordes.");
                     return;
                   }
                   setLineDeleteConfirm({ kind: "acordes", lineIndex });
                 }}
                 onRequestClearLineCompases={(lineIndex) => {
                   if (!compasConfig.barras.some((item) => item.lineIndex === lineIndex)) {
-                    setError("Este renglón no tiene compases.");
+                    setError("Este renglÃ³n no tiene compases.");
                     return;
                   }
                   setLineDeleteConfirm({ kind: "compases", lineIndex });
@@ -1747,7 +1747,7 @@ export default function CifradoEditorMobile({
                     clearError();
                   }}
                   className={CIFRADO_CONTROLS_INPUT_CLASS}
-                  placeholder="Nombre de la canción"
+                  placeholder="Nombre de la canciÃ³n"
                 />
                 <label
                   className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-3`}
@@ -1841,8 +1841,8 @@ export default function CifradoEditorMobile({
                 {nombre.trim() || "Sin nombre"}
               </p>
               <p className="truncate text-xs text-text-muted">
-                {artista.trim() ? `${artista.trim()} · ` : ""}
-                {tonalidadLabel} {modoLabel} · {compasConfig.bpm} BPM
+                {artista.trim() ? `${artista.trim()} Â· ` : ""}
+                {tonalidadLabel} {modoLabel} Â· {compasConfig.bpm} BPM
               </p>
             </div>
           </header>

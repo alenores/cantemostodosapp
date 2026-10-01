@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { X, Plus, Pencil, Trash2, Upload, Save, User as UserIcon } from "lucide-react";
 import { TapButton } from "@/components/ui/TapFeedback";
-import { useSupabase } from "@/app/supabase-provider";
+import { createClient } from "@/lib/supabase/client";
 import { getArtistas, addArtista, updateArtista, deleteArtista, uploadAvatar } from "@/lib/artistas";
 import type { Artista } from "@/types";
 
@@ -13,7 +13,7 @@ type Props = {
 };
 
 export function ArtistasManagerModal({ isOpen, onClose }: Props) {
-  const { supabase } = useSupabase();
+  const supabase = useMemo(() => createClient(), []);
   const [artistas, setArtistas] = useState<Artista[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -56,7 +56,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Seguro que querés borrar este artista?")) return;
+    if (!confirm("Â¿Seguro que querÃ©s borrar este artista?")) return;
     const ok = await deleteArtista(supabase, id);
     if (ok) {
       setArtistas(prev => prev.filter(a => a.id !== id));
@@ -161,7 +161,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/50 p-4">
-          <h2 className="text-xl font-bold text-text-primary">Gestión de Artistas</h2>
+          <h2 className="text-xl font-bold text-text-primary">GestiÃ³n de Artistas</h2>
           <TapButton onClick={onClose} className="rounded-full p-2 hover:bg-bg-hover">
             <X className="size-5 text-text-secondary" />
           </TapButton>
@@ -216,7 +216,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                   />
                 </div>
                 <p className="mt-2 text-xs text-text-secondary">
-                  La foto se achicará automáticamente a muy poco peso.
+                  La foto se achicarÃ¡ automÃ¡ticamente a muy poco peso.
                 </p>
               </div>
 

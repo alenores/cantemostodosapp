@@ -2828,6 +2828,11 @@ export default function CifradoEditor({
       return;
     }
 
+    if (!session && phase === "cifrado") {
+      setPhase("ingreso");
+      return;
+    }
+
     onClose();
   });
 
@@ -4933,7 +4938,13 @@ export default function CifradoEditor({
         {phase === "cifrado" && (
           <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0 lg:bg-bg-card">
             <EditorSidebarHeader
-              onClose={onClose}
+              onClose={() => {
+                if (!session) {
+                  setPhase("ingreso");
+                } else {
+                  onClose();
+                }
+              }}
               loading={loading}
               showClose={showCloseButton}
             />
@@ -5014,13 +5025,17 @@ export default function CifradoEditor({
                   >
                     Artista
                   </label>
-                  <input
+                  <select
                     id="cifrado-artista"
                     value={artista}
                     onChange={(event) => setArtista(event.target.value)}
                     className={inputClassName}
-                    placeholder="Artista"
-                  />
+                  >
+                    <option value="">Sin artista / Seleccionar...</option>
+                    {artistas.map(a => (
+                      <option key={a.id} value={a.nombre}>{a.nombre}</option>
+                    ))}
+                  </select>
                 </VozPcConfigCard>
 
                 <VozPcConfigCard
@@ -5166,13 +5181,17 @@ export default function CifradoEditor({
                     >
                       Artista
                     </label>
-                    <input
-                      id="cifrado-artista-ingreso"
-                      value={artista}
-                      onChange={(event) => setArtista(event.target.value)}
-                      className={inputClassName}
-                      placeholder="Artista"
-                    />
+                    <select
+                        id="cifrado-artista-ingreso"
+                        value={artista}
+                        onChange={(event) => setArtista(event.target.value)}
+                        className={inputClassName}
+                      >
+                        <option value="">Sin artista / Seleccionar...</option>
+                        {artistas.map(a => (
+                          <option key={a.id} value={a.nombre}>{a.nombre}</option>
+                        ))}
+                      </select>
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                     <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>

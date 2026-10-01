@@ -46,8 +46,10 @@ import type {
 import { createClient } from "@/lib/supabase/client";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
-import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import { Bell, Music, Search, Star, WifiOff, X } from "lucide-react";
+import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types";
+import { ArtistasManagerModal } from "@/components/ui/ArtistasManagerModal";
+import { getArtistas } from "@/lib/artistas";
+import { Bell, Music, Search, Star, WifiOff, X, Settings } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
@@ -95,6 +97,13 @@ export default function CancioneroPageClient({
   const [cascadeActive, setCascadeActive] = useState(false);
   const [misCancionesIds, setMisCancionesIds] = useState<Set<number>>(new Set());
   const [snackbar, setSnackbar] = useState<string | null>(null);
+  const [artistas, setArtistas] = useState<Artista[]>([]);
+  const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
+  const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
+
+  useEffect(() => {
+    getArtistas(supabase).then(setArtistas);
+  }, [supabase]);
   const hadLoadedRef = useRef(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -546,6 +555,7 @@ export default function CancioneroPageClient({
   return (
     <>
       <AppReadyMarker />
+      <ArtistasManagerModal isOpen={artistasManagerOpen} onClose={() => setArtistasManagerOpen(false)} />
       <CancioneroSubpageShell
         title="Cancionero"
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}

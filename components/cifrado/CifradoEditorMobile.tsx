@@ -632,7 +632,8 @@ export default function CifradoEditorMobile({
 
   const mobileEditorBackEnabled =
     phase === "cifrado" &&
-    (pasteProposeOpen ||
+    (!session ||
+      pasteProposeOpen ||
       previewOpen ||
       configOpen ||
       exigenciaAbandonConfirmOpen ||
@@ -679,6 +680,12 @@ export default function CifradoEditorMobile({
 
     if (activeLineIndex !== null && !dragTarget && !barDragTarget) {
       requestDeactivateActiveLine();
+      return;
+    }
+
+    if (!session) {
+      setPhase("ingreso");
+      return;
     }
   }, [
     activeLineIndex,
@@ -1464,7 +1471,13 @@ export default function CifradoEditorMobile({
               <TapButton
                 type="button"
                 aria-label={backAriaLabel}
-                onClick={onClose}
+                onClick={() => {
+                  if (!session) {
+                    setPhase("ingreso");
+                  } else {
+                    onClose();
+                  }
+                }}
                 className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
               >
                 {exitIcon === "close" ? (
@@ -1472,6 +1485,15 @@ export default function CifradoEditorMobile({
                 ) : (
                   <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
                 )}
+              </TapButton>
+            ) : backHref && !session ? (
+              <TapButton
+                type="button"
+                aria-label="Volver a la selección de canción"
+                onClick={() => setPhase("ingreso")}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              >
+                <ArrowLeft className="size-4 text-text-primary" aria-hidden="true" />
               </TapButton>
             ) : backHref ? (
               <TapLink

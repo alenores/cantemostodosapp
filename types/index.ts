@@ -20,12 +20,20 @@ export type SalaMiembro = {
 import type { CifradoData, CompasConfig, NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 
+export type Artista = {
+  id: string;
+  nombre: string;
+  avatar_url: string | null;
+  created_at?: string;
+};
+
 export type CancionGuardada = {
   id: number;
   sala_id: number | null;
   user_id: string | null;
   nombre: string;
   artista: string | null;
+  artista_id?: string | null;
   url_letra: string | null;
   letra: string | null;
   cifrado?: CifradoData | null;
@@ -40,7 +48,7 @@ export type CancionGuardada = {
 
 export type CancionCancionero = Pick<
   CancionGuardada,
-  "id" | "nombre" | "artista" | "letra" | "tiene_cifrado_avanzado" | "user_id"
+  "id" | "nombre" | "artista" | "artista_id" | "letra" | "tiene_cifrado_avanzado" | "user_id"
 >;
 
 export type CancionCifradoDetalle = Pick<
@@ -48,6 +56,7 @@ export type CancionCifradoDetalle = Pick<
   | "id"
   | "nombre"
   | "artista"
+  | "artista_id"
   | "letra"
   | "cifrado"
   | "compas_config"
@@ -69,6 +78,7 @@ export type ColaItem = {
   sala_id: number;
   nombre: string;
   artista: string | null;
+  artista_id?: string | null;
   url_letra: string;
   letra_texto?: string | null;
   estado: EstadoCola;
@@ -120,6 +130,7 @@ export type ColaIndividualItem = {
   user_id: string;
   nombre: string;
   artista: string | null;
+  artista_id?: string | null;
   url_letra: string | null;
   letra_texto: string | null;
   estado: EstadoCola;
@@ -134,5 +145,6 @@ export type UsuarioCancion = {
   url_letra: string | null;
   nombre: string;
   artista: string | null;
+  artista_id?: string | null;
   created_at: string;
 };

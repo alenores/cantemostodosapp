@@ -571,8 +571,11 @@ export default function CancioneroPageClient({
         onClose={() => setArtistasFilterOpen(false)}
         artistas={artistas}
         selectedIds={selectedArtistaIds}
-        onChange={setSelectedArtistaIds}
-        onOpenManager={() => setArtistasManagerOpen(true)}
+        onApply={(ids) => {
+          setSelectedArtistaIds(ids);
+          setArtistasFilterOpen(false);
+        }}
+        onManageArtistas={() => setArtistasManagerOpen(true)}
       />
       <CancioneroSubpageShell
         title="Cancionero"

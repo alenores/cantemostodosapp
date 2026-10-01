@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -332,8 +332,6 @@ export default function CancioneroItemCard({
             <p className="mt-0.5 truncate text-[13px] leading-tight text-text-muted">
               {cancion.artista}
             </p>
-          )}
-        </div>
           )}
         </div>
         {showDesktopActions ? (

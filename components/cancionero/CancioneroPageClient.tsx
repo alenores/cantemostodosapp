@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
@@ -121,10 +121,11 @@ export default function CancioneroPageClient({
     const normalized = query.trim().toLowerCase();
     let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || Boolean(cancion.artista?.toLowerCase().includes(normalized)));
     if (selectedArtistaIds.size > 0) {
-      list = list.filter(c => c.artista_id && selectedArtistaIds.has(c.artista_id));
+      const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
+      list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
     return list;
-  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds]);
+  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas]);
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {

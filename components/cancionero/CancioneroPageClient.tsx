@@ -566,6 +566,14 @@ export default function CancioneroPageClient({
     <>
       <AppReadyMarker />
       <ArtistasManagerModal isOpen={artistasManagerOpen} onClose={() => setArtistasManagerOpen(false)} />
+      <ArtistasFilterModal 
+        isOpen={artistasFilterOpen}
+        onClose={() => setArtistasFilterOpen(false)}
+        artistas={artistas}
+        selectedIds={selectedArtistaIds}
+        onChange={setSelectedArtistaIds}
+        onOpenManager={() => setArtistasManagerOpen(true)}
+      />
       <CancioneroSubpageShell
         title="Cancionero"
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}
@@ -700,7 +708,7 @@ export default function CancioneroPageClient({
                   >
                     <CancioneroItemCard
                       cancion={cancion}
-                      artistaAvatarUrl={artistas.find(a => a.id === cancion.artista_id)?.avatar_url}
+                      artistaAvatarUrl={artistas.find(a => cancion.artista && a.nombre === cancion.artista)?.avatar_url}
                       isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
                       puedeEditarEliminar={esCancionDelUsuario(cancion, usuarioId)}

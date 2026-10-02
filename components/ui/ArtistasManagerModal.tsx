@@ -7,7 +7,16 @@ import { createClient } from "@/lib/supabase/client";
 import { getArtistas, addArtista, updateArtista, deleteArtista, uploadAvatar } from "@/lib/artistas";
 import { buscarArtistaCoincidente } from "@/lib/artistas-match";
 import ArtistaSugerencias from "@/components/cifrado/ArtistaSugerencias";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { Artista } from "@/types";
+
+type Dialogo = {
+  message: string;
+  confirmLabel?: string;
+  deleteConfirm?: boolean;
+  /** Sin acción: solo un aviso con «Entendido». */
+  onConfirm?: () => void;
+};
 
 type Props = {
   isOpen: boolean;
@@ -25,6 +34,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dialogo, setDialogo] = useState<Dialogo | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,8 +67,16 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
     setAvatarPreview(artista.avatar_url);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("¿Seguro que querés borrar este artista?")) return;
+  function handleDelete(id: string) {
+    setDialogo({
+      message: "¿Seguro que querés borrar este artista?",
+      confirmLabel: "Borrar",
+      deleteConfirm: true,
+      onConfirm: () => void borrarArtista(id),
+    });
+  }
+
+  async function borrarArtista(id: string) {
     const ok = await deleteArtista(supabase, id);
     if (ok) {
       setArtistas(prev => prev.filter(a => a.id !== id));
@@ -123,18 +141,22 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
       excluirId: editingId,
     });
     if (exacto) {
-      alert(`Ya existe «${exacto.nombre}». Usá ese artista.`);
+      setDialogo({ message: `Ya existe «${exacto.nombre}». Usá ese artista.` });
       return;
     }
-    if (
-      parecidos.length > 0 &&
-      !confirm(
-        `Se parece a: ${parecidos.map((a) => a.nombre).join(", ")}.\n¿Guardar «${nombre.trim()}» igual?`,
-      )
-    ) {
+    if (parecidos.length > 0) {
+      setDialogo({
+        message: `Se parece a: ${parecidos.map((a) => a.nombre).join(", ")}.\n¿Guardar «${nombre.trim()}» igual?`,
+        confirmLabel: "Guardar igual",
+        onConfirm: () => void guardarArtista(),
+      });
       return;
     }
 
+    await guardarArtista();
+  }
+
+  async function guardarArtista() {
     setSaving(true);
     let finalAvatarUrl = avatarUrl;
 
@@ -312,6 +334,20 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={dialogo !== null}
+        message={dialogo?.message ?? ""}
+        confirmLabel={dialogo?.onConfirm ? (dialogo.confirmLabel ?? "Confirmar") : "Entendido"}
+        deleteConfirm={dialogo?.deleteConfirm}
+        hideCancel={!dialogo?.onConfirm}
+        zIndex={500}
+        onCancel={() => setDialogo(null)}
+        onConfirm={() => {
+          const accion = dialogo?.onConfirm;
+          setDialogo(null);
+          accion?.();
+        }}
+      />
     </div>
   );
 }

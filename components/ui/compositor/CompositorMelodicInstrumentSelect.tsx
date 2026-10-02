@@ -5,6 +5,7 @@ import {
   COMPOSITOR_INSTRUMENT_OPTIONS,
   type CompositorMelodicInstrumentId,
 } from "@/lib/compositor";
+import AppSelect from "@/components/ui/AppSelect";
 
 const MELODIC_INSTRUMENT_IDS = ["piano", "guitarra", "viento"] as const;
 
@@ -40,23 +41,18 @@ export function CompositorMelodicInstrumentSelect({
       >
         Instrumento
       </span>
-      <select
+      <AppSelect
+        title="Instrumento melódico"
         value={activeTrackId}
         disabled={disabled}
-        onChange={(event) =>
-          onInstrumentChange(
-            event.target.value as CompositorMelodicInstrumentId,
-          )
-        }
-        className={`${CIFRADO_CONTROLS_INPUT_CLASS} !min-h-8 !w-auto !min-w-[5.5rem] !py-1.5 text-[11px] font-bold disabled:opacity-50`}
+        options={MELODIC_INSTRUMENT_OPTIONS.map((option) => ({
+          value: option.id as CompositorMelodicInstrumentId,
+          label: option.label,
+        }))}
+        onChange={onInstrumentChange}
+        className={`${CIFRADO_CONTROLS_INPUT_CLASS} !min-h-8 !w-auto !min-w-[5.5rem] !py-1.5 text-[11px] font-bold`}
         aria-label="Instrumento melódico"
-      >
-        {MELODIC_INSTRUMENT_OPTIONS.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      />
     </label>
   );
 }

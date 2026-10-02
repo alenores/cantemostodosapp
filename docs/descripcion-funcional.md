@@ -137,6 +137,13 @@ En computadora la experiencia es distinta:
 - Varias herramientas (afinador, editor, metrónomo, etc.) se abren como **ventanas superpuestas** en lugar de ocupar toda la pantalla.
 - La fila de canciones aparece como **panel fijo al costado** de la letra, no como panel que sube desde abajo.
 
+### 5.3.1 Listas y avisos propios de la app
+
+La app **no abre pantallas del sistema** (las listas desplegables o avisos del navegador o del teléfono):
+
+- Para elegir una opción (tono, modo, ciclo guardado, instrumento, categoría de usuario, etc.) se abre una **lista propia que sube desde abajo**, con lo elegido marcado.
+- Los avisos y confirmaciones (por ejemplo, borrar un artista) aparecen en una **ventanita propia** con el estilo de la app.
+
 ### 5.4 Hub de Canciones y Hub de Práctica
 
 Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que agrupa sus submódulos con botones **Ver** u **Abrir**:

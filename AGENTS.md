@@ -247,6 +247,11 @@ volvía al inicio y se perdía lo que no estaba guardado.
 - **Snackbar** — notificación breve desde abajo, desaparece automáticamente a los 3 segundos.
 - **Botón flotante** — botón fijo sobre la letra, siempre visible en modo lectura.
 
+### Sin pantallas del sistema (2026-10-02)
+
+- **Nunca `<select>` nativo**: usar `AppSelect` (`components/ui/AppSelect.tsx`), lista propia que sube desde abajo.
+- **Nunca `alert` / `confirm` / `prompt`**: usar `ConfirmDialog` (con `hideCancel` para un aviso de un solo botón).
+
 ### Estados de items en la cola de la juntada
 - **tocada** — ya fue reproducida. Se muestran las últimas dos.
 - **activa** — la canción que todos están viendo ahora. Fondo blanco.

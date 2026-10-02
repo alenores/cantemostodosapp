@@ -9,6 +9,7 @@ import { MODOS_TONALES, type ModoTonal } from "@/lib/cifrado-escala";
 import { getNotaLabel, type NotacionAcordes } from "@/lib/notacion-acordes";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import AppSelect from "@/components/ui/AppSelect";
 
 const NOTA_INDICES = Array.from({ length: 12 }, (_, index) => index as NotaIndex);
 
@@ -21,6 +22,7 @@ export type CifradoTonalidadFieldsProps = {
   showModoTonal?: boolean;
   showTonalidadStepButtons?: boolean;
   fieldLabelClassName?: string;
+  /** Sin valor elegido, el botón muestra «Elegí…» (siempre activo con la lista propia). */
   requireSelection?: boolean;
   inputClassName?: string;
   onTonalidadChange: (next: NotaIndex) => void;
@@ -36,7 +38,6 @@ export function CifradoTonalidadFields({
   showModoTonal = true,
   showTonalidadStepButtons = false,
   fieldLabelClassName = CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
-  requireSelection = false,
   inputClassName = CIFRADO_CONTROLS_INPUT_CLASS,
   onTonalidadChange,
   onModoTonalChange,
@@ -73,32 +74,19 @@ export function CifradoTonalidadFields({
               <ChevronDown className="size-4" aria-hidden="true" />
             </TapButton>
           ) : null}
-          <select
+          <AppSelect
             id={`${idPrefix}-tonalidad`}
-            value={tonalidadIndex ?? ""}
-            onChange={(event) => {
-              const next = event.target.value;
-
-              if (!next) {
-                return;
-              }
-
-              onTonalidadChange(Number(next) as NotaIndex);
-            }}
+            title="Elegir tono"
+            placeholder="Elegí el tono"
+            value={tonalidadIndex}
+            options={NOTA_INDICES.map((index) => ({
+              value: index,
+              label: getNotaLabel(index, notacion),
+            }))}
+            onChange={onTonalidadChange}
             className={selectClassName}
             style={showTonalidadStepButtons ? { width: "auto", minWidth: 0, flex: 1 } : undefined}
-          >
-            {requireSelection ? (
-              <option value="" disabled>
-                Elegí el tono
-              </option>
-            ) : null}
-            {NOTA_INDICES.map((index) => (
-              <option key={index} value={index}>
-                {getNotaLabel(index, notacion)}
-              </option>
-            ))}
-          </select>
+          />
           {showTonalidadStepButtons ? (
             <TapButton
               type="button"
@@ -120,31 +108,15 @@ export function CifradoTonalidadFields({
       {showModoTonal ? (
         <label htmlFor={`${idPrefix}-modo-tonal`}>
           <span className={fieldLabelClassName}>Modo</span>
-          <select
+          <AppSelect
             id={`${idPrefix}-modo-tonal`}
-            value={modoTonal ?? ""}
-            onChange={(event) => {
-              const next = event.target.value;
-
-              if (!next) {
-                return;
-              }
-
-              onModoTonalChange(next as ModoTonal);
-            }}
+            title="Elegir modo"
+            placeholder="Elegí el modo"
+            value={modoTonal}
+            options={MODOS_TONALES.map((modo) => ({ value: modo.id, label: modo.label }))}
+            onChange={onModoTonalChange}
             className={selectClassName}
-          >
-            {requireSelection ? (
-              <option value="" disabled>
-                Elegí el modo
-              </option>
-            ) : null}
-            {MODOS_TONALES.map((modo) => (
-              <option key={modo.id} value={modo.id}>
-                {modo.label}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       ) : null}
     </div>

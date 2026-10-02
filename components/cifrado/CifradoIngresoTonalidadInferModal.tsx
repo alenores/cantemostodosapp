@@ -11,6 +11,7 @@ import type { TonalidadInferCandidate } from "@/lib/cifrado-tonalidad-infer";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import ArtistaSelector from "@/components/cifrado/ArtistaSelector";
+import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import { buscarArtistaCoincidente } from "@/lib/artistas-match";
 import type { Artista } from "@/types";
 import { ArrowLeftRight } from "lucide-react";
@@ -230,6 +231,7 @@ export function CifradoIngresoTonalidadInferModal({
                     <ArrowLeftRight className="size-3.5" aria-hidden="true" />
                   </button>
                 </div>
+                <CancionRepetidaAviso nombre={nombre} artista={artista} />
 
                 <label htmlFor="paste-ingreso-artista">
                   <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>

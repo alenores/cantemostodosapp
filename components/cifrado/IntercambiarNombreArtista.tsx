@@ -20,9 +20,9 @@ export default function IntercambiarNombreArtista({
       onClick={onIntercambiar}
       disabled={disabled}
       aria-label="Intercambiar nombre y artista"
-      className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-accent disabled:opacity-50"
+      className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-text-secondary disabled:opacity-40"
     >
-      <ArrowUpDown className="size-4" aria-hidden />
+      <ArrowUpDown className="size-3" aria-hidden />
       Intercambiar nombre y artista
     </TapButton>
   );

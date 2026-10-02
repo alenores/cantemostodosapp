@@ -36,8 +36,8 @@ export type CifradoSaveResult = {
 };
 
 /**
- * Persistencia opcional del editor (p. ej. Entrenador â†’ canciones_practica).
- * Si no se provee, el editor PC usa el flujo histÃ³rico del Cancionero.
+ * Persistencia opcional del editor (p. ej. Entrenador → canciones_practica).
+ * Si no se provee, el editor PC usa el flujo histórico del Cancionero.
  */
 export type CifradoEditorPersistPayload = {
   nombre: string;

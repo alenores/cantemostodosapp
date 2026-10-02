@@ -58,7 +58,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Â¿Seguro que querÃ©s borrar este artista?")) return;
+    if (!confirm("¿Seguro que querés borrar este artista?")) return;
     const ok = await deleteArtista(supabase, id);
     if (ok) {
       setArtistas(prev => prev.filter(a => a.id !== id));
@@ -179,7 +179,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
       <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/50 p-4">
-          <h2 className="text-xl font-bold text-text-primary">GestiÃ³n de Artistas</h2>
+          <h2 className="text-xl font-bold text-text-primary">Gestión de Artistas</h2>
           <TapButton onClick={onClose} className="rounded-full p-2 hover:bg-bg-hover">
             <X className="size-5 text-text-secondary" />
           </TapButton>
@@ -241,7 +241,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                   />
                 </div>
                 <p className="mt-2 text-xs text-text-secondary">
-                  La foto se achicarÃ¡ automÃ¡ticamente a muy poco peso.
+                  La foto se achicará automáticamente a muy poco peso.
                 </p>
               </div>
 

@@ -244,7 +244,7 @@ export async function insertCancionCancionero(
   const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("Se requiere sesiÃ³n activa para agregar al cancionero");
+    throw new Error("Se requiere sesión activa para agregar al cancionero");
   }
 
   const { error } = await supabase.from("canciones_guardadas").insert({
@@ -290,7 +290,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (!existing) {
-    throw new Error("No se encontrÃ³ la canciÃ³n para actualizar.");
+    throw new Error("No se encontró la canción para actualizar.");
   }
 
   const { error, count } = await supabase
@@ -318,7 +318,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (count === 0) {
-    throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+    throw new Error("Solo quien subió la canción puede editarla.");
   }
 }
 
@@ -342,7 +342,7 @@ export async function updateCancionCancioneroMetadatos(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
 }
 
 export async function updateCancionCancionero(
@@ -363,7 +363,7 @@ export async function updateCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
 }
 
 export async function deleteCancionCancionero(
@@ -379,7 +379,7 @@ export async function deleteCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede eliminarla.");
+  if (count === 0) throw new Error("Solo quien subió la canción puede eliminarla.");
 }
 
 export async function guardarLinkEnCancionero(
@@ -469,7 +469,7 @@ export async function guardarLetraEnCancionero(
     if (error) {
       throw error;
     }
-    if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+    if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
 
     return;
   }

@@ -6,24 +6,6 @@ import {
 /** Rutas que deben quedar guardadas en el celular para abrir sin internet. */
 export const OFFLINE_WARM_ROUTES = [...OFFLINE_SHELL_URLS, "/manifest.json"] as const;
 
-function cacheUrlsInServiceWorker(urls: readonly string[]): void {
-  if (!("serviceWorker" in navigator)) {
-    return;
-  }
-
-  void navigator.serviceWorker.ready.then((registration) => {
-    registration.active?.postMessage({
-      type: "CACHE_URLS",
-      payload: {
-        urlsToCache: urls.map((url) => [
-          url,
-          { credentials: "include" as RequestCredentials },
-        ]),
-      },
-    });
-  });
-}
-
 async function fetchWarmRoutes(urls: readonly string[]): Promise<boolean> {
   const cache =
     typeof caches !== "undefined"
@@ -55,17 +37,52 @@ async function fetchWarmRoutes(urls: readonly string[]): Promise<boolean> {
 }
 
 /**
+ * Cada cuánto, como mucho, se vuelven a guardar las pantallas por pedido de fondo (abrir la app,
+ * volver a ella, recuperar la señal). Antes se guardaban unas seis veces seguidas al abrir la app y
+ * otra vez en cada vuelta: con señal floja eso hacía lento justo el arranque (2026-10-02).
+ */
+const PAUSA_ENTRE_GUARDADOS_MS = 10 * 60_000;
+
+let guardadoEnCurso: Promise<boolean> | null = null;
+let ultimoGuardadoOk = 0;
+
+function guardarPantallas(): Promise<boolean> {
+  guardadoEnCurso = fetchWarmRoutes(OFFLINE_WARM_ROUTES)
+    .then((ok) => {
+      if (ok) ultimoGuardadoOk = Date.now();
+      return ok;
+    })
+    .finally(() => {
+      guardadoEnCurso = null;
+    });
+  return guardadoEnCurso;
+}
+
+/**
  * Guarda en el celular las pantallas clave (con sesión si existe).
  *
+ * Una sola a la vez, y no más de una cada `PAUSA_ENTRE_GUARDADOS_MS`. Con `force` (después de
+ * iniciar sesión o de la descarga del Cancionero) se guarda igual: si había una en curso, se
+ * espera a que termine y se hace otra, porque la sesión o el contenido pudieron cambiar.
+ *
  * Mira solo si el teléfono tiene red, no el detector de señal débil: la llama también el final de
- * la descarga que pidió la persona, que no se frena por el detector. El calentado de fondo
- * (`OfflineWarmRunner`) pregunta `hayConexion()` antes de llamarla.
+ * la descarga que pidió la persona, que no se frena por el detector. Los llamados de fondo
+ * preguntan `hayConexion()` antes de llamarla.
  */
-export async function warmOfflineCache(): Promise<boolean> {
+export async function warmOfflineCache(
+  { force = false }: { force?: boolean } = {},
+): Promise<boolean> {
   if (typeof window === "undefined" || !navigator.onLine) {
     return false;
   }
 
-  cacheUrlsInServiceWorker(OFFLINE_WARM_ROUTES);
-  return fetchWarmRoutes(OFFLINE_WARM_ROUTES);
+  if (guardadoEnCurso) {
+    if (!force) return guardadoEnCurso;
+    await guardadoEnCurso.catch(() => false);
+    if (guardadoEnCurso) return guardadoEnCurso;
+  } else if (!force && Date.now() - ultimoGuardadoOk < PAUSA_ENTRE_GUARDADOS_MS) {
+    return true;
+  }
+
+  return guardarPantallas();
 }

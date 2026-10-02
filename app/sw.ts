@@ -2,6 +2,7 @@
 /// <reference lib="webworker" />
 import { defaultCache, PAGES_CACHE_NAME } from "@serwist/turbopack/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
+import { OFFLINE_SHELL_CACHE, OFFLINE_SHELL_URLS } from "../lib/offline/shell-urls";
 import {
   CacheFirst,
   ExpirationPlugin,
@@ -30,29 +31,11 @@ declare const self: ServiceWorkerGlobalScope;
 const APP_SHELL_PATHS =
   /^\/($|salas|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
 
-const SHELL_CACHE = "app-shell-offline-v2";
+const SHELL_CACHE = OFFLINE_SHELL_CACHE;
 const LEGACY_SHELL_CACHE = "app-shell-offline-v1";
 const LEGACY_AUDIO_CACHE = "static-audio-assets";
-const SHELL_URLS = [
-  "/pwa-boot.html",
-  "/",
-  "/individual",
-  "/canciones",
-  "/canciones/cancionero",
-  "/canciones/favoritas",
-  "/canciones/editor",
-  "/practica",
-  "/practica/metronomo",
-  "/practica/entrenador-vocal",
-  "/practica/compositor",
-  "/practica/entrenador-canciones",
-  "/practica/entrenador-canciones/editor",
-  "/practica/entrenador-canciones/ver",
-  "/herramientas/afinador",
-  "/salas",
-  "/~offline",
-  "/auth/login",
-] as const;
+/** Lista única de pantallas sin internet: `lib/offline/shell-urls.ts`. */
+const SHELL_URLS: readonly string[] = OFFLINE_SHELL_URLS;
 
 const SHELL_FALLBACK_ORDER = ["/", "/pwa-boot.html", "/~offline", "/salas"] as const;
 

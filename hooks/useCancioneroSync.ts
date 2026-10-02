@@ -10,6 +10,7 @@ import {
   downloadCancioneroUpdates,
   type CancioneroUpdatePlan,
 } from "@/lib/offline/cancionero-sync";
+import { getCancioneroLocalMeta } from "@/lib/offline/cancionero-store";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -24,6 +25,7 @@ export function useCancioneroSync() {
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const busy = useRef(false);
   const checkRequested = useRef(false);
+  const autoDownloadTried = useRef(false);
 
   const check = useCallback(async () => {
     if (!hayConexion()) return;
@@ -67,7 +69,7 @@ export function useCancioneroSync() {
         setProgress({ completed, total });
       });
       setPreparingOffline(true);
-      const offlineReady = await warmOfflineCache();
+      const offlineReady = await warmOfflineCache({ force: true });
       if (!offlineReady) {
         throw new Error("offline-preparation-incomplete");
       }
@@ -87,6 +89,23 @@ export function useCancioneroSync() {
       if (downloaded) void check();
     }
   }, [check, plan]);
+
+  /**
+   * Primer uso (2026-10-02): si el celular todavía no tiene ninguna descarga del Cancionero, la
+   * primera se hace sola, sin esperar a que la persona toque la campanita. Así nadie se encuentra
+   * el Cancionero vacío la primera vez que se queda sin señal. Las novedades siguientes siguen
+   * pidiendo permiso. Se intenta una vez por apertura de la app: si falla, queda la campanita.
+   */
+  useEffect(() => {
+    if (!plan?.songs.length || autoDownloadTried.current || busy.current) return;
+    let cancelled = false;
+    void getCancioneroLocalMeta().then((meta) => {
+      if (cancelled || meta.syncedAt || autoDownloadTried.current) return;
+      autoDownloadTried.current = true;
+      void download();
+    });
+    return () => { cancelled = true; };
+  }, [plan, download]);
 
   useEffect(() => {
     // Agrupa eventos de guardado y evita duplicar la consulta al montar en Strict Mode.

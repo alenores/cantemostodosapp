@@ -1,5 +1,6 @@
 "use client";
 
+import { hayConexion } from "@/lib/conexion";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { SerwistProvider as SerwistProviderBase } from "@serwist/turbopack/react";
 import type { ReactNode } from "react";
@@ -16,7 +17,7 @@ export default function SerwistProvider({ children }: SerwistProviderProps) {
     }
 
     void navigator.serviceWorker.ready.then(() => {
-      void warmOfflineCache();
+      if (hayConexion()) void warmOfflineCache();
     });
   }, []);
 

@@ -95,7 +95,7 @@ export default function LoginPageClient() {
     }
 
     router.refresh();
-    void warmOfflineCache();
+    void warmOfflineCache({ force: true });
     startNavigation();
     router.push(nextPath);
   }

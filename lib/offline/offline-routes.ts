@@ -1,23 +1,14 @@
+import { OFFLINE_SHELL_URLS } from "@/lib/offline/shell-urls";
+
+/** No son pantallas para navegar: arranque, aviso sin señal e inicio de sesión. */
+const NO_NAVEGABLES = new Set<string>(["/pwa-boot.html", "/~offline", "/auth/login"]);
+
 /** Rutas principales disponibles offline (con prefetch o visita previa con WiFi). */
-export const OFFLINE_NAVIGABLE_PATHS = new Set([
-  "/",
-  "/individual",
-  "/salas",
+export const OFFLINE_NAVIGABLE_PATHS = new Set<string>([
+  ...OFFLINE_SHELL_URLS.filter((path) => path !== "/auth/login"),
+  // Direcciones viejas del cancionero: redirigen a las nuevas.
   "/cancionero",
   "/cancionero/global",
-  "/canciones",
-  "/canciones/cancionero",
-  "/canciones/favoritas",
-  "/practica",
-  "/practica/metronomo",
-  "/practica/entrenador-vocal",
-  "/practica/compositor",
-  "/practica/entrenador-canciones",
-  "/practica/entrenador-canciones/editor",
-  "/practica/entrenador-canciones/ver",
-  "/herramientas/afinador",
-  "/~offline",
-  "/pwa-boot.html",
 ]);
 
 export function isOfflineNavigableRoute(href: string): boolean {
@@ -29,19 +20,6 @@ export function isOfflineNavigableRoute(href: string): boolean {
   }
 }
 
-export const OFFLINE_PREFETCH_ROUTES = [
-  "/",
-  "/individual",
-  "/canciones",
-  "/canciones/cancionero",
-  "/canciones/favoritas",
-  "/practica",
-  "/practica/metronomo",
-  "/practica/entrenador-vocal",
-  "/practica/compositor",
-  "/salas",
-  "/practica/entrenador-canciones",
-  "/practica/entrenador-canciones/editor",
-  "/practica/entrenador-canciones/ver",
-  "/herramientas/afinador",
-] as const;
+export const OFFLINE_PREFETCH_ROUTES = OFFLINE_SHELL_URLS.filter(
+  (path) => !NO_NAVEGABLES.has(path),
+);

@@ -226,9 +226,10 @@ El celular congela o cierra la app en segundo plano y, al volver, rearma la pant
 Tiene que rearmarse **en la misma pantalla**, nunca en el inicio. Pasó con el editor de canciones:
 volvía al inicio y se perdía lo que no estaba guardado.
 
-- Toda pantalla que se abre desde lo guardado va en `SHELL_URLS` de `app/sw.ts`.
-- `APP_SHELL_PATHS` (el `navigateFallback` al inicio) lista **solo** pantallas que están en
-  `SHELL_URLS`. Una pantalla ahí sin copia propia abre el inicio **aunque haya señal**.
+- Toda pantalla que se abre desde lo guardado va en `OFFLINE_SHELL_URLS` de `lib/offline/shell-urls.ts`
+  (lista única: la usan el service worker, el guardado de pantallas y la navegación sin señal).
+- `APP_SHELL_PATHS` (el `navigateFallback` al inicio, en `app/sw.ts`) lista **solo** pantallas que están en
+  `OFFLINE_SHELL_URLS`. Una pantalla ahí sin copia propia abre el inicio **aunque haya señal**.
 - Cerrar la app a mano y abrirla desde el ícono sí arranca en el inicio: eso lo decide el teléfono.
 
 ### Colas

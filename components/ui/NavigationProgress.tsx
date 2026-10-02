@@ -1,5 +1,7 @@
 "use client";
 
+import { avisarFallaDeRed } from "@/lib/conexion";
+import { isOfflineNavigableRoute } from "@/lib/offline/offline-routes";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -12,13 +14,13 @@ import {
 } from "react";
 
 type NavigationProgressContextValue = {
-  startNavigation: () => void;
+  startNavigation: (href?: string) => void;
 };
 
 const NavigationProgressContext =
   createContext<NavigationProgressContextValue | null>(null);
 
-export function useStartNavigation(): () => void {
+export function useStartNavigation(): (href?: string) => void {
   const context = useContext(NavigationProgressContext);
 
   return context?.startNavigation ?? (() => {});
@@ -39,6 +41,13 @@ function isInternalNavigationHref(href: string | null): href is string {
 
 const NAV_PROGRESS_MAX_MS = 12_000;
 
+/**
+ * Si el cambio de pantalla no terminó en este tiempo, la señal se cayó en el medio (2026-10-02):
+ * la app todavía se creía con señal y quedaba esperando sin límite. Para las pantallas guardadas
+ * en el celular se abre la copia guardada, igual que sin señal.
+ */
+const NAV_FALLBACK_MS = 6_000;
+
 export default function NavigationProgressProvider({
   children,
 }: {
@@ -48,20 +57,28 @@ export default function NavigationProgressProvider({
   const searchParams = useSearchParams();
   const [active, setActive] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingHrefRef = useRef<string | null>(null);
 
   const currentRoute = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const currentRouteRef = useRef(currentRoute);
 
-  const startNavigation = useCallback(() => {
+  const startNavigation = useCallback((href?: string) => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
 
+    pendingHrefRef.current =
+      href && isInternalNavigationHref(href) && normalizeHref(href) !== currentRouteRef.current
+        ? href
+        : null;
     setActive(true);
   }, []);
 
   useEffect(() => {
+    currentRouteRef.current = currentRoute;
     setActive(false);
+    pendingHrefRef.current = null;
 
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
@@ -114,7 +131,7 @@ export default function NavigationProgressProvider({
         return;
       }
 
-      startNavigation();
+      startNavigation(destination);
     }
 
     document.addEventListener("click", handleClick, true);
@@ -133,8 +150,17 @@ export default function NavigationProgressProvider({
       setActive(false);
     }, NAV_PROGRESS_MAX_MS);
 
+    const fallbackId = window.setTimeout(() => {
+      const href = pendingHrefRef.current;
+      if (!href || !isOfflineNavigableRoute(href)) return;
+      pendingHrefRef.current = null;
+      avisarFallaDeRed();
+      window.location.assign(href);
+    }, NAV_FALLBACK_MS);
+
     return () => {
       window.clearTimeout(timeoutId);
+      window.clearTimeout(fallbackId);
     };
   }, [active]);
 

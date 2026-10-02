@@ -12,7 +12,7 @@ export function useNavigateWithProgress() {
 
   return useCallback(
     (href: string) => {
-      startNavigation();
+      startNavigation(href);
 
       if (!hayConexion() && isOfflineNavigableRoute(href)) {
         window.location.assign(href);

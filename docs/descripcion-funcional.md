@@ -207,6 +207,8 @@ Si el usuario edita desde el celular una canción que ya tenía descargada, la c
 
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
 
+**Si la señal se cae al cambiar de pantalla**, a los 6 segundos se abre la copia guardada de esa pantalla en lugar de quedarse esperando (vale para las pantallas que funcionan sin conexión).
+
 En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. **Contraer** queda como botón independiente, arriba del filtro. El menú de controles comienza justo debajo del filtro. En los controles de tono, la flecha izquierda baja un semitono y la derecha lo sube.
 
 ---
@@ -757,7 +759,9 @@ Solo disponible **con cuenta iniciada**.
 
 ### 15.1 Requisito inicial
 
-La primera vez se necesita **conexión a internet** para abrir la app. La descarga inicial del Cancionero también requiere aceptación: todas las canciones aparecen como nuevas.
+La primera vez se necesita **conexión a internet** para abrir la app. La **primera descarga del Cancionero es automática**: si el celular todavía no tiene ninguna canción, se bajan todas solas al abrir la app con conexión, sin tocar la campanita, y al terminar aparece **"Todo listo en tu celular"**. Si falla, queda la campanita para reintentar, y se vuelve a intentar sola la próxima vez que se abre la app. Las novedades siguientes sí piden aceptación.
+
+- Las pantallas para usar sin conexión se guardan en el celular **una sola vez al abrir la app**, y después como mucho cada 10 minutos al volver a ella. Al iniciar sesión y al terminar una descarga del Cancionero se guardan de nuevo en el momento.
 
 - Al abrir la app o recuperar conexión se comprueba si hay novedades mediante una consulta liviana, sin descargar las letras.
 - En Inicio, una **campanita en la esquina superior derecha de la tarjeta Cancionero** indica novedades o un aviso pendiente y abre el listado de canciones **Nuevas** y **Actualizadas**. No hay un cartel flotante en las demás pantallas.

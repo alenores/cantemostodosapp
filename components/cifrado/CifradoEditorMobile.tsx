@@ -32,6 +32,7 @@ import {
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
+import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import ArtistaSelector from "@/components/cifrado/ArtistaSelector";
 import { getArtistas } from "@/lib/artistas";
 import { buscarArtistaCoincidente, resolverArtistaId } from "@/lib/artistas-match";
@@ -276,6 +277,8 @@ export default function CifradoEditorMobile({
   const barDragTargetRef = useRef<PickerTarget | null>(null);
   const barDragOriginRef = useRef<PickerTarget | null>(null);
   const editingCancionIdRef = useRef<number | undefined>(undefined);
+  /** Canción abierta (o de origen): no se avisa como repetida de sí misma. */
+  const [excluirRepetidaId, setExcluirRepetidaId] = useState<number | null>(null);
   const tapTimestampsRef = useRef<number[]>([]);
   const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -285,6 +288,7 @@ export default function CifradoEditorMobile({
     }
 
     editingCancionIdRef.current = session.cancionId;
+    setExcluirRepetidaId(session.cancionId ?? null);
     setNombre(session.nombre);
     setArtista(session.artista);
     setArtistaId(session.artista_id ?? null);
@@ -493,6 +497,7 @@ export default function CifradoEditorMobile({
       });
 
       editingCancionIdRef.current = savedId;
+      setExcluirRepetidaId(savedId ?? null);
       onSaved?.({
         id: savedId,
         nombre: nombre.trim(),
@@ -1162,6 +1167,7 @@ export default function CifradoEditorMobile({
     isOwner: boolean,
   ) {
     editingCancionIdRef.current = isOwner ? cancion.id : 0;
+    setExcluirRepetidaId(cancion.id);
     setNombre(cancion.nombre);
     aplicarArtistaTexto(cancion.artista ?? "");
     setTonalidadIndex(DEFAULT_TONALIDAD);
@@ -1423,6 +1429,11 @@ export default function CifradoEditorMobile({
                     }}
                     className={CIFRADO_CONTROLS_INPUT_CLASS}
                     placeholder="Nombre de la canción"
+                  />
+                  <CancionRepetidaAviso
+                    nombre={nombre}
+                    artista={artista}
+                    excluirId={excluirRepetidaId}
                   />
                   <IntercambiarNombreArtista
                     disabled={!nombre.trim() && !artista.trim()}
@@ -1799,6 +1810,11 @@ export default function CifradoEditorMobile({
                   }}
                   className={CIFRADO_CONTROLS_INPUT_CLASS}
                   placeholder="Nombre de la canción"
+                />
+                <CancionRepetidaAviso
+                  nombre={nombre}
+                  artista={artista}
+                  excluirId={excluirRepetidaId}
                 />
                 <label
                   className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-3`}

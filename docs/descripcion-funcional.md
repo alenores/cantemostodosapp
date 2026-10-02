@@ -329,7 +329,7 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 
 - **Celular:** pantalla completa dedicada al editor.
 - **Computadora:** ventana superpuesta sobre el listado o el hub.
-- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
+- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Mientras la página carga, se ve una ruedita con «Cargando la canción…» en lugar de una pantalla en blanco. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
 - En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
 - El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una, el editor reconoce los renglones tradicionales de acordes y letra y los integra. Una canción propia se abre para completarla, y una de otra persona se abre como copia.
 
@@ -360,7 +360,9 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
 - Nombre y artista aparecen juntos en una tarjeta; tono y modo, en otra. Los títulos y campos usan mayúscula inicial y el resto en minúscula.
-- **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- **Intercambiar nombre y artista**: botón chico y gris; un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- **Canción repetida**: si ya hay en el cancionero una canción con el mismo nombre (sin importar mayúsculas, tildes ni signos), aparece un aviso debajo del nombre, también en la confirmación al pegar. Al tocarlo se abre una ventana con artista, nombre y letra de cada una para comparar. No impide guardar, porque puede ser la misma canción de otro artista.
+- **Vista previa**: dos botones chicos en la barra lateral, uno alterna PC / Cel y el otro Previsualizar / Edición.
 - **Artista desde la lista**: el artista se elige siempre de una lista propia de la app (con foto y buscador) que se abre desde abajo (computadora, celular y confirmación al pegar). Al pegar, traer de la web o elegir una canción simple, la app compara el nombre detectado con la lista sin importar mayúsculas, tildes, signos, artículos («Los», «La»…), «&» o el orden de las palabras: si es el mismo, lo deja elegido. Si no está, muestra «Se detectó …», sugiere los parecidos («¿Es …?») y ofrece «+ Agregar … a la lista». No se puede guardar un artista que no esté en la lista.
 - **Gestor de artistas**: no deja crear un artista que ya existe escrito de otra forma, y avisa si se parece a uno cargado antes de guardarlo.
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.

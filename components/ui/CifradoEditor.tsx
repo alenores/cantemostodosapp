@@ -73,6 +73,7 @@ import {
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
+import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import { VozPcConfigCard } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
@@ -2654,6 +2655,8 @@ export default function CifradoEditor({
   >([]);
   const bpmRef = useRef(compasConfig.bpm);
   const editingCancionIdRef = useRef<number | undefined>(undefined);
+  /** Canción abierta (o de origen): no se avisa como repetida de sí misma. */
+  const [excluirRepetidaId, setExcluirRepetidaId] = useState<number | null>(null);
   const cyclesByIdRef = useRef<ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>>(
     new Map(),
   );
@@ -2863,6 +2866,7 @@ export default function CifradoEditor({
   useEffect(() => {
     if (!open) {
       editingCancionIdRef.current = undefined;
+      setExcluirRepetidaId(null);
       setPhase("ingreso");
       setIngresoTab("letra");
       setModoInsercion("acordes");
@@ -2922,6 +2926,7 @@ export default function CifradoEditor({
 
     if (session) {
       editingCancionIdRef.current = session.cancionId;
+      setExcluirRepetidaId(session.cancionId ?? null);
       setNombre(session.nombre);
       setArtista(session.artista);
       setArtistaId(session.artista_id ?? null);
@@ -2968,6 +2973,7 @@ export default function CifradoEditor({
     }
 
     editingCancionIdRef.current = undefined;
+    setExcluirRepetidaId(null);
     setPhase("ingreso");
     setModoInsercion("acordes");
     setVistaArmado("pc");
@@ -3377,6 +3383,7 @@ export default function CifradoEditor({
     isOwner: boolean,
   ) {
     editingCancionIdRef.current = isOwner ? cancion.id : 0;
+    setExcluirRepetidaId(cancion.id);
     setNombre(cancion.nombre);
     aplicarArtistaTexto(cancion.artista ?? "");
     setIngresoTab("basicas");
@@ -4337,6 +4344,7 @@ export default function CifradoEditor({
           },
         );
         editingCancionIdRef.current = savedId;
+        setExcluirRepetidaId(savedId ?? null);
       } else if (editingId != null) {
         await updateCancionCifradoAvanzado(supabase, editingId, {
           nombre: payload.nombre,
@@ -5061,6 +5069,11 @@ export default function CifradoEditor({
                     className={inputClassName}
                     placeholder="Nombre de la canción"
                   />
+                  <CancionRepetidaAviso
+                    nombre={nombre}
+                    artista={artista}
+                    excluirId={excluirRepetidaId}
+                  />
                   <IntercambiarNombreArtista
                     disabled={!nombre.trim() && !artista.trim()}
                     onIntercambiar={() => {
@@ -5214,6 +5227,11 @@ export default function CifradoEditor({
                       }}
                       className={inputClassName}
                       placeholder="Nombre de la canción"
+                    />
+                    <CancionRepetidaAviso
+                      nombre={nombre}
+                      artista={artista}
+                      excluirId={excluirRepetidaId}
                     />
                     <IntercambiarNombreArtista
                       disabled={!nombre.trim() && !artista.trim()}

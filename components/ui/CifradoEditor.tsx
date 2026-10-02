@@ -2,7 +2,7 @@
 import type { Artista } from "@/types";
 import { getArtistas } from "@/lib/artistas";
 import { buscarArtistaCoincidente, resolverArtistaId } from "@/lib/artistas-match";
-import ArtistaSugerencias from "@/components/cifrado/ArtistaSugerencias";
+import ArtistaSelector from "@/components/cifrado/ArtistaSelector";
 
 import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
@@ -2572,9 +2572,15 @@ export default function CifradoEditor({
     setArtistaId(exacto ? exacto.id : null);
   }
 
-  function elegirArtista(elegido: Artista) {
-    setArtista(elegido.nombre);
-    setArtistaId(elegido.id);
+  function elegirArtista(elegido: Artista | null) {
+    setArtista(elegido?.nombre ?? "");
+    setArtistaId(elegido?.id ?? null);
+  }
+
+  function agregarArtistaALista(nuevo: Artista) {
+    setArtistas((prev) =>
+      [...prev, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    );
   }
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
@@ -3232,7 +3238,10 @@ export default function CifradoEditor({
       setNombre(result.nombre);
     }
 
-    if (result.artista) {
+    if (result.artistaId) {
+      setArtista(result.artista);
+      setArtistaId(result.artistaId);
+    } else if (result.artista) {
       aplicarArtistaTexto(result.artista);
     }
 
@@ -4288,6 +4297,10 @@ export default function CifradoEditor({
 
       const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
       const artistaIdGuardar = resolverArtistaId(artista, artistaId, artistas);
+      if (artistaIdGuardar === null && artista.trim()) {
+        setSaveValidation("Elegí el artista de la lista, o agregalo con «+ Agregar».");
+        return;
+      }
       const artistaVinculado = artistaIdGuardar
         ? artistas.find((item) => item.id === artistaIdGuardar)
         : undefined;
@@ -5057,27 +5070,14 @@ export default function CifradoEditor({
                   >
                     Artista
                   </label>
-                  <select
+                  <ArtistaSelector
                     id="cifrado-artista"
-                    value={artistaId || ""}
-                    onChange={(event) => {
-                      const id = event.target.value || null;
-                      setArtistaId(id);
-                      setArtista(id ? (artistas.find(a => a.id === id)?.nombre || "") : "");
-                    }}
-                    className={inputClassName}
-                  >
-                    <option value="">Sin artista / Seleccionar...</option>
-                    {artistas.map(a => (
-                      <option key={a.id} value={a.id}>{a.nombre}</option>
-                    ))}
-                  </select>
-                  <ArtistaSugerencias
-                    texto={artista}
                     artistas={artistas}
-                    artistaIdElegido={artistaId}
-                    mostrarTextoDetectado
+                    artistaId={artistaId}
+                    textoDetectado={artista}
+                    selectClassName={inputClassName}
                     onElegir={elegirArtista}
+                    onAgregado={agregarArtistaALista}
                   />
                 </VozPcConfigCard>
 
@@ -5224,27 +5224,14 @@ export default function CifradoEditor({
                     >
                       Artista
                     </label>
-                    <select
-                        id="cifrado-artista-ingreso"
-                        value={artistaId || ""}
-                        onChange={(event) => {
-                          const id = event.target.value || null;
-                          setArtistaId(id);
-                          setArtista(id ? (artistas.find(a => a.id === id)?.nombre || "") : "");
-                        }}
-                        className={inputClassName}
-                      >
-                        <option value="">Sin artista / Seleccionar...</option>
-                        {artistas.map(a => (
-                          <option key={a.id} value={a.id}>{a.nombre}</option>
-                        ))}
-                      </select>
-                    <ArtistaSugerencias
-                      texto={artista}
+                    <ArtistaSelector
+                      id="cifrado-artista-ingreso"
                       artistas={artistas}
-                      artistaIdElegido={artistaId}
-                      mostrarTextoDetectado
+                      artistaId={artistaId}
+                      textoDetectado={artista}
+                      selectClassName={inputClassName}
                       onElegir={elegirArtista}
+                      onAgregado={agregarArtistaALista}
                     />
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
@@ -5460,6 +5447,8 @@ export default function CifradoEditor({
         multipleTonalidades={tonalidadInferResult?.multipleTonalidades ?? false}
         notacion={notacion}
         zIndex={70}
+        artistas={artistas}
+        onArtistaAgregado={agregarArtistaALista}
         onConfirm={handleConfirmPasteIngreso}
         onDismiss={() => setPasteProposeOpen(false)}
       />

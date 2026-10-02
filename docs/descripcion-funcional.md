@@ -360,7 +360,7 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
 - Nombre y artista aparecen juntos en una tarjeta; tono y modo, en otra. Los títulos y campos usan mayúscula inicial y el resto en minúscula.
 - **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
-- **Artista reconocido**: al pegar, traer de la web, elegir una canción simple o escribir el artista, la app lo compara con la lista de artistas sin importar mayúsculas, tildes, signos, artículos («Los», «La»…), «&» o el orden de las palabras. Si es el mismo, usa ese artista y guarda el vínculo con su ficha. Si solo se parece (error de tipeo o nombre más corto), muestra «¿Es …?» para elegirlo con un toque; no lo asigna solo.
+- **Artista desde la lista**: el artista se elige siempre de un desplegable con los artistas cargados (computadora, celular y confirmación al pegar). Al pegar, traer de la web o elegir una canción simple, la app compara el nombre detectado con la lista sin importar mayúsculas, tildes, signos, artículos («Los», «La»…), «&» o el orden de las palabras: si es el mismo, lo deja elegido. Si no está, muestra «Se detectó …», sugiere los parecidos («¿Es …?») y ofrece «+ Agregar … a la lista». No se puede guardar un artista que no esté en la lista.
 - **Gestor de artistas**: no deja crear un artista que ya existe escrito de otra forma, y avisa si se parece a uno cargado antes de guardarlo.
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
 - Botón **Guardar**.

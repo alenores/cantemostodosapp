@@ -13,8 +13,11 @@ import LecturaCancionChip, {
 } from "@/components/salas/LecturaCancionChip";
 import LetraTexto from "@/components/salas/LetraTexto";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
+import VideoFlotante from "@/components/video/VideoFlotante";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { useCancionYoutube } from "@/hooks/useCancionYoutube";
+import { useVideoLectura } from "@/hooks/useVideoLectura";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
@@ -108,6 +111,13 @@ export default function CancioneroModoLectura({
     contentKey,
   });
 
+  const youtubeVideoId = useCancionYoutube({ cancionId: open ? cancion.id : null });
+  const video = useVideoLectura(youtubeVideoId, cancion.id);
+  const lecturaExtraItems = useMemo(
+    () => (video.fabItem ? [video.fabItem] : []),
+    [video.fabItem],
+  );
+
   const letraZoomStyle = getLetraZoomStyle(zoom.factor);
   const scrollEndPadding = getLetraTextScrollEndPadding();
   const lecturaZoomEligible = showCifradoAvanzado || Boolean(textoPlano);
@@ -135,6 +145,11 @@ export default function CancioneroModoLectura({
   }, [open, resetVista]);
 
   const handleLecturaBack = useCallback(() => {
+    if (video.abierto) {
+      video.cerrar();
+      return;
+    }
+
     if (tonoPanelAbierto) {
       setTonoPanelAbierto(false);
       return;
@@ -151,7 +166,7 @@ export default function CancioneroModoLectura({
     }
 
     onContraer();
-  }, [onContraer, overlayAbierto, tonoPanelAbierto, zoomPanelAbierto]);
+  }, [onContraer, overlayAbierto, tonoPanelAbierto, video, zoomPanelAbierto]);
 
   const lecturaNavItems = useMemo(() => {
     if (menuCompacto) {
@@ -250,6 +265,7 @@ export default function CancioneroModoLectura({
         fixedRightCss={lecturaFixedRightCss}
         onContraer={onContraer}
         onAfinador={() => setAfinadorOpen(true)}
+        onVideo={video.abrir}
       />
 
       <TapButton
@@ -305,6 +321,7 @@ export default function CancioneroModoLectura({
         showContraerOption={false}
         menuTopCss={lecturaOverlayMenuTopCss}
         navItems={lecturaNavItems}
+        extraItems={lecturaExtraItems}
         hasCompases={Boolean(lecturaCompasPlayback?.hasCompases)}
         compasesOcultos={compasesOcultos}
         acordesOcultos={acordesOcultos}
@@ -364,6 +381,14 @@ export default function CancioneroModoLectura({
       />
 
       <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />
+
+      {video.videoId ? (
+        <VideoFlotante
+          videoId={video.videoId}
+          titulo={cancion.nombre}
+          onCerrar={video.cerrar}
+        />
+      ) : null}
     </div>,
     document.body,
   );

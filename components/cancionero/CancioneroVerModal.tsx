@@ -4,8 +4,10 @@ import {
   CifradoLyricsBlock,
 } from "@/components/cifrado/CifradoLyricsView";
 import LetraTexto from "@/components/salas/LetraTexto";
+import VideoMiniaturaCard from "@/components/video/VideoMiniaturaCard";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { useCancionYoutube } from "@/hooks/useCancionYoutube";
 import { triggerHaptic } from "@/lib/haptic";
 import {
   getLetraModoLecturaHorizontalPadding,
@@ -158,6 +160,8 @@ type CancionSlideProps = {
   onAnterior?: () => void;
   onSiguiente?: () => void;
   onExpand?: () => void;
+  /** Video de YouTube de la canción actual (solo con conexión). */
+  videoId?: string | null;
 };
 
 function CancionSlide({
@@ -172,6 +176,7 @@ function CancionSlide({
   onAnterior,
   onSiguiente,
   onExpand,
+  videoId = null,
 }: CancionSlideProps) {
   if (!cancion) {
     return (
@@ -246,6 +251,15 @@ function CancionSlide({
             cifradoDisplay && cancion.letra ? "bg-letra-bg" : ""
           }`}
         >
+          {isCurrent && videoId ? (
+            <div className="px-3 pt-3">
+              <VideoMiniaturaCard
+                key={`${cancion.id}-${videoId}`}
+                videoId={videoId}
+                titulo={cancion.nombre}
+              />
+            </div>
+          ) : null}
           {cifradoLoading && isCurrent && tieneCifradoAvanzado ? (
             <p className="px-4 py-8 text-center text-sm text-text-muted">
               Cargando cifrado…
@@ -330,6 +344,7 @@ export default function CancioneroVerModal({
   const [offsetX, setOffsetX] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [slideWidth, setSlideWidth] = useState(0);
+  const videoId = useCancionYoutube({ cancionId: open ? cancion?.id : null });
 
   useBodyScrollLock(open);
 
@@ -726,6 +741,7 @@ export default function CancioneroVerModal({
               onAnterior={() => navigateByDirection(-1)}
               onSiguiente={() => navigateByDirection(1)}
               onExpand={onExpand}
+              videoId={videoId}
             />
             <CancionSlide cancion={cancionSiguiente} slideWidth={slideWidth} />
           </div>

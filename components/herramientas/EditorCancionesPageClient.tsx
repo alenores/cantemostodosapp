@@ -102,7 +102,7 @@ export default function EditorCancionesPageClient() {
         } else {
           const { data } = await supabase
             .from("canciones_guardadas")
-            .select("nombre, artista, letra")
+            .select("nombre, artista, letra, youtube_url")
             .eq("id", editingId)
             .is("sala_id", null)
             .maybeSingle();
@@ -115,6 +115,7 @@ export default function EditorCancionesPageClient() {
                 artista: data.artista ?? "",
                 letra: data.letra ?? "",
                 esAvanzada: false,
+                youtube_url: data.youtube_url ?? null,
               }),
             );
           }
@@ -156,6 +157,7 @@ export default function EditorCancionesPageClient() {
           tonalidad_default: payload.tonalidad_default,
           modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
           bpm_default: clampBpm(payload.bpm_default),
+          youtube_url: payload.youtube_url ?? null,
           tiene_cifrado_avanzado: true,
         })
         .select("id")

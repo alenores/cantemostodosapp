@@ -73,6 +73,7 @@ import {
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
+import CancionYoutubeField from "@/components/cifrado/CancionYoutubeField";
 import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { ToolSwitch } from "@/components/ui/ToolSwitch";
@@ -182,6 +183,7 @@ import type {
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
 import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
+import { normalizarYoutubeUrl } from "@/lib/youtube";
 import type { CancionCancionero } from "@/types";
 import {
   buildDisplayedPreviewPlaybackBeats,
@@ -2558,6 +2560,9 @@ export default function CifradoEditor({
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
   const [artistaId, setArtistaId] = useState<string | null>(() => session?.artista_id ?? null);
+  const [youtubeUrl, setYoutubeUrl] = useState(() => session?.youtube_url ?? "");
+  /** Solo se guarda el link si la persona lo tocó: no pisa uno guardado que no se cargó. */
+  const [youtubeTocado, setYoutubeTocado] = useState(false);
   const supabaseClient = useMemo(() => createClient(), []);
   const [artistas, setArtistas] = useState<Artista[]>([]);
   useEffect(() => { getArtistas(supabaseClient).then(setArtistas); }, [supabaseClient]);
@@ -2879,6 +2884,8 @@ export default function CifradoEditor({
       setNombre("");
       setArtista("");
       setArtistaId(null);
+      setYoutubeUrl("");
+      setYoutubeTocado(false);
       setTonalidadIndex(7);
       setModoTonal(DEFAULT_MODO_TONAL);
       setIngresoTonalidadIndex(null);
@@ -2930,6 +2937,8 @@ export default function CifradoEditor({
       setNombre(session.nombre);
       setArtista(session.artista);
       setArtistaId(session.artista_id ?? null);
+      setYoutubeUrl(session.youtube_url ?? "");
+      setYoutubeTocado(false);
       setLyricsText(session.letra);
       setDraftLyrics(session.letra);
       setCifrado(session.cifrado ?? createEmptyCifrado());
@@ -2984,6 +2993,8 @@ export default function CifradoEditor({
     setNombre("");
     setArtista("");
       setArtistaId(null);
+    setYoutubeUrl("");
+    setYoutubeTocado(false);
     setTonalidadIndex(DEFAULT_TONALIDAD);
     setModoTonal(DEFAULT_MODO_TONAL);
     setIngresoTonalidadIndex(null);
@@ -4305,6 +4316,12 @@ export default function CifradoEditor({
         setSaveValidation("Elegí el artista de la lista, o agregalo con «+ Agregar».");
         return;
       }
+      const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
+      if (!youtubeNormalizado.ok) {
+        setSaveValidation("El link del video no es de YouTube. Corregilo o borralo.");
+        return;
+      }
+      const youtubeGuardar = youtubeTocado ? youtubeNormalizado.url : undefined;
       const artistaVinculado = artistaIdGuardar
         ? artistas.find((item) => item.id === artistaIdGuardar)
         : undefined;
@@ -4341,6 +4358,7 @@ export default function CifradoEditor({
             tonalidad_default: payload.tonalidad_default,
             modo_tonal_default: payload.modo_tonal_default,
             bpm_default: payload.bpm_default,
+            youtube_url: youtubeGuardar,
           },
         );
         editingCancionIdRef.current = savedId;
@@ -4356,6 +4374,7 @@ export default function CifradoEditor({
           tonalidad_default: payload.tonalidad_default,
           modo_tonal_default: payload.modo_tonal_default,
           bpm_default: payload.bpm_default,
+          youtube_url: youtubeGuardar,
         });
       } else {
         const { data: authData } = await supabase.auth.getUser();
@@ -4370,6 +4389,7 @@ export default function CifradoEditor({
             user_id: authData.user.id,
             url_letra: null,
             ...payload,
+            youtube_url: youtubeGuardar ?? null,
           })
           .select("id")
           .single();
@@ -5098,6 +5118,24 @@ export default function CifradoEditor({
                     selectClassName={inputClassName}
                     onElegir={elegirArtista}
                     onAgregado={agregarArtistaALista}
+                  />
+                </VozPcConfigCard>
+
+                <VozPcConfigCard
+                  title="Video"
+                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  accentVar="var(--accent)"
+                >
+                  <CancionYoutubeField
+                    id="cifrado-youtube"
+                    value={youtubeUrl}
+                    onChange={(next) => {
+                      setYoutubeUrl(next);
+                      setYoutubeTocado(true);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
                   />
                 </VozPcConfigCard>
 

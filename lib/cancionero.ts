@@ -178,7 +178,7 @@ export async function fetchCancionCifradoDetalle(
   id: number,
 ): Promise<CancionCifradoDetalle | null> {
   const selectWithModo =
-    "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default, tiene_cifrado_avanzado";
+    "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default, youtube_url, tiene_cifrado_avanzado";
   const selectBase =
     "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, bpm_default, tiene_cifrado_avanzado";
 
@@ -210,7 +210,10 @@ export async function fetchCancionCifradoDetalle(
   }
 
   const cifrado = parseCifradoData(data.cifrado) ?? createEmptyCifrado();
-  const row = data as typeof data & { modo_tonal_default?: string | null };
+  const row = data as typeof data & {
+    modo_tonal_default?: string | null;
+    youtube_url?: string | null;
+  };
 
   return {
     id: data.id,
@@ -229,6 +232,7 @@ export async function fetchCancionCifradoDetalle(
       40,
       Math.min(240, data.bpm_default ?? DEFAULT_BPM),
     ),
+    youtube_url: row.youtube_url ?? null,
     tiene_cifrado_avanzado: true,
   };
 }
@@ -274,6 +278,7 @@ export async function updateCancionCifradoAvanzado(
     tonalidad_default: NotaIndex;
     modo_tonal_default: ModoTonal;
     bpm_default: number;
+    youtube_url?: string | null;
   },
 ): Promise<void> {
   const clampedBpm = Math.max(40, Math.min(240, payload.bpm_default));
@@ -306,6 +311,7 @@ export async function updateCancionCifradoAvanzado(
         tonalidad_default: payload.tonalidad_default,
         modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
         bpm_default: clampedBpm,
+        ...(payload.youtube_url !== undefined ? { youtube_url: payload.youtube_url } : {}),
         tiene_cifrado_avanzado: true,
       },
       { count: "exact" },

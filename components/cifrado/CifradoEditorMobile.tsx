@@ -34,6 +34,8 @@ import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
 import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import ArtistaSelector from "@/components/cifrado/ArtistaSelector";
+import CancionYoutubeField from "@/components/cifrado/CancionYoutubeField";
+import { normalizarYoutubeUrl } from "@/lib/youtube";
 import { getArtistas } from "@/lib/artistas";
 import { buscarArtistaCoincidente, resolverArtistaId } from "@/lib/artistas-match";
 import { createClient } from "@/lib/supabase/client";
@@ -187,6 +189,9 @@ export default function CifradoEditorMobile({
     () => session?.artista_id ?? null,
   );
   const [artistas, setArtistas] = useState<Artista[]>([]);
+  const [youtubeUrl, setYoutubeUrl] = useState(() => session?.youtube_url ?? "");
+  /** Solo se guarda el link si la persona lo tocó: no pisa uno guardado que no se cargó. */
+  const [youtubeTocado, setYoutubeTocado] = useState(false);
 
   useEffect(() => {
     void getArtistas(createClient()).then(setArtistas);
@@ -292,6 +297,8 @@ export default function CifradoEditorMobile({
     setNombre(session.nombre);
     setArtista(session.artista);
     setArtistaId(session.artista_id ?? null);
+    setYoutubeUrl(session.youtube_url ?? "");
+    setYoutubeTocado(false);
     setLyricsText(session.letra);
     setDraftLyrics(session.letra);
     setCifrado(session.cifrado ?? createEmptyCifrado());
@@ -477,6 +484,11 @@ export default function CifradoEditorMobile({
         setError("Elegí el artista de la lista, o agregalo con «+ Agregar».");
         return;
       }
+      const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
+      if (!youtubeNormalizado.ok) {
+        setError("El link del video no es de YouTube. Corregilo o borralo en Datos y ajustes.");
+        return;
+      }
       const artistaGuardar =
         artistas.find((item) => item.id === artistaIdGuardar)?.nombre ??
         (artista.trim() || null);
@@ -494,6 +506,7 @@ export default function CifradoEditorMobile({
         tonalidad_default: tonalidadIndex,
         modo_tonal_default: modoTonal,
         bpm_default: clampedBpm,
+        youtube_url: youtubeTocado ? youtubeNormalizado.url : undefined,
       });
 
       editingCancionIdRef.current = savedId;
@@ -1830,6 +1843,19 @@ export default function CifradoEditorMobile({
                   selectClassName={CIFRADO_CONTROLS_INPUT_CLASS}
                   onElegir={elegirArtista}
                   onAgregado={agregarArtistaALista}
+                />
+              </div>
+
+              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+                <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>Video</p>
+                <CancionYoutubeField
+                  id="cifrado-mobile-cfg-youtube"
+                  value={youtubeUrl}
+                  onChange={(next) => {
+                    setYoutubeUrl(next);
+                    setYoutubeTocado(true);
+                    clearError();
+                  }}
                 />
               </div>
 

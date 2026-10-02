@@ -13,8 +13,12 @@ import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
+import VideoFlotante from "@/components/video/VideoFlotante";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useCancionYoutube } from "@/hooks/useCancionYoutube";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
+import { useVideoLectura } from "@/hooks/useVideoLectura";
+import { parseCancioneroUrlId } from "@/lib/cancionero-url";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -60,6 +64,21 @@ export default function HomePageShell() {
   const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
   const cancionActivaDelCancionero = Boolean(
     cola.cancionActiva?.url_letra.startsWith("cancionero://"),
+  );
+  const cancionActivaCancioneroId = parseCancioneroUrlId(
+    cola.cancionActiva?.url_letra ?? null,
+  );
+  // Video solo con la canción expandida (modo lectura) y del Cancionero.
+  const youtubeVideoId = useCancionYoutube({
+    cancionId: modoLectura ? cancionActivaCancioneroId : null,
+  });
+  const video = useVideoLectura(
+    modoLectura ? youtubeVideoId : null,
+    cancionActivaCancioneroId,
+  );
+  const lecturaExtraItems = useMemo(
+    () => (video.fabItem ? [video.fabItem] : []),
+    [video.fabItem],
   );
   const [colaAviso, setColaAviso] = useState<string | null>(null);
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
@@ -138,6 +157,11 @@ export default function HomePageShell() {
   }, [resetVista]);
 
   const handleModoLecturaBack = useCallback(() => {
+    if (video.abierto) {
+      video.cerrar();
+      return;
+    }
+
     if (tonoPanelAbierto) {
       setTonoPanelAbierto(false);
       return;
@@ -154,7 +178,7 @@ export default function HomePageShell() {
     }
 
     salirModoLectura();
-  }, [overlayAbierto, salirModoLectura, tonoPanelAbierto, zoomPanelAbierto]);
+  }, [overlayAbierto, salirModoLectura, tonoPanelAbierto, video, zoomPanelAbierto]);
 
   useHardwareBack(modoLectura, handleModoLecturaBack);
 
@@ -334,6 +358,7 @@ export default function HomePageShell() {
             fixedRightCss={lecturaFixedRightCss}
             onContraer={salirModoLectura}
             onAfinador={() => setAfinadorOpen(true)}
+            onVideo={video.abrir}
           />
 
           <TapButton
@@ -387,6 +412,7 @@ export default function HomePageShell() {
             showContraerOption={false}
             menuTopCss={lecturaOverlayMenuTopCss}
             navItems={lecturaNavItems}
+            extraItems={lecturaExtraItems}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
             showAcordesOption={Boolean(lecturaTonalidad)}
@@ -462,6 +488,14 @@ export default function HomePageShell() {
       ) : null}
 
       <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />
+
+      {video.videoId ? (
+        <VideoFlotante
+          videoId={video.videoId}
+          titulo={cola.cancionActiva?.nombre}
+          onCerrar={video.cerrar}
+        />
+      ) : null}
 
       {buscadorOpen ? (
         <BuscadorModal

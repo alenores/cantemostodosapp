@@ -309,6 +309,7 @@ Al ver una canción:
 - Se muestra la letra, con o sin acordes y compases según cómo fue guardada.
 - Navegación **Anterior / Siguiente** entre canciones del listado filtrado.
 - Botón **Expandir** para entrar al **modo lectura**.
+- **Video de YouTube**: si la canción tiene link cargado y hay conexión, arriba de la letra aparece una tarjeta con la miniatura. Al tocarla se reproduce ahí mismo; recién entonces carga el video.
 
 ---
 
@@ -368,6 +369,7 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 - **Artista desde la lista**: el artista se elige siempre de una lista propia de la app (con foto y buscador) que se abre desde abajo (computadora, celular y confirmación al pegar). Al pegar, traer de la web o elegir una canción simple, la app compara el nombre detectado con la lista sin importar mayúsculas, tildes, signos, artículos («Los», «La»…), «&» o el orden de las palabras: si es el mismo, lo deja elegido. Si no está, muestra «Se detectó …», sugiere los parecidos («¿Es …?») y ofrece «+ Agregar … a la lista». No se puede guardar un artista que no esté en la lista.
 - **Gestor de artistas**: no deja crear un artista que ya existe escrito de otra forma, y avisa si se parece a uno cargado antes de guardarlo.
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
+- **Video de YouTube** (opcional): tarjeta «Video» en la barra lateral (computadora) y en «Datos y ajustes» (celular). Acepta cualquier link de YouTube (compartir, largo, Shorts) y muestra la miniatura para confirmar que es el video correcto. Avisa si el link no es de YouTube. Solo se guarda el link; el video nunca se descarga.
 - Botón **Guardar**.
 - **Reproducir compás** para revisar el ritmo sobre la letra antes de guardar.
 
@@ -498,6 +500,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 - **Afinador**
 - **Tema visual**: cicla entre **Claro → Sepia → Escenario** para canciones del Cancionero en Individual y Salas; en otras fuentes no se muestra.
 - En entrenador de canciones: mostrar/ocultar tipos de anotación, **Nota de la canción**, **Editar**
+- **Video** (en Cancionero, Individual y Entrenador de canciones, solo si la canción tiene link y hay conexión): abre una ventanita flotante con el video sobre la letra. Se mueve arrastrando la barra de arriba, se agranda o achica, y tiene pantalla completa desde el botón propio de YouTube. Se cierra con la X, con el botón atrás o al cambiar de canción. En computadora es un botón «Video» debajo de «Afinador». Sin conexión la opción no aparece.
 
 ### 12.3 Controles inferiores y en computadora
 
@@ -709,6 +712,7 @@ Para **Exigencia:** el primer toque marca el inicio del rango; el segundo marca 
 - Modo lectura permanente con cifrado, compases y anotaciones.
 - Mostrar/ocultar por tipo: Anotaciones, Intensidad, Texto, Respirar, Exigencia.
 - Acceso a **Nota de la canción**, **Editar**, cambio de tono, zoom y afinador.
+- **Video** de YouTube en ventanita flotante (con conexión). La copia de práctica lleva su propio link (se copia del Cancionero al crearla y se puede cambiar en el editor); si no tiene, usa el de la canción original.
 
 ---
 
@@ -801,6 +805,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 | Comunidad del Compositor | Requiere conexión |
 | Sonidos de instrumentos del Compositor | Requieren conexión; no se descargan al celular |
 | Búsqueda en internet de letras nuevas | No disponible |
+| Video de YouTube de la canción | No aparece; el video no se descarga |
 | Sincronización de fila en sala | No disponible |
 
 ### 15.4 Instalación en el celular (app instalable)

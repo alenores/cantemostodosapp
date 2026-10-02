@@ -1,6 +1,8 @@
 ﻿"use client";
 import type { Artista } from "@/types";
 import { getArtistas } from "@/lib/artistas";
+import { buscarArtistaCoincidente, resolverArtistaId } from "@/lib/artistas-match";
+import ArtistaSugerencias from "@/components/cifrado/ArtistaSugerencias";
 
 import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
@@ -2561,6 +2563,19 @@ export default function CifradoEditor({
   const supabaseClient = useMemo(() => createClient(), []);
   const [artistas, setArtistas] = useState<Artista[]>([]);
   useEffect(() => { getArtistas(supabaseClient).then(setArtistas); }, [supabaseClient]);
+
+  /** Texto de artista que llega de afuera: si ya está en la lista, se vincula a esa ficha. */
+  function aplicarArtistaTexto(texto: string) {
+    const limpio = texto.trim();
+    const { exacto } = buscarArtistaCoincidente(limpio, artistas);
+    setArtista(exacto ? exacto.nombre : limpio);
+    setArtistaId(exacto ? exacto.id : null);
+  }
+
+  function elegirArtista(elegido: Artista) {
+    setArtista(elegido.nombre);
+    setArtistaId(elegido.id);
+  }
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [ingresoTonalidadIndex, setIngresoTonalidadIndex] =
@@ -3218,7 +3233,7 @@ export default function CifradoEditor({
     }
 
     if (result.artista) {
-      setArtista(result.artista);
+      aplicarArtistaTexto(result.artista);
     }
 
     if (result.eliminate && pasteAnalysis?.textKeptIfEliminate !== undefined) {
@@ -3261,7 +3276,7 @@ export default function CifradoEditor({
     }
 
     if (options?.artista?.trim()) {
-      setArtista(options.artista.trim());
+      aplicarArtistaTexto(options.artista);
     }
 
     const warnings = options?.warnings ?? [];
@@ -3314,7 +3329,7 @@ export default function CifradoEditor({
     }
 
     if (data.artista?.trim()) {
-      setArtista(data.artista.trim());
+      aplicarArtistaTexto(data.artista);
     }
 
     const texto = data.textoTradicional.trim();
@@ -3357,7 +3372,7 @@ export default function CifradoEditor({
   ) {
     editingCancionIdRef.current = isOwner ? cancion.id : 0;
     setNombre(cancion.nombre);
-    setArtista(cancion.artista ?? "");
+    aplicarArtistaTexto(cancion.artista ?? "");
     setIngresoTab("basicas");
     const imported = parseLetraTradicional(cancion.letra ?? "");
     applyImportedCifrado(imported.letra, imported.cifrado, {
@@ -4272,9 +4287,14 @@ export default function CifradoEditor({
       }
 
       const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
+      const artistaIdGuardar = resolverArtistaId(artista, artistaId, artistas);
+      const artistaVinculado = artistaIdGuardar
+        ? artistas.find((item) => item.id === artistaIdGuardar)
+        : undefined;
       const payload = {
         nombre: nombre.trim(),
-        artista: artista.trim() || null,
+        artista: artistaVinculado?.nombre ?? (artista.trim() || null),
+        ...(artistaIdGuardar !== undefined ? { artista_id: artistaIdGuardar } : {}),
         letra: lyricsText,
         cifrado,
         compas_config: normalizeCompasConfig({
@@ -4297,6 +4317,7 @@ export default function CifradoEditor({
           {
             nombre: payload.nombre,
             artista: payload.artista,
+            artista_id: artistaIdGuardar,
             letra: payload.letra,
             cifrado: payload.cifrado,
             compas_config: payload.compas_config,
@@ -4310,6 +4331,7 @@ export default function CifradoEditor({
         await updateCancionCifradoAvanzado(supabase, editingId, {
           nombre: payload.nombre,
           artista: payload.artista,
+          artista_id: artistaIdGuardar,
           letra: payload.letra,
           cifrado: payload.cifrado,
           compas_config: payload.compas_config,
@@ -5023,7 +5045,7 @@ export default function CifradoEditor({
                     disabled={!nombre.trim() && !artista.trim()}
                     onIntercambiar={() => {
                       setNombre(artista);
-                      setArtista(nombre);
+                      aplicarArtistaTexto(nombre);
                       if (saveValidation) {
                         setSaveValidation(null);
                       }
@@ -5050,6 +5072,13 @@ export default function CifradoEditor({
                       <option key={a.id} value={a.id}>{a.nombre}</option>
                     ))}
                   </select>
+                  <ArtistaSugerencias
+                    texto={artista}
+                    artistas={artistas}
+                    artistaIdElegido={artistaId}
+                    mostrarTextoDetectado
+                    onElegir={elegirArtista}
+                  />
                 </VozPcConfigCard>
 
                 <VozPcConfigCard
@@ -5183,7 +5212,7 @@ export default function CifradoEditor({
                       disabled={!nombre.trim() && !artista.trim()}
                       onIntercambiar={() => {
                         setNombre(artista);
-                        setArtista(nombre);
+                        aplicarArtistaTexto(nombre);
                         if (saveValidation) {
                           setSaveValidation(null);
                         }
@@ -5210,6 +5239,13 @@ export default function CifradoEditor({
                           <option key={a.id} value={a.id}>{a.nombre}</option>
                         ))}
                       </select>
+                    <ArtistaSugerencias
+                      texto={artista}
+                      artistas={artistas}
+                      artistaIdElegido={artistaId}
+                      mostrarTextoDetectado
+                      onElegir={elegirArtista}
+                    />
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                     <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>

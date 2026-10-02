@@ -5,6 +5,8 @@ import { X, Plus, Pencil, Trash2, Upload, Save, User as UserIcon } from "lucide-
 import { TapButton } from "@/components/ui/TapFeedback";
 import { createClient } from "@/lib/supabase/client";
 import { getArtistas, addArtista, updateArtista, deleteArtista, uploadAvatar } from "@/lib/artistas";
+import { buscarArtistaCoincidente } from "@/lib/artistas-match";
+import ArtistaSugerencias from "@/components/cifrado/ArtistaSugerencias";
 import type { Artista } from "@/types";
 
 type Props = {
@@ -117,6 +119,22 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
     e.preventDefault();
     if (!nombre.trim()) return;
 
+    const { exacto, parecidos } = buscarArtistaCoincidente(nombre, artistas, {
+      excluirId: editingId,
+    });
+    if (exacto) {
+      alert(`Ya existe «${exacto.nombre}». Usá ese artista.`);
+      return;
+    }
+    if (
+      parecidos.length > 0 &&
+      !confirm(
+        `Se parece a: ${parecidos.map((a) => a.nombre).join(", ")}.\n¿Guardar «${nombre.trim()}» igual?`,
+      )
+    ) {
+      return;
+    }
+
     setSaving(true);
     let finalAvatarUrl = avatarUrl;
 
@@ -184,6 +202,13 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                   placeholder="Ej: Abel Pintos"
                   required
                 />
+                {!editingId ? (
+                  <ArtistaSugerencias
+                    texto={nombre}
+                    artistas={artistas}
+                    onElegir={handleEdit}
+                  />
+                ) : null}
               </div>
 
               <div>

@@ -42,6 +42,8 @@ export type CifradoSaveResult = {
 export type CifradoEditorPersistPayload = {
   nombre: string;
   artista: string | null;
+  /** Ficha del artista. `undefined` = no se pudo comparar: no tocar el vínculo guardado. */
+  artista_id?: string | null;
   letra: string;
   cifrado: CifradoData;
   compas_config: CompasConfig;

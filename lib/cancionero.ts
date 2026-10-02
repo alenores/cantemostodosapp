@@ -267,6 +267,7 @@ export async function updateCancionCifradoAvanzado(
   payload: {
     nombre: string;
     artista: string | null;
+    artista_id?: string | null;
     letra: string;
     cifrado: CifradoData;
     compas_config: CompasConfig | null;
@@ -298,6 +299,7 @@ export async function updateCancionCifradoAvanzado(
       {
         nombre: payload.nombre.trim(),
         artista: payload.artista?.trim() || null,
+        ...(payload.artista_id !== undefined ? { artista_id: payload.artista_id } : {}),
         letra: payload.letra.trim(),
         cifrado: payload.cifrado,
         compas_config: payload.compas_config,

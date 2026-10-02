@@ -8,6 +8,7 @@ import {
 import { COMPOSITOR_INSTRUMENT_OPTIONS } from "@/lib/compositor";
 import type { CompositorInstrumentId } from "@/lib/compositor";
 import { COMPOSITOR_LABEL_SIN_ASIGNAR } from "@/lib/ritmo-terminologia";
+import AppSelect from "@/components/ui/AppSelect";
 
 type CompositorMidiSourceTrackRowProps = {
   assignment: MidiTrackAssignment;
@@ -66,25 +67,20 @@ export function CompositorMidiSourceTrackRow({
         <p className="min-w-0 flex-1 text-sm font-semibold text-text-primary">
           {assignment.midiTrackName}
         </p>
-        <select
+        <AppSelect<CompositorInstrumentId | "">
+          title={`Capa para ${assignment.midiTrackName}`}
           disabled={disabled}
           value={assignment.assignedInstrumentId ?? ""}
-          onChange={(event) => {
-            const value = event.target.value;
-            onAssignmentChange(
-              value === "" ? null : (value as CompositorInstrumentId),
-            );
-          }}
-          className="min-h-9 rounded-lg border border-border bg-bg-dark px-2 text-xs font-semibold text-text-primary disabled:opacity-50"
+          options={[
+            { value: "", label: COMPOSITOR_LABEL_SIN_ASIGNAR },
+            ...layerOptions.map((option) => ({ value: option.id, label: option.label })),
+          ]}
+          onChange={(value) =>
+            onAssignmentChange(value === "" ? null : value)
+          }
+          className="min-h-9 rounded-lg border border-border bg-bg-dark px-2 text-xs font-semibold text-text-primary"
           aria-label={`Capa para ${assignment.midiTrackName}`}
-        >
-          <option value="">{COMPOSITOR_LABEL_SIN_ASIGNAR}</option>
-          {layerOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {showConflicts && trackConflicts.length > 0 ? (

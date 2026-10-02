@@ -36,12 +36,14 @@ export type CifradoSaveResult = {
 };
 
 /**
- * Persistencia opcional del editor (p. ej. Entrenador â†’ canciones_practica).
- * Si no se provee, el editor PC usa el flujo histÃ³rico del Cancionero.
+ * Persistencia opcional del editor (p. ej. Entrenador → canciones_practica).
+ * Si no se provee, el editor PC usa el flujo histórico del Cancionero.
  */
 export type CifradoEditorPersistPayload = {
   nombre: string;
   artista: string | null;
+  /** Ficha del artista. `undefined` = no se pudo comparar: no tocar el vínculo guardado. */
+  artista_id?: string | null;
   letra: string;
   cifrado: CifradoData;
   compas_config: CompasConfig;

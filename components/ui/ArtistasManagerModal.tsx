@@ -5,6 +5,8 @@ import { X, Plus, Pencil, Trash2, Upload, Save, User as UserIcon } from "lucide-
 import { TapButton } from "@/components/ui/TapFeedback";
 import { createClient } from "@/lib/supabase/client";
 import { getArtistas, addArtista, updateArtista, deleteArtista, uploadAvatar } from "@/lib/artistas";
+import { buscarArtistaCoincidente } from "@/lib/artistas-match";
+import ArtistaSugerencias from "@/components/cifrado/ArtistaSugerencias";
 import type { Artista } from "@/types";
 
 type Props = {
@@ -56,7 +58,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Â¿Seguro que querÃ©s borrar este artista?")) return;
+    if (!confirm("¿Seguro que querés borrar este artista?")) return;
     const ok = await deleteArtista(supabase, id);
     if (ok) {
       setArtistas(prev => prev.filter(a => a.id !== id));
@@ -117,6 +119,22 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
     e.preventDefault();
     if (!nombre.trim()) return;
 
+    const { exacto, parecidos } = buscarArtistaCoincidente(nombre, artistas, {
+      excluirId: editingId,
+    });
+    if (exacto) {
+      alert(`Ya existe «${exacto.nombre}». Usá ese artista.`);
+      return;
+    }
+    if (
+      parecidos.length > 0 &&
+      !confirm(
+        `Se parece a: ${parecidos.map((a) => a.nombre).join(", ")}.\n¿Guardar «${nombre.trim()}» igual?`,
+      )
+    ) {
+      return;
+    }
+
     setSaving(true);
     let finalAvatarUrl = avatarUrl;
 
@@ -161,8 +179,8 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
       <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/50 p-4">
-          <h2 className="text-xl font-bold text-text-primary">GestiÃ³n de Artistas</h2>
-          <TapButton onClick={onClose} className="rounded-full p-2 hover:bg-bg-hover">
+          <h2 className="text-xl font-bold text-text-primary">Gestión de Artistas</h2>
+          <TapButton onClick={onClose} className="rounded-full p-2 hover:bg-bg-card-hover">
             <X className="size-5 text-text-secondary" />
           </TapButton>
         </div>
@@ -180,17 +198,24 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                   type="text"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="w-full rounded-xl bg-bg-page p-3 text-text-primary outline-none focus:ring-2 focus:ring-brand-primary/50"
+                  className="w-full rounded-xl bg-bg-darker p-3 text-text-primary outline-none focus:ring-2 focus:ring-accent/50"
                   placeholder="Ej: Abel Pintos"
                   required
                 />
+                {!editingId ? (
+                  <ArtistaSugerencias
+                    texto={nombre}
+                    artistas={artistas}
+                    onElegir={handleEdit}
+                  />
+                ) : null}
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-text-secondary">Foto (Opcional)</label>
                 <div className="flex items-center gap-4">
                   <div 
-                    className="flex size-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-border/50 bg-bg-page hover:bg-bg-hover"
+                    className="flex size-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-border/50 bg-bg-darker hover:bg-bg-card-hover"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {avatarPreview ? (
@@ -202,7 +227,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                   <TapButton 
                     type="button" 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 rounded-xl bg-bg-page px-4 py-2 text-sm text-text-primary hover:bg-bg-hover"
+                    className="flex items-center gap-2 rounded-xl bg-bg-darker px-4 py-2 text-sm text-text-primary hover:bg-bg-card-hover"
                   >
                     <Upload className="size-4" />
                     Subir foto
@@ -216,7 +241,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                   />
                 </div>
                 <p className="mt-2 text-xs text-text-secondary">
-                  La foto se achicarÃ¡ automÃ¡ticamente a muy poco peso.
+                  La foto se achicará automáticamente a muy poco peso.
                 </p>
               </div>
 
@@ -224,7 +249,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                 <TapButton
                   type="submit"
                   disabled={saving || !nombre.trim()}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-primary p-3 font-semibold text-white disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent p-3 font-semibold text-white disabled:opacity-50"
                 >
                   <Save className="size-5" />
                   {saving ? "Guardando..." : "Guardar"}
@@ -234,7 +259,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                     type="button"
                     onClick={resetForm}
                     disabled={saving}
-                    className="flex items-center justify-center rounded-xl bg-bg-page p-3 text-text-secondary hover:bg-bg-hover"
+                    className="flex items-center justify-center rounded-xl bg-bg-darker p-3 text-text-secondary hover:bg-bg-card-hover"
                   >
                     Cancelar
                   </TapButton>
@@ -254,7 +279,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
               ) : (
                 <ul className="flex flex-col gap-2">
                   {artistas.map((artista) => (
-                    <li key={artista.id} className="flex items-center justify-between rounded-xl bg-bg-page p-3">
+                    <li key={artista.id} className="flex items-center justify-between rounded-xl bg-bg-darker p-3">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-card">
                           {artista.avatar_url ? (
@@ -268,7 +293,7 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
                       <div className="flex shrink-0 items-center gap-1">
                         <TapButton
                           onClick={() => handleEdit(artista)}
-                          className="rounded-lg p-2 text-text-secondary hover:bg-brand-primary/10 hover:text-brand-primary"
+                          className="rounded-lg p-2 text-text-secondary hover:bg-accent/10 hover:text-accent"
                         >
                           <Pencil className="size-4" />
                         </TapButton>

@@ -275,6 +275,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
 - Botón **+** para **Agregar canción** (requiere cuenta y conexión).
+- Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
 - El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.
 
@@ -360,6 +361,8 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
 - Nombre y artista aparecen juntos en una tarjeta; tono y modo, en otra. Los títulos y campos usan mayúscula inicial y el resto en minúscula.
 - **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- **Artista desde la lista**: el artista se elige siempre de un desplegable con los artistas cargados (computadora, celular y confirmación al pegar). Al pegar, traer de la web o elegir una canción simple, la app compara el nombre detectado con la lista sin importar mayúsculas, tildes, signos, artículos («Los», «La»…), «&» o el orden de las palabras: si es el mismo, lo deja elegido. Si no está, muestra «Se detectó …», sugiere los parecidos («¿Es …?») y ofrece «+ Agregar … a la lista». No se puede guardar un artista que no esté en la lista.
+- **Gestor de artistas**: no deja crear un artista que ya existe escrito de otra forma, y avisa si se parece a uno cargado antes de guardarlo.
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
 - Botón **Guardar**.
 - **Reproducir compás** para revisar el ritmo sobre la letra antes de guardar.

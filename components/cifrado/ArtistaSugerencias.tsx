@@ -55,7 +55,7 @@ export default function ArtistaSugerencias({
           <button
             type="button"
             onClick={() => onElegir(artista)}
-            className="rounded-full border border-border px-2 py-0.5 font-medium text-text-primary hover:bg-bg-hover"
+            className="rounded-full border border-border px-2 py-0.5 font-medium text-text-primary hover:bg-bg-card-hover"
           >
             {artista.nombre}
           </button>

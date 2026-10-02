@@ -109,6 +109,15 @@ export default function CancioneroPageClient({
   const hadLoadedRef = useRef(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const conteoCancionesPorArtista = useMemo(() => {
+    const conteo = new Map<string, number>();
+    for (const cancion of canciones) {
+      if (!cancion.artista) continue;
+      conteo.set(cancion.artista, (conteo.get(cancion.artista) ?? 0) + 1);
+    }
+    return conteo;
+  }, [canciones]);
+
   const cancionesFiltradas = useMemo(() => {
     let list = filterCancionesCancionero(canciones, query);
     if (selectedArtistaIds.size > 0) {
@@ -567,17 +576,20 @@ export default function CancioneroPageClient({
     <>
       <AppReadyMarker />
       <ArtistasManagerModal isOpen={artistasManagerOpen} onClose={() => setArtistasManagerOpen(false)} />
-      <ArtistasFilterModal 
-        isOpen={artistasFilterOpen}
-        onClose={() => setArtistasFilterOpen(false)}
-        artistas={artistas}
-        selectedIds={selectedArtistaIds}
-        onApply={(ids) => {
-          setSelectedArtistaIds(ids);
-          setArtistasFilterOpen(false);
-        }}
-        onManageArtistas={() => setArtistasManagerOpen(true)}
-      />
+      {artistasFilterOpen ? (
+        <ArtistasFilterModal
+          isOpen
+          onClose={() => setArtistasFilterOpen(false)}
+          artistas={artistas}
+          conteoCanciones={conteoCancionesPorArtista}
+          selectedIds={selectedArtistaIds}
+          onApply={(ids) => {
+            setSelectedArtistaIds(ids);
+            setArtistasFilterOpen(false);
+          }}
+          onManageArtistas={() => setArtistasManagerOpen(true)}
+        />
+      ) : null}
       <CancioneroSubpageShell
         title="Cancionero"
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}
@@ -665,7 +677,7 @@ export default function CancioneroPageClient({
                   onClick={() => setArtistasFilterOpen(true)}
                   className={`flex size-11 shrink-0 items-center justify-center rounded-[10px] border transition-colors ${
                     selectedArtistaIds.size > 0 
-                      ? "border-brand-primary bg-brand-primary/10 text-brand-primary" 
+                      ? "border-accent bg-accent/10 text-accent" 
                       : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
                   }`}
                 >
@@ -678,11 +690,11 @@ export default function CancioneroPageClient({
                     const artista = artistas.find(a => a.id === id);
                     if (!artista) return null;
                     return (
-                      <div key={id} className="flex items-center gap-1.5 rounded-full border border-brand-primary/30 bg-brand-primary/10 pl-1.5 pr-2 py-1 text-sm text-brand-primary">
+                      <div key={id} className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 pl-1.5 pr-2 py-1 text-sm text-accent">
                         {artista.avatar_url ? (
                           <img src={artista.avatar_url} alt="" className="size-5 shrink-0 rounded-full object-cover" />
                         ) : (
-                          <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-primary/20 text-[10px] font-bold">
+                          <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold">
                             {artista.nombre.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -695,7 +707,7 @@ export default function CancioneroPageClient({
                               return next;
                             });
                           }}
-                          className="ml-0.5 rounded-full p-0.5 hover:bg-brand-primary/20"
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-accent/20"
                           aria-label={`Quitar filtro de ${artista.nombre}`}
                         >
                           <X className="size-3.5" />

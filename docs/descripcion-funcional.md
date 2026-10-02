@@ -275,6 +275,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
 - Botón **+** para **Agregar canción** (requiere cuenta y conexión).
+- Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
 - El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.
 

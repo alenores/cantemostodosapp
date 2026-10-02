@@ -94,7 +94,7 @@ export default function ArtistaSelector({
                 <button
                   type="button"
                   onClick={() => onElegir(artista)}
-                  className="rounded-full border border-border px-2 py-0.5 font-medium text-text-primary hover:bg-bg-hover"
+                  className="rounded-full border border-border px-2 py-0.5 font-medium text-text-primary hover:bg-bg-card-hover"
                 >
                   {artista.nombre}
                 </button>
@@ -106,7 +106,7 @@ export default function ArtistaSelector({
                 type="button"
                 disabled={agregando}
                 onClick={() => void agregarALista()}
-                className="rounded-full border border-dashed border-border px-2 py-0.5 font-medium text-text-primary hover:bg-bg-hover disabled:opacity-60"
+                className="rounded-full border border-dashed border-border px-2 py-0.5 font-medium text-text-primary hover:bg-bg-card-hover disabled:opacity-60"
               >
                 {agregando ? "Agregando…" : `+ Agregar «${detectado}» a la lista`}
               </button>

@@ -51,11 +51,9 @@ import {
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
-  CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
   CIFRADO_DETAILS_CARD_TITLE_CLASS,
   CIFRADO_DETAILS_FIELD_LABEL_CLASS,
-  CIFRADO_CONTROLS_SEGMENTED_CLASS,
   CIFRADO_EDITOR_COMPAS_PANEL_CLASS,
   CIFRADO_EDITOR_PC_SHELL_CLASS,
   CIFRADO_EDITOR_LINE_BG_CLASS,
@@ -71,7 +69,6 @@ import {
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
   cifradoEditorToolbarSegmentedButtonClass,
-  cifradoSegmentedIconButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -197,7 +194,7 @@ import {
   CIFRADO_LABEL_PEGAR_EN_RENGLON,
   getCifradoConfirmAplicarCiclosTodosRenglonesMessage,
 } from "@/lib/ritmo-terminologia";
-import { Copy, CornerDownRight, Link2, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
+import { Copy, CornerDownRight, Eye, Link2, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -4999,34 +4996,44 @@ export default function CifradoEditor({
               className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain touch-pan-y"
             >
               <div className="space-y-3 p-3">
-                <VozPcConfigCard title="Vista previa" accentVar="var(--accent)">
-                  <div className={CIFRADO_CONTROLS_SEGMENTED_CLASS}>
-                    <button
-                      type="button"
-                      onClick={() => setVistaArmado("pc")}
-                      className={cifradoSegmentedIconButtonClass(vistaArmado === "pc")}
-                    >
-                      <Monitor className="size-3.5" aria-hidden="true" />
-                      PC
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVistaArmado("celular")}
-                      className={cifradoSegmentedIconButtonClass(vistaArmado === "celular")}
-                    >
-                      <Smartphone className="size-3.5" aria-hidden="true" />
-                      Cel.
-                    </button>
-                  </div>
-
-                  <TapButton
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVistaArmado((actual) => (actual === "pc" ? "celular" : "pc"))
+                    }
+                    aria-label={
+                      vistaArmado === "pc"
+                        ? "Vista PC. Tocá para ver como celular"
+                        : "Vista celular. Tocá para ver como PC"
+                    }
+                    title="Cambiar entre vista PC y celular"
+                    className="flex h-8 items-center gap-1.5 rounded-full border border-border bg-bg-darker px-3 text-xs font-semibold text-text-primary transition-colors hover:border-accent"
+                  >
+                    {vistaArmado === "pc" ? (
+                      <Monitor className="size-3.5 text-accent" aria-hidden="true" />
+                    ) : (
+                      <Smartphone className="size-3.5 text-accent" aria-hidden="true" />
+                    )}
+                    {vistaArmado === "pc" ? "PC" : "Cel."}
+                  </button>
+                  <button
                     type="button"
                     onClick={handleTogglePreview}
-                    className={`mt-3 ${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS}`}
+                    className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
+                      previewOpen
+                        ? "border-accent bg-accent-dim text-accent"
+                        : "border-border bg-bg-darker text-text-primary hover:border-accent"
+                    }`}
                   >
-                    {previewOpen ? "Edición" : "Previsualización"}
-                  </TapButton>
-                </VozPcConfigCard>
+                    {previewOpen ? (
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <Eye className="size-3.5" aria-hidden="true" />
+                    )}
+                    {previewOpen ? "Edición" : "Previsualizar"}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3 px-3 pb-3">

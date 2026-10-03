@@ -308,7 +308,12 @@ export async function persistirOrdenColaIndividual(
 export async function vaciarColaIndividual(
   supabase: SupabaseClient,
 ): Promise<void> {
-  const { error } = await supabase.from("cola_individual").delete();
+  const userId = await getUserId(supabase);
+  // La base rechaza un borrado sin filtro: hay que decirle de quién es la fila.
+  const { error } = await supabase
+    .from("cola_individual")
+    .delete()
+    .eq("user_id", userId);
 
   if (error) {
     throw error;

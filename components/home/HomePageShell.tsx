@@ -121,9 +121,7 @@ export default function HomePageShell() {
     embedIframeRef,
   });
 
-  const handleColaAdded = useCallback(() => {
-    triggerHaptic();
-
+  const mostrarColaAviso = useCallback((texto: string) => {
     if (colaAvisoShowTimerRef.current) {
       clearTimeout(colaAvisoShowTimerRef.current);
     }
@@ -136,7 +134,7 @@ export default function HomePageShell() {
     setColaAviso(null);
 
     colaAvisoShowTimerRef.current = setTimeout(() => {
-      setColaAviso("Canción sumada a la lista");
+      setColaAviso(texto);
       colaAvisoShowTimerRef.current = null;
 
       colaAvisoHideTimerRef.current = setTimeout(() => {
@@ -150,6 +148,20 @@ export default function HomePageShell() {
       }, 2500);
     }, COLA_AVISO_SHOW_DELAY_MS);
   }, []);
+
+  const handleColaAdded = useCallback(() => {
+    triggerHaptic();
+    mostrarColaAviso("Canción sumada a la lista");
+  }, [mostrarColaAviso]);
+
+  const vaciarCola = cola.vaciarTodo;
+  const handleDeleteAll = useCallback(async () => {
+    try {
+      await vaciarCola();
+    } catch {
+      mostrarColaAviso("No se pudo borrar la lista. Probá de nuevo.");
+    }
+  }, [mostrarColaAviso, vaciarCola]);
 
   const salirModoLectura = useCallback(() => {
     resetVista();
@@ -331,7 +343,7 @@ export default function HomePageShell() {
             handleSiguienteRef.current = siguiente;
           }}
           onSiguiente={cola.avanzar}
-          onDeleteAll={cola.vaciarTodo}
+          onDeleteAll={handleDeleteAll}
           onDeleteItem={cola.eliminarItem}
           onVolverAPendiente={cola.volverAPendiente}
           onReorder={cola.reordenarPendientes}

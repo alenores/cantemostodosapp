@@ -26,6 +26,8 @@ const E_SHAPE_INTERVALS: Record<Modificador, readonly number[]> = {
   sus4: [0, 7, 12, 17, 19, 24],
   dim: [0, 6, 12, 15, 18, 24],
   "6": [0, 7, 9, 16, 19, 24],
+  "5": [0, 7, 12, 19, 24, 31],
+  aug: [0, 8, 12, 16, 20, 24],
   add9: [0, 7, 14, 16, 19, 24],
 };
 
@@ -39,6 +41,8 @@ const A_SHAPE_INTERVALS: Record<Modificador, readonly number[]> = {
   sus4: [0, 7, 12, 17, 19],
   dim: [0, 6, 12, 15, 18],
   "6": [0, 7, 9, 16, 19],
+  "5": [0, 7, 12, 19, 24],
+  aug: [0, 8, 12, 16, 20],
   add9: [0, 7, 14, 16, 19],
 };
 

@@ -30,7 +30,8 @@ export type CifradoImportResult = {
   stats: {
     lyricLines: number;
     acordesParsed: number;
-    chordLinesSkipped: number;
+    /** Renglones de solo acordes (introducción, puentes, final). */
+    chordOnlyLines: number;
   };
 };
 
@@ -70,6 +71,72 @@ function tokenizeChordLine(line: string): { token: string; start: number }[] {
   return matches;
 }
 
+/** Renglones con indicaciones de melodía ("nota grave sol", "riff: …"): van como texto. */
+const INDICACION_MELODIA_PATTERN = /(^|\s|\()(notas?|riff|tab)\b/i;
+
+/** Repetición ("x2", "x 4", "X4") o símbolos sueltos ("-", "/", "|", "->") en un renglón de acordes. */
+const ACOMPANANTE_PATTERN = /^(?:[xX]\d*|\d+[xX]?|[-–—\/|.:*~=>%]+)$/;
+
+/**
+ * En la letra, una palabra toda en minúscula ("mi", "la", "a", "si") es texto, no acorde:
+ * los acordes de las canciones vienen en mayúscula (DO, LA, Am). Así "Vamos a brillar, mi amor"
+ * no se toma como renglón de acordes (2026-10-04).
+ */
+function parseAcordeEnLetra(token: string) {
+  if (/^[a-záéíóúüñ]+[#b]?$/.test(token)) {
+    return null;
+  }
+
+  return parseAcordeToken(token);
+}
+
+/** Nota suelta en minúscula ("si do do# re"): bajos o melodía escritos junto a los acordes. */
+const NOTA_SUELTA_PATTERN = /^(?:do|re|mi|fa|sol|la|si)[#b]?[,.]?$/;
+
+type TokenRenglon =
+  | { tipo: "acorde"; start: number; acorde: NonNullable<ReturnType<typeof parseAcordeToken>> }
+  | { tipo: "texto"; start: number; token: string }
+  | { tipo: "desconocido"; start: number; token: string };
+
+/**
+ * Clasifica cada palabra de un renglón de acordes:
+ * - acorde (también entre corchetes o paréntesis: "[Gm", "C]", "(G)");
+ * - texto que acompaña ("[Intro]", "(x2)", "x4", "-", notas sueltas en minúscula),
+ *   que se conserva como texto;
+ * - desconocido.
+ */
+function clasificarTokensRenglon(line: string): TokenRenglon[] {
+  return tokenizeChordLine(line).map(({ token, start }) => {
+    const directo = parseAcordeEnLetra(token);
+
+    if (directo) {
+      return { tipo: "acorde", start, acorde: directo };
+    }
+
+    const inicio = /^[[(>]+/.exec(token)?.[0].length ?? 0;
+    const interior = token.slice(inicio).replace(/[\])]+$/, "");
+
+    if (interior && interior !== token) {
+      const acorde = parseAcordeEnLetra(interior);
+
+      if (acorde) {
+        return { tipo: "acorde", start: start + inicio, acorde };
+      }
+    }
+
+    if (
+      interior !== token ||
+      ACOMPANANTE_PATTERN.test(token) ||
+      ACOMPANANTE_PATTERN.test(interior) ||
+      NOTA_SUELTA_PATTERN.test(token)
+    ) {
+      return { tipo: "texto", start, token };
+    }
+
+    return { tipo: "desconocido", start, token };
+  });
+}
+
 export function isChordLine(line: string): boolean {
   const trimmed = line.trim();
 
@@ -77,21 +144,39 @@ export function isChordLine(line: string): boolean {
     return false;
   }
 
-  if (isLikelySectionLine(trimmed)) {
+  if (isLikelySectionLine(trimmed) || INDICACION_MELODIA_PATTERN.test(trimmed)) {
     return false;
   }
 
-  const tokens = tokenizeChordLine(trimmed);
+  const tokens = clasificarTokensRenglon(trimmed).filter(
+    (item) => item.tipo !== "texto",
+  );
 
   if (tokens.length === 0) {
     return false;
   }
 
-  const parsedCount = tokens.filter((item) =>
-    Boolean(parseAcordeToken(item.token)),
-  ).length;
+  const parsedCount = tokens.filter((item) => item.tipo === "acorde").length;
 
   return parsedCount > 0 && parsedCount / tokens.length >= 0.6;
+}
+
+/**
+ * Texto que acompaña a los acordes en su renglón ("[Intro]", "(x2)"), en su columna.
+ * Vacío si el renglón es solo acordes.
+ */
+function textoAcompananteDeRenglon(chordLine: string): string {
+  let texto = "";
+
+  for (const item of clasificarTokensRenglon(chordLine)) {
+    if (item.tipo !== "texto") {
+      continue;
+    }
+
+    texto = texto.padEnd(item.start) + (texto.length > item.start ? " " : "") + item.token;
+  }
+
+  return texto.trimEnd();
 }
 
 /**
@@ -114,22 +199,27 @@ function parseChordLinePair(
   const acordes: AcordePos[] = [];
   const warnings: string[] = [];
 
-  for (const { token, start } of tokenizeChordLine(chordLine)) {
-    const parsed = parseAcordeToken(token);
-
-    if (!parsed) {
-      warnings.push(`Acorde no reconocido: "${token}"`);
+  for (const item of clasificarTokensRenglon(chordLine)) {
+    if (item.tipo === "texto") {
       continue;
     }
 
+    if (item.tipo === "desconocido") {
+      warnings.push(`Acorde no reconocido: "${item.token}"`);
+      continue;
+    }
+
+    const parsed = item.acorde;
+
     acordes.push({
       lineIndex,
-      charOffset: charOffsetEnColumnaOriginal(start),
+      charOffset: charOffsetEnColumnaOriginal(item.start),
       noteIndex: parsed.noteIndex,
       modifier: parsed.modifier,
       ...(parsed.bassNoteIndex !== undefined
         ? { bassNoteIndex: parsed.bassNoteIndex }
         : {}),
+      ...(parsed.agregada !== undefined ? { agregada: parsed.agregada } : {}),
     });
   }
 
@@ -535,34 +625,128 @@ export function splitTonalidadLineFromText(text: string): {
   };
 }
 
+/** Renglón que separa estrofas en letras copiadas de internet ("–", "-", "—"). */
+const SEPARADOR_ESTROFA_PATTERN = /^[–—-]+$/;
+
+/**
+ * Muchas letras de internet vienen "a doble espacio": un renglón vacío después de cada renglón.
+ * Así el renglón de acordes queda separado de su letra y se pegaba al renglón vacío.
+ * Se considera doble espacio cuando la mayoría de los renglones con texto van seguidos de
+ * exactamente un renglón vacío y luego más texto.
+ */
+function esTextoDobleEspacio(lines: readonly string[]): boolean {
+  let conTexto = 0;
+  let seguidosDeUnVacio = 0;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index]?.trim()) {
+      continue;
+    }
+
+    const next = lines[index + 1];
+    const afterNext = lines[index + 2];
+
+    if (next === undefined || afterNext === undefined) {
+      continue;
+    }
+
+    conTexto += 1;
+
+    if (!next.trim() && afterNext.trim()) {
+      seguidosDeUnVacio += 1;
+    }
+  }
+
+  return conTexto >= 4 && seguidosDeUnVacio / conTexto >= 0.7;
+}
+
+/**
+ * Deja la letra a espacio simple: en textos a doble espacio se saca el renglón vacío entre
+ * renglones; en todos, un separador ("–") o varios vacíos seguidos pasan a un solo renglón vacío
+ * (corte de estrofa).
+ */
+function normalizarEspaciosLetra(lines: readonly string[]): string[] {
+  const dobleEspacio = esTextoDobleEspacio(lines);
+  const result: string[] = [];
+  let vacios = 0;
+
+  const pushCorte = () => {
+    if (result.length > 0 && result[result.length - 1]?.trim()) {
+      result.push("");
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      vacios += 1;
+      continue;
+    }
+
+    if (SEPARADOR_ESTROFA_PATTERN.test(trimmed)) {
+      vacios = 0;
+      pushCorte();
+      continue;
+    }
+
+    if (vacios > 0 && (!dobleEspacio || vacios >= 2)) {
+      pushCorte();
+    }
+
+    vacios = 0;
+    result.push(line);
+  }
+
+  return result;
+}
+
+/**
+ * Separa letra y acordes de un texto tradicional (acordes en el renglón de arriba).
+ *
+ * - Acordes con letra abajo → los acordes van sobre esa letra.
+ * - Acordes sin letra abajo (introducción, puentes instrumentales, final) → renglón de solo
+ *   acordes, en su lugar. Antes se descartaban (2026-10-04).
+ */
 export function parseLetraTradicional(text: string): CifradoImportResult {
-  const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+  const rawLines = normalizarEspaciosLetra(text.replace(/\r\n/g, "\n").split("\n"));
   const lyricLines: string[] = [];
   const acordes: AcordePos[] = [];
   const warnings: string[] = [];
-  let chordLinesSkipped = 0;
+  let chordOnlyLines = 0;
 
   for (let index = 0; index < rawLines.length; index += 1) {
     const line = rawLines[index] ?? "";
     const nextLine = rawLines[index + 1];
 
-    if (isChordLine(line) && nextLine !== undefined && !isChordLine(nextLine)) {
-      const lyricLineIndex = lyricLines.length;
-      lyricLines.push(nextLine);
-      const parsed = parseChordLinePair(line, nextLine, lyricLineIndex);
-      acordes.push(...parsed.acordes);
-      warnings.push(...parsed.warnings);
+    if (!isChordLine(line)) {
+      lyricLines.push(line);
+      continue;
+    }
+
+    const textoAcompanante = textoAcompananteDeRenglon(line);
+
+    if (textoAcompanante) {
+      lyricLines.push(textoAcompanante);
+    }
+
+    const tieneLetraAbajo =
+      nextLine !== undefined &&
+      nextLine.trim().length > 0 &&
+      !isChordLine(nextLine) &&
+      !isLikelySectionLine(nextLine);
+
+    const lyricLineIndex = lyricLines.length;
+    lyricLines.push(tieneLetraAbajo ? nextLine : "");
+    const parsed = parseChordLinePair(line, lyricLines[lyricLineIndex] ?? "", lyricLineIndex);
+    acordes.push(...parsed.acordes);
+    warnings.push(...parsed.warnings);
+
+    if (tieneLetraAbajo) {
       index += 1;
-      continue;
+    } else {
+      chordOnlyLines += 1;
     }
-
-    if (isChordLine(line) && (nextLine === undefined || isChordLine(nextLine))) {
-      chordLinesSkipped += 1;
-      warnings.push("Renglón de acordes sin letra asociada (omitido).");
-      continue;
-    }
-
-    lyricLines.push(line);
   }
 
   const letra = lyricLines.join("\n").trimEnd();
@@ -577,7 +761,7 @@ export function parseLetraTradicional(text: string): CifradoImportResult {
     stats: {
       lyricLines: lyricLines.length,
       acordesParsed: acordes.length,
-      chordLinesSkipped,
+      chordOnlyLines,
     },
   };
 }

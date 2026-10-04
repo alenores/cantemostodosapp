@@ -92,15 +92,19 @@ Al abrir la app en el celular, la persona usuaria ve:
 - Un saludo: **"Bienvenid@"**
 - Su nombre, si inició sesión.
 - La pregunta: **"¿Qué querés hacer?"**
-- Cinco accesos principales en forma de tarjetas:
+- Cinco accesos principales en forma de tablero, con tarjetas de distinto tamaño y un dibujo de línea estilo boceto a lápiz, pintado con el color de cada tarjeta (se guardan para verse sin señal):
+  - **Salas** grande y a todo el ancho arriba.
+  - **Individual** y **Cancionero** lado a lado, altas.
+  - **Práctica** (con dibujo) y **Afinador** (solo ícono) abajo, bajitas.
+  - Cada tarjeta muestra el nombre grande arriba a la izquierda y una sola frase abajo; el dibujo va al costado o en el medio, sin taparlos.
 
 | Acceso | Qué dice | Qué permite |
 |--------|----------|-------------|
-| **Cancionero** | "Cancionero, favoritas y editor" | Ir al hub de canciones |
-| **Individual** | "Cantar solo con Lista de canciones" | Modo personal de canto |
-| **Salas** | "Cantar en grupo en tiempo real" | Salas compartidas (requiere internet) |
-| **Práctica** | "Metrónomo, voz, compositor y entrenador" | Herramientas de ensayo |
-| **Afinador** | "Afiná tu instrumento antes de empezar a tocar" | Se abre encima, sin salir del inicio |
+| **Salas** | "La ronda entera en la misma canción" | Salas compartidas (requiere internet) |
+| **Individual** | "Vos, tu guitarra y tu lista" | Modo personal de canto |
+| **Cancionero** | "Tu cuaderno de canciones" | Ir al hub de canciones |
+| **Práctica** | "Voz, oído y tiempo" | Herramientas de ensayo |
+| **Afinador** | "Dejá la guitarra lista" | Se abre encima, sin salir del inicio |
 
 Además, en el inicio pueden aparecer:
 

@@ -331,7 +331,7 @@ function MobileLineRow({
   const lineAcordesSignature = lineAcordes
     .map(
       (acorde) =>
-        `${acorde.charOffset}:${acorde.noteIndex}:${acorde.modifier}`,
+        `${acorde.charOffset}:${acorde.noteIndex}:${acorde.modifier}:${acorde.agregada ?? ""}`,
     )
     .join("|");
   const lineBarrasSignature = lineBarras
@@ -738,6 +738,7 @@ function MobileLineRow({
                   noteIndex={acorde.noteIndex}
                   modifier={acorde.modifier}
                   bassNoteIndex={acorde.bassNoteIndex}
+                  agregada={acorde.agregada}
                   notacion={notacion}
                   className={isSelected ? "text-white" : "text-accent"}
                 />

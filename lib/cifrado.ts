@@ -38,10 +38,27 @@ export const MODIFICADORES = [
   { id: "sus4", label: "sus4" },
   { id: "dim", label: "dim" },
   { id: "6", label: "6" },
+  { id: "5", label: "5" },
+  { id: "aug", label: "aug" },
+  /** Formato viejo: hoy la novena sumada va en `agregada` (DO₉). Se sigue leyendo. */
   { id: "add9", label: "add9" },
 ] as const;
 
 export type Modificador = (typeof MODIFICADORES)[number]["id"];
+
+/** Modificadores que se ofrecen al elegir un acorde (sin el `add9` viejo). */
+export const MODIFICADORES_SELECTOR = MODIFICADORES.filter(
+  (item) => item.id !== "add9",
+);
+
+/**
+ * Nota sumada al acorde sin reemplazar ninguna (SOLadd4 → SOL₄, DO9 → DO7₉).
+ * Se dibuja como número chico abajo y pegado. Los que reemplazan la tercera
+ * (sus2, sus4) o la cambian (5, aug) siguen siendo modificadores (2026-10-04).
+ */
+export const NOTAS_AGREGADAS = [2, 4, 6, 9, 11, 13] as const;
+
+export type NotaAgregada = (typeof NOTAS_AGREGADAS)[number];
 
 export type TipoCompas = "4-4" | "3-4" | "6-8";
 
@@ -88,6 +105,8 @@ export type AcordePos = {
   modifier: Modificador;
   /** Nota del bajo (derecha del /). Sin modificador propio. */
   bassNoteIndex?: NotaIndex;
+  /** Nota sumada (número chico abajo). */
+  agregada?: NotaAgregada;
 };
 
 // Una barra de compás posicionada (solo modo avanzado)
@@ -1035,14 +1054,34 @@ export function formatAcorde(
   modifier: Modificador,
   notacion: NotacionAcordes = "es",
   bassNoteIndex?: NotaIndex,
+  agregada?: NotaAgregada,
 ): string {
-  const root = formatAcordeNotacion(noteIndex, modifier, notacion);
+  const root = formatAcordeNotacion(noteIndex, modifier, notacion, agregada);
 
   if (bassNoteIndex === undefined) {
     return root;
   }
 
   return `${root}/${formatAcordeNotacion(bassNoteIndex, "", notacion)}`;
+}
+
+/**
+ * Saca los renglones vacíos del final sin perder los que llevan acordes (salidas o
+ * finales sin letra). No toca el principio: correrlo movería los acordes de renglón.
+ */
+export function ajustarLetraAAcordes(
+  letra: string,
+  acordes: readonly Pick<AcordePos, "lineIndex">[],
+): string {
+  const lines = letra.replace(/\r\n/g, "\n").trimEnd().split("\n");
+  const ultimoConAcorde = acordes.reduce(
+    (max, acorde) => Math.max(max, acorde.lineIndex),
+    -1,
+  );
+  while (lines.length <= ultimoConAcorde) {
+    lines.push("");
+  }
+  return lines.join("\n");
 }
 
 export function createEmptyCifrado(): CifradoData {

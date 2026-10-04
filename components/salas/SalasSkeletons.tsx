@@ -43,12 +43,13 @@ const LETRA_LINE_WIDTHS = [
   "w-[76%]",
 ] as const;
 
+/** Tablero del inicio: Salas grande, Individual y Cancionero altas, Práctica y Afinador bajitas. */
 const HOME_DESTINATION_LAYOUTS = [
-  { label: "w-[38%]", description: "w-[72%]", help: "w-[58%]" },
-  { label: "w-[34%]", description: "w-[68%]", help: "w-[52%]" },
-  { label: "w-[28%]", description: "w-[64%]", help: "w-[48%]" },
-  { label: "w-[36%]", description: "w-[70%]", help: "w-[54%]" },
-  { label: "w-[32%]", description: "w-[66%]", help: "w-[50%]" },
+  { size: "home-destination-card--hero", span: "col-span-2" },
+  { size: "home-destination-card--tall", span: "" },
+  { size: "home-destination-card--tall", span: "" },
+  { size: "home-destination-card--compact", span: "" },
+  { size: "home-destination-card--compact", span: "" },
 ] as const;
 
 function ShimmerBlock({
@@ -98,27 +99,21 @@ export function AppTopHeaderSkeleton() {
 }
 
 function HomeDestinationCardSkeleton({
-  labelWidth,
-  descriptionWidth,
-  helpWidth,
+  sizeClass,
+  spanClass,
   delayMs = 0,
 }: {
-  labelWidth: string;
-  descriptionWidth: string;
-  helpWidth: string;
+  sizeClass: string;
+  spanClass: string;
   delayMs?: number;
 }) {
   return (
     <div
-      className="relative flex w-full items-center gap-3 rounded-2xl border border-border bg-bg-card px-4 py-5"
+      className={`relative flex w-full flex-col justify-end gap-2 rounded-amplio border border-border bg-bg-card p-3 ${sizeClass} ${spanClass}`.trim()}
       aria-hidden="true"
     >
-      <ShimmerBlock className="size-[46px] shrink-0 rounded-xl" delayMs={delayMs} />
-      <div className="min-w-0 flex-1 space-y-2">
-        <ShimmerBlock className={`h-[17px] ${labelWidth}`} delayMs={delayMs + 30} />
-        <ShimmerBlock className={`h-[13px] ${descriptionWidth}`} delayMs={delayMs + 60} />
-        <ShimmerBlock className={`h-[12px] ${helpWidth}`} delayMs={delayMs + 90} />
-      </div>
+      <ShimmerBlock className="h-[17px] w-[45%]" delayMs={delayMs} />
+      <ShimmerBlock className="h-[12px] w-[70%]" delayMs={delayMs + 40} />
     </div>
   );
 }
@@ -326,13 +321,12 @@ export function HomeWelcomeSkeleton() {
             <ShimmerBlock className="h-5 w-[36%] rounded-md" delayMs={40} />
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {HOME_DESTINATION_LAYOUTS.map((layout, index) => (
               <HomeDestinationCardSkeleton
                 key={index}
-                labelWidth={layout.label}
-                descriptionWidth={layout.description}
-                helpWidth={layout.help}
+                sizeClass={layout.size}
+                spanClass={layout.span}
                 delayMs={index * 70}
               />
             ))}

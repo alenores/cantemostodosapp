@@ -6,21 +6,16 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import {
-  HUB_DESTINATION_AFINADOR_DESCRIPTION,
-  HUB_DESTINATION_AFINADOR_HELP,
   HUB_DESTINATION_AFINADOR_LABEL,
-  HUB_DESTINATION_CANCIONERO_DESCRIPTION,
-  HUB_DESTINATION_CANCIONERO_HELP,
+  HUB_DESTINATION_AFINADOR_TAGLINE,
   HUB_DESTINATION_CANCIONERO_LABEL,
-  HUB_DESTINATION_INDIVIDUAL_DESCRIPTION,
-  HUB_DESTINATION_INDIVIDUAL_HELP,
+  HUB_DESTINATION_CANCIONERO_TAGLINE,
   HUB_DESTINATION_INDIVIDUAL_LABEL,
-  HUB_DESTINATION_PRACTICA_DESCRIPTION,
-  HUB_DESTINATION_PRACTICA_HELP,
+  HUB_DESTINATION_INDIVIDUAL_TAGLINE,
   HUB_DESTINATION_PRACTICA_LABEL,
-  HUB_DESTINATION_SALAS_DESCRIPTION,
-  HUB_DESTINATION_SALAS_HELP,
+  HUB_DESTINATION_PRACTICA_TAGLINE,
   HUB_DESTINATION_SALAS_LABEL,
+  HUB_DESTINATION_SALAS_TAGLINE,
   HUB_SECTION_DESTINOS_LABEL,
   HUB_WELCOME_TITLE,
 } from "@/lib/herramientas-product";
@@ -33,6 +28,14 @@ const CASCADE_ENTER_MS = 520;
 const TITLE_INVITE_DURATION_MS = 10_000;
 const TITLE_INVITE_SLOT_MS = 2_000;
 const CARD_COUNT = 5;
+
+/** Ilustraciones de las tarjetas: en `public/`, así se guardan para abrir sin señal. */
+const HOME_CARD_IMAGES = {
+  salas: "/inicio/inicio-salas.webp",
+  individual: "/inicio/inicio-individual.webp",
+  cancionero: "/inicio/inicio-cancionero.webp",
+  practica: "/inicio/inicio-practica.webp",
+} as const;
 
 type HomeHubDestinationsProps = {
   usuario: UsuarioActivo;
@@ -133,49 +136,14 @@ export default function HomeHubDestinations({
         {HUB_SECTION_DESTINOS_LABEL}
       </p>
 
-      <div className="flex flex-col gap-3">
-        <div className="relative">
+      {/* Tablero: Salas grande arriba; Individual y Cancionero altas; Práctica y Afinador bajitas. */}
+      <div className="grid grid-cols-2 gap-3">
         <HomeDestinationCard
-          label={HUB_DESTINATION_CANCIONERO_LABEL}
-          description={HUB_DESTINATION_CANCIONERO_DESCRIPTION}
-          helpText={HUB_DESTINATION_CANCIONERO_HELP}
-          icon={Library}
-          accentVar="--accent-cancionero"
-          accentDimVar="--accent-cancionero-dim"
-          ariaLabel="Ir a Cancionero"
-          onClick={() => goTo("/canciones")}
-          pending={pendingHref === "/canciones"}
-          cascadeDelayMs={cascadeDelays.cards[0]}
-          titleInviteActive={titleInviteIndex === 0}
-        />
-        {novedades.hasNotice ? (
-          <button type="button" onClick={novedades.open}
-            aria-label={`Ver novedades del Cancionero${novedades.count ? ` (${novedades.count})` : ""}`}
-            className="absolute right-1 top-1 z-10 flex size-11 items-center justify-center rounded-full bg-bg-card text-accent">
-            <Bell className="size-5" aria-hidden="true" />
-            <span className="absolute right-2 top-2 size-2 rounded-full bg-accent" aria-hidden="true" />
-          </button>
-        ) : null}
-        </div>
-
-        <HomeDestinationCard
-          label={HUB_DESTINATION_INDIVIDUAL_LABEL}
-          description={HUB_DESTINATION_INDIVIDUAL_DESCRIPTION}
-          helpText={HUB_DESTINATION_INDIVIDUAL_HELP}
-          icon={Music2}
-          accentVar="--accent-individual"
-          accentDimVar="--accent-individual-dim"
-          ariaLabel="Ir a Individual"
-          onClick={() => goTo("/individual")}
-          pending={pendingHref === "/individual"}
-          cascadeDelayMs={cascadeDelays.cards[1]}
-          titleInviteActive={titleInviteIndex === 1}
-        />
-
-        <HomeDestinationCard
+          size="hero"
+          imageSrc={HOME_CARD_IMAGES.salas}
+          className="col-span-2"
           label={HUB_DESTINATION_SALAS_LABEL}
-          description={HUB_DESTINATION_SALAS_DESCRIPTION}
-          helpText={HUB_DESTINATION_SALAS_HELP}
+          description={HUB_DESTINATION_SALAS_TAGLINE}
           icon={Users}
           accentVar="--accent-salas"
           accentDimVar="--accent-salas-dim"
@@ -187,12 +155,12 @@ export default function HomeHubDestinations({
           onClick={() => goTo("/salas")}
           disabled={!online}
           pending={pendingHref === "/salas"}
-          cascadeDelayMs={cascadeDelays.cards[2]}
-          titleInviteActive={titleInviteIndex === 2}
+          cascadeDelayMs={cascadeDelays.cards[0]}
+          titleInviteActive={titleInviteIndex === 0}
           trailing={
             !online ? (
               <WifiOff
-                className="size-4 shrink-0 text-text-faint"
+                className="size-4 shrink-0 text-text-primary"
                 aria-hidden="true"
               />
             ) : null
@@ -200,9 +168,50 @@ export default function HomeHubDestinations({
         />
 
         <HomeDestinationCard
+          size="tall"
+          imageSrc={HOME_CARD_IMAGES.individual}
+          label={HUB_DESTINATION_INDIVIDUAL_LABEL}
+          description={HUB_DESTINATION_INDIVIDUAL_TAGLINE}
+          icon={Music2}
+          accentVar="--accent-individual"
+          accentDimVar="--accent-individual-dim"
+          ariaLabel="Ir a Individual"
+          onClick={() => goTo("/individual")}
+          pending={pendingHref === "/individual"}
+          cascadeDelayMs={cascadeDelays.cards[1]}
+          titleInviteActive={titleInviteIndex === 1}
+        />
+
+        <div className="relative">
+          <HomeDestinationCard
+            size="tall"
+            imageSrc={HOME_CARD_IMAGES.cancionero}
+            label={HUB_DESTINATION_CANCIONERO_LABEL}
+            description={HUB_DESTINATION_CANCIONERO_TAGLINE}
+            icon={Library}
+            accentVar="--accent-cancionero"
+            accentDimVar="--accent-cancionero-dim"
+            ariaLabel="Ir a Cancionero"
+            onClick={() => goTo("/canciones")}
+            pending={pendingHref === "/canciones"}
+            cascadeDelayMs={cascadeDelays.cards[2]}
+            titleInviteActive={titleInviteIndex === 2}
+          />
+          {novedades.hasNotice ? (
+            <button type="button" onClick={novedades.open}
+              aria-label={`Ver novedades del Cancionero${novedades.count ? ` (${novedades.count})` : ""}`}
+              className="absolute right-1 top-1 z-10 flex size-11 items-center justify-center rounded-full bg-bg-card text-accent">
+              <Bell className="size-5" aria-hidden="true" />
+              <span className="absolute right-2 top-2 size-2 rounded-full bg-accent" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+
+        <HomeDestinationCard
+          size="compact"
+          imageSrc={HOME_CARD_IMAGES.practica}
           label={HUB_DESTINATION_PRACTICA_LABEL}
-          description={HUB_DESTINATION_PRACTICA_DESCRIPTION}
-          helpText={HUB_DESTINATION_PRACTICA_HELP}
+          description={HUB_DESTINATION_PRACTICA_TAGLINE}
           icon={MicVocal}
           accentVar="--accent-practica"
           accentDimVar="--accent-practica-dim"
@@ -214,9 +223,9 @@ export default function HomeHubDestinations({
         />
 
         <HomeDestinationCard
+          size="compact"
           label={HUB_DESTINATION_AFINADOR_LABEL}
-          description={HUB_DESTINATION_AFINADOR_DESCRIPTION}
-          helpText={HUB_DESTINATION_AFINADOR_HELP}
+          description={HUB_DESTINATION_AFINADOR_TAGLINE}
           icon={Gauge}
           accentVar="--accent-afinador"
           accentDimVar="--accent-afinador-dim"

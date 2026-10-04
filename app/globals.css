@@ -32,6 +32,12 @@
   --radius-estandar: 14px;
   --radius-amplio: 18px;
 
+  /* Inicio en celular: tarjetas con ilustración (2026-10-04) */
+  --home-card-hero-height: 184px;
+  --home-card-tall-height: 224px;
+  --home-card-compact-height: 112px;
+  --home-card-scrim: color-mix(in srgb, var(--bg-darker) 92%, transparent);
+
   /* Acento — naranja escenario */
   --accent: #f4845f;
   --cola-badge-bg: #f5a48a;
@@ -184,6 +190,29 @@ body[data-tema-lectura] button {
 .home-destination-card {
   border-color: var(--accent-card-var) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-card-var) 15%, transparent), 0 4px 14px color-mix(in srgb, var(--accent-card-var) 10%, transparent) !important;
+}
+
+.home-destination-card--image {
+  background-color: var(--bg-darker);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Degradado oscuro abajo para que el título se lea sobre la ilustración. */
+.home-destination-card__scrim {
+  background: linear-gradient(to top, var(--home-card-scrim) 0%, transparent 62%);
+}
+
+.home-destination-card--hero {
+  height: var(--home-card-hero-height);
+}
+
+.home-destination-card--tall {
+  height: var(--home-card-tall-height);
+}
+
+.home-destination-card--compact {
+  height: var(--home-card-compact-height);
 }
 
 .home-destination-card:active {

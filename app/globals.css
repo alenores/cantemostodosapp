@@ -1792,11 +1792,6 @@ html.splash-active body {
   --hub-accent-dim: var(--accent-dim);
 }
 
-.hub-module-card[data-hub-accent="editor-canciones"] {
-  --hub-accent: var(--accent-editor);
-  --hub-accent-dim: var(--accent-editor-dim);
-}
-
 .hub-module-card[data-hub-accent="afinador"] {
   --hub-accent: var(--accent-afinador);
   --hub-accent-dim: var(--accent-afinador-dim);

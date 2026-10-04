@@ -1,7 +1,6 @@
 "use client";
 
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
-import CifradoEditor from "@/components/ui/CifradoEditor";
 import CompositorModal from "@/components/ui/CompositorModal";
 import EntrenadorVocalModal from "@/components/ui/EntrenadorVocalModal";
 import MetronomoModal from "@/components/ui/MetronomoModal";
@@ -10,8 +9,7 @@ import { useCompositor } from "@/hooks/useCompositor";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useMetronomo } from "@/hooks/useMetronomo";
 import { useVoz } from "@/hooks/useVoz";
-import { requestCancioneroUpdateCheck } from "@/lib/offline/cancionero-events";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 
 export type CancioneroHubToolsLayerProps = {
   isLoggedIn: boolean;
@@ -20,13 +18,10 @@ export type CancioneroHubToolsLayerProps = {
   metronomoOpen: boolean;
   vozOpen: boolean;
   compositorOpen: boolean;
-  editorOpen: boolean;
   onAfinadorOpenChange: (open: boolean) => void;
   onMetronomoOpenChange: (open: boolean) => void;
   onVozOpenChange: (open: boolean) => void;
   onCompositorOpenChange: (open: boolean) => void;
-  onEditorOpenChange: (open: boolean) => void;
-  onGlobalCountRefresh: () => Promise<void>;
 };
 
 export default function CancioneroHubToolsLayer({
@@ -36,13 +31,10 @@ export default function CancioneroHubToolsLayer({
   metronomoOpen,
   vozOpen,
   compositorOpen,
-  editorOpen,
   onAfinadorOpenChange,
   onMetronomoOpenChange,
   onVozOpenChange,
   onCompositorOpenChange,
-  onEditorOpenChange,
-  onGlobalCountRefresh,
 }: CancioneroHubToolsLayerProps) {
   const compositor = useCompositor({
     isLoggedIn,
@@ -154,7 +146,7 @@ export default function CancioneroHubToolsLayer({
   }, [vozOpen, stopVoz]);
 
   const toolModalOpen =
-    afinadorOpen || metronomoOpen || vozOpen || compositorOpen || editorOpen;
+    afinadorOpen || metronomoOpen || vozOpen || compositorOpen;
 
   useBodyScrollLock(toolModalOpen);
 
@@ -172,15 +164,6 @@ export default function CancioneroHubToolsLayer({
     compositor.stop();
     onCompositorOpenChange(false);
   });
-
-  useHardwareBack(editorOpen, () => {
-    onEditorOpenChange(false);
-  });
-
-  const handleEditorSaved = useCallback(async () => {
-    if (online) requestCancioneroUpdateCheck();
-    await onGlobalCountRefresh();
-  }, [online, onGlobalCountRefresh]);
 
   return (
     <>
@@ -303,13 +286,6 @@ export default function CancioneroHubToolsLayer({
         isLoggedIn={isLoggedIn}
         online={online}
         {...compositor}
-      />
-
-      <CifradoEditor
-        open={editorOpen}
-        isLoggedIn={isLoggedIn}
-        onClose={() => onEditorOpenChange(false)}
-        onSaved={() => void handleEditorSaved()}
       />
     </>
   );

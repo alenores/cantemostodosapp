@@ -127,7 +127,7 @@ La barra **desaparece** cuando entrás en **modo lectura** (letra a pantalla com
 En computadora la experiencia es distinta:
 
 - Hay un **menú lateral izquierdo** permanente con secciones desplegables:
-  - **Canciones** → Cancionero, Favoritas, Editor de canciones
+  - **Canciones** → Cancionero, Favoritas
   - **Individual**
   - **Salas**
   - **Herramientas** → Afinador
@@ -151,7 +151,8 @@ Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que 
 **Canciones:**
 - Cancionero
 - Favoritas (requiere cuenta)
-- Editor de canciones (requiere cuenta)
+
+El editor de canciones no tiene tarjeta propia: se entra con el botón **+** dentro del Cancionero (canción nueva) o con **Editar** en una canción propia.
 
 **Práctica:**
 - Metrónomo
@@ -333,12 +334,12 @@ Las **Favoritas** son el cancionero personal de cada usuario con cuenta.
 
 ## 10. Editor de canciones
 
-El editor permite **crear canciones nuevas** o **editar las propias**. Requiere **cuenta iniciada** y **conexión** para guardar.
+El editor permite **crear canciones nuevas** o **editar las propias**. Requiere **cuenta iniciada** y **conexión** para guardar. Se abre desde el Cancionero: botón **+** para una canción nueva, o **Editar** en una canción propia.
 
 ### 10.1 Presentación según dispositivo
 
 - **Celular:** pantalla completa dedicada al editor.
-- **Computadora:** ventana superpuesta sobre el listado o el hub.
+- **Computadora:** ventana superpuesta sobre el listado.
 - Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Mientras la página carga, se ve una ruedita con «Cargando la canción…» en lugar de una pantalla en blanco. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
 - En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
 - El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una, el editor reconoce los renglones tradicionales de acordes y letra y los integra. Una canción propia se abre para completarla, y una de otra persona se abre como copia.
@@ -939,7 +940,7 @@ Escanear QR → (login si hace falta) → Entrar a sala → Misma fila y canció
 
 - Inicio, navegación móvil y de computadora.
 - Individual con fila, buscador y modo lectura.
-- Cancionero global, Favoritas y Editor de canciones.
+- Cancionero global y Favoritas (el editor se abre desde el Cancionero).
 - Salas con tiempo real (fila, presencia, scroll sincronizado, QR, invitación por email).
 - Afinador.
 - Metrónomo (módulo cerrado y estable).

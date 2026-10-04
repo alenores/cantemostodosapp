@@ -1065,6 +1065,25 @@ export function formatAcorde(
   return `${root}/${formatAcordeNotacion(bassNoteIndex, "", notacion)}`;
 }
 
+/**
+ * Saca los renglones vacíos del final sin perder los que llevan acordes (salidas o
+ * finales sin letra). No toca el principio: correrlo movería los acordes de renglón.
+ */
+export function ajustarLetraAAcordes(
+  letra: string,
+  acordes: readonly Pick<AcordePos, "lineIndex">[],
+): string {
+  const lines = letra.replace(/\r\n/g, "\n").trimEnd().split("\n");
+  const ultimoConAcorde = acordes.reduce(
+    (max, acorde) => Math.max(max, acorde.lineIndex),
+    -1,
+  );
+  while (lines.length <= ultimoConAcorde) {
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
 export function createEmptyCifrado(): CifradoData {
   return { version: 1, acordes: [] };
 }

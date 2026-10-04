@@ -1,6 +1,7 @@
 ﻿import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import { agregarACola } from "@/lib/cola-logic";
 import {
+  ajustarLetraAAcordes,
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
   createEmptyCifrado,
@@ -305,7 +306,7 @@ export async function updateCancionCifradoAvanzado(
         nombre: payload.nombre.trim(),
         artista: payload.artista?.trim() || null,
         ...(payload.artista_id !== undefined ? { artista_id: payload.artista_id } : {}),
-        letra: payload.letra.trim(),
+        letra: ajustarLetraAAcordes(payload.letra, payload.cifrado.acordes),
         cifrado: payload.cifrado,
         compas_config: payload.compas_config,
         tonalidad_default: payload.tonalidad_default,

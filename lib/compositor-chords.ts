@@ -19,6 +19,8 @@ const CHORD_INTERVALS: Record<Modificador, number[]> = {
   sus4: [0, 5, 7],
   dim: [0, 3, 6],
   "6": [0, 4, 7, 9],
+  "5": [0, 7, 12],
+  aug: [0, 4, 8],
   add9: [0, 4, 7, 14],
 };
 

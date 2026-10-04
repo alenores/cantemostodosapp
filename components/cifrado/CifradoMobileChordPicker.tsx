@@ -5,9 +5,11 @@ import { CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS } from "@/components/cifrado/cifrad
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import {
-  MODIFICADORES,
+  MODIFICADORES_SELECTOR as MODIFICADORES,
+  NOTAS_AGREGADAS,
   type AcordePos,
   type Modificador,
+  type NotaAgregada,
   type NotaIndex,
 } from "@/lib/cifrado";
 import {
@@ -15,7 +17,11 @@ import {
   isNotaEnEscala,
   type ModoTonal,
 } from "@/lib/cifrado-escala";
-import { getNotaLabel, type NotacionAcordes } from "@/lib/notacion-acordes";
+import {
+  getAcordeVisible,
+  getNotaLabel,
+  type NotacionAcordes,
+} from "@/lib/notacion-acordes";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -31,6 +37,7 @@ type CifradoMobileChordPickerProps = {
     noteIndex: NotaIndex,
     modifier: Modificador,
     bassNoteIndex?: NotaIndex,
+    agregada?: NotaAgregada,
   ) => void;
   onRemove: () => void;
   onStartDrag?: () => void;
@@ -41,8 +48,11 @@ function cycleIndex(current: number, delta: number, length: number): number {
   return (current + delta + length) % length;
 }
 
+/** Opciones de nota sumada: ninguna + las permitidas. */
+const OPCIONES_AGREGADA: (NotaAgregada | null)[] = [null, ...NOTAS_AGREGADAS];
+
 /**
- * Selector de acorde celular: carrusel compacto (nota + modificador + bajo opcional).
+ * Selector de acorde celular: carrusel compacto (nota + modificador + nota sumada + bajo opcional).
  */
 export function CifradoMobileChordPicker({
   open,
@@ -56,13 +66,19 @@ export function CifradoMobileChordPicker({
   onClose,
 }: CifradoMobileChordPickerProps) {
   const defaultNote = existing?.noteIndex ?? tonalidadIndex;
+  const existingVisible = existing
+    ? getAcordeVisible(existing.modifier, existing.agregada)
+    : null;
   const defaultModifier =
-    existing?.modifier ??
+    existingVisible?.modifier ??
     getModificadorPorDefecto(defaultNote, tonalidadIndex, modoTonal) ??
     "";
 
   const [noteIndex, setNoteIndex] = useState<NotaIndex>(defaultNote);
   const [modifier, setModifier] = useState<Modificador>(defaultModifier);
+  const [agregada, setAgregada] = useState<NotaAgregada | null>(
+    existingVisible?.agregada ?? null,
+  );
   const [bassNoteIndex, setBassNoteIndex] = useState<NotaIndex | null>(
     existing?.bassNoteIndex ?? null,
   );
@@ -86,12 +102,16 @@ export function CifradoMobileChordPicker({
     }
 
     const nextNote = existing?.noteIndex ?? tonalidadIndex;
+    const visible = existing
+      ? getAcordeVisible(existing.modifier, existing.agregada)
+      : null;
     setNoteIndex(nextNote);
     setModifier(
-      existing?.modifier ??
+      visible?.modifier ??
         getModificadorPorDefecto(nextNote, tonalidadIndex, modoTonal) ??
         "",
     );
+    setAgregada(visible?.agregada ?? null);
     setBassNoteIndex(existing?.bassNoteIndex ?? null);
     setBassEnabled(existing?.bassNoteIndex !== undefined);
   }, [existing, modoTonal, open, tonalidadIndex]);
@@ -119,6 +139,14 @@ export function CifradoMobileChordPicker({
   function stepModifier(delta: number) {
     const next = MODIFICADORES[cycleIndex(modifierPos, delta, MODIFICADORES.length)]!;
     setModifier(next.id);
+  }
+
+  function stepAgregada(delta: number) {
+    const currentPos = Math.max(0, OPCIONES_AGREGADA.indexOf(agregada));
+    setAgregada(
+      OPCIONES_AGREGADA[cycleIndex(currentPos, delta, OPCIONES_AGREGADA.length)] ??
+        null,
+    );
   }
 
   function stepBass(delta: number) {
@@ -229,6 +257,31 @@ export function CifradoMobileChordPicker({
           </TapButton>
         </div>
 
+        <p className="mb-1 text-center text-[10px] font-bold uppercase tracking-wide text-text-muted">
+          Nota sumada
+        </p>
+        <div className="mb-3 flex items-center justify-center gap-3">
+          <TapButton
+            type="button"
+            aria-label="Nota sumada anterior"
+            onClick={() => stepAgregada(-1)}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark"
+          >
+            <ChevronLeft className="size-5 text-text-primary" aria-hidden="true" />
+          </TapButton>
+          <div className="min-w-[5.5rem] rounded-estandar bg-bg-dark px-3 py-2 text-center text-base font-bold text-text-primary">
+            {agregada ?? "Ninguna"}
+          </div>
+          <TapButton
+            type="button"
+            aria-label="Nota sumada siguiente"
+            onClick={() => stepAgregada(1)}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg-dark"
+          >
+            <ChevronRight className="size-5 text-text-primary" aria-hidden="true" />
+          </TapButton>
+        </div>
+
         <label className="mb-3 inline-flex cursor-pointer items-center gap-1.5">
           <span className="text-xs font-medium text-text-muted">
             ¿Bajo en otra nota?
@@ -275,6 +328,7 @@ export function CifradoMobileChordPicker({
           <AcordeLabel
             noteIndex={noteIndex}
             modifier={modifier}
+            agregada={agregada ?? undefined}
             bassNoteIndex={
               bassEnabled && bassNoteIndex !== null
                 ? bassNoteIndex
@@ -296,6 +350,7 @@ export function CifradoMobileChordPicker({
                   bassEnabled && bassNoteIndex !== null
                     ? bassNoteIndex
                     : undefined,
+                  agregada ?? undefined,
                 )
               }
               disabled={!canApply}

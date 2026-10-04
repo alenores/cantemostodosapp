@@ -71,6 +71,72 @@ function tokenizeChordLine(line: string): { token: string; start: number }[] {
   return matches;
 }
 
+/** Renglones con indicaciones de melodía ("nota grave sol", "riff: …"): van como texto. */
+const INDICACION_MELODIA_PATTERN = /(^|\s|\()(notas?|riff|tab)\b/i;
+
+/** Repetición ("x2", "x 4", "X4") o símbolos sueltos ("-", "/", "|", "->") en un renglón de acordes. */
+const ACOMPANANTE_PATTERN = /^(?:[xX]\d*|\d+[xX]?|[-–—\/|.:*~=>%]+)$/;
+
+/**
+ * En la letra, una palabra toda en minúscula ("mi", "la", "a", "si") es texto, no acorde:
+ * los acordes de las canciones vienen en mayúscula (DO, LA, Am). Así "Vamos a brillar, mi amor"
+ * no se toma como renglón de acordes (2026-10-04).
+ */
+function parseAcordeEnLetra(token: string) {
+  if (/^[a-záéíóúüñ]+[#b]?$/.test(token)) {
+    return null;
+  }
+
+  return parseAcordeToken(token);
+}
+
+/** Nota suelta en minúscula ("si do do# re"): bajos o melodía escritos junto a los acordes. */
+const NOTA_SUELTA_PATTERN = /^(?:do|re|mi|fa|sol|la|si)[#b]?[,.]?$/;
+
+type TokenRenglon =
+  | { tipo: "acorde"; start: number; acorde: NonNullable<ReturnType<typeof parseAcordeToken>> }
+  | { tipo: "texto"; start: number; token: string }
+  | { tipo: "desconocido"; start: number; token: string };
+
+/**
+ * Clasifica cada palabra de un renglón de acordes:
+ * - acorde (también entre corchetes o paréntesis: "[Gm", "C]", "(G)");
+ * - texto que acompaña ("[Intro]", "(x2)", "x4", "-", notas sueltas en minúscula),
+ *   que se conserva como texto;
+ * - desconocido.
+ */
+function clasificarTokensRenglon(line: string): TokenRenglon[] {
+  return tokenizeChordLine(line).map(({ token, start }) => {
+    const directo = parseAcordeEnLetra(token);
+
+    if (directo) {
+      return { tipo: "acorde", start, acorde: directo };
+    }
+
+    const inicio = /^[[(>]+/.exec(token)?.[0].length ?? 0;
+    const interior = token.slice(inicio).replace(/[\])]+$/, "");
+
+    if (interior && interior !== token) {
+      const acorde = parseAcordeEnLetra(interior);
+
+      if (acorde) {
+        return { tipo: "acorde", start: start + inicio, acorde };
+      }
+    }
+
+    if (
+      interior !== token ||
+      ACOMPANANTE_PATTERN.test(token) ||
+      ACOMPANANTE_PATTERN.test(interior) ||
+      NOTA_SUELTA_PATTERN.test(token)
+    ) {
+      return { tipo: "texto", start, token };
+    }
+
+    return { tipo: "desconocido", start, token };
+  });
+}
+
 export function isChordLine(line: string): boolean {
   const trimmed = line.trim();
 
@@ -78,21 +144,39 @@ export function isChordLine(line: string): boolean {
     return false;
   }
 
-  if (isLikelySectionLine(trimmed)) {
+  if (isLikelySectionLine(trimmed) || INDICACION_MELODIA_PATTERN.test(trimmed)) {
     return false;
   }
 
-  const tokens = tokenizeChordLine(trimmed);
+  const tokens = clasificarTokensRenglon(trimmed).filter(
+    (item) => item.tipo !== "texto",
+  );
 
   if (tokens.length === 0) {
     return false;
   }
 
-  const parsedCount = tokens.filter((item) =>
-    Boolean(parseAcordeToken(item.token)),
-  ).length;
+  const parsedCount = tokens.filter((item) => item.tipo === "acorde").length;
 
   return parsedCount > 0 && parsedCount / tokens.length >= 0.6;
+}
+
+/**
+ * Texto que acompaña a los acordes en su renglón ("[Intro]", "(x2)"), en su columna.
+ * Vacío si el renglón es solo acordes.
+ */
+function textoAcompananteDeRenglon(chordLine: string): string {
+  let texto = "";
+
+  for (const item of clasificarTokensRenglon(chordLine)) {
+    if (item.tipo !== "texto") {
+      continue;
+    }
+
+    texto = texto.padEnd(item.start) + (texto.length > item.start ? " " : "") + item.token;
+  }
+
+  return texto.trimEnd();
 }
 
 /**
@@ -115,22 +199,27 @@ function parseChordLinePair(
   const acordes: AcordePos[] = [];
   const warnings: string[] = [];
 
-  for (const { token, start } of tokenizeChordLine(chordLine)) {
-    const parsed = parseAcordeToken(token);
-
-    if (!parsed) {
-      warnings.push(`Acorde no reconocido: "${token}"`);
+  for (const item of clasificarTokensRenglon(chordLine)) {
+    if (item.tipo === "texto") {
       continue;
     }
 
+    if (item.tipo === "desconocido") {
+      warnings.push(`Acorde no reconocido: "${item.token}"`);
+      continue;
+    }
+
+    const parsed = item.acorde;
+
     acordes.push({
       lineIndex,
-      charOffset: charOffsetEnColumnaOriginal(start),
+      charOffset: charOffsetEnColumnaOriginal(item.start),
       noteIndex: parsed.noteIndex,
       modifier: parsed.modifier,
       ...(parsed.bassNoteIndex !== undefined
         ? { bassNoteIndex: parsed.bassNoteIndex }
         : {}),
+      ...(parsed.agregada !== undefined ? { agregada: parsed.agregada } : {}),
     });
   }
 
@@ -633,6 +722,12 @@ export function parseLetraTradicional(text: string): CifradoImportResult {
     if (!isChordLine(line)) {
       lyricLines.push(line);
       continue;
+    }
+
+    const textoAcompanante = textoAcompananteDeRenglon(line);
+
+    if (textoAcompanante) {
+      lyricLines.push(textoAcompanante);
     }
 
     const tieneLetraAbajo =

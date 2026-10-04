@@ -87,7 +87,8 @@ import {
 } from "@/lib/cifrado-barra-cycles";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
-  MODIFICADORES,
+  MODIFICADORES_SELECTOR,
+  NOTAS_AGREGADAS,
   clampBpm,
   computeTapBpm,
   applyLineCopyAcordes,
@@ -144,6 +145,7 @@ import {
   type CompasMarker,
   type LineCopyKind,
   type Modificador,
+  type NotaAgregada,
   type NotaIndex,
   type TipoCompas,
 } from "@/lib/cifrado";
@@ -161,6 +163,7 @@ import {
   getBeatLevelBarHeightPercent,
 } from "@/lib/metronomo";
 import {
+  getAcordeVisible,
   getNotaLabel,
   readNotacionAcordesPreferida,
   writeNotacionAcordesPreferida,
@@ -381,6 +384,7 @@ type ChordPickerProps = {
     noteIndex: NotaIndex,
     modifier: Modificador,
     bassNoteIndex?: NotaIndex,
+    agregada?: NotaAgregada,
   ) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -396,11 +400,17 @@ function ChordPicker({
   onRemove,
   onClose,
 }: ChordPickerProps) {
+  const existingVisible = existing
+    ? getAcordeVisible(existing.modifier, existing.agregada)
+    : null;
   const [noteIndex, setNoteIndex] = useState<NotaIndex | null>(
     existing ? existing.noteIndex : null,
   );
   const [modifier, setModifier] = useState<Modificador | null>(
-    existing ? existing.modifier : null,
+    existingVisible ? existingVisible.modifier : null,
+  );
+  const [agregada, setAgregada] = useState<NotaAgregada | null>(
+    existingVisible?.agregada ?? null,
   );
   const [bassNoteIndex, setBassNoteIndex] = useState<NotaIndex | null>(
     existing?.bassNoteIndex ?? null,
@@ -415,11 +425,16 @@ function ChordPicker({
     (!bassEnabled || bassNoteIndex !== null);
 
   useEffect(() => {
+    const visible = existing
+      ? getAcordeVisible(existing.modifier, existing.agregada)
+      : null;
     setNoteIndex(existing ? existing.noteIndex : null);
-    setModifier(existing ? existing.modifier : null);
+    setModifier(visible ? visible.modifier : null);
+    setAgregada(visible?.agregada ?? null);
     setBassNoteIndex(existing?.bassNoteIndex ?? null);
     setBassEnabled(existing?.bassNoteIndex !== undefined);
   }, [
+    existing?.agregada,
     existing?.bassNoteIndex,
     existing?.charOffset,
     existing?.lineIndex,
@@ -496,7 +511,7 @@ function ChordPicker({
         Modificador
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {MODIFICADORES.map((item) => (
+        {MODIFICADORES_SELECTOR.map((item) => (
           <button
             key={item.id || "mayor"}
             type="button"
@@ -508,6 +523,26 @@ function ChordPicker({
             }`}
           >
             {item.label}
+          </button>
+        ))}
+      </div>
+
+      <p className="mb-2 mt-3 text-xs font-medium text-text-muted">
+        Nota sumada
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {[null, ...NOTAS_AGREGADAS].map((item) => (
+          <button
+            key={item ?? "ninguna"}
+            type="button"
+            onClick={() => setAgregada(item)}
+            className={`rounded-full px-2.5 py-1 text-xs ${
+              agregada === item
+                ? CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS
+                : "bg-bg-dark text-text-secondary"
+            }`}
+          >
+            {item ?? "Ninguna"}
           </button>
         ))}
       </div>
@@ -566,6 +601,7 @@ function ChordPicker({
           <AcordeLabel
             noteIndex={noteIndex}
             modifier={modifier}
+            agregada={agregada ?? undefined}
             bassNoteIndex={
               bassEnabled && bassNoteIndex !== null
                 ? bassNoteIndex
@@ -588,6 +624,7 @@ function ChordPicker({
                 bassEnabled && bassNoteIndex !== null
                   ? bassNoteIndex
                   : undefined,
+                agregada ?? undefined,
               );
             }
           }}
@@ -1672,6 +1709,7 @@ function CifradoLineEditor({
                   noteIndex={acorde.noteIndex}
                   modifier={acorde.modifier}
                   bassNoteIndex={acorde.bassNoteIndex}
+                  agregada={acorde.agregada}
                   notacion={notacion}
                   className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
                 />
@@ -1709,7 +1747,7 @@ function CifradoLineEditor({
               <button
                 key={`chord-handle-${acorde.lineIndex}-${acorde.charOffset}`}
                 type="button"
-                aria-label={`${formatAcordeAriaLabel(acorde.noteIndex, acorde.modifier, notacion, acorde.bassNoteIndex)}. Arrastrá para mover o tocá para editar.`}
+                aria-label={`${formatAcordeAriaLabel(acorde.noteIndex, acorde.modifier, notacion, acorde.bassNoteIndex, acorde.agregada)}. Arrastrá para mover o tocá para editar.`}
                 className="absolute z-20 h-5 w-6 cursor-col-resize touch-none border-0 bg-transparent p-0"
                 style={{ left: position.left, top: 4 + arribaOffsetEditor }}
                 onPointerDown={(event) => {
@@ -2262,6 +2300,7 @@ function CifradoPreviewLine({
                 noteIndex={acorde.noteIndex}
                 modifier={acorde.modifier}
                 bassNoteIndex={acorde.bassNoteIndex}
+                agregada={acorde.agregada}
                 notacion={notacion}
                 className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
               />
@@ -3815,6 +3854,7 @@ export default function CifradoEditor({
     noteIndex: NotaIndex,
     modifier: Modificador,
     bassNoteIndex?: NotaIndex,
+    agregada?: NotaAgregada,
   ) {
     if (!picker) {
       return;
@@ -3827,6 +3867,7 @@ export default function CifradoEditor({
         noteIndex,
         modifier,
         ...(bassNoteIndex !== undefined ? { bassNoteIndex } : {}),
+        ...(agregada !== undefined ? { agregada } : {}),
       }),
     );
     setPicker(null);

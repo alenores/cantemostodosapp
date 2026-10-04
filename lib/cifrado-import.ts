@@ -1,4 +1,5 @@
 import {
+  ajustarLetraAAcordes,
   createEmptyCifrado,
   NOTAS_ES,
   type AcordePos,
@@ -749,7 +750,7 @@ export function parseLetraTradicional(text: string): CifradoImportResult {
     }
   }
 
-  const letra = lyricLines.join("\n").trimEnd();
+  const letra = ajustarLetraAAcordes(lyricLines.join("\n"), acordes);
 
   return {
     letra,

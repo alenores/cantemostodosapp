@@ -109,7 +109,7 @@ function HomeDestinationCardSkeleton({
 }) {
   return (
     <div
-      className={`relative flex w-full flex-col justify-end gap-2 rounded-amplio border border-border bg-bg-card p-3 ${sizeClass} ${spanClass}`.trim()}
+      className={`relative flex w-full flex-col justify-between rounded-amplio border border-border bg-bg-card p-3 ${sizeClass} ${spanClass}`.trim()}
       aria-hidden="true"
     >
       <ShimmerBlock className="h-[17px] w-[45%]" delayMs={delayMs} />

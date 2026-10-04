@@ -7,8 +7,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 /**
  * `row`: tarjeta horizontal de siempre (ícono + tres renglones).
- * `hero` / `tall` / `compact`: inicio tipo tablero con ilustración de fondo (2026-10-04):
- * título y una frase abajo a la izquierda, sobre un degradado.
+ * `hero` / `tall` / `compact`: inicio tipo tablero (2026-10-04): título grande arriba,
+ * frase abajo y dibujo de línea al costado o en el medio, sin taparse.
  */
 export type HomeDestinationCardSize = "row" | "hero" | "tall" | "compact";
 
@@ -17,7 +17,10 @@ type HomeDestinationCardProps = {
   description: string;
   helpText?: string;
   size?: HomeDestinationCardSize;
-  /** Ilustración de fondo (en `public/`, así queda guardada para usar sin señal). */
+  /**
+   * Dibujo de línea (máscara blanca sobre transparente, en `public/` para usar sin señal);
+   * se pinta con el color de la tarjeta.
+   */
   imageSrc?: string;
   className?: string;
   icon: LucideIcon;
@@ -53,7 +56,7 @@ export default function HomeDestinationCard({
   const cardStyle = {
     ["--accent-card-var" as string]: `var(${accentVar})`,
     ["--cascade-delay" as string]: `${cascadeDelayMs}ms`,
-    ...(imageSrc ? { backgroundImage: `url(${imageSrc})` } : {}),
+    ...(imageSrc ? { ["--home-card-art" as string]: `url(${imageSrc})` } : {}),
   } satisfies CSSProperties;
 
   const titleStyle = titleInviteActive
@@ -73,6 +76,7 @@ export default function HomeDestinationCard({
 
   if (size !== "row") {
     const isCompact = size === "compact";
+    const padding = isCompact ? "p-3" : "p-3.5";
 
     return (
       <TapButton
@@ -80,44 +84,37 @@ export default function HomeDestinationCard({
         onClick={onClick}
         disabled={disabled || pending}
         style={cardStyle}
-        className={`home-cascade-item home-destination-card home-destination-card--${size} ${
-          imageSrc ? "home-destination-card--image" : "bg-bg-card"
-        } relative flex w-full flex-col justify-end overflow-hidden rounded-amplio border border-solid text-left transition-[border-color,background-color,box-shadow,transform] duration-200 disabled:opacity-40 ${className}`.trim()}
+        className={`home-cascade-item home-destination-card home-destination-card--${size} relative flex w-full flex-col justify-between overflow-hidden rounded-amplio border border-solid bg-bg-card text-left transition-[border-color,background-color,box-shadow,transform] duration-200 disabled:opacity-40 ${padding} ${className}`.trim()}
       >
         {imageSrc ? (
-          <span
-            className="home-destination-card__scrim pointer-events-none absolute inset-0"
-            aria-hidden="true"
-          />
+          <span className="home-destination-card__art" aria-hidden="true" />
         ) : (
           <span
-            className="absolute left-3 top-3 flex size-9 items-center justify-center rounded-xl"
+            className="absolute bottom-3 right-3 flex size-11 items-center justify-center rounded-xl"
             style={{ background: `var(${accentDimVar})` }}
             aria-hidden="true"
           >
-            <Icon className="size-[18px]" style={{ color: `var(${accentVar})` }} />
+            <Icon className="size-[22px]" style={{ color: `var(${accentVar})` }} />
           </span>
         )}
         {trailing ? (
           <span className="absolute right-3 top-3 z-[1]">{trailing}</span>
         ) : null}
         {pendingOverlay}
-        <span className={`relative min-w-0 ${isCompact ? "px-3 pb-2.5" : "px-3.5 pb-3"}`}>
-          <span
-            className={`block font-extrabold text-text-primary ${
-              size === "hero" ? "text-xl" : "text-lg"
-            } ${titleInviteActive ? "home-title-invite" : ""}`}
-            style={titleStyle}
-          >
-            {label}
-          </span>
-          <span
-            className={`mt-0.5 block leading-snug text-text-secondary ${
-              size === "hero" ? "text-sm" : "text-xs"
-            }`}
-          >
-            {description}
-          </span>
+        <span
+          className={`relative block font-extrabold leading-tight text-text-primary ${
+            size === "hero" ? "text-2xl" : size === "tall" ? "text-xl" : "text-lg"
+          } ${titleInviteActive ? "home-title-invite" : ""}`}
+          style={titleStyle}
+        >
+          {label}
+        </span>
+        <span
+          className={`relative block leading-snug text-text-secondary ${
+            size === "hero" ? "max-w-[46%] text-sm" : isCompact ? "max-w-[50%] text-xs" : "text-xs"
+          }`}
+        >
+          {description}
         </span>
       </TapButton>
     );

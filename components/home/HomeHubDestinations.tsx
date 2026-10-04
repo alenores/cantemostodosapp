@@ -29,12 +29,12 @@ const TITLE_INVITE_DURATION_MS = 10_000;
 const TITLE_INVITE_SLOT_MS = 2_000;
 const CARD_COUNT = 5;
 
-/** Ilustraciones de las tarjetas: en `public/`, así se guardan para abrir sin señal. */
+/** Dibujos de línea de las tarjetas: en `public/`, así se guardan para abrir sin señal. */
 const HOME_CARD_IMAGES = {
-  salas: "/inicio/inicio-salas.webp",
-  individual: "/inicio/inicio-individual.webp",
-  cancionero: "/inicio/inicio-cancionero.webp",
-  practica: "/inicio/inicio-practica.webp",
+  salas: "/inicio/linea-salas.webp",
+  individual: "/inicio/linea-individual.webp",
+  cancionero: "/inicio/linea-cancionero.webp",
+  practica: "/inicio/linea-practica.webp",
 } as const;
 
 type HomeHubDestinationsProps = {
@@ -160,7 +160,7 @@ export default function HomeHubDestinations({
           trailing={
             !online ? (
               <WifiOff
-                className="size-4 shrink-0 text-text-primary"
+                className="size-4 shrink-0 text-text-faint"
                 aria-hidden="true"
               />
             ) : null

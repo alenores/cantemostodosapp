@@ -36,7 +36,9 @@
   --home-card-hero-height: 184px;
   --home-card-tall-height: 224px;
   --home-card-compact-height: 112px;
-  --home-card-scrim: color-mix(in srgb, var(--bg-darker) 92%, transparent);
+  --home-card-art-opacity: 0.8;
+  --home-card-art-inset: 12px;
+  --home-card-title-band: 48px;
 
   /* Acento — naranja escenario */
   --accent: #f4845f;
@@ -192,15 +194,40 @@ body[data-tema-lectura] button {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-card-var) 15%, transparent), 0 4px 14px color-mix(in srgb, var(--accent-card-var) 10%, transparent) !important;
 }
 
-.home-destination-card--image {
-  background-color: var(--bg-darker);
-  background-size: cover;
-  background-position: center;
+/*
+ * Dibujo de línea de cada tarjeta (2026-10-04): el archivo es una máscara (línea blanca sobre
+ * transparente) y se pinta con el color de la tarjeta. Título arriba, frase abajo, dibujo al costado
+ * o en el medio, sin taparse.
+ */
+.home-destination-card__art {
+  position: absolute;
+  pointer-events: none;
+  background-color: var(--accent-card-var);
+  opacity: var(--home-card-art-opacity);
+  -webkit-mask-image: var(--home-card-art);
+  mask-image: var(--home-card-art);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 
-/* Degradado oscuro abajo para que el título se lea sobre la ilustración. */
-.home-destination-card__scrim {
-  background: linear-gradient(to top, var(--home-card-scrim) 0%, transparent 62%);
+.home-destination-card--hero .home-destination-card__art {
+  inset: var(--home-card-art-inset) var(--home-card-art-inset) var(--home-card-art-inset) 50%;
+  -webkit-mask-position: right center;
+  mask-position: right center;
+}
+
+.home-destination-card--tall .home-destination-card__art {
+  inset: var(--home-card-title-band) var(--home-card-art-inset) var(--home-card-title-band);
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.home-destination-card--compact .home-destination-card__art {
+  inset: calc(var(--home-card-title-band) - 8px) var(--home-card-art-inset) var(--home-card-art-inset) 52%;
+  -webkit-mask-position: right bottom;
+  mask-position: right bottom;
 }
 
 .home-destination-card--hero {

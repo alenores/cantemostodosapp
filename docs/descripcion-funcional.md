@@ -92,11 +92,11 @@ Al abrir la app en el celular, la persona usuaria ve:
 - Un saludo: **"Bienvenid@"**
 - Su nombre, si inició sesión.
 - La pregunta: **"¿Qué querés hacer?"**
-- Cinco accesos principales en forma de tablero, con tarjetas de distinto tamaño e ilustraciones cálidas dibujadas a mano (se guardan para verse sin señal):
+- Cinco accesos principales en forma de tablero, con tarjetas de distinto tamaño y un dibujo de línea estilo boceto a lápiz, pintado con el color de cada tarjeta (se guardan para verse sin señal):
   - **Salas** grande y a todo el ancho arriba.
   - **Individual** y **Cancionero** lado a lado, altas.
-  - **Práctica** (con ilustración) y **Afinador** (solo ícono) abajo, bajitas.
-  - Cada tarjeta muestra el nombre y una sola frase, abajo a la izquierda.
+  - **Práctica** (con dibujo) y **Afinador** (solo ícono) abajo, bajitas.
+  - Cada tarjeta muestra el nombre grande arriba a la izquierda y una sola frase abajo; el dibujo va al costado o en el medio, sin taparlos.
 
 | Acceso | Qué dice | Qué permite |
 |--------|----------|-------------|

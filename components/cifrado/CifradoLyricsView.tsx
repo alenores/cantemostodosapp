@@ -506,6 +506,7 @@ export function CifradoLyricsLine({
                     noteIndex={acorde.noteIndex}
                     modifier={acorde.modifier}
                     bassNoteIndex={acorde.bassNoteIndex}
+                    agregada={acorde.agregada}
                     notacion={notacion}
                     className="text-accent"
                   />

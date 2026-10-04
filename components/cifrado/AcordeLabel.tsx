@@ -1,44 +1,56 @@
 import {
   formatAcordeNotacion,
+  getAcordeVisible,
   getNotaLabel,
   type NotacionAcordes,
 } from "@/lib/notacion-acordes";
-import type { Modificador, NotaIndex } from "@/lib/cifrado";
+import type { Modificador, NotaAgregada, NotaIndex } from "@/lib/cifrado";
 
 type AcordeLabelProps = {
   noteIndex: NotaIndex;
   modifier: Modificador;
   bassNoteIndex?: NotaIndex;
+  agregada?: NotaAgregada;
   notacion?: NotacionAcordes;
   className?: string;
   bassClassName?: string;
+  agregadaClassName?: string;
 };
 
 /**
- * Acorde principal + opcional bajo tras "/" (nota chica en <sup>).
+ * Acorde principal + opcional nota sumada (número chico abajo y pegado, en <sub>)
+ * + opcional bajo tras "/" (nota chica arriba, en <sup>).
  * Izquierda del / = acorde completo; derecha = solo nota del bajo.
  */
 export function AcordeLabel({
   noteIndex,
   modifier,
   bassNoteIndex,
+  agregada,
   notacion = "es",
   className,
   bassClassName = "text-[0.55em] font-bold leading-none",
+  agregadaClassName = "text-[0.55em] font-bold leading-none",
 }: AcordeLabelProps) {
-  const root = formatAcordeNotacion(noteIndex, modifier, notacion);
+  const visible = getAcordeVisible(modifier, agregada);
+  const root = formatAcordeNotacion(noteIndex, visible.modifier, notacion);
 
-  if (bassNoteIndex === undefined) {
+  if (bassNoteIndex === undefined && visible.agregada === undefined) {
     return <span className={className}>{root}</span>;
   }
-
-  const bass = getNotaLabel(bassNoteIndex, notacion);
 
   return (
     <span className={`whitespace-nowrap leading-none ${className ?? ""}`}>
       <span>{root}</span>
-      <span>/</span>
-      <sup className={bassClassName}>{bass}</sup>
+      {visible.agregada !== undefined ? (
+        <sub className={agregadaClassName}>{visible.agregada}</sub>
+      ) : null}
+      {bassNoteIndex !== undefined ? (
+        <>
+          <span>/</span>
+          <sup className={bassClassName}>{getNotaLabel(bassNoteIndex, notacion)}</sup>
+        </>
+      ) : null}
     </span>
   );
 }
@@ -48,13 +60,17 @@ export function formatAcordeAriaLabel(
   modifier: Modificador,
   notacion: NotacionAcordes = "es",
   bassNoteIndex?: NotaIndex,
+  agregada?: NotaAgregada,
 ): string {
-  const root = formatAcordeNotacion(noteIndex, modifier, notacion);
+  const visible = getAcordeVisible(modifier, agregada);
+  const root = formatAcordeNotacion(noteIndex, visible.modifier, notacion);
+  const sumada =
+    visible.agregada !== undefined ? ` con ${visible.agregada} sumada` : "";
 
   if (bassNoteIndex === undefined) {
-    return root;
+    return `${root}${sumada}`;
   }
 
   const bass = getNotaLabel(bassNoteIndex, notacion);
-  return `${root} con bajo en ${bass}`;
+  return `${root}${sumada} con bajo en ${bass}`;
 }

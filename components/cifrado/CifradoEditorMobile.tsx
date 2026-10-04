@@ -68,6 +68,7 @@ import {
   type CifradoData,
   type CompasConfig,
   type Modificador,
+  type NotaAgregada,
   type NotaIndex,
 } from "@/lib/cifrado";
 import { getNotaLabel } from "@/lib/notacion-acordes";
@@ -989,6 +990,7 @@ export default function CifradoEditorMobile({
     noteIndex: NotaIndex,
     modifier: Modificador,
     bassNoteIndex?: NotaIndex,
+    agregada?: NotaAgregada,
   ) {
     if (!pickerTarget) {
       return;
@@ -1001,6 +1003,7 @@ export default function CifradoEditorMobile({
         noteIndex,
         modifier,
         ...(bassNoteIndex !== undefined ? { bassNoteIndex } : {}),
+        ...(agregada !== undefined ? { agregada } : {}),
       }),
     );
     closeChordPicker();

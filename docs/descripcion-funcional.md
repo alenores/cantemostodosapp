@@ -346,6 +346,7 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 - Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Mientras la página carga, se ve una ruedita con «Cargando la canción…» en lugar de una pantalla en blanco. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
 - En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
 - El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una, el editor reconoce los renglones tradicionales de acordes y letra y los integra. Una canción propia se abre para completarla, y una de otra persona se abre como copia.
+- Al reconocer letra con acordes pegada o traída de internet: si hay un renglón vacío entre los acordes y su letra, los acordes van igual sobre esa letra; los renglones de solo acordes (introducción, puentes, final) se conservan en su lugar; un «–» o varios renglones vacíos se toman como corte de estrofa. Títulos como «[Intro]», repeticiones como «(x2)» y notas sueltas escritas en minúscula quedan como texto; las palabras de la letra en minúscula («mi», «la», «a») no se toman como acordes.
 
 ### 10.2 Tres modos de edición
 
@@ -362,6 +363,8 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 - **Aplicar ciclos:** elegir cantidad de ciclos completos por renglón o **Aplicar a todos los renglones** (con aviso si ya hay compases marcados). Se agrega una marca final para cerrar el último ciclo.
 
 Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese punto mientras se abre el selector.
+
+**Cómo se escriben los acordes:** además de mayor, menor, 7, m7, maj7, sus2, sus4, dim y 6, hay **quinta** (SI5) y **aumentado** (FA#aug). La **nota sumada** (2, 4, 6, 9, 11 o 13) se elige en el selector y se dibuja chica, abajo y pegada: SOLadd4 se ve SOL₄, DO9 se ve DO7₉, LAm9 se ve LAm7₉. Al leer una letra, «E4» se toma como MIsus4, «RE2» como REsus2 y los bemoles como sostenidos (SOLb → FA#, SIb → LA#).
 
 ### 10.4 Acciones por renglón
 

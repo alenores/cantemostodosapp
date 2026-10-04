@@ -30,7 +30,8 @@ export type CifradoImportResult = {
   stats: {
     lyricLines: number;
     acordesParsed: number;
-    chordLinesSkipped: number;
+    /** Renglones de solo acordes (introducción, puentes, final). */
+    chordOnlyLines: number;
   };
 };
 
@@ -535,34 +536,122 @@ export function splitTonalidadLineFromText(text: string): {
   };
 }
 
+/** Renglón que separa estrofas en letras copiadas de internet ("–", "-", "—"). */
+const SEPARADOR_ESTROFA_PATTERN = /^[–—-]+$/;
+
+/**
+ * Muchas letras de internet vienen "a doble espacio": un renglón vacío después de cada renglón.
+ * Así el renglón de acordes queda separado de su letra y se pegaba al renglón vacío.
+ * Se considera doble espacio cuando la mayoría de los renglones con texto van seguidos de
+ * exactamente un renglón vacío y luego más texto.
+ */
+function esTextoDobleEspacio(lines: readonly string[]): boolean {
+  let conTexto = 0;
+  let seguidosDeUnVacio = 0;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index]?.trim()) {
+      continue;
+    }
+
+    const next = lines[index + 1];
+    const afterNext = lines[index + 2];
+
+    if (next === undefined || afterNext === undefined) {
+      continue;
+    }
+
+    conTexto += 1;
+
+    if (!next.trim() && afterNext.trim()) {
+      seguidosDeUnVacio += 1;
+    }
+  }
+
+  return conTexto >= 4 && seguidosDeUnVacio / conTexto >= 0.7;
+}
+
+/**
+ * Deja la letra a espacio simple: en textos a doble espacio se saca el renglón vacío entre
+ * renglones; en todos, un separador ("–") o varios vacíos seguidos pasan a un solo renglón vacío
+ * (corte de estrofa).
+ */
+function normalizarEspaciosLetra(lines: readonly string[]): string[] {
+  const dobleEspacio = esTextoDobleEspacio(lines);
+  const result: string[] = [];
+  let vacios = 0;
+
+  const pushCorte = () => {
+    if (result.length > 0 && result[result.length - 1]?.trim()) {
+      result.push("");
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      vacios += 1;
+      continue;
+    }
+
+    if (SEPARADOR_ESTROFA_PATTERN.test(trimmed)) {
+      vacios = 0;
+      pushCorte();
+      continue;
+    }
+
+    if (vacios > 0 && (!dobleEspacio || vacios >= 2)) {
+      pushCorte();
+    }
+
+    vacios = 0;
+    result.push(line);
+  }
+
+  return result;
+}
+
+/**
+ * Separa letra y acordes de un texto tradicional (acordes en el renglón de arriba).
+ *
+ * - Acordes con letra abajo → los acordes van sobre esa letra.
+ * - Acordes sin letra abajo (introducción, puentes instrumentales, final) → renglón de solo
+ *   acordes, en su lugar. Antes se descartaban (2026-10-04).
+ */
 export function parseLetraTradicional(text: string): CifradoImportResult {
-  const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+  const rawLines = normalizarEspaciosLetra(text.replace(/\r\n/g, "\n").split("\n"));
   const lyricLines: string[] = [];
   const acordes: AcordePos[] = [];
   const warnings: string[] = [];
-  let chordLinesSkipped = 0;
+  let chordOnlyLines = 0;
 
   for (let index = 0; index < rawLines.length; index += 1) {
     const line = rawLines[index] ?? "";
     const nextLine = rawLines[index + 1];
 
-    if (isChordLine(line) && nextLine !== undefined && !isChordLine(nextLine)) {
-      const lyricLineIndex = lyricLines.length;
-      lyricLines.push(nextLine);
-      const parsed = parseChordLinePair(line, nextLine, lyricLineIndex);
-      acordes.push(...parsed.acordes);
-      warnings.push(...parsed.warnings);
+    if (!isChordLine(line)) {
+      lyricLines.push(line);
+      continue;
+    }
+
+    const tieneLetraAbajo =
+      nextLine !== undefined &&
+      nextLine.trim().length > 0 &&
+      !isChordLine(nextLine) &&
+      !isLikelySectionLine(nextLine);
+
+    const lyricLineIndex = lyricLines.length;
+    lyricLines.push(tieneLetraAbajo ? nextLine : "");
+    const parsed = parseChordLinePair(line, lyricLines[lyricLineIndex] ?? "", lyricLineIndex);
+    acordes.push(...parsed.acordes);
+    warnings.push(...parsed.warnings);
+
+    if (tieneLetraAbajo) {
       index += 1;
-      continue;
+    } else {
+      chordOnlyLines += 1;
     }
-
-    if (isChordLine(line) && (nextLine === undefined || isChordLine(nextLine))) {
-      chordLinesSkipped += 1;
-      warnings.push("Renglón de acordes sin letra asociada (omitido).");
-      continue;
-    }
-
-    lyricLines.push(line);
   }
 
   const letra = lyricLines.join("\n").trimEnd();
@@ -577,7 +666,7 @@ export function parseLetraTradicional(text: string): CifradoImportResult {
     stats: {
       lyricLines: lyricLines.length,
       acordesParsed: acordes.length,
-      chordLinesSkipped,
+      chordOnlyLines,
     },
   };
 }

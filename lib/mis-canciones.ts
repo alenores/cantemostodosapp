@@ -125,6 +125,36 @@ export async function eliminarDeMisCanciones(
   }
 }
 
+/** Quita de Favoritas una canción del Cancionero (todas sus entradas de la cuenta). */
+export async function eliminarCancionDeFavoritas(
+  supabase: SupabaseClient,
+  cancionGuardadaId: number,
+): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error("Se requiere sesión activa para quitar de Favoritas");
+  }
+
+  const { data, error } = await supabase
+    .from("usuarios_canciones")
+    .delete()
+    .eq("user_id", userId)
+    .eq("cancion_guardada_id", cancionGuardadaId)
+    .select("id");
+
+  if (error) {
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    await deleteMiCancionLocal(userId, row.id as number);
+  }
+}
+
 export function usuarioCancionToCancionInput(
   cancion: UsuarioCancion,
   letraTexto?: string | null,

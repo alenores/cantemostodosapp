@@ -26,6 +26,7 @@ import {
 } from "@/lib/cancionero";
 import {
   agregarAMisCanciones,
+  eliminarCancionDeFavoritas,
   getMisCanciones,
 } from "@/lib/mis-canciones";
 import {
@@ -294,6 +295,43 @@ export default function CancioneroPageClient({
       supabase,
       usuarioLogueado,
     ],
+  );
+
+  const quitarDeFavoritas = useCallback(
+    async (cancion: CancionCancionero) => {
+      if (!usuarioLogueado || !online) {
+        showSnackbar("Conectate para quitar de Favoritas");
+        return;
+      }
+
+      setActionError(null);
+
+      try {
+        await eliminarCancionDeFavoritas(supabase, cancion.id);
+        setMisCancionesIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cancion.id);
+          return next;
+        });
+        showSnackbar("Quitada de Favoritas");
+      } catch (error) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo quitar de Favoritas",
+        );
+      }
+    },
+    [online, showSnackbar, supabase, usuarioLogueado],
+  );
+
+  /** Un toque suma a Favoritas; otro toque la quita. */
+  const alternarFavorita = useCallback(
+    (cancion: CancionCancionero) =>
+      misCancionesIds.has(cancion.id)
+        ? quitarDeFavoritas(cancion)
+        : sumarAMisCanciones(cancion),
+    [misCancionesIds, quitarDeFavoritas, sumarAMisCanciones],
   );
 
   function handleNuevaCancion() {
@@ -773,8 +811,8 @@ export default function CancioneroPageClient({
                       onOpenActions={() => setActiveCardId(cancion.id)}
                       onCloseActions={() => setActiveCardId(null)}
                       onVer={handleVer}
-                      onSumarAMisCanciones={(item) =>
-                        void sumarAMisCanciones(item)
+                      onAlternarFavorita={(item) =>
+                        void alternarFavorita(item)
                       }
                       onEditar={handleEditar}
                       onEliminar={handleEliminar}

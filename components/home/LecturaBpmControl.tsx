@@ -18,7 +18,7 @@ export default function LecturaBpmControl({
 }: LecturaBpmControlProps) {
   return (
     <div
-      className="flex w-fit shrink-0 select-none items-center rounded-2xl border border-border/50 bg-bg-dark/90 p-0.5 backdrop-blur-md"
+      className="flex w-fit shrink-0 select-none items-center rounded-2xl border border-border/50 bg-bg-cola-sheet/90 p-0.5 backdrop-blur-md"
       style={{ boxShadow: "0 2px 10px rgba(0,0,0,0.28)" }}
     >
       <TapButton

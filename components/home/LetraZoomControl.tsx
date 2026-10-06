@@ -24,7 +24,7 @@ export default function LetraZoomControl({
 
   return (
     <div
-      className={`flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-dark/90 p-0.5 backdrop-blur-md ${
+      className={`flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-cola-sheet/90 p-0.5 backdrop-blur-md ${
         isAdjusted ? "border-accent/30" : "border-border/50"
       }`}
       style={{ boxShadow: "0 2px 10px rgba(0,0,0,0.28)" }}

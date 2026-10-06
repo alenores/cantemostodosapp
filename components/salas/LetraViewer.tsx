@@ -178,11 +178,9 @@ export function LetraRevealFullControl({
       style={{
         color: "var(--voz-config)",
         borderColor: "var(--voz-config-border)",
-        backgroundColor:
-          "color-mix(in srgb, var(--bg-card) 78%, transparent)",
         ...style,
       }}
-      className={`z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
+      className={`z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border bg-bg-cola-sheet/90 p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
     >
       {expanded ? (
         <>
@@ -249,7 +247,7 @@ export function LetraEmbedReloadControl({
       aria-label="Recargar página"
       onClick={onReload}
       style={style}
-      className={`pointer-events-auto flex items-center gap-1 rounded-full border py-0.5 pl-2 pr-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
+      className={`pointer-events-auto flex items-center gap-1 rounded-full border bg-bg-cola-sheet/90 py-0.5 pl-2 pr-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
     >
       <RefreshCw
         className="size-3 shrink-0 text-accent"

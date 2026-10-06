@@ -174,7 +174,7 @@ El modo **Individual** es la experiencia de **cantar solo**. Es la pantalla prin
 
 La persona usuaria ve:
 
-- La **canción activa** (letra en pantalla).
+- La **canción activa** (letra en pantalla). Arriba: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). Igual en Salas, en celular y computadora.
 - Un botón para **buscar canción**.
 - Acceso a la **fila de canciones** (lista personal de qué va a cantar).
 

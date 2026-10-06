@@ -255,11 +255,12 @@ export default function HomePageShell() {
 
     return buildColaLecturaNavItems({
       pendientesCount: cola.pendientesCount,
+      siguienteDisabled: !cola.puedeAvanzar,
       onBuscar: () => setBuscadorOpen(true),
       onSiguiente: () => void handleSiguienteRef.current?.(),
       onCola: () => openColaRef.current?.(),
     });
-  }, [cola.pendientesCount, lecturaConColaLateral]);
+  }, [cola.pendientesCount, cola.puedeAvanzar, lecturaConColaLateral]);
 
   return (
     <div
@@ -286,7 +287,7 @@ export default function HomePageShell() {
               <h2>{cola.cancionActiva?.nombre}</h2>
               <p>Requiere conexión</p>
               <p className="text-sm text-text-muted">La canción sigue en tu lista. Sin internet podés usar las que están guardadas en el celular.</p>
-              <TapButton onClick={() => void cola.avanzar()} disabled={cola.pendientesCount === 0}>Siguiente disponible</TapButton>
+              <TapButton onClick={() => void cola.avanzar()} disabled={!cola.puedeAvanzar}>Siguiente disponible</TapButton>
               <TapButton onClick={() => setBuscadorOpen(true)}>Buscar canción descargada</TapButton>
               <TapButton onClick={() => openColaRef.current?.()}>Ver fila</TapButton>
             </div>
@@ -322,7 +323,7 @@ export default function HomePageShell() {
                       colaAvisoExiting,
                       onOpenFila: () => openColaRef.current?.(),
                       onSiguiente: () => void handleSiguienteRef.current?.(),
-                      siguienteDisabled: cola.pendientesCount === 0,
+                      siguienteDisabled: !cola.puedeAvanzar,
                       showSiguiente: Boolean(cola.cancionActiva),
                     }
                   : null

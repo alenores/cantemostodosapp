@@ -6,6 +6,7 @@ import {
   activarGuestColaItem,
   avanzarGuestCola,
   colaHasActivaOPendiente,
+  colaIndividualPuedeAvanzar,
   deleteGuestColaItem,
   deriveCancionActivaFromGuestCola,
   reorderGuestColaPendientes,
@@ -164,6 +165,11 @@ export function useColaIndividual() {
 
   const pendientesCount = useMemo(
     () => items.filter((item) => item.estado === "pendiente" && !noDisponibles.has(item.id)).length,
+    [items, noDisponibles],
+  );
+
+  const puedeAvanzar = useMemo(
+    () => colaIndividualPuedeAvanzar(items, (item) => !noDisponibles.has(item.id)),
     [items, noDisponibles],
   );
 
@@ -390,6 +396,7 @@ export function useColaIndividual() {
     cancionActiva,
     hasActivaOPendiente,
     pendientesCount,
+    puedeAvanzar,
     setItems,
     refresh,
     verAhora,

@@ -191,7 +191,7 @@ En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera,
 | **Pendiente** | En espera, más adelante en la fila |
 | **Ya tocada** | Ya se cantó; puede volver a pendiente |
 
-**Ya tocadas:** se ven las **últimas dos**. Al tocar una tercera (con **Siguiente**, **Ver ahora** o tocando una canción de la fila), la más vieja vuelve al **final de la fila como pendiente**: la lista no se borra y se puede volver a cantar otro día. Es distinto de la fila de la juntada (Salas), donde las tocadas más viejas desaparecen.
+**Ya tocadas:** se ven las **últimas dos**. Al tocar una tercera (con **Siguiente**, **Ver ahora** o tocando una canción de la fila), la más vieja vuelve al **final de la fila como pendiente**: la lista no se borra y se puede volver a cantar otro día. Al terminar la fila, **Siguiente** sigue activo y vuelve a empezar por la tocada más vieja. Es distinto de la fila de la juntada (Salas), donde las tocadas más viejas desaparecen y la fila termina.
 
 **Acciones disponibles:**
 

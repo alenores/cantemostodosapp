@@ -126,6 +126,21 @@ export function agregarGuestCola(
   return [...items, createItem(cancion, estado, maxOrden(items) + 1)];
 }
 
+/** Siguiente: hay una pendiente disponible o, al final de la fila, una tocada para volver a empezar. */
+export function colaIndividualPuedeAvanzar<T extends GuestColaItem>(
+  items: T[],
+  disponible: (item: T) => boolean = () => true,
+): boolean {
+  if (items.some((item) => item.estado === "pendiente" && disponible(item))) {
+    return true;
+  }
+
+  return (
+    items.some((item) => item.estado === "activa") &&
+    items.some((item) => item.estado === "tocada" && disponible(item))
+  );
+}
+
 export function avanzarGuestCola(items: GuestColaItem[], disponible: (item: GuestColaItem) => boolean = () => true): GuestColaItem[] {
   const activa = items.find((item) => item.estado === "activa");
 
@@ -133,27 +148,38 @@ export function avanzarGuestCola(items: GuestColaItem[], disponible: (item: Gues
     return items;
   }
 
-  const primerPendiente = items
-    .filter((item) => item.estado === "pendiente" && disponible(item))
+  // La que terminó pasa a tocada; si sobran tocadas, la más vieja vuelve al final.
+  const recicladas = reciclarTocadasViejas(
+    items.map((item) =>
+      item.id === activa.id
+        ? { ...item, estado: disponible(item) ? "tocada" as const : "pendiente" as const }
+        : item,
+    ),
+  );
+
+  const primerPendiente = recicladas
+    .filter((item) => item.estado === "pendiente" && item.id !== activa.id && disponible(item))
     .sort((a, b) => a.orden - b.orden)[0];
 
-  if (!primerPendiente) {
+  if (primerPendiente) {
+    return recicladas.map((item) =>
+      item.id === primerPendiente.id ? { ...item, estado: "activa" as const } : item,
+    );
+  }
+
+  // Fin de la fila: vuelve a empezar por la tocada más vieja, que pasa al final.
+  const masVieja = recicladas
+    .filter((item) => item.estado === "tocada" && disponible(item))
+    .sort((a, b) => a.orden - b.orden)[0];
+
+  if (!masVieja) {
     return items;
   }
 
-  const next = items.map((item) => {
-    if (item.id === activa.id) {
-      return { ...item, estado: disponible(item) ? "tocada" as const : "pendiente" as const };
-    }
-
-    if (item.id === primerPendiente.id) {
-      return { ...item, estado: "activa" as const };
-    }
-
-    return item;
-  });
-
-  return reciclarTocadasViejas(next);
+  const orden = maxOrden(recicladas) + 1;
+  return recicladas.map((item) =>
+    item.id === masVieja.id ? { ...item, estado: "activa" as const, orden } : item,
+  );
 }
 
 export function activarGuestColaItem(

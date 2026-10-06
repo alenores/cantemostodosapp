@@ -12,6 +12,7 @@ import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import type { ColaIndividualRow } from "@/hooks/useColaIndividual";
 import type { CancionInput } from "@/lib/cola-logic";
+import { colaIndividualPuedeAvanzar } from "@/lib/cola-individual-guest";
 import { triggerHaptic } from "@/lib/haptic";
 import { isColaItemPremium } from "@/lib/buscador";
 import {
@@ -250,6 +251,11 @@ export default function ColaIndividualSheet({
   );
 
   const pendientesCount = pendientes.filter(item => !noDisponibles.has(item.id)).length;
+  // Al final de la fila, Siguiente vuelve a empezar por la tocada más vieja.
+  const puedeAvanzar = colaIndividualPuedeAvanzar(
+    sortedItems,
+    (item) => !noDisponibles.has(item.id),
+  );
 
   const { aleatorioActivo, toggleAleatorio, apagarAleatorio } = useColaAleatorio({
     items: sortedItems,
@@ -344,7 +350,7 @@ export default function ColaIndividualSheet({
   }
 
   async function handleSiguiente() {
-    if (pendientesCount === 0) {
+    if (!puedeAvanzar) {
       return;
     }
 
@@ -501,6 +507,7 @@ export default function ColaIndividualSheet({
       >
         <ColaPanelHeader
           pendientesCount={pendientesCount}
+          siguienteDisabled={!puedeAvanzar}
           aleatorioActivo={aleatorioActivo}
           onDeleteAll={() => setShowDeleteAllDialog(true)}
           onSiguiente={() => void handleSiguiente()}

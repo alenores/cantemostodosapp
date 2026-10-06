@@ -205,7 +205,7 @@ export async function avanzarColaIndividual(
     throw tocadaError;
   }
 
-  // Antes de elegir la siguiente: si la fila se terminó, sigue con la tocada más vieja.
+  // Antes de elegir la siguiente, para que una tocada reciclada pueda ser la próxima.
   await reciclarTocadasViejasIndividual(supabase, userId);
 
   const { data: primerPendiente, error: pendienteError } = await supabase
@@ -221,17 +221,44 @@ export async function avanzarColaIndividual(
     throw pendienteError;
   }
 
-  if (!primerPendiente) {
+  if (primerPendiente) {
+    const { error: promoteError } = await supabase
+      .from("cola_individual")
+      .update({ estado: "activa" })
+      .eq("id", primerPendiente.id);
+
+    if (promoteError) {
+      throw promoteError;
+    }
     return;
   }
 
-  const { error: promoteError } = await supabase
+  // Fin de la fila: vuelve a empezar por la tocada más vieja, que pasa al final.
+  const { data: masVieja, error: masViejaError } = await supabase
     .from("cola_individual")
-    .update({ estado: "activa" })
-    .eq("id", primerPendiente.id);
+    .select("id")
+    .eq("user_id", userId)
+    .eq("estado", "tocada")
+    .order("orden", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
-  if (promoteError) {
-    throw promoteError;
+  if (masViejaError) {
+    throw masViejaError;
+  }
+
+  if (!masVieja) {
+    return;
+  }
+
+  const orden = (await getMaxOrden(supabase, userId)) + 1;
+  const { error: restartError } = await supabase
+    .from("cola_individual")
+    .update({ estado: "activa", orden })
+    .eq("id", masVieja.id);
+
+  if (restartError) {
+    throw restartError;
   }
 }
 

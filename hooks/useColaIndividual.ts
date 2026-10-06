@@ -25,6 +25,7 @@ import {
   eliminarDeColaIndividual,
   getColaIndividual,
   persistirOrdenColaIndividual,
+  reciclarTocadasViejasIndividual,
   vaciarColaIndividual,
   volverAPendienteIndividual,
 } from "@/lib/cola-individual";
@@ -232,6 +233,7 @@ export function useColaIndividual() {
         throw error;
       }
 
+      await reciclarTocadasViejasIndividual(supabase, userId);
       await loadAuthCola();
       dispatchColaIndividualChanged();
     },
@@ -285,6 +287,9 @@ export function useColaIndividual() {
         .from("cola_individual")
         .update({ estado: "activa" })
         .eq("id", itemId);
+
+      const userId = await getActiveUserId(supabase);
+      if (userId) await reciclarTocadasViejasIndividual(supabase, userId);
 
       await loadAuthCola();
     },

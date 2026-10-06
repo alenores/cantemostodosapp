@@ -235,6 +235,8 @@ volvía al inicio y se perdía lo que no estaba guardado.
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida
   en Supabase si hay sesión; en memoria (efímera) para invitados.
+  Ya tocadas: se ven las últimas dos; la más vieja vuelve al final como pendiente
+  (no se borra). Regla única: `reciclarTocadasViejas` / `reciclarTocadasViejasIndividual`.
 - **Cola de la juntada** — setlist compartido y sincronizado en tiempo real.
   Vive en Sala. Tiene botón "Siguiente" para avanzar la canción activa.
 

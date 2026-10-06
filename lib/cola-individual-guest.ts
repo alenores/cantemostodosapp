@@ -34,6 +34,34 @@ function maxOrden(items: GuestColaItem[]): number {
   return items.reduce((max, item) => Math.max(max, item.orden), -1);
 }
 
+/** Fila individual: se ven las últimas tocadas; las anteriores vuelven al final como pendientes. */
+export const COLA_INDIVIDUAL_TOCADAS_VISIBLES = 2;
+
+/** Pasa a pendiente (al final de la fila) las tocadas que exceden las últimas dos. */
+export function reciclarTocadasViejas<T extends GuestColaItem>(items: T[]): T[] {
+  const tocadas = items
+    .filter((item) => item.estado === "tocada")
+    .sort((a, b) => a.orden - b.orden);
+  const sobrantes = tocadas.slice(
+    0,
+    Math.max(0, tocadas.length - COLA_INDIVIDUAL_TOCADAS_VISIBLES),
+  );
+
+  if (sobrantes.length === 0) {
+    return items;
+  }
+
+  let orden = maxOrden(items);
+  const nuevoOrden = new Map(sobrantes.map((item) => [item.id, ++orden]));
+
+  return items.map((item) => {
+    const ordenNuevo = nuevoOrden.get(item.id);
+    return ordenNuevo === undefined
+      ? item
+      : { ...item, estado: "pendiente" as const, orden: ordenNuevo };
+  });
+}
+
 function sameCancion(a: GuestColaItem, cancion: CancionInput): boolean {
   return (
     a.nombre === cancion.nombre.trim() &&
@@ -77,7 +105,10 @@ export function verAhoraGuestCola(
     item.estado === "activa" ? { ...item, estado: "tocada" as const } : item,
   );
 
-  return [...demoted, createItem(cancion, "activa", maxOrden(items) + 1)];
+  return reciclarTocadasViejas([
+    ...demoted,
+    createItem(cancion, "activa", maxOrden(items) + 1),
+  ]);
 }
 
 /** Agregar a la lista como pendiente (requiere activa o pendiente previa). */
@@ -110,11 +141,7 @@ export function avanzarGuestCola(items: GuestColaItem[], disponible: (item: Gues
     return items;
   }
 
-  const tocadas = items
-    .filter((item) => item.estado === "tocada")
-    .sort((a, b) => a.orden - b.orden);
-
-  let next = items.map((item) => {
+  const next = items.map((item) => {
     if (item.id === activa.id) {
       return { ...item, estado: disponible(item) ? "tocada" as const : "pendiente" as const };
     }
@@ -126,16 +153,7 @@ export function avanzarGuestCola(items: GuestColaItem[], disponible: (item: Gues
     return item;
   });
 
-  if (tocadas.length >= 2) {
-    const oldest = tocadas[0];
-    next = next.map((item) =>
-      item.id === oldest.id
-        ? { ...item, estado: "pendiente" as const, orden: maxOrden(next) + 1 }
-        : item,
-    );
-  }
-
-  return next;
+  return reciclarTocadasViejas(next);
 }
 
 export function activarGuestColaItem(
@@ -152,8 +170,10 @@ export function activarGuestColaItem(
     item.estado === "activa" ? { ...item, estado: "tocada" as const } : item,
   );
 
-  return demoted.map((item) =>
-    item.id === itemId ? { ...item, estado: "activa" as const } : item,
+  return reciclarTocadasViejas(
+    demoted.map((item) =>
+      item.id === itemId ? { ...item, estado: "activa" as const } : item,
+    ),
   );
 }
 

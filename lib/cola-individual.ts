@@ -4,6 +4,7 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getActiveUserId } from "@/lib/auth/offline-user";
 import { acknowledgeColaPatch, advanceColaIndividualLocal, cacheColaIndividual, readColaIndividual } from "@/lib/offline/cola-individual-store";
 import { addColaIndividualLocal, remapColaIndividualLocal } from "@/lib/offline/cola-individual-store";
+import { COLA_INDIVIDUAL_TOCADAS_VISIBLES } from "@/lib/cola-individual-guest";
 
 function throwColaIndividualError(
   error: PostgrestError,
@@ -195,31 +196,6 @@ export async function avanzarColaIndividual(
     return;
   }
 
-  const { data: tocadas, error: tocadasError } = await supabase
-    .from("cola_individual")
-    .select("id, orden")
-    .eq("user_id", userId)
-    .eq("estado", "tocada")
-    .order("orden", { ascending: true });
-
-  if (tocadasError) {
-    throw tocadasError;
-  }
-
-  const maxOrden = await getMaxOrden(supabase, userId);
-
-  if (tocadas && tocadas.length >= 2) {
-    const oldest = tocadas[0];
-    const { error: recycleError } = await supabase
-      .from("cola_individual")
-      .update({ estado: "pendiente", orden: maxOrden + 1 })
-      .eq("id", oldest.id);
-
-    if (recycleError) {
-      throw recycleError;
-    }
-  }
-
   const { error: tocadaError } = await supabase
     .from("cola_individual")
     .update({ estado: "tocada" })
@@ -228,6 +204,9 @@ export async function avanzarColaIndividual(
   if (tocadaError) {
     throw tocadaError;
   }
+
+  // Antes de elegir la siguiente: si la fila se terminó, sigue con la tocada más vieja.
+  await reciclarTocadasViejasIndividual(supabase, userId);
 
   const { data: primerPendiente, error: pendienteError } = await supabase
     .from("cola_individual")
@@ -253,6 +232,49 @@ export async function avanzarColaIndividual(
 
   if (promoteError) {
     throw promoteError;
+  }
+}
+
+/**
+ * Deja a la vista las últimas dos tocadas; las anteriores vuelven al final de la
+ * fila como pendientes (la fila individual se conserva para volver a cantarla).
+ */
+export async function reciclarTocadasViejasIndividual(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const { data: tocadas, error } = await supabase
+    .from("cola_individual")
+    .select("id, orden")
+    .eq("user_id", userId)
+    .eq("estado", "tocada")
+    .order("orden", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const sobrantes = (tocadas ?? []).slice(
+    0,
+    Math.max(0, (tocadas?.length ?? 0) - COLA_INDIVIDUAL_TOCADAS_VISIBLES),
+  );
+
+  if (sobrantes.length === 0) {
+    return;
+  }
+
+  let orden = await getMaxOrden(supabase, userId);
+
+  for (const item of sobrantes) {
+    orden += 1;
+    const { error: recycleError } = await supabase
+      .from("cola_individual")
+      .update({ estado: "pendiente", orden })
+      .eq("id", item.id);
+
+    if (recycleError) {
+      throw recycleError;
+    }
   }
 }
 

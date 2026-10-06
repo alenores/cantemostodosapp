@@ -3,15 +3,18 @@
 import ColaBarraProxima, {
   type ColaProximaDisplay,
 } from "@/components/salas/ColaBarraProxima";
+import CifraClubEmbedHelpModal from "@/components/salas/CifraClubEmbedHelpModal";
 import ColaFilaFloatButton from "@/components/salas/ColaFilaFloatButton";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import LetraFuenteSitioBadge, {
+  getLetraFuenteSitioBadgeVariant,
   SitioLetraBadge,
 } from "@/components/salas/LetraFuenteSitioBadge";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { resolveCancionOrigen } from "@/lib/buscador";
 import { CONTROL_LETRA_ORIGEN_GAP_PX } from "@/lib/sala-layout";
-import { SkipForward } from "lucide-react";
+import { HelpCircle, SkipForward } from "lucide-react";
+import { useState } from "react";
 
 const CONTROL_ACCION_BTN =
   "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
@@ -42,6 +45,7 @@ export function CancionOrigenBadge({
   letraTexto?: string | null;
   premium?: boolean;
 }) {
+  const [helpOpen, setHelpOpen] = useState(false);
   const origen = resolveCancionOrigen({
     url_letra: urlLetra,
     letra_texto: letraTexto,
@@ -51,11 +55,35 @@ export function CancionOrigenBadge({
     return null;
   }
 
+  const esCifraClub =
+    getLetraFuenteSitioBadgeVariant(origen.sitio, origen.url) === "cifraclub";
+
   return (
     <div className="mt-1 flex min-w-0 items-center gap-1">
       <LetraFuenteIcon tipo={origen.iconoTipo} tiny premium={premium} />
       {origen.sitio === "cancionero" ? (
         <LetraFuenteSitioBadge variant="cancionero" small />
+      ) : esCifraClub ? (
+        <>
+          {/* Cifra Club: la etiqueta es el botón de ayuda («¿por qué se ve como página web?»). */}
+          <TapButton
+            type="button"
+            aria-label="¿Por qué se ve como página web?"
+            onClick={() => setHelpOpen(true)}
+            className="flex items-center gap-0.5 p-0"
+          >
+            <LetraFuenteSitioBadge variant="cifraclub" small />
+            <HelpCircle
+              className="size-3 shrink-0 text-text-primary"
+              strokeWidth={2.75}
+              aria-hidden="true"
+            />
+          </TapButton>
+          <CifraClubEmbedHelpModal
+            open={helpOpen}
+            onClose={() => setHelpOpen(false)}
+          />
+        </>
       ) : (
         <SitioLetraBadge sitio={origen.sitio} url={origen.url} small />
       )}

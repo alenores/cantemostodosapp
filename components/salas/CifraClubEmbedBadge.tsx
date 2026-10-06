@@ -14,11 +14,14 @@ type CifraClubEmbedBadgeProps = {
   /** control: margen superior izquierdo; lectura/inline: sin absolute propio (el padre posiciona). */
   placement?: "control" | "lectura" | "inline";
   onReload?: () => void;
+  /** false: solo Recargar (en vista control la ayuda va en la etiqueta bajo el artista). */
+  showHelp?: boolean;
 };
 
 export default function CifraClubEmbedBadge({
   placement = "control",
   onReload,
+  showHelp = true,
 }: CifraClubEmbedBadgeProps) {
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -37,33 +40,39 @@ export default function CifraClubEmbedBadge({
     <>
       <div
         className={`pointer-events-none z-10 flex items-center gap-1.5 ${
-          controlPlacement ? "absolute left-4 top-2" : ""
+          controlPlacement
+            ? showHelp
+              ? "absolute left-4 top-2"
+              : "absolute left-2 top-2"
+            : ""
         } ${absoluteLectura ? "absolute" : ""}`}
         style={wrapperStyle}
       >
-        <TapButton
-          type="button"
-          aria-label="¿Por qué se ve como página web?"
-          onClick={() => setHelpOpen(true)}
-          className="pointer-events-auto flex items-center gap-1 rounded-full border py-0.5 pl-2 pr-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px]"
-          style={{
-            backgroundColor:
-              "color-mix(in srgb, var(--bg-card) 78%, transparent)",
-            borderColor: "var(--voz-config-border)",
-          }}
-        >
-          <span
-            className="select-none text-[9px] font-semibold tracking-tight sm:text-[10px]"
-            style={{ color: "var(--voz-config)" }}
+        {showHelp ? (
+          <TapButton
+            type="button"
+            aria-label="¿Por qué se ve como página web?"
+            onClick={() => setHelpOpen(true)}
+            className="pointer-events-auto flex items-center gap-1 rounded-full border py-0.5 pl-2 pr-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px]"
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, var(--bg-card) 78%, transparent)",
+              borderColor: "var(--voz-config-border)",
+            }}
           >
-            www.cifraclub.com
-          </span>
-          <HelpCircle
-            className="size-3 shrink-0 text-text-primary"
-            strokeWidth={2.75}
-            aria-hidden="true"
-          />
-        </TapButton>
+            <span
+              className="select-none text-[9px] font-semibold tracking-tight sm:text-[10px]"
+              style={{ color: "var(--voz-config)" }}
+            >
+              www.cifraclub.com
+            </span>
+            <HelpCircle
+              className="size-3 shrink-0 text-text-primary"
+              strokeWidth={2.75}
+              aria-hidden="true"
+            />
+          </TapButton>
+        ) : null}
         {onReload ? (
           <div
             className="pointer-events-auto"
@@ -81,10 +90,12 @@ export default function CifraClubEmbedBadge({
         ) : null}
       </div>
 
-      <CifraClubEmbedHelpModal
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-      />
+      {showHelp ? (
+        <CifraClubEmbedHelpModal
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

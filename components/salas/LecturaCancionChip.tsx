@@ -6,8 +6,9 @@ import {
   getLecturaTopChromeTopCss,
 } from "@/lib/sala-layout";
 
+/** Chip y botones de arriba en modo lectura. Gris (no bg-dark) para que no se pierdan sobre el fondo negro del tema Escenario. */
 export const LECTURA_TOP_CHIP =
-  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
+  "rounded-full border border-border/50 bg-bg-cola-sheet/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
 
 type LecturaCancionChipProps = {
   nombre: string;

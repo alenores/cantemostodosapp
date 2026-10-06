@@ -1,11 +1,9 @@
 "use client";
 
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { getLecturaTopChromeTopCss } from "@/lib/sala-layout";
 import { AudioLines, Minimize2, SquarePlay } from "lucide-react";
-
-const LECTURA_TOP_CHIP =
-  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
 
 type LecturaPcTopChromeProps = {
   fixedRightCss: string;

@@ -174,7 +174,7 @@ El modo **Individual** es la experiencia de **cantar solo**. Es la pantalla prin
 
 La persona usuaria ve:
 
-- La **canción activa** (letra en pantalla). Arriba: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). Igual en Salas, en celular y computadora.
+- La **canción activa** (letra en pantalla). Arriba: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). Igual en Salas, en celular y computadora. La etiqueta de **Cifra Club** lleva un **?**: al tocarla abre la ayuda que explica por qué la letra se ve como página web. Sobre la letra de Cifra Club queda solo el botón **Recargar** (arriba a la izquierda) y las flechas de página completa (arriba a la derecha).
 - Un botón para **buscar canción**.
 - Acceso a la **fila de canciones** (lista personal de qué va a cantar).
 
@@ -429,6 +429,8 @@ Todos los participantes conectados comparten:
 - La **misma canción activa** (sincronizada en tiempo real).
 - La **misma fila de canciones** (cola de la juntada).
 - Una **barra de presencia** con avatares, contador (*"X en la sala"*), indicador **"en vivo"** y botón **QR** para invitar.
+
+El encabezado de la canción es igual al de Individual: **sin flecha de volver**. En celular, para salir de la sala se usa el botón atrás del teléfono.
 
 **Controles de la fila** (iguales a Individual, más sincronización grupal):
 

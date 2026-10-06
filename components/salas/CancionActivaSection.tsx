@@ -749,6 +749,7 @@ export default function CancionActivaSection({
                 {showCifraClubBadge ? (
                   <CifraClubEmbedBadge
                     placement="control"
+                    showHelp={false}
                     onReload={() => setEmbedReloadKey((value) => value + 1)}
                   />
                 ) : null}

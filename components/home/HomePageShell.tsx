@@ -11,6 +11,7 @@ import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import VideoFlotante from "@/components/video/VideoFlotante";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -34,9 +35,6 @@ import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const LECTURA_TOP_CHIP =
-  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
 
 export default function HomePageShell() {
   const cola = useColaIndividual();

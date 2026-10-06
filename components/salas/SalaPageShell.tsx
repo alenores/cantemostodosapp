@@ -11,6 +11,7 @@ import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import SalaInviteQrModal from "@/components/salas/SalaInviteQrModal";
 import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
@@ -46,7 +47,6 @@ import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, PresenceUsuario, SalaMiembro, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
-  ArrowLeft,
   Minimize2,
   Search,
   SlidersHorizontal,
@@ -55,9 +55,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
-
-const LECTURA_TOP_CHIP =
-  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
 
 type SalaPageShellProps = {
   salaId: number;
@@ -590,17 +587,7 @@ export default function SalaPageShell({
     };
   }, [online, salaId, loadColaCompleta, handleSesionChange, finishInitialColaLoad]);
 
-  const headerLeading = !modoLectura ? (
-    <TapButton
-      type="button"
-      aria-label="Volver a salas"
-      onClick={handleLeaveSala}
-      className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-dark/80 text-text-primary lg:hidden"
-    >
-      <ArrowLeft className="size-4" aria-hidden="true" />
-    </TapButton>
-  ) : null;
-
+  // Sin botón volver en el header (misma vista que Individual): se sale con el atrás del celular.
   // La lupa vive en la barrita de la fila (celular); en PC, en el panel lateral.
 
   const handleExpand = useCallback(() => {
@@ -672,7 +659,7 @@ export default function SalaPageShell({
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {colaBootstrapping && !modoLectura ? (
-            <SalaColaBootstrapSkeleton showBack />
+            <SalaColaBootstrapSkeleton />
           ) : (
             <CancionActivaSection
               cancionNombre={cancionActiva?.nombre ?? null}
@@ -683,7 +670,6 @@ export default function SalaPageShell({
               letraScrollRef={letraScrollRef}
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
-              headerLeading={headerLeading}
               letraZoomFactor={zoom.factor}
               onLecturaZoomEligibleChange={setLecturaZoomEligible}
               compasesOcultos={compasesOcultos}

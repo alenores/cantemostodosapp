@@ -156,7 +156,7 @@ Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que 
 - Cancionero
 - Favoritas (requiere cuenta)
 
-El editor de canciones no tiene tarjeta propia: se entra con el botón **+** dentro del Cancionero (canción nueva) o con **Editar** en una canción propia.
+El editor de canciones no tiene tarjeta propia: se entra con el botón **+** dentro del Cancionero (canción nueva) o con **Editar** en una canción que la cuenta puede editar (ver sección 18).
 
 **Práctica:**
 - Metrónomo
@@ -174,7 +174,7 @@ El modo **Individual** es la experiencia de **cantar solo**. Es la pantalla prin
 
 La persona usuaria ve:
 
-- La **canción activa** (letra en pantalla).
+- La **canción activa** (letra en pantalla). Arriba: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). Igual en Salas, en celular y computadora.
 - Un botón para **buscar canción**.
 - Acceso a la **fila de canciones** (lista personal de qué va a cantar).
 
@@ -182,7 +182,7 @@ La persona usuaria ve:
 
 La fila es una **cola personal** que no se comparte con nadie. Cada canción puede estar en uno de estos estados:
 
-En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera, o desde la lista cuando ya está arriba de todo. Igual en la fila de la juntada (Salas).
+En celular, debajo de la letra está la **barrita de la fila**: una pastillita arriba, **Próxima · N en fila** con el nombre y artista de la próxima canción, la **lupa** para buscar y **Siguiente**. Tocarla o deslizarla hacia arriba la estira hasta la fila completa, como un panel pegado abajo de borde a borde que sigue al dedo; mientras crece, la barrita se transforma en la lista. Para cerrarla se baja con el dedo desde la cabecera, o desde la lista cuando ya está arriba de todo; si se suelta a mitad de camino, termina de abrirse o de cerrarse según hacia dónde iba. También se cierra tocando el fondo oscuro. Igual en la fila de la juntada (Salas). En computadora la fila es el panel del costado.
 
 | Estado | Significado |
 |--------|-------------|
@@ -190,6 +190,8 @@ En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera,
 | **Próxima** | La siguiente en la fila |
 | **Pendiente** | En espera, más adelante en la fila |
 | **Ya tocada** | Ya se cantó; puede volver a pendiente |
+
+**Ya tocadas:** se ven las **últimas dos**. Al tocar una tercera (con **Siguiente**, **Ver ahora** o tocando una canción de la fila), la más vieja vuelve al **final de la fila como pendiente**: la lista no se borra y se puede volver a cantar otro día. Al terminar la fila, **Siguiente** sigue activo y vuelve a empezar por la tocada más vieja. Es distinto de la fila de la juntada (Salas), donde las tocadas más viejas desaparecen y la fila termina.
 
 **Acciones disponibles:**
 
@@ -264,7 +266,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 |--------|----------|
 | **Sumar a la lista** | Agrega la canción a la fila (individual o de la sala) |
 | **Ver ahora** | Pone la canción como activa. En sala, si ya hay una activa, pide confirmación |
-| **Guardar** | Guarda al cancionero. Puede preguntar si querés sumarla a Favoritas |
+| **Guardar** | Guarda al cancionero. Solo lo ven el dueño y los amigos. Puede preguntar si querés sumarla a Favoritas |
 
 **Restricción:** en Individual, "Sumar a la lista" puede estar deshabilitado si no hay canción activa ni pendientes en la fila.
 
@@ -274,7 +276,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 |--------|----------|------------|
 | Ver ahora | Sí | Sí |
 | Sumar a la lista | Sí* | Sí* |
-| Guardar en cancionero | No | Sí |
+| Guardar en cancionero | No | Solo dueño y amigos (al resto no se le muestra el botón) |
 | Pestaña Favoritas en buscador | No | Sí |
 | Ofrecer sumar a Favoritas tras guardar | — | Sí |
 
@@ -288,10 +290,10 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
-- Botón **+** para **Agregar canción** (requiere cuenta y conexión).
+- Botón **+** para **Agregar canción**: solo lo ven el dueño y los amigos; se usa con conexión.
 - Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
-- El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.
+- El marcador de **Favoritas** es una cinta: rellena (verde) en las canciones que la persona guardó allí y vacía en las demás. En computadora la cinta es un botón: un clic suma la canción a Favoritas y otro la quita, sin confirmación.
 
 **Mensajes según situación:**
 
@@ -306,9 +308,9 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 | Acción | Quién puede |
 |--------|-------------|
 | **Ver** | Todos |
-| **Guardar en Favoritas** | Usuarios con cuenta (requiere conexión) |
-| **Editar** | Solo el autor de la canción |
-| **Eliminar** | Solo el autor de la canción (con confirmación) |
+| **Guardar en Favoritas / Quitar de Favoritas** | Usuarios con cuenta (requiere conexión). Sin confirmación: en computadora con la cinta de la tarjeta; en celular manteniendo pulsada la tarjeta |
+| **Editar** | Dueño: cualquier canción. Amigos: solo las que subieron. Público: ninguna |
+| **Eliminar** | Igual que Editar (con confirmación) |
 
 **Cómo se accede a las acciones:**
 - En celular: mantener pulsado o menú contextual.
@@ -338,7 +340,7 @@ Las **Favoritas** son el cancionero personal de cada usuario con cuenta.
 
 ## 10. Editor de canciones
 
-El editor permite **crear canciones nuevas** o **editar las propias**. Requiere **cuenta iniciada** y **conexión** para guardar. Se abre desde el Cancionero: botón **+** para una canción nueva, o **Editar** en una canción propia.
+El editor permite **crear canciones nuevas** y **editar canciones del Cancionero** según la categoría de la cuenta (sección 18). Requiere cuenta de **dueño** o **amigos** y **conexión** para guardar. Se abre desde el Cancionero: botón **+** para una canción nueva, o **Editar** en una canción que la cuenta puede editar.
 
 ### 10.1 Presentación según dispositivo
 
@@ -862,9 +864,9 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 | Función | Invitado | Con cuenta |
 |---------|----------|------------|
 | Individual: buscar, ver, fila | Sí (fila efímera) | Sí (fila guardada) |
-| Guardar en cancionero | No | Sí |
+| Guardar en cancionero | No | Solo dueño y amigos |
 | Favoritas | No | Sí |
-| Editor de canciones | No | Sí |
+| Editor de canciones | No | Solo dueño y amigos |
 | Salas | No | Sí |
 | Entrenador de canciones | No | Sí |
 | Afinador | Sí | Sí |
@@ -882,21 +884,23 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. El dueño tiene un módulo **Usuarios** en Práctica para cambiar las demás cuentas entre amigos y público. Solo el dueño ve y puede abrir el **Compositor**. Los demás beneficios concretos para cada grupo se definirán por separado.
 
-Todos los usuarios con cuenta tienen las mismas capacidades generales, con dos excepciones:
+Todos los usuarios con cuenta tienen las mismas capacidades generales, con estas excepciones:
 
-1. **Canciones del cancionero:** solo el **autor** puede editarlas o eliminarlas del cancionero global. Cualquier usuario con cuenta puede guardarlas en Favoritas.
-   Al guardar una canción nueva, queda asociada a la cuenta que la subió. Abrir directamente el editor con una canción ajena no da permiso para modificarla.
-2. **Salas:** existen roles de **creador** y **miembro** (detallados en la sección 11.6).
+1. **Canciones del cancionero:** el **dueño** suma canciones y edita o elimina cualquiera. Los **amigos** suman canciones y editan o eliminan solo las que subieron. El **público** no suma, no edita ni elimina; al público no se le muestran los botones **+** del Cancionero ni **Guardar** del buscador. Cualquier usuario con cuenta puede guardarlas en Favoritas.
+   Al guardar una canción nueva, queda asociada a la cuenta que la subió. Abrir directamente el editor con una canción que la cuenta no puede editar no da permiso para modificarla.
+2. **Entrenador de canciones:** cada cuenta, de cualquier categoría, tiene su propia versión de práctica. Es privada: nadie más la ve ni la edita, tampoco el dueño.
+3. **Salas:** existen roles de **creador** y **miembro** (detallados en la sección 11.6).
 
 ### 18.2 Permisos sobre canciones
 
-| Acción | Invitado | Autor (con cuenta) | Otro usuario (con cuenta) |
-|--------|----------|-------------------|--------------------------|
-| Ver / leer | Sí (local si offline) | Sí | Sí |
-| Agregar canción nueva | No | Sí | Sí |
-| Editar | No | Solo las propias | Solo las propias |
-| Eliminar del cancionero global | No | Solo las propias | No |
-| Guardar en Favoritas | No | Sí | Sí |
+| Acción | Invitado | Dueño | Amigos | Público |
+|--------|----------|-------|--------|---------|
+| Ver / leer | Sí (local si offline) | Sí | Sí | Sí |
+| Agregar canción nueva | No | Sí | Sí | No |
+| Editar | No | Cualquiera | Solo las propias | No |
+| Eliminar del cancionero global | No | Cualquiera | Solo las propias | No |
+| Guardar en Favoritas | No | Sí | Sí | Sí |
+| Entrenador de canciones (versión propia) | No | Sí, privada | Sí, privada | Sí, privada |
 
 ---
 

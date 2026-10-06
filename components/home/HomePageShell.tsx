@@ -8,7 +8,6 @@ import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems"
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
-import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
@@ -49,6 +48,7 @@ export default function HomePageShell() {
     null,
   );
   const openColaRef = useRef<(() => void) | null>(null);
+  const arrastrarColaRef = useRef<((clientY: number, clientX: number) => void) | null>(null);
   const handleSiguienteRef = useRef<(() => void) | null>(null);
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
@@ -239,10 +239,13 @@ export default function HomePageShell() {
     };
   }, []);
 
-  const headerActions =
-    !modoLectura && !colaSidePanel ? (
-      <CantarControlHeaderActions onSearch={() => setBuscadorOpen(true)} />
-    ) : null;
+  // La lupa vive en la barrita de la fila (celular); en PC, en el panel lateral.
+  const proximaCola = useMemo(() => {
+    const proxima = [...cola.items]
+      .sort((a, b) => a.orden - b.orden)
+      .find((item) => item.estado === "pendiente" && !cola.noDisponibles.has(item.id));
+    return proxima ? { nombre: proxima.nombre, artista: proxima.artista } : null;
+  }, [cola.items, cola.noDisponibles]);
 
   const handleExpand = useCallback(() => {
     setModoLectura(true);
@@ -255,11 +258,12 @@ export default function HomePageShell() {
 
     return buildColaLecturaNavItems({
       pendientesCount: cola.pendientesCount,
+      siguienteDisabled: !cola.puedeAvanzar,
       onBuscar: () => setBuscadorOpen(true),
       onSiguiente: () => void handleSiguienteRef.current?.(),
       onCola: () => openColaRef.current?.(),
     });
-  }, [cola.pendientesCount, lecturaConColaLateral]);
+  }, [cola.pendientesCount, cola.puedeAvanzar, lecturaConColaLateral]);
 
   return (
     <div
@@ -286,7 +290,7 @@ export default function HomePageShell() {
               <h2>{cola.cancionActiva?.nombre}</h2>
               <p>Requiere conexión</p>
               <p className="text-sm text-text-muted">La canción sigue en tu lista. Sin internet podés usar las que están guardadas en el celular.</p>
-              <TapButton onClick={() => void cola.avanzar()} disabled={cola.pendientesCount === 0}>Siguiente disponible</TapButton>
+              <TapButton onClick={() => void cola.avanzar()} disabled={!cola.puedeAvanzar}>Siguiente disponible</TapButton>
               <TapButton onClick={() => setBuscadorOpen(true)}>Buscar canción descargada</TapButton>
               <TapButton onClick={() => openColaRef.current?.()}>Ver fila</TapButton>
             </div>
@@ -300,7 +304,6 @@ export default function HomePageShell() {
               letraScrollRef={letraScrollRef}
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
-              headerAction={headerActions}
               letraZoomFactor={zoom.factor}
               onLecturaZoomEligibleChange={setLecturaZoomEligible}
               compasesOcultos={compasesOcultos}
@@ -322,8 +325,13 @@ export default function HomePageShell() {
                       colaAvisoExiting,
                       onOpenFila: () => openColaRef.current?.(),
                       onSiguiente: () => void handleSiguienteRef.current?.(),
-                      siguienteDisabled: cola.pendientesCount === 0,
+                      siguienteDisabled: !cola.puedeAvanzar,
                       showSiguiente: Boolean(cola.cancionActiva),
+                      barra: !colaSidePanel,
+                      proxima: proximaCola,
+                      onBuscar: () => setBuscadorOpen(true),
+                      onArrastrarFila: (clientY, clientX) =>
+                        arrastrarColaRef.current?.(clientY, clientX),
                     }
                   : null
               }
@@ -338,6 +346,9 @@ export default function HomePageShell() {
           presentacionOculta={lecturaPantallaCompleta}
           onRequestOpen={(open) => {
             openColaRef.current = open;
+          }}
+          onRequestArrastre={(arrastrar) => {
+            arrastrarColaRef.current = arrastrar;
           }}
           onRequestSiguiente={(siguiente) => {
             handleSiguienteRef.current = siguiente;

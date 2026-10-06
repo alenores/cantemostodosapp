@@ -1,5 +1,8 @@
 "use client";
 
+import ColaBarraProxima, {
+  type ColaProximaDisplay,
+} from "@/components/salas/ColaBarraProxima";
 import ColaFilaFloatButton from "@/components/salas/ColaFilaFloatButton";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import LetraFuenteSitioBadge, {
@@ -22,55 +25,85 @@ export type ControlLetraFilaActions = {
   siguienteDisabled?: boolean;
   showFila?: boolean;
   showSiguiente?: boolean;
+  /** Celular: la fila cerrada es una barrita (próxima, lupa y siguiente) que se arrastra hacia arriba. */
+  barra?: boolean;
+  proxima?: ColaProximaDisplay | null;
+  onBuscar?: () => void;
+  onArrastrarFila?: (clientY: number, clientX: number) => void;
 };
 
-type CancionOrigenEtiquetaProps = {
-  urlLetra?: string | null;
-  letraTexto?: string | null;
-  premium?: boolean;
-  filaActions?: ControlLetraFilaActions | null;
-};
-
-export default function CancionOrigenEtiqueta({
+/** Origen de la letra (Cancionero / Acordes de Canciones / Cifra Club): tercera línea del título. */
+export function CancionOrigenBadge({
   urlLetra = null,
   letraTexto = null,
   premium = false,
-  filaActions = null,
-}: CancionOrigenEtiquetaProps) {
+}: {
+  urlLetra?: string | null;
+  letraTexto?: string | null;
+  premium?: boolean;
+}) {
   const origen = resolveCancionOrigen({
     url_letra: urlLetra,
     letra_texto: letraTexto,
   });
 
+  if (!origen) {
+    return null;
+  }
+
+  return (
+    <div className="mt-1 flex min-w-0 items-center gap-1">
+      <LetraFuenteIcon tipo={origen.iconoTipo} tiny premium={premium} />
+      {origen.sitio === "cancionero" ? (
+        <LetraFuenteSitioBadge variant="cancionero" small />
+      ) : (
+        <SitioLetraBadge sitio={origen.sitio} url={origen.url} small />
+      )}
+    </div>
+  );
+}
+
+type CancionOrigenEtiquetaProps = {
+  filaActions?: ControlLetraFilaActions | null;
+};
+
+/** Bajo la letra (vista control): barrita de la fila en celular; en PC, Fila y Siguiente. */
+export default function CancionOrigenEtiqueta({
+  filaActions = null,
+}: CancionOrigenEtiquetaProps) {
+  if (filaActions?.barra) {
+    return (
+      <div className="shrink-0" style={{ paddingTop: CONTROL_LETRA_ORIGEN_GAP_PX }}>
+        <ColaBarraProxima
+          proxima={filaActions.proxima ?? null}
+          pendientesCount={filaActions.pendientesCount}
+          aviso={filaActions.colaAviso}
+          showSiguiente={Boolean(filaActions.showSiguiente)}
+          siguienteDisabled={filaActions.siguienteDisabled}
+          onBuscar={filaActions.onBuscar}
+          onSiguiente={filaActions.onSiguiente}
+          onAbrir={filaActions.onOpenFila}
+          onArrastrar={(clientY, clientX) =>
+            filaActions.onArrastrarFila?.(clientY, clientX)
+          }
+        />
+      </div>
+    );
+  }
+
   const showFila = Boolean(filaActions?.showFila ?? filaActions);
   const showSiguiente = Boolean(filaActions?.showSiguiente);
   const hasActions = showFila || showSiguiente;
 
-  if (!origen && !hasActions) {
+  if (!hasActions) {
     return null;
   }
 
   return (
     <div
-      className="flex shrink-0 items-center gap-2"
+      className="flex shrink-0 items-center justify-end gap-2"
       style={{ paddingTop: CONTROL_LETRA_ORIGEN_GAP_PX }}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-        {origen ? (
-          <>
-            <LetraFuenteIcon
-              tipo={origen.iconoTipo}
-              compact
-              premium={premium}
-            />
-            {origen.sitio === "cancionero" ? (
-              <LetraFuenteSitioBadge variant="cancionero" />
-            ) : (
-              <SitioLetraBadge sitio={origen.sitio} url={origen.url} />
-            )}
-          </>
-        ) : null}
-      </div>
 
       {filaActions && hasActions ? (
         <div className="flex shrink-0 items-center gap-2">

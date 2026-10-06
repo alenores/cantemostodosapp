@@ -1,6 +1,6 @@
 -- Categorías globales de Cantemos Todos.
 -- La cuenta nueva entra como publico. dueno y amigos se asignan desde la administración.
--- Esta clasificación no concede permisos por sí sola.
+-- Los permisos del Cancionero según categoría están en cancionero-permisos-categorias.sql.
 
 CREATE TABLE IF NOT EXISTS public.usuarios_categorias (
   user_id uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,

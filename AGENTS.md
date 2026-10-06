@@ -243,6 +243,11 @@ volvía al inicio y se perdía lo que no estaba guardado.
 ### Componentes de UI
 - **Sheet** — panel que aparece desde abajo con animación suave. Usado para
   cola individual, cola de la juntada y afinador.
+  Fila en celular (Individual y Salas): **un solo panel** (`ColaPanelDeslizable`) que
+  cerrado es la **barrita** (`ColaBarraProxima`: pastilla, próxima, lupa, siguiente) y
+  al arrastrarlo crece siguiendo al dedo hasta la fila completa, pegada abajo de borde
+  a borde. Soltar: tirón rápido manda; si no, abre/cierra pasado un tercio. En PC la
+  fila sigue siendo el panel lateral.
 - **Overlay** — capa semitransparente sobre la letra. Usado en modo lectura
   para mostrar controles secundarios (buscador, afinador, footer).
 - **Modal** — pantalla que cubre todo. Usado para el buscador de canciones.
@@ -264,7 +269,7 @@ volvía al inicio y se perdía lo que no estaba guardado.
 
 ## Layout: letra activa (sala)
 
-**Leer esta sección antes de editar** `SalaPageShell.tsx`, `CancionActivaSection.tsx`, `ColaBottomSheet.tsx`, `LetraViewer.tsx` o `lib/sala-layout.ts`.
+**Leer esta sección antes de editar** `SalaPageShell.tsx`, `CancionActivaSection.tsx`, `ColaPanelDeslizable.tsx`, `LetraViewer.tsx` o `lib/sala-layout.ts`.
 
 ### Causa raíz del bug (jun 2026)
 
@@ -272,9 +277,9 @@ El `main` quedaba con ~82px de altura porque el panel de cola en `ColaBottomShee
 
 ### Reglas obligatorias
 
-1. **`ColaBottomSheet` — panel del drawer**
-   - Solo `fixed`. **Nunca** `relative` (ni otra posición) en el mismo nodo que `fixed`.
-   - La cola no debe competir en el flex del `main`.
+1. **`ColaPanelDeslizable` — panel de la fila en celular** (antes `ColaBottomSheet`)
+   - Solo `fixed`, en un portal a `body`. **Nunca** `relative` (ni otra posición) en el mismo nodo que `fixed`.
+   - La cola no debe competir en el flex del `main`: lo único en el flujo es la barrita bajo la letra.
 
 2. **`SalaPageShell` — cadena de altura**
    - Raíz: `style={{ height: "100dvh" }}` + `flex flex-col overflow-hidden`.
@@ -316,7 +321,7 @@ Debe ser ~600–700px en móvil, **no ~80px**.
 
 Probar siempre:
 
-- **Te Quiero – Hombres G** (Cifra Club): iframe grande hasta la barra «En fila».
+- **Te Quiero – Hombres G** (Cifra Club): iframe grande hasta la barrita de la fila.
 - **La M.O.D.A – Ojalá** (Acordes de Canciones): hoja blanca, scroll de pantalla.
 
 ---
@@ -340,7 +345,7 @@ Probar siempre:
 
 ### Diferencias vs Sala
 - Sin `SalaPresenceBar` ni avatares en tarjetas de cola (`showAgregadoAvatar={false}`).
-- Lupa en header de modo control (`headerAction` en `CancionActivaSection`).
+- Lupa en la barrita de la fila (celular), no en el header.
 - Sin realtime / presence / offline cola de juntada.
 
 ### APIs lectura pública (invitados)

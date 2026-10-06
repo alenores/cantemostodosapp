@@ -182,7 +182,7 @@ La persona usuaria ve:
 
 La fila es una **cola personal** que no se comparte con nadie. Cada canción puede estar en uno de estos estados:
 
-En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera, o desde la lista cuando ya está arriba de todo. Igual en la fila de la juntada (Salas).
+En celular, debajo de la letra está la **barrita de la fila**: una pastillita arriba, **Próxima · N en fila** con el nombre y artista de la próxima canción, la **lupa** para buscar y **Siguiente**. Tocarla o deslizarla hacia arriba la estira hasta la fila completa, como un panel pegado abajo de borde a borde que sigue al dedo; mientras crece, la barrita se transforma en la lista. Para cerrarla se baja con el dedo desde la cabecera, o desde la lista cuando ya está arriba de todo; si se suelta a mitad de camino, termina de abrirse o de cerrarse según hacia dónde iba. También se cierra tocando el fondo oscuro. Igual en la fila de la juntada (Salas). En computadora la fila es el panel del costado.
 
 | Estado | Significado |
 |--------|-------------|

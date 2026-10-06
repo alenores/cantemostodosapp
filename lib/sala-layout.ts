@@ -30,19 +30,13 @@ export const COLA_BAR_WEBVIEW_OVERLAP_PX = 22;
 export const COLA_AVISO_SHOW_DELAY_MS = 400;
 /** Pausa tras tap en Sig. antes de avanzar (alinea con el cierre animado del sheet). */
 export const COLA_FINALIZE_BUTTON_MS = 300;
-/** Duración del slide hacia abajo al cerrar el sheet de cola. */
-export const COLA_SHEET_EXIT_MS = 350;
 export const SALA_HEADER_HEIGHT_PX = 56;
 export const APP_FOOTER_HEIGHT_PX = 56;
 /** Fila de avatares / presencia encima del footer en modo control. */
 export const SALA_PRESENCE_BAR_HEIGHT_PX = 44;
 export const SALA_FLOAT_CONTROLS_GAP_PX = 16;
-/** Margen lateral del panel modal de cola. */
-export const COLA_MODAL_HORIZONTAL_INSET_PX = 12;
-/** Margen superior del panel modal de cola (sin contar safe-area). */
+/** Margen superior del panel de la fila abierto en celular (sin contar safe-area). */
 export const COLA_MODAL_TOP_INSET_PX = 48;
-/** Aire inferior del modal; el panel tapa el footer (z-50) para ganar altura de lista. */
-export const COLA_MODAL_BOTTOM_INSET_PX = 12;
 /** Reserva al final del scroll de letra para los botones flotantes (Sig., Cola, Expandir). */
 export const SALA_LETRA_FLOAT_RESERVE_PX = 144;
 /** Aire entre el borde inferior del contenedor de letra y la fila de avatares (modo control). */
@@ -64,9 +58,6 @@ export function getSalaFloatControlsBottomCss(presenceBarVisible: boolean): stri
   return `calc(${APP_FOOTER_HEIGHT_PX}px + ${presenceInset}px + ${SALA_FLOAT_CONTROLS_GAP_PX}px + env(safe-area-inset-bottom, 0px))`;
 }
 
-export function getColaModalBottomCss(): string {
-  return `calc(${COLA_MODAL_BOTTOM_INSET_PX}px + env(safe-area-inset-bottom, 0px))`;
-}
 
 export function getSalaMainFooterPaddingCss(): string {
   return "var(--app-main-bottom-padding, calc(56px + env(safe-area-inset-bottom, 0px)))";

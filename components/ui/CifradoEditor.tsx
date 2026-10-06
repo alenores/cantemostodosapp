@@ -3430,9 +3430,9 @@ export default function CifradoEditor({
 
   function handleSelectBasicSong(
     cancion: CancionCancionero,
-    isOwner: boolean,
+    editable: boolean,
   ) {
-    editingCancionIdRef.current = isOwner ? cancion.id : 0;
+    editingCancionIdRef.current = editable ? cancion.id : 0;
     setExcluirRepetidaId(cancion.id);
     setNombre(cancion.nombre);
     aplicarArtistaTexto(cancion.artista ?? "");

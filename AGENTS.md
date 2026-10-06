@@ -331,7 +331,7 @@ Probar siempre:
 ### Usuario logueado
 - Cola persistida en Supabase (`cola_individual`).
 - Buscador Home: pestañas **General | Mis canciones**.
-- Preview General: **Ver ahora · Agregar a la lista · Guardar** (cancionero).
+- Preview General: **Ver ahora · Agregar a la lista · Guardar** (cancionero). «Guardar» solo para dueño y amigos (permisos en `lib/usuarios-categorias.ts`).
 - Tras Guardar en cancionero: prompt opcional **«¿Sumar a Mis canciones?»**.
 - Preview Mis canciones: **Ver ahora · Agregar a la lista** (sin Guardar).
 - **Agregar a la lista** deshabilitado si no hay activa ni pendiente en cola.

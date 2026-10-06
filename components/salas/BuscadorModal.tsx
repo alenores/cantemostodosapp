@@ -32,6 +32,7 @@ import {
   shouldApplyEmbedInitialOffset,
 } from "@/lib/letra-display";
 import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
+import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
@@ -45,6 +46,7 @@ import {
   guardarLinkEnCancionero,
   type CancioneroFormData,
 } from "@/lib/cancionero";
+import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
 import {
   buscarEnCancionero,
   loadCancionesParaBusqueda,
@@ -357,6 +359,10 @@ export default function BuscadorModal({
 }: BuscadorModalProps) {
   const isHome = variant === "home";
   const online = useOnlineStatus();
+  const categoria = useCategoriaUsuario();
+  /** Solo dueño y amigos suman canciones al Cancionero: al resto no se le muestra «Guardar». */
+  const puedeGuardarEnCancionero =
+    (!isHome || usuarioLogueado) && puedeSumarCanciones(categoria);
   const premiumIds = usePremiumCancioneroIds();
   const inputRef = useRef<HTMLInputElement>(null);
   const pantallaRef = useRef<Pantalla>("busqueda");
@@ -1179,7 +1185,12 @@ export default function BuscadorModal({
   })();
 
   function handleGuardarTap() {
-    if (!seleccionado || guardarDeshabilitado || accionLoading) {
+    if (
+      !seleccionado ||
+      !puedeGuardarEnCancionero ||
+      guardarDeshabilitado ||
+      accionLoading
+    ) {
       return;
     }
 
@@ -1601,7 +1612,9 @@ export default function BuscadorModal({
                 {isHome ? (
                   <div
                     className={`grid gap-1.5 ${
-                      previewEsMisCanciones ? "grid-cols-2" : "grid-cols-[2fr_2fr_1fr]"
+                      previewEsMisCanciones || !puedeGuardarEnCancionero
+                        ? "grid-cols-2"
+                        : "grid-cols-[2fr_2fr_1fr]"
                     }`}
                   >
                     <button
@@ -1630,7 +1643,7 @@ export default function BuscadorModal({
                       <span className="text-center leading-tight">Ver ahora</span>
                     </button>
 
-                    {!previewEsMisCanciones ? (
+                    {!previewEsMisCanciones && puedeGuardarEnCancionero ? (
                       <button
                         type="button"
                         disabled={accionLoading || guardarDeshabilitado}
@@ -1643,7 +1656,11 @@ export default function BuscadorModal({
                     ) : null}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-[2fr_2fr_1fr] gap-1.5">
+                  <div
+                    className={`grid gap-1.5 ${
+                      puedeGuardarEnCancionero ? "grid-cols-[2fr_2fr_1fr]" : "grid-cols-2"
+                    }`}
+                  >
                     <button
                       type="button"
                       disabled={accionLoading}
@@ -1667,15 +1684,17 @@ export default function BuscadorModal({
                       <span className="text-center leading-tight">Ver ahora</span>
                     </button>
 
-                    <button
-                      type="button"
-                      disabled={accionLoading || guardarDeshabilitado}
-                      onClick={handleGuardarTap}
-                      className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
-                    >
-                      <Bookmark className="size-4 shrink-0" aria-hidden="true" />
-                      <span className="text-center leading-tight">Guardar</span>
-                    </button>
+                    {puedeGuardarEnCancionero ? (
+                      <button
+                        type="button"
+                        disabled={accionLoading || guardarDeshabilitado}
+                        onClick={handleGuardarTap}
+                        className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
+                      >
+                        <Bookmark className="size-4 shrink-0" aria-hidden="true" />
+                        <span className="text-center leading-tight">Guardar</span>
+                      </button>
+                    ) : null}
                   </div>
                 )}
               </footer>

@@ -14,13 +14,13 @@ import AddButton from "@/components/ui/AddButton";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
   deleteCancionCancionero,
-  esCancionDelUsuario,
   fetchCancionCifradoDetalle,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
@@ -44,6 +44,10 @@ import type {
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
 import { createClient } from "@/lib/supabase/client";
+import {
+  puedeEditarCancionCancionero,
+  puedeSumarCanciones,
+} from "@/lib/usuarios-categorias";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types";
@@ -73,6 +77,8 @@ export default function CancioneroPageClient({
   const novedades = useCancioneroNovedades();
   const supabase = useMemo(() => createClient(), []);
   const usuarioLogueado = usuarioId !== null;
+  const categoria = useCategoriaUsuario();
+  const puedeSumar = usuarioLogueado && puedeSumarCanciones(categoria);
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [cancionesPractica, setCancionesPractica] = useState<CancionPracticaListItem[]>([]);
   const [localReady, setLocalReady] = useState(false);
@@ -291,7 +297,7 @@ export default function CancioneroPageClient({
   );
 
   function handleNuevaCancion() {
-    if (!online || !usuarioLogueado) {
+    if (!online || !puedeSumar) {
       return;
     }
 
@@ -349,7 +355,7 @@ export default function CancioneroPageClient({
   }
 
   function handleEditar(cancion: CancionCancionero) {
-    if (!online || !usuarioLogueado || !esCancionDelUsuario(cancion, usuarioId)) {
+    if (!online || !usuarioLogueado || !puedeEditarCancionCancionero(cancion, usuarioId, categoria)) {
       return;
     }
 
@@ -506,7 +512,7 @@ export default function CancioneroPageClient({
   }
 
   function handleEliminar(cancion: CancionCancionero) {
-    if (!online || !usuarioLogueado || !esCancionDelUsuario(cancion, usuarioId)) {
+    if (!online || !usuarioLogueado || !puedeEditarCancionCancionero(cancion, usuarioId, categoria)) {
       return;
     }
 
@@ -594,21 +600,14 @@ export default function CancioneroPageClient({
         title="Cancionero"
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}
         headerAction={
-          <AddButton
-            ariaLabel={
-              usuarioLogueado ? "Agregar canción" : "Iniciar sesión para agregar"
-            }
-            onClick={() => {
-              if (!usuarioLogueado) {
-                showSnackbar("Iniciá sesión para agregar canciones");
-                return;
-              }
-
-              handleNuevaCancion();
-            }}
-            disabled={!online || !usuarioLogueado}
-            className={!online || !usuarioLogueado ? "opacity-40" : ""}
-          />
+          puedeSumar ? (
+            <AddButton
+              ariaLabel="Agregar canción"
+              onClick={handleNuevaCancion}
+              disabled={!online}
+              className={!online ? "opacity-40" : ""}
+            />
+          ) : null
         }
       >
         {isDesktop && novedades.count > 0 ? (
@@ -762,7 +761,11 @@ export default function CancioneroPageClient({
                       artistaAvatarUrl={artistas.find(a => cancion.artista && a.nombre === cancion.artista)?.avatar_url}
                       isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
-                      puedeEditarEliminar={esCancionDelUsuario(cancion, usuarioId)}
+                      puedeEditarEliminar={puedeEditarCancionCancionero(
+                        cancion,
+                        usuarioId,
+                        categoria,
+                      )}
                       isFavorita={misCancionesIds.has(cancion.id)}
                       mostrarSumarMisCanciones={mostrarSumarMisCanciones}
                       modoSeleccion={modoSeleccionMisCanciones}

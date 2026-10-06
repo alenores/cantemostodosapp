@@ -26,13 +26,6 @@ export type CancioneroFormData = {
 
 export type DuplicadoCancioneroNivel = "ninguno" | "nombre" | "nombre-artista";
 
-export function esCancionDelUsuario(
-  cancion: Pick<CancionCancionero, "user_id">,
-  usuarioId: string | null,
-): boolean {
-  return usuarioId !== null && cancion.user_id === usuarioId;
-}
-
 export function normalizeCancioneroText(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -325,7 +318,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (count === 0) {
-    throw new Error("Solo quien subió la canción puede editarla.");
+    throw new Error("No tenés permiso para editar esta canción.");
   }
 }
 
@@ -349,7 +342,7 @@ export async function updateCancionCancioneroMetadatos(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
+  if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 }
 
 export async function updateCancionCancionero(
@@ -370,7 +363,7 @@ export async function updateCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
+  if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 }
 
 export async function deleteCancionCancionero(
@@ -386,7 +379,7 @@ export async function deleteCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subió la canción puede eliminarla.");
+  if (count === 0) throw new Error("No tenés permiso para eliminar esta canción.");
 }
 
 export async function guardarLinkEnCancionero(
@@ -476,7 +469,7 @@ export async function guardarLetraEnCancionero(
     if (error) {
       throw error;
     }
-    if (count === 0) throw new Error("Solo quien subió la canción puede editarla.");
+    if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 
     return;
   }

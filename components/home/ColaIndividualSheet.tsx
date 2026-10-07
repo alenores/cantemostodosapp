@@ -4,14 +4,19 @@ import ColaJuntadaItem, {
   type ColaJuntadaItemVariant,
 } from "@/components/salas/ColaJuntadaItem";
 import ColaPanelHeader from "@/components/salas/ColaPanelHeader";
+import { ColaBarraProximaContenido } from "@/components/salas/ColaBarraProxima";
+import ColaPanelDeslizable, {
+  type ColaPanelDeslizableHandle,
+  type ColaPanelEstado,
+} from "@/components/salas/ColaPanelDeslizable";
 import DoubleConfirmDialog from "@/components/ui/DoubleConfirmDialog";
 import { useColaAleatorio } from "@/hooks/useColaAleatorio";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import type { ColaIndividualRow } from "@/hooks/useColaIndividual";
 import type { CancionInput } from "@/lib/cola-logic";
+import { colaIndividualPuedeAvanzar } from "@/lib/cola-individual-guest";
 import { triggerHaptic } from "@/lib/haptic";
 import { isColaItemPremium } from "@/lib/buscador";
 import {
@@ -23,10 +28,6 @@ import {
 } from "@/lib/cola-ui";
 import {
   COLA_FINALIZE_BUTTON_MS,
-  COLA_MODAL_HORIZONTAL_INSET_PX,
-  COLA_MODAL_TOP_INSET_PX,
-  COLA_SHEET_EXIT_MS,
-  getColaModalBottomCss,
 } from "@/lib/sala-layout";
 import {
   DndContext,
@@ -135,6 +136,8 @@ type ColaIndividualSheetProps = {
   onOpenBuscador: () => void;
   presentacionOculta?: boolean;
   onRequestOpen?: (open: () => void) => void;
+  /** Celular: el dedo sobre la barrita cerrada puede arrastrar el panel hacia arriba. */
+  onRequestArrastre?: (arrastrar: (clientY: number, clientX: number) => void) => void;
   onRequestSiguiente?: (siguiente: () => void) => void;
   onSiguiente: () => Promise<void>;
   onDeleteAll: () => Promise<void>;
@@ -204,6 +207,7 @@ export default function ColaIndividualSheet({
   onOpenBuscador,
   presentacionOculta = false,
   onRequestOpen,
+  onRequestArrastre,
   onRequestSiguiente,
   onSiguiente,
   onDeleteAll,
@@ -214,15 +218,14 @@ export default function ColaIndividualSheet({
 }: ColaIndividualSheetProps) {
   const premiumIds = usePremiumCancioneroIds();
   const colaSidePanelMode = useColaSidePanel() && !presentacionOculta;
-  const [abierto, setAbierto] = useState(false);
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const [sheetExiting, setSheetExiting] = useState(false);
+  const [panelEstado, setPanelEstado] = useState<ColaPanelEstado>("cerrado");
+  const panelVisible = panelEstado !== "cerrado";
+  const panelRef = useRef<ColaPanelDeslizableHandle>(null);
   const [portalMounted, setPortalMounted] = useState(false);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const [dragOverDelete, setDragOverDelete] = useState(false);
   const [nombreRevealGeneration, setNombreRevealGeneration] = useState(0);
-  const sheetCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => a.orden - b.orden),
@@ -250,6 +253,11 @@ export default function ColaIndividualSheet({
   );
 
   const pendientesCount = pendientes.filter(item => !noDisponibles.has(item.id)).length;
+  // Al final de la fila, Siguiente vuelve a empezar por la tocada más vieja.
+  const puedeAvanzar = colaIndividualPuedeAvanzar(
+    sortedItems,
+    (item) => !noDisponibles.has(item.id),
+  );
 
   const { aleatorioActivo, toggleAleatorio, apagarAleatorio } = useColaAleatorio({
     items: sortedItems,
@@ -273,15 +281,8 @@ export default function ColaIndividualSheet({
   );
 
   const openCola = useCallback(() => {
-    if (sheetCloseTimerRef.current) {
-      clearTimeout(sheetCloseTimerRef.current);
-      sheetCloseTimerRef.current = null;
-    }
-
     triggerHaptic();
-    setSheetExiting(false);
-    setSheetVisible(true);
-    setAbierto(true);
+    panelRef.current?.abrir();
   }, []);
 
   const closeCola = useCallback(() => {
@@ -289,37 +290,24 @@ export default function ColaIndividualSheet({
       return;
     }
 
-    if (!sheetVisible || sheetExiting) {
-      return;
-    }
-
-    setAbierto(false);
-    setSheetExiting(true);
-
-    sheetCloseTimerRef.current = setTimeout(() => {
-      setSheetVisible(false);
-      setSheetExiting(false);
-      sheetCloseTimerRef.current = null;
-    }, COLA_SHEET_EXIT_MS);
-  }, [colaSidePanelMode, sheetExiting, sheetVisible]);
+    panelRef.current?.cerrar();
+  }, [colaSidePanelMode]);
 
   useEffect(() => {
     setPortalMounted(true);
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (sheetCloseTimerRef.current) {
-        clearTimeout(sheetCloseTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     onRequestOpen?.(openCola);
   }, [onRequestOpen, openCola]);
 
-  useHardwareBack(sheetVisible && !sheetExiting && !colaSidePanelMode, () => {
+  useEffect(() => {
+    onRequestArrastre?.((clientY, clientX) =>
+      panelRef.current?.prepararArrastre(clientY, clientX),
+    );
+  }, [onRequestArrastre]);
+
+  useHardwareBack(panelVisible && !colaSidePanelMode, () => {
     if (showDeleteAllDialog) {
       setShowDeleteAllDialog(false);
       return;
@@ -330,10 +318,9 @@ export default function ColaIndividualSheet({
 
   const activeDragIdRef = useRef(activeDragId);
   activeDragIdRef.current = activeDragId;
-  useSwipeDownToClose(
-    sheetVisible && !sheetExiting && !colaSidePanelMode,
-    closeCola,
+  const isArrastrandoCancion = useCallback(
     () => activeDragIdRef.current !== null,
+    [],
   );
 
   function handleOpenBuscador() {
@@ -344,15 +331,16 @@ export default function ColaIndividualSheet({
   }
 
   async function handleSiguiente() {
-    if (pendientesCount === 0) {
+    if (!puedeAvanzar) {
       return;
     }
 
-    if (!colaSidePanelMode) {
+    const esperarCierre = !colaSidePanelMode && panelVisible;
+    if (esperarCierre) {
       closeCola();
     }
     triggerHaptic();
-    if (!colaSidePanelMode) {
+    if (esperarCierre) {
       await new Promise((resolve) =>
         setTimeout(resolve, COLA_FINALIZE_BUTTON_MS),
       );
@@ -402,14 +390,15 @@ export default function ColaIndividualSheet({
     setNombreRevealGeneration((generation) => generation + 1);
   };
 
-  const modalBottom = getColaModalBottomCss();
+  const proximaItem =
+    pendientes.find((item) => !noDisponibles.has(item.id)) ?? null;
   const listaVacia = sortedItems.length === 0;
 
   function renderColaListBody() {
     return (
       <div className="relative flex min-h-0 flex-1 flex-col bg-bg-cola-list">
         <div
-          data-swipe-close-scroll=""
+          data-cola-scroll=""
           className="min-h-0 flex-1 touch-pan-y select-none overflow-y-auto overscroll-none px-3 py-3"
           style={{
             paddingBottom: activeDragId
@@ -496,11 +485,11 @@ export default function ColaIndividualSheet({
         className={shellClassName}
         style={shellStyle}
         aria-label={COLA_PANEL_ARIA_LABEL}
-        data-swipe-close-panel=""
         {...dialogProps}
       >
         <ColaPanelHeader
           pendientesCount={pendientesCount}
+          siguienteDisabled={!puedeAvanzar}
           aleatorioActivo={aleatorioActivo}
           onDeleteAll={() => setShowDeleteAllDialog(true)}
           onSiguiente={() => void handleSiguiente()}
@@ -549,20 +538,28 @@ export default function ColaIndividualSheet({
   );
 
   const colaSheetLayer =
-    !colaSidePanelMode && sheetVisible && portalMounted
+    !colaSidePanelMode && portalMounted
       ? createPortal(
-          <>
-            <button
-              type="button"
-              aria-label="Cerrar fila"
-              data-no-tap-feedback
-              className={`fixed inset-0 bg-black/50 ${
-                sheetExiting ? "sala-cola-sheet-backdrop--exit" : ""
-              }`}
-              style={{ zIndex: COLA_MODAL_LAYER_Z }}
-              onClick={closeCola}
-            />
-
+          <ColaPanelDeslizable
+            ref={panelRef}
+            zIndex={COLA_MODAL_LAYER_Z}
+            ariaLabel={COLA_PANEL_ARIA_LABEL}
+            isBlocked={isArrastrandoCancion}
+            onEstadoChange={setPanelEstado}
+            barra={
+              <ColaBarraProximaContenido
+                decorativa
+                proxima={
+                  proximaItem
+                    ? { nombre: proximaItem.nombre, artista: proximaItem.artista }
+                    : null
+                }
+                pendientesCount={pendientesCount}
+                showSiguiente={Boolean(activaItem)}
+                siguienteDisabled={!puedeAvanzar}
+              />
+            }
+          >
             <DndContext
               sensors={sensors}
               collisionDetection={colaDragCollisionDetection}
@@ -578,17 +575,9 @@ export default function ColaIndividualSheet({
               }}
             >
               {renderColaPanelShell(
-                `sala-cola-panel fixed flex flex-col overflow-hidden rounded-2xl border-[3px] border-bg-cola-sheet bg-bg-dark shadow-[0_0_0_1px_rgba(0,0,0,0.65),0_20px_56px_rgba(0,0,0,0.62)] ${
-                  sheetExiting ? "sala-cola-sheet-panel--exit" : ""
-                }`,
-                {
-                  zIndex: COLA_MODAL_LAYER_Z + 1,
-                  top: `calc(${COLA_MODAL_TOP_INSET_PX}px + env(safe-area-inset-top, 0px))`,
-                  bottom: modalBottom,
-                  left: COLA_MODAL_HORIZONTAL_INSET_PX,
-                  right: COLA_MODAL_HORIZONTAL_INSET_PX,
-                },
-                { role: "dialog", "aria-modal": true },
+                "flex h-full min-h-0 flex-col overflow-hidden bg-bg-dark",
+                undefined,
+                undefined,
                 closeCola,
               )}
 
@@ -608,7 +597,7 @@ export default function ColaIndividualSheet({
                 ) : null}
               </DragOverlay>
             </DndContext>
-          </>,
+          </ColaPanelDeslizable>,
           document.body,
         )
       : null;

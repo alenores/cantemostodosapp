@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import AppLogoMark from "@/components/pwa/AppLogoMark";
 
 const ANDROID_IN_APP_STEPS = [
@@ -29,20 +30,23 @@ function openPageInChrome() {
 }
 
 export default function AndroidInAppBrowserInstallHelp() {
+  /** "copiado" = se copió solo; si no se pudo, se muestra el link para copiarlo a mano. */
+  const [copia, setCopia] = useState<{ estado: "copiado" | "manual"; url: string } | null>(null);
+
   const copyAppLink = async () => {
     const url = window.location.href;
 
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
-        alert("¡Link copiado! Pegalo en Chrome para abrir la app.");
+        setCopia({ estado: "copiado", url });
         return;
       }
     } catch {
       // Fall through to manual fallback below.
     }
 
-    window.prompt("Copiá este link y abrilo en Chrome:", url);
+    setCopia({ estado: "manual", url });
   };
 
   return (
@@ -106,6 +110,27 @@ export default function AndroidInAppBrowserInstallHelp() {
       >
         Copiar link de la app
       </button>
+
+      {copia?.estado === "copiado" ? (
+        <p role="status" className="m-0 mt-3 text-center text-xs font-semibold text-accent">
+          ¡Link copiado! Pegalo en Chrome para abrir la app.
+        </p>
+      ) : null}
+      {copia?.estado === "manual" ? (
+        <div className="mt-3 text-left">
+          <p className="m-0 mb-1.5 text-xs text-text-secondary">
+            Copiá este link y abrilo en Chrome:
+          </p>
+          <input
+            type="text"
+            readOnly
+            value={copia.url}
+            onFocus={(event) => event.currentTarget.select()}
+            autoFocus
+            className="w-full rounded-[10px] border border-border bg-bg-dark px-3 py-2 text-xs text-text-primary outline-none focus:border-accent"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -10,13 +10,20 @@ import type {
 import type { TonalidadInferCandidate } from "@/lib/cifrado-tonalidad-infer";
 import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
+import ArtistaSelector from "@/components/cifrado/ArtistaSelector";
+import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
+import { buscarArtistaCoincidente } from "@/lib/artistas-match";
+import type { Artista } from "@/types";
 import { ArrowLeftRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export type PasteIngresoConfirmResult = {
   tonalidad: TonalidadLineDetectResult | null;
   nombre: string;
+  /** Nombre de la ficha elegida, o el texto detectado si no se eligió ninguna. */
   artista: string;
+  /** Ficha elegida de la lista (null = ninguna). */
+  artistaId: string | null;
   eliminate: boolean;
 };
 
@@ -27,6 +34,9 @@ type CifradoIngresoTonalidadInferModalProps = {
   multipleTonalidades: boolean;
   notacion?: NotacionAcordes;
   zIndex?: number;
+  /** Lista de artistas para elegir; vacía = sin lista (no se pudo cargar). */
+  artistas?: Artista[];
+  onArtistaAgregado?: (artista: Artista) => void;
   onConfirm: (result: PasteIngresoConfirmResult) => void;
   onDismiss: () => void;
 };
@@ -50,6 +60,8 @@ export function CifradoIngresoTonalidadInferModal({
   multipleTonalidades,
   notacion = "es",
   zIndex = 70,
+  artistas = [],
+  onArtistaAgregado,
   onConfirm,
   onDismiss,
 }: CifradoIngresoTonalidadInferModalProps) {
@@ -57,6 +69,7 @@ export function CifradoIngresoTonalidadInferModal({
   const [modoTonal, setModoTonal] = useState<ModoTonal | null>(null);
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
+  const [artistaId, setArtistaId] = useState<string | null>(null);
   const [eliminate, setEliminate] = useState(true);
 
   useEffect(() => {
@@ -71,8 +84,13 @@ export function CifradoIngresoTonalidadInferModal({
     setTonalidadIndex(initial?.tonalidadIndex ?? null);
     setModoTonal(initial?.modoTonal ?? null);
     setNombre(analysis?.suggestedNombre ?? "");
-    setArtista(analysis?.suggestedArtista ?? "");
+    const sugerido = analysis?.suggestedArtista ?? "";
+    const exacto = buscarArtistaCoincidente(sugerido, artistas).exacto;
+    setArtista(exacto?.nombre ?? sugerido);
+    setArtistaId(exacto?.id ?? null);
     setEliminate(Boolean(analysis?.textToEliminate?.trim()));
+    // La lista de artistas solo se usa al abrir; no reiniciar el formulario si se agrega uno.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, analysis, candidates]);
 
   if (!open) {
@@ -97,6 +115,7 @@ export function CifradoIngresoTonalidadInferModal({
       tonalidad,
       nombre: nombre.trim(),
       artista: artista.trim(),
+      artistaId,
       eliminate: showEliminate ? eliminate : false,
     });
   }
@@ -202,26 +221,44 @@ export function CifradoIngresoTonalidadInferModal({
                     aria-label="Intercambiar título y artista"
                     title="Intercambiar"
                     onClick={() => {
+                      const exacto = buscarArtistaCoincidente(nombre, artistas).exacto;
                       setNombre(artista);
-                      setArtista(nombre);
+                      setArtista(exacto?.nombre ?? nombre);
+                      setArtistaId(exacto?.id ?? null);
                     }}
                     className="mb-1.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-letra-bg text-text-secondary transition-colors hover:border-accent/60 hover:text-text-primary"
                   >
                     <ArrowLeftRight className="size-3.5" aria-hidden="true" />
                   </button>
                 </div>
+                <CancionRepetidaAviso nombre={nombre} artista={artista} />
 
                 <label htmlFor="paste-ingreso-artista">
                   <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
                     Artista
                   </span>
-                  <input
-                    id="paste-ingreso-artista"
-                    value={artista}
-                    onChange={(event) => setArtista(event.target.value)}
-                    className={PASTE_FIELD_CLASS}
-                    placeholder="Artista"
-                  />
+                  {artistas.length > 0 ? (
+                    <ArtistaSelector
+                      id="paste-ingreso-artista"
+                      artistas={artistas}
+                      artistaId={artistaId}
+                      textoDetectado={artista}
+                      selectClassName={PASTE_FIELD_CLASS}
+                      onElegir={(elegido) => {
+                        setArtistaId(elegido?.id ?? null);
+                        setArtista(elegido?.nombre ?? "");
+                      }}
+                      onAgregado={onArtistaAgregado}
+                    />
+                  ) : (
+                    <input
+                      id="paste-ingreso-artista"
+                      value={artista}
+                      onChange={(event) => setArtista(event.target.value)}
+                      className={PASTE_FIELD_CLASS}
+                      placeholder="Artista"
+                    />
+                  )}
                 </label>
               </div>
             </>

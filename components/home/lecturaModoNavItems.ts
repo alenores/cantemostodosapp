@@ -3,11 +3,14 @@ import { ListMusic, Search, SkipBack, SkipForward } from "lucide-react";
 
 export function buildColaLecturaNavItems({
   pendientesCount,
+  siguienteDisabled,
   onBuscar,
   onSiguiente,
   onCola,
 }: {
   pendientesCount: number;
+  /** Por defecto: sin pendientes. Individual habilita volver a empezar al final de la fila. */
+  siguienteDisabled?: boolean;
   onBuscar: () => void;
   onSiguiente: () => void;
   onCola: () => void;
@@ -24,7 +27,7 @@ export function buildColaLecturaNavItems({
       icon: SkipForward,
       label: "Siguiente",
       iconAfter: true,
-      disabled: pendientesCount === 0,
+      disabled: siguienteDisabled ?? pendientesCount === 0,
       onClick: onSiguiente,
     },
     {

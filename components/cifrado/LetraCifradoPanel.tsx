@@ -5,7 +5,11 @@ import type {
   Anotacion,
   AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
-import { type AcordePos, type CompasMarker } from "@/lib/cifrado";
+import {
+  ajustarLetraAAcordes,
+  type AcordePos,
+  type CompasMarker,
+} from "@/lib/cifrado";
 import { getIntensidadPlantilla } from "@/lib/cifrado-intensidad";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
@@ -49,12 +53,12 @@ export default function LetraCifradoPanel({
   anotacionesVisibility,
   onOpenNota,
 }: LetraCifradoPanelProps) {
-  const letra = detalle.letra?.trim() ?? "";
+  const acordes = cifradoAcordes ?? detalle.cifrado.acordes;
+  const letra = ajustarLetraAAcordes(detalle.letra ?? "", acordes);
   const compasConfig = detalle.compas_config;
   const tipoCompas = compasConfig?.tipoCompas ?? "4-4";
   const showCompasMarcadores =
     showCompas ?? Boolean(compasConfig?.barras?.length);
-  const acordes = cifradoAcordes ?? detalle.cifrado.acordes;
 
   const horizontalPaddingStyle = modoLectura
     ? {

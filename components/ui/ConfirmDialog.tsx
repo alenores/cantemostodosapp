@@ -6,6 +6,8 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   deleteConfirm?: boolean;
+  /** Solo aviso: un único botón (reemplaza al alert del sistema). */
+  hideCancel?: boolean;
   scrollThrough?: boolean;
   zIndex?: number;
   onConfirm: () => void;
@@ -18,6 +20,7 @@ export default function ConfirmDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   deleteConfirm = false,
+  hideCancel = false,
   scrollThrough = false,
   zIndex = 50,
   onConfirm,
@@ -55,17 +58,19 @@ export default function ConfirmDialog({
           scrollThrough ? " pointer-events-auto" : ""
         }`}
       >
-        <p className="text-sm leading-6 text-text-primary">{message}</p>
+        <p className="whitespace-pre-line text-sm leading-6 text-text-primary">{message}</p>
         <div className="mt-5 flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className={`min-h-11 flex-1 rounded-[10px] border border-border text-sm font-semibold text-text-primary ${
-              deleteConfirm ? "bg-[#323232]" : "bg-bg-card"
-            }`}
-          >
-            {cancelLabel}
-          </button>
+          {hideCancel ? null : (
+            <button
+              type="button"
+              onClick={onCancel}
+              className={`min-h-11 flex-1 rounded-[10px] border border-border text-sm font-semibold text-text-primary ${
+                deleteConfirm ? "bg-[#323232]" : "bg-bg-card"
+              }`}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}

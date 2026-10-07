@@ -7,11 +7,11 @@ import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
-import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
 import ColaJuntadaSheet from "@/components/salas/ColaJuntadaSheet";
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import SalaInviteQrModal from "@/components/salas/SalaInviteQrModal";
 import SalaPresenceBar from "@/components/salas/SalaPresenceBar";
 import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
@@ -47,7 +47,6 @@ import { createClient, ensureRealtimeAuth } from "@/lib/supabase/client";
 import type { ColaItem, PresenceUsuario, SalaMiembro, SesionSala } from "@/types";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import {
-  ArrowLeft,
   Minimize2,
   Search,
   SlidersHorizontal,
@@ -56,9 +55,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
-
-const LECTURA_TOP_CHIP =
-  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
 
 type SalaPageShellProps = {
   salaId: number;
@@ -80,6 +76,7 @@ export default function SalaPageShell({
   const suppressColaRealtimeUntil = useRef(0);
   const initialColaLoadPendingRef = useRef(true);
   const openColaRef = useRef<(() => void) | null>(null);
+  const arrastrarColaRef = useRef<((clientY: number, clientX: number) => void) | null>(null);
   const handleSiguienteRef = useRef<(() => void) | null>(null);
   const [colaAviso, setColaAviso] = useState<string | null>(null);
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
@@ -154,6 +151,13 @@ export default function SalaPageShell({
     () => colaItems.filter((item) => item.estado === "pendiente").length,
     [colaItems],
   );
+
+  const proximaCola = useMemo(() => {
+    const proxima = [...colaItems]
+      .sort((a, b) => a.orden - b.orden)
+      .find((item) => item.estado === "pendiente");
+    return proxima ? { nombre: proxima.nombre, artista: proxima.artista } : null;
+  }, [colaItems]);
 
   const cancionActivaScrollKey = cancionActiva
     ? `${cancionActiva.nombre}::${cancionActiva.url_letra}`
@@ -583,21 +587,8 @@ export default function SalaPageShell({
     };
   }, [online, salaId, loadColaCompleta, handleSesionChange, finishInitialColaLoad]);
 
-  const headerLeading = !modoLectura ? (
-    <TapButton
-      type="button"
-      aria-label="Volver a salas"
-      onClick={handleLeaveSala}
-      className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-dark/80 text-text-primary lg:hidden"
-    >
-      <ArrowLeft className="size-4" aria-hidden="true" />
-    </TapButton>
-  ) : null;
-
-  const headerActions =
-    !modoLectura && !disconnected && !colaSidePanel ? (
-      <CantarControlHeaderActions onSearch={handleOpenBuscador} />
-    ) : null;
+  // Sin botón volver en el header (misma vista que Individual): se sale con el atrás del celular.
+  // La lupa vive en la barrita de la fila (celular); en PC, en el panel lateral.
 
   const handleExpand = useCallback(() => {
     setModoLectura(true);
@@ -668,7 +659,7 @@ export default function SalaPageShell({
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {colaBootstrapping && !modoLectura ? (
-            <SalaColaBootstrapSkeleton showBack />
+            <SalaColaBootstrapSkeleton />
           ) : (
             <CancionActivaSection
               cancionNombre={cancionActiva?.nombre ?? null}
@@ -679,8 +670,6 @@ export default function SalaPageShell({
               letraScrollRef={letraScrollRef}
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
-              headerLeading={headerLeading}
-              headerAction={headerActions}
               letraZoomFactor={zoom.factor}
               onLecturaZoomEligibleChange={setLecturaZoomEligible}
               compasesOcultos={compasesOcultos}
@@ -710,6 +699,11 @@ export default function SalaPageShell({
                       onSiguiente: () => void handleSiguienteRef.current?.(),
                       siguienteDisabled: pendientesCount === 0,
                       showSiguiente: Boolean(cancionActiva),
+                      barra: !colaSidePanel,
+                      proxima: proximaCola,
+                      onBuscar: handleOpenBuscador,
+                      onArrastrarFila: (clientY, clientX) =>
+                        arrastrarColaRef.current?.(clientY, clientX),
                     }
                   : null
               }
@@ -735,6 +729,9 @@ export default function SalaPageShell({
           presentacionOculta={lecturaPantallaCompleta}
           onRequestOpen={(open) => {
             openColaRef.current = open;
+          }}
+          onRequestArrastre={(arrastrar) => {
+            arrastrarColaRef.current = arrastrar;
           }}
           onRequestSiguiente={(siguiente) => {
             handleSiguienteRef.current = siguiente;

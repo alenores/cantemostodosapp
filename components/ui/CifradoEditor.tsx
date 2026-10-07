@@ -52,11 +52,9 @@ import {
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
-  CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
   CIFRADO_DETAILS_CARD_TITLE_CLASS,
   CIFRADO_DETAILS_FIELD_LABEL_CLASS,
-  CIFRADO_CONTROLS_SEGMENTED_CLASS,
   CIFRADO_EDITOR_COMPAS_PANEL_CLASS,
   CIFRADO_EDITOR_PC_SHELL_CLASS,
   CIFRADO_EDITOR_LINE_BG_CLASS,
@@ -72,11 +70,12 @@ import {
   CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS,
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
   cifradoEditorToolbarSegmentedButtonClass,
-  cifradoSegmentedIconButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
+import CancionYoutubeField from "@/components/cifrado/CancionYoutubeField";
+import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import { VozPcConfigCard } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
@@ -89,7 +88,8 @@ import {
 } from "@/lib/cifrado-barra-cycles";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
-  MODIFICADORES,
+  MODIFICADORES_SELECTOR,
+  NOTAS_AGREGADAS,
   clampBpm,
   computeTapBpm,
   applyLineCopyAcordes,
@@ -146,6 +146,7 @@ import {
   type CompasMarker,
   type LineCopyKind,
   type Modificador,
+  type NotaAgregada,
   type NotaIndex,
   type TipoCompas,
 } from "@/lib/cifrado";
@@ -163,6 +164,7 @@ import {
   getBeatLevelBarHeightPercent,
 } from "@/lib/metronomo";
 import {
+  getAcordeVisible,
   getNotaLabel,
   readNotacionAcordesPreferida,
   writeNotacionAcordesPreferida,
@@ -185,6 +187,7 @@ import type {
   CifradoSaveResult,
 } from "@/lib/cifrado-editor-session";
 import { updateCancionCifradoAvanzado } from "@/lib/cancionero";
+import { normalizarYoutubeUrl } from "@/lib/youtube";
 import type { CancionCancionero } from "@/types";
 import {
   buildDisplayedPreviewPlaybackBeats,
@@ -198,7 +201,7 @@ import {
   CIFRADO_LABEL_PEGAR_EN_RENGLON,
   getCifradoConfirmAplicarCiclosTodosRenglonesMessage,
 } from "@/lib/ritmo-terminologia";
-import { Copy, CornerDownRight, Link2, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
+import { Copy, CornerDownRight, Eye, Link2, Lock, Monitor, Pause, Pencil, Play, Plus, Smartphone, Trash2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -236,13 +239,13 @@ type CifradoEditorProps = {
   onSaved: (result?: CifradoSaveResult) => void;
   presentation?: ToolPresentation;
   /**
-   * Persistencia opcional (p. ej. Entrenador Ã¢â€ â€™ canciones_practica).
-   * Si falta, se usa el guardado histÃƒÂ³rico del Cancionero. Sin cambios de UI.
+   * Persistencia opcional (p. ej. Entrenador → canciones_practica).
+   * Si falta, se usa el guardado histórico del Cancionero. Sin cambios de UI.
    */
   onPersist?: CifradoEditorPersistFn;
-  /** Habilita las pestaÃƒÂ±as y anclajes de anotaciones (solo Entrenador). */
+  /** Habilita las pestañas y anclajes de anotaciones (solo Entrenador). */
   anotaciones?: AnotacionesControl | null;
-  /** Muestra la X de cerrar aunque la presentaciÃƒÂ³n sea pÃƒÂ¡gina (p. ej. Entrenador). */
+  /** Muestra la X de cerrar aunque la presentación sea página (p. ej. Entrenador). */
   showPageClose?: boolean;
 };
 
@@ -292,13 +295,13 @@ const textareaClassName =
 const CELULAR_ARMADO_OUTER_WIDTH_PX = 390;
 /** px-2 del scroll del armado (8px + 8px). */
 const CELULAR_ARMADO_SCROLL_PADDING_X_PX = 16;
-/** px-2 de cada tarjeta de renglÃƒÂ³n (8px + 8px). */
+/** px-2 de cada tarjeta de renglón (8px + 8px). */
 const CELULAR_ARMADO_LINE_PADDING_X_PX = 16;
 /** px-1.5 del carril de texto (6px + 6px). */
 const CELULAR_ARMADO_LANE_PADDING_X_PX = 12;
 /** Margen extra (~3 caracteres mono) antes del corte real en celular. */
 const CELULAR_ARMADO_LIMIT_EXTRA_INSET_PX = 10;
-/** PosiciÃƒÂ³n de la guÃƒÂ­a: ancho ÃƒÂºtil real del texto en celular. */
+/** Posición de la guía: ancho útil real del texto en celular. */
 const CELULAR_ARMADO_LIMIT_WIDTH_PX =
   CELULAR_ARMADO_OUTER_WIDTH_PX -
   CELULAR_ARMADO_SCROLL_PADDING_X_PX -
@@ -306,7 +309,7 @@ const CELULAR_ARMADO_LIMIT_WIDTH_PX =
   CELULAR_ARMADO_LANE_PADDING_X_PX -
   CELULAR_ARMADO_LIMIT_EXTRA_INSET_PX;
 
-/** En vista PC del armado (ediciÃƒÂ³n y previsualizaciÃƒÂ³n): 10% de margen a cada lado del ÃƒÂ¡rea de renglones. */
+/** En vista PC del armado (edición y previsualización): 10% de margen a cada lado del área de renglones. */
 const PC_ARMADO_WIDTH_CLASS = "mx-auto w-[80%] max-w-full";
 
 const NOTA_INDICES = Array.from({ length: 12 }, (_, index) => index as NotaIndex);
@@ -323,7 +326,7 @@ function CifradoCelularLimitGuide() {
           style={{ width: `${CELULAR_ARMADO_LIMIT_WIDTH_PX}px` }}
         >
           <span className="absolute right-0 top-0 translate-x-1/2 whitespace-nowrap rounded-md border border-red-300 bg-red-100/90 px-2.5 py-1 text-[10px] font-bold leading-none text-red-500 shadow-sm">
-            Posible lÃƒÂ­mite de celular
+            Posible límite de celular
           </span>
         </div>
       </div>
@@ -382,6 +385,7 @@ type ChordPickerProps = {
     noteIndex: NotaIndex,
     modifier: Modificador,
     bassNoteIndex?: NotaIndex,
+    agregada?: NotaAgregada,
   ) => void;
   onRemove: () => void;
   onClose: () => void;
@@ -397,11 +401,17 @@ function ChordPicker({
   onRemove,
   onClose,
 }: ChordPickerProps) {
+  const existingVisible = existing
+    ? getAcordeVisible(existing.modifier, existing.agregada)
+    : null;
   const [noteIndex, setNoteIndex] = useState<NotaIndex | null>(
     existing ? existing.noteIndex : null,
   );
   const [modifier, setModifier] = useState<Modificador | null>(
-    existing ? existing.modifier : null,
+    existingVisible ? existingVisible.modifier : null,
+  );
+  const [agregada, setAgregada] = useState<NotaAgregada | null>(
+    existingVisible?.agregada ?? null,
   );
   const [bassNoteIndex, setBassNoteIndex] = useState<NotaIndex | null>(
     existing?.bassNoteIndex ?? null,
@@ -416,11 +426,16 @@ function ChordPicker({
     (!bassEnabled || bassNoteIndex !== null);
 
   useEffect(() => {
+    const visible = existing
+      ? getAcordeVisible(existing.modifier, existing.agregada)
+      : null;
     setNoteIndex(existing ? existing.noteIndex : null);
-    setModifier(existing ? existing.modifier : null);
+    setModifier(visible ? visible.modifier : null);
+    setAgregada(visible?.agregada ?? null);
     setBassNoteIndex(existing?.bassNoteIndex ?? null);
     setBassEnabled(existing?.bassNoteIndex !== undefined);
   }, [
+    existing?.agregada,
     existing?.bassNoteIndex,
     existing?.charOffset,
     existing?.lineIndex,
@@ -497,7 +512,7 @@ function ChordPicker({
         Modificador
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {MODIFICADORES.map((item) => (
+        {MODIFICADORES_SELECTOR.map((item) => (
           <button
             key={item.id || "mayor"}
             type="button"
@@ -513,9 +528,29 @@ function ChordPicker({
         ))}
       </div>
 
+      <p className="mb-2 mt-3 text-xs font-medium text-text-muted">
+        Nota sumada
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {[null, ...NOTAS_AGREGADAS].map((item) => (
+          <button
+            key={item ?? "ninguna"}
+            type="button"
+            onClick={() => setAgregada(item)}
+            className={`rounded-full px-2.5 py-1 text-xs ${
+              agregada === item
+                ? CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS
+                : "bg-bg-dark text-text-secondary"
+            }`}
+          >
+            {item ?? "Ninguna"}
+          </button>
+        ))}
+      </div>
+
       <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5">
         <span className="text-xs font-medium text-text-muted">
-          Ã‚Â¿Bajo en otra nota?
+          ¿Bajo en otra nota?
         </span>
         <ToolSwitch
           checked={bassEnabled}
@@ -567,6 +602,7 @@ function ChordPicker({
           <AcordeLabel
             noteIndex={noteIndex}
             modifier={modifier}
+            agregada={agregada ?? undefined}
             bassNoteIndex={
               bassEnabled && bassNoteIndex !== null
                 ? bassNoteIndex
@@ -589,6 +625,7 @@ function ChordPicker({
                 bassEnabled && bassNoteIndex !== null
                   ? bassNoteIndex
                   : undefined,
+                agregada ?? undefined,
               );
             }
           }}
@@ -718,7 +755,7 @@ function LineEditFabBar({
     >
       {hasLineCopyPending && !lineMergePicking && (
         <p className="mb-2 text-center text-xs text-text-muted">
-          Listo para pegar Ã¢â‚¬â€ tocÃƒÂ¡ otro renglÃƒÂ³n
+          Listo para pegar — tocá otro renglón
         </p>
       )}
 
@@ -771,7 +808,7 @@ function LineEditFabBar({
               className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
             >
               <Plus className="size-3.5" aria-hidden="true" />
-              LÃƒÂ­nea abajo
+              Línea abajo
             </TapButton>
             <TapButton
               type="button"
@@ -802,7 +839,7 @@ function LineEditFabBar({
               className={CIFRADO_EDITOR_LINE_FAB_BUTTON_CLASS}
             >
               <Copy className="size-3.5" aria-hidden="true" />
-              Copiar compÃƒÂ¡s
+              Copiar compás
             </TapButton>
             <TapButton
               type="button"
@@ -1314,7 +1351,7 @@ function CifradoLineEditor({
         return;
       }
 
-      // Punto de referencia elegido Ã¢â€ â€™ abrir el menÃƒÂº de tipos ahÃƒÂ­ mismo.
+      // Punto de referencia elegido → abrir el menú de tipos ahí mismo.
       onOpenTipoMenu?.(lineIndex, clamped, event.clientX, event.clientY);
       return;
     }
@@ -1494,7 +1531,7 @@ function CifradoLineEditor({
                 ? "bg-bg-card text-text-secondary ring-1 ring-accent"
                 : "text-text-muted hover:bg-bg-card hover:text-text-secondary"
           }`}
-          aria-label={isLineEditing ? "Dejar de editar lÃƒÂ­nea" : "Editar lÃƒÂ­nea"}
+          aria-label={isLineEditing ? "Dejar de editar línea" : "Editar línea"}
           aria-pressed={isLineEditing}
         >
           <Pencil className="size-3.5" aria-hidden="true" />
@@ -1515,7 +1552,7 @@ function CifradoLineEditor({
               : "text-text-muted hover:bg-bg-card hover:text-text-secondary"
           }`}
           aria-label={
-            isLineLocked ? "Desbloquear renglÃƒÂ³n" : "Bloquear renglÃƒÂ³n"
+            isLineLocked ? "Desbloquear renglón" : "Bloquear renglón"
           }
           aria-pressed={isLineLocked}
         >
@@ -1673,6 +1710,7 @@ function CifradoLineEditor({
                   noteIndex={acorde.noteIndex}
                   modifier={acorde.modifier}
                   bassNoteIndex={acorde.bassNoteIndex}
+                  agregada={acorde.agregada}
                   notacion={notacion}
                   className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
                 />
@@ -1710,7 +1748,7 @@ function CifradoLineEditor({
               <button
                 key={`chord-handle-${acorde.lineIndex}-${acorde.charOffset}`}
                 type="button"
-                aria-label={`${formatAcordeAriaLabel(acorde.noteIndex, acorde.modifier, notacion, acorde.bassNoteIndex)}. ArrastrÃƒÂ¡ para mover o tocÃƒÂ¡ para editar.`}
+                aria-label={`${formatAcordeAriaLabel(acorde.noteIndex, acorde.modifier, notacion, acorde.bassNoteIndex, acorde.agregada)}. Arrastrá para mover o tocá para editar.`}
                 className="absolute z-20 h-5 w-6 cursor-col-resize touch-none border-0 bg-transparent p-0"
                 style={{ left: position.left, top: 4 + arribaOffsetEditor }}
                 onPointerDown={(event) => {
@@ -1794,7 +1832,7 @@ function CifradoLineEditor({
                   <button
                     key={`bar-handle-${barra.lineIndex}-${barra.charOffset}`}
                     type="button"
-                    aria-label={`CompÃƒÂ¡s ${barra.compasNumero}. TocÃƒÂ¡ para editar intensidad. ArrastrÃƒÂ¡ para mover.`}
+                    aria-label={`Compás ${barra.compasNumero}. Tocá para editar intensidad. Arrastrá para mover.`}
                     aria-pressed={isSelected}
                     className={`absolute bottom-0 z-30 h-3 w-4 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent p-0 ${
                       isSelected ? "ring-2 ring-accent ring-offset-1" : ""
@@ -1817,7 +1855,7 @@ function CifradoLineEditor({
                 <button
                   key={`terminal-handle-${lineIndex}`}
                   type="button"
-                  aria-label="Cierre del ÃƒÂºltimo compÃƒÂ¡s. ArrastrÃƒÂ¡ para mover."
+                  aria-label="Cierre del último compás. Arrastrá para mover."
                   className="absolute bottom-0 z-30 h-3 w-4 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent p-0"
                   style={{
                     left:
@@ -2263,6 +2301,7 @@ function CifradoPreviewLine({
                 noteIndex={acorde.noteIndex}
                 modifier={acorde.modifier}
                 bassNoteIndex={acorde.bassNoteIndex}
+                agregada={acorde.agregada}
                 notacion={notacion}
                 className={CIFRADO_EDITOR_ACORDE_TEXT_CLASS}
               />
@@ -2419,7 +2458,7 @@ function CifradoPreviewOverlay({
             ? "flex size-8 items-center justify-center rounded-full bg-bg-card text-text-primary"
             : "flex size-10 items-center justify-center rounded-full bg-bg-card text-text-primary"
         }
-        aria-label="Cerrar previsualizaciÃƒÂ³n"
+        aria-label="Cerrar previsualización"
       >
         <X className={isContained ? "size-4" : "size-5"} aria-hidden="true" />
       </TapButton>
@@ -2429,7 +2468,7 @@ function CifradoPreviewOverlay({
           isContained ? "text-sm" : "text-lg"
         }`}
       >
-        PrevisualizaciÃƒÂ³n
+        Previsualización
       </h2>
 
       {showCompas ? (
@@ -2440,7 +2479,7 @@ function CifradoPreviewOverlay({
           className={`shrink-0 flex items-center justify-center rounded-full bg-accent text-white shadow-lg disabled:opacity-40 ${
             isContained ? "size-9" : "size-11"
           }`}
-          aria-label={playing ? "Pausar compÃƒÂ¡s" : "Reproducir compÃƒÂ¡s"}
+          aria-label={playing ? "Pausar compás" : "Reproducir compás"}
         >
           {playing ? (
             <Pause
@@ -2516,7 +2555,7 @@ function EditorSidebarHeader({
   return (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
       <h1 className={`min-w-0 flex-1 truncate text-left text-base font-extrabold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS}`}>
-        EdiciÃƒÂ³n de canciÃƒÂ³n
+        Edición de canción
       </h1>
       {showClose ? (
         <TapButton
@@ -2561,6 +2600,9 @@ export default function CifradoEditor({
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
   const artistaVinculo = useArtistaVinculo(artista, setArtista);
+  const [youtubeUrl, setYoutubeUrl] = useState(() => session?.youtube_url ?? "");
+  /** Solo se guarda el link si la persona lo tocó: no pisa uno guardado que no se cargó. */
+  const [youtubeTocado, setYoutubeTocado] = useState(false);
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [ingresoTonalidadIndex, setIngresoTonalidadIndex] =
@@ -2636,6 +2678,8 @@ export default function CifradoEditor({
   >([]);
   const bpmRef = useRef(compasConfig.bpm);
   const editingCancionIdRef = useRef<number | undefined>(undefined);
+  /** Canción abierta (o de origen): no se avisa como repetida de sí misma. */
+  const [excluirRepetidaId, setExcluirRepetidaId] = useState<number | null>(null);
   const cyclesByIdRef = useRef<ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>>(
     new Map(),
   );
@@ -2845,6 +2889,7 @@ export default function CifradoEditor({
   useEffect(() => {
     if (!open) {
       editingCancionIdRef.current = undefined;
+      setExcluirRepetidaId(null);
       setPhase("ingreso");
       setIngresoTab("letra");
       setModoInsercion("acordes");
@@ -2856,6 +2901,8 @@ export default function CifradoEditor({
       setCompasConfig(createDefaultCompasConfig());
       setNombre("");
       setArtista("");
+      setYoutubeUrl("");
+      setYoutubeTocado(false);
       setTonalidadIndex(7);
       setModoTonal(DEFAULT_MODO_TONAL);
       setIngresoTonalidadIndex(null);
@@ -2903,8 +2950,11 @@ export default function CifradoEditor({
 
     if (session) {
       editingCancionIdRef.current = session.cancionId;
+      setExcluirRepetidaId(session.cancionId ?? null);
       setNombre(session.nombre);
       setArtista(session.artista);
+      setYoutubeUrl(session.youtube_url ?? "");
+      setYoutubeTocado(false);
       setLyricsText(session.letra);
       setDraftLyrics(session.letra);
       setCifrado(session.cifrado ?? createEmptyCifrado());
@@ -2940,7 +2990,7 @@ export default function CifradoEditor({
 
       if (session.importWarnings?.length) {
         setToast(
-          `Propuesta importada (${session.importWarnings.length} aviso${session.importWarnings.length === 1 ? "" : "s"}). RevisÃƒÂ¡ los acordes.`,
+          `Propuesta importada (${session.importWarnings.length} aviso${session.importWarnings.length === 1 ? "" : "s"}). Revisá los acordes.`,
         );
       }
 
@@ -2948,6 +2998,7 @@ export default function CifradoEditor({
     }
 
     editingCancionIdRef.current = undefined;
+    setExcluirRepetidaId(null);
     setPhase("ingreso");
     setModoInsercion("acordes");
     setVistaArmado("pc");
@@ -2957,6 +3008,8 @@ export default function CifradoEditor({
     setCompasConfig(createDefaultCompasConfig());
     setNombre("");
     setArtista("");
+    setYoutubeUrl("");
+    setYoutubeTocado(false);
     setTonalidadIndex(DEFAULT_TONALIDAD);
     setModoTonal(DEFAULT_MODO_TONAL);
     setIngresoTonalidadIndex(null);
@@ -3141,7 +3194,7 @@ export default function CifradoEditor({
 
   function assertIngresoTonalidad(): boolean {
     if (!ingresoTonalidadLista) {
-      setError("ElegÃƒÂ­ el tono y el modo antes de continuar.");
+      setError("Elegí el tono y el modo antes de continuar.");
       return false;
     }
 
@@ -3215,7 +3268,7 @@ export default function CifradoEditor({
     }
 
     if (result.artista) {
-      setArtista(result.artista);
+      setArtista(result.artista.trim());
     }
 
     if (result.eliminate && pasteAnalysis?.textKeptIfEliminate !== undefined) {
@@ -3265,7 +3318,7 @@ export default function CifradoEditor({
 
     if (warnings.length > 0) {
       setToast(
-        `Letra importada (${warnings.length} aviso${warnings.length === 1 ? "" : "s"}). RevisÃƒÂ¡ los acordes.`,
+        `Letra importada (${warnings.length} aviso${warnings.length === 1 ? "" : "s"}). Revisá los acordes.`,
       );
     }
   }
@@ -3274,7 +3327,7 @@ export default function CifradoEditor({
     const trimmed = draftLyrics.trim();
 
     if (!trimmed) {
-      setError("PegÃƒÂ¡ la letra antes de continuar.");
+      setError("Pegá la letra antes de continuar.");
       return;
     }
 
@@ -3290,7 +3343,7 @@ export default function CifradoEditor({
     const trimmed = draftPasteTraditional.trim();
 
     if (!trimmed) {
-      setError("PegÃƒÂ¡ la letra con acordes antes de continuar.");
+      setError("Pegá la letra con acordes antes de continuar.");
       return;
     }
 
@@ -3350,11 +3403,12 @@ export default function CifradoEditor({
 
   function handleSelectBasicSong(
     cancion: CancionCancionero,
-    isOwner: boolean,
+    editable: boolean,
   ) {
-    editingCancionIdRef.current = isOwner ? cancion.id : 0;
+    editingCancionIdRef.current = editable ? cancion.id : 0;
+    setExcluirRepetidaId(cancion.id);
     setNombre(cancion.nombre);
-    setArtista(cancion.artista ?? "");
+    setArtista((cancion.artista ?? "").trim());
     setIngresoTab("basicas");
     const imported = parseLetraTradicional(cancion.letra ?? "");
     applyImportedCifrado(imported.letra, imported.cifrado, {
@@ -3375,7 +3429,7 @@ export default function CifradoEditor({
     const trimmed = draftPasteTraditional.trim();
 
     if (!trimmed) {
-      setError("RevisÃƒÂ¡ la letra con acordes antes de continuar.");
+      setError("Revisá la letra con acordes antes de continuar.");
       return;
     }
 
@@ -3459,7 +3513,7 @@ export default function CifradoEditor({
       });
     }
 
-    setToast("Copiado al renglÃƒÂ³n");
+    setToast("Copiado al renglón");
     setLineCopyBuffer(null);
   }
 
@@ -3534,17 +3588,17 @@ export default function CifradoEditor({
     );
 
     if (kind === "acordes" && acordes.length === 0) {
-      setToast("Este renglÃƒÂ³n no tiene acordes");
+      setToast("Este renglón no tiene acordes");
       return;
     }
 
     if (kind === "compas" && barras.length === 0) {
-      setToast("Este renglÃƒÂ³n no tiene compÃƒÂ¡s");
+      setToast("Este renglón no tiene compás");
       return;
     }
 
     if (kind === "both" && acordes.length === 0 && barras.length === 0) {
-      setToast("Este renglÃƒÂ³n no tiene acordes ni compÃƒÂ¡s");
+      setToast("Este renglón no tiene acordes ni compás");
       return;
     }
 
@@ -3555,14 +3609,14 @@ export default function CifradoEditor({
       barras,
       terminalCharOffset: getLineTerminalOffset(compasConfig, editingLineIndex),
     });
-    setToast("TocÃƒÂ¡ otro renglÃƒÂ³n para pegar");
+    setToast("Tocá otro renglón para pegar");
   }
 
   function finalizeDeleteLine(lineIndex: number) {
     const lineArray = splitLyricsLines(lyricsText);
 
     if (lineArray.length <= 1) {
-      setError("La canciÃƒÂ³n debe tener al menos un renglÃƒÂ³n.");
+      setError("La canción debe tener al menos un renglón.");
       return;
     }
 
@@ -3579,7 +3633,7 @@ export default function CifradoEditor({
     const lineArray = splitLyricsLines(lyricsText);
 
     if (lineArray.length <= 1) {
-      setError("La canciÃƒÂ³n debe tener al menos un renglÃƒÂ³n.");
+      setError("La canción debe tener al menos un renglón.");
       return;
     }
 
@@ -3626,7 +3680,7 @@ export default function CifradoEditor({
     }
 
     if (splitLyricsLines(lyricsText).length <= 1) {
-      setError("La canciÃƒÂ³n debe tener al menos un renglÃƒÂ³n.");
+      setError("La canción debe tener al menos un renglón.");
       return;
     }
 
@@ -3643,7 +3697,7 @@ export default function CifradoEditor({
     );
 
     if (!hasAcordes) {
-      setToast("Este renglÃƒÂ³n no tiene acordes");
+      setToast("Este renglón no tiene acordes");
       return;
     }
 
@@ -3660,7 +3714,7 @@ export default function CifradoEditor({
     );
 
     if (!hasBarras) {
-      setToast("Este renglÃƒÂ³n no tiene compases");
+      setToast("Este renglón no tiene compases");
       return;
     }
 
@@ -3700,7 +3754,7 @@ export default function CifradoEditor({
     );
 
     if (!hasAcordes) {
-      setToast("Este renglÃƒÂ³n no tiene acordes");
+      setToast("Este renglón no tiene acordes");
       return;
     }
 
@@ -3715,7 +3769,7 @@ export default function CifradoEditor({
     );
 
     if (!hasBarras) {
-      setToast("Este renglÃƒÂ³n no tiene compases");
+      setToast("Este renglón no tiene compases");
       return;
     }
 
@@ -3773,6 +3827,7 @@ export default function CifradoEditor({
     noteIndex: NotaIndex,
     modifier: Modificador,
     bassNoteIndex?: NotaIndex,
+    agregada?: NotaAgregada,
   ) {
     if (!picker) {
       return;
@@ -3785,6 +3840,7 @@ export default function CifradoEditor({
         noteIndex,
         modifier,
         ...(bassNoteIndex !== undefined ? { bassNoteIndex } : {}),
+        ...(agregada !== undefined ? { agregada } : {}),
       }),
     );
     setPicker(null);
@@ -3805,7 +3861,7 @@ export default function CifradoEditor({
     const clampedOffset = clampCompasCharOffset(charOffset);
 
     if (compasToolTab === "guardado" && !activePlacementCycleId) {
-      setToast("ElegÃƒÂ­ un ciclo guardado en la lista.");
+      setToast("Elegí un ciclo guardado en la lista.");
       return;
     }
 
@@ -3830,13 +3886,13 @@ export default function CifradoEditor({
       const lastOffset = Math.max(...lineBarras.map((barra) => barra.charOffset));
 
       if (clampedOffset <= lastOffset) {
-        setToast("Solo podÃƒÂ©s agregar una lÃƒÂ­nea a la derecha de la ÃƒÂºltima.");
+        setToast("Solo podés agregar una línea a la derecha de la última.");
         return;
       }
     }
 
     if (isCharOffsetInsideCompasCycle(lineBarras, clampedOffset)) {
-      setToast("No podÃƒÂ©s agregar un ciclo dentro de otro.");
+      setToast("No podés agregar un ciclo dentro de otro.");
       return;
     }
 
@@ -3900,7 +3956,7 @@ export default function CifradoEditor({
 
   function handleApplyCyclesToAllLines() {
     if (compasToolTab === "guardado" && !activePlacementCycleId) {
-      setToast("ElegÃƒÂ­ un ciclo guardado en la lista.");
+      setToast("Elegí un ciclo guardado en la lista.");
       return;
     }
 
@@ -3995,17 +4051,17 @@ export default function CifradoEditor({
     const destLineIndex = lineMergeDestNumber - 1;
 
     if (destLineIndex < 0 || destLineIndex >= lines.length) {
-      setToast("ElegÃƒÂ­ un nÃƒÂºmero de renglÃƒÂ³n vÃƒÂ¡lido.");
+      setToast("Elegí un número de renglón válido.");
       return;
     }
 
     if (destLineIndex === sourceLineIndex) {
-      setToast("ElegÃƒÂ­ un renglÃƒÂ³n distinto al actual.");
+      setToast("Elegí un renglón distinto al actual.");
       return;
     }
 
     if (lockedLines.has(destLineIndex)) {
-      setToast("Ese renglÃƒÂ³n estÃƒÂ¡ bloqueado.");
+      setToast("Ese renglón está bloqueado.");
       return;
     }
 
@@ -4094,7 +4150,7 @@ export default function CifradoEditor({
       lineElement?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
-    setToast(`RenglÃƒÂ³n ${sourceLineIndex + 1} unido al ${destLineIndex + 1}.`);
+    setToast(`Renglón ${sourceLineIndex + 1} unido al ${destLineIndex + 1}.`);
   }
 
   function handleSelectBarra(barra: BarraCompas) {
@@ -4170,7 +4226,7 @@ export default function CifradoEditor({
     }
 
     if (isCharOffsetInsideCompasCycle(lineBarras, clampedTo, fromOffset)) {
-      setToast("No podÃƒÂ©s mover un ciclo dentro de otro.");
+      setToast("No podés mover un ciclo dentro de otro.");
       return;
     }
 
@@ -4227,24 +4283,24 @@ export default function CifradoEditor({
 
   async function handleSave() {
     if (!isLoggedIn) {
-      setSaveValidation("IniciÃƒÂ¡ sesiÃƒÂ³n para guardar en el cancionero.");
+      setSaveValidation("Iniciá sesión para guardar en el cancionero.");
       return;
     }
 
     if (phase !== "cifrado") {
-      setSaveValidation("AplicÃƒÂ¡ la letra y empezÃƒÂ¡ a cifrar antes de guardar.");
+      setSaveValidation("Aplicá la letra y empezá a cifrar antes de guardar.");
       return;
     }
 
     if (!nombre.trim()) {
-      setSaveValidation("CompletÃƒÂ¡ el nombre de la canciÃƒÂ³n.");
+      setSaveValidation("Completá el nombre de la canción.");
       nombreInputRef.current?.focus();
       nombreInputRef.current?.scrollIntoView({ block: "nearest" });
       return;
     }
 
     if (!lyricsText.trim()) {
-      setSaveValidation("La letra no puede estar vacÃƒÂ­a.");
+      setSaveValidation("La letra no puede estar vacía.");
       return;
     }
 
@@ -4274,11 +4330,17 @@ export default function CifradoEditor({
       } = await supabase.auth.getSession();
 
       if (!authSession) {
-        setSaveValidation("IniciÃƒÂ¡ sesiÃƒÂ³n para guardar en el cancionero.");
+        setSaveValidation("Iniciá sesión para guardar en el cancionero.");
         return;
       }
 
       const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
+      const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
+      if (!youtubeNormalizado.ok) {
+        setSaveValidation("El link del video no es de YouTube. Corregilo o borralo.");
+        return;
+      }
+      const youtubeGuardar = youtubeTocado ? youtubeNormalizado.url : undefined;
       const payload = {
         nombre: nombre.trim(),
         artista: artistaGuardar.artista,
@@ -4312,9 +4374,11 @@ export default function CifradoEditor({
             tonalidad_default: payload.tonalidad_default,
             modo_tonal_default: payload.modo_tonal_default,
             bpm_default: payload.bpm_default,
+            youtube_url: youtubeGuardar,
           },
         );
         editingCancionIdRef.current = savedId;
+        setExcluirRepetidaId(savedId ?? null);
       } else if (editingId != null) {
         await updateCancionCifradoAvanzado(supabase, editingId, {
           nombre: payload.nombre,
@@ -4326,11 +4390,12 @@ export default function CifradoEditor({
           tonalidad_default: payload.tonalidad_default,
           modo_tonal_default: payload.modo_tonal_default,
           bpm_default: payload.bpm_default,
+          youtube_url: youtubeGuardar,
         });
       } else {
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) {
-          throw new Error("IniciÃƒÂ¡ sesiÃƒÂ³n para guardar la canciÃƒÂ³n.");
+          throw new Error("Iniciá sesión para guardar la canción.");
         }
 
         const { data: inserted, error: saveError } = await supabase
@@ -4340,6 +4405,7 @@ export default function CifradoEditor({
             user_id: authData.user.id,
             url_letra: null,
             ...payload,
+            youtube_url: youtubeGuardar ?? null,
           })
           .select("id")
           .single();
@@ -4351,10 +4417,10 @@ export default function CifradoEditor({
         savedId = inserted?.id;
       }
 
-      setToast(editingId != null ? "CanciÃƒÂ³n actualizada" : "CanciÃƒÂ³n guardada");
+      setToast(editingId != null ? "Canción actualizada" : "Canción guardada");
 
       if (savedId == null) {
-        throw new Error("No se pudo guardar la canciÃƒÂ³n.");
+        throw new Error("No se pudo guardar la canción.");
       }
 
       onSaved({
@@ -4369,7 +4435,7 @@ export default function CifradoEditor({
       const message =
         saveError instanceof Error
           ? saveError.message
-          : "No se pudo guardar la canciÃƒÂ³n";
+          : "No se pudo guardar la canción";
       setSaveValidation(message);
       setError(message);
     } finally {
@@ -4502,7 +4568,7 @@ export default function CifradoEditor({
                         }
                       }}
                       className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
-                      placeholder="PegÃƒÂ¡ aquÃƒÂ­ la letra de la canciÃƒÂ³nÃ¢â‚¬Â¦"
+                      placeholder="Pegá aquí la letra de la canción…"
                     />
                     <TapButton
                       type="button"
@@ -4519,13 +4585,13 @@ export default function CifradoEditor({
                   pendingWebImport ? (
                     <>
                       <p className="mb-2 shrink-0 text-sm text-text-muted">
-                        RevisÃƒÂ¡ letra, acordes y datos. Si no es esta,{" "}
+                        Revisá letra, acordes y datos. Si no es esta,{" "}
                         <TapButton
                           type="button"
                           onClick={handleClearWebImport}
                           className="font-semibold text-accent"
                         >
-                          buscÃƒÂ¡ otra
+                          buscá otra
                         </TapButton>
                         .
                       </p>
@@ -4545,7 +4611,7 @@ export default function CifradoEditor({
                           }
                         }}
                         className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
-                        placeholder="Letra con los acordes encima de cada renglÃƒÂ³nÃ¢â‚¬Â¦"
+                        placeholder="Letra con los acordes encima de cada renglón…"
                       />
                       <TapButton
                         type="button"
@@ -4593,7 +4659,7 @@ export default function CifradoEditor({
                         handleDraftPasteTraditionalChange(event.target.value)
                       }
                       className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
-                      placeholder="PegÃƒÂ¡ la letra con los acordes encima de cada renglÃƒÂ³nÃ¢â‚¬Â¦"
+                      placeholder="Pegá la letra con los acordes encima de cada renglón…"
                     />
                     <TapButton
                       type="button"
@@ -4677,7 +4743,7 @@ export default function CifradoEditor({
                         <div
                           className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
                           role="tablist"
-                          aria-label="Modo ediciÃƒÂ³n"
+                          aria-label="Modo edición"
                         >
                             <button
                               type="button"
@@ -4699,7 +4765,7 @@ export default function CifradoEditor({
                                 modoInsercion === "compas",
                               )}
                             >
-                              CompÃƒÂ¡s
+                              Compás
                             </button>
                             <button
                               type="button"
@@ -4974,34 +5040,44 @@ export default function CifradoEditor({
               className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain touch-pan-y"
             >
               <div className="space-y-3 p-3">
-                <VozPcConfigCard title="Vista previa" accentVar="var(--accent)">
-                  <div className={CIFRADO_CONTROLS_SEGMENTED_CLASS}>
-                    <button
-                      type="button"
-                      onClick={() => setVistaArmado("pc")}
-                      className={cifradoSegmentedIconButtonClass(vistaArmado === "pc")}
-                    >
-                      <Monitor className="size-3.5" aria-hidden="true" />
-                      PC
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVistaArmado("celular")}
-                      className={cifradoSegmentedIconButtonClass(vistaArmado === "celular")}
-                    >
-                      <Smartphone className="size-3.5" aria-hidden="true" />
-                      Cel.
-                    </button>
-                  </div>
-
-                  <TapButton
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVistaArmado((actual) => (actual === "pc" ? "celular" : "pc"))
+                    }
+                    aria-label={
+                      vistaArmado === "pc"
+                        ? "Vista PC. Tocá para ver como celular"
+                        : "Vista celular. Tocá para ver como PC"
+                    }
+                    title="Cambiar entre vista PC y celular"
+                    className="flex h-8 items-center gap-1.5 rounded-full border border-border bg-bg-darker px-3 text-xs font-semibold text-text-primary transition-colors hover:border-accent"
+                  >
+                    {vistaArmado === "pc" ? (
+                      <Monitor className="size-3.5 text-accent" aria-hidden="true" />
+                    ) : (
+                      <Smartphone className="size-3.5 text-accent" aria-hidden="true" />
+                    )}
+                    {vistaArmado === "pc" ? "PC" : "Cel."}
+                  </button>
+                  <button
                     type="button"
                     onClick={handleTogglePreview}
-                    className={`mt-3 ${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS}`}
+                    className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
+                      previewOpen
+                        ? "border-accent bg-accent-dim text-accent"
+                        : "border-border bg-bg-darker text-text-primary hover:border-accent"
+                    }`}
                   >
-                    {previewOpen ? "EdiciÃƒÂ³n" : "PrevisualizaciÃƒÂ³n"}
-                  </TapButton>
-                </VozPcConfigCard>
+                    {previewOpen ? (
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <Eye className="size-3.5" aria-hidden="true" />
+                    )}
+                    {previewOpen ? "Edición" : "Previsualizar"}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3 px-3 pb-3">
@@ -5027,7 +5103,12 @@ export default function CifradoEditor({
                       }
                     }}
                     className={inputClassName}
-                    placeholder="Nombre de la canciÃƒÂ³n"
+                    placeholder="Nombre de la canción"
+                  />
+                  <CancionRepetidaAviso
+                    nombre={nombre}
+                    artista={artista}
+                    excluirId={excluirRepetidaId}
                   />
                   <IntercambiarNombreArtista
                     disabled={!nombre.trim() && !artista.trim()}
@@ -5058,6 +5139,24 @@ export default function CifradoEditor({
                     placeholder="Artista"
                   />
                   <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
+                </VozPcConfigCard>
+
+                <VozPcConfigCard
+                  title="Video"
+                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  accentVar="var(--accent)"
+                >
+                  <CancionYoutubeField
+                    id="cifrado-youtube"
+                    value={youtubeUrl}
+                    onChange={(next) => {
+                      setYoutubeUrl(next);
+                      setYoutubeTocado(true);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
+                  />
                 </VozPcConfigCard>
 
                 <VozPcConfigCard
@@ -5147,7 +5246,7 @@ export default function CifradoEditor({
                 disabled={loading || phase !== "cifrado"}
                 className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
               >
-                {loading ? "GuardandoÃ¢â‚¬Â¦" : "Guardar"}
+                {loading ? "Guardando…" : "Guardar"}
               </TapButton>
             </div>
           </aside>
@@ -5185,7 +5284,12 @@ export default function CifradoEditor({
                         }
                       }}
                       className={inputClassName}
-                      placeholder="Nombre de la canciÃƒÂ³n"
+                      placeholder="Nombre de la canción"
+                    />
+                    <CancionRepetidaAviso
+                      nombre={nombre}
+                      artista={artista}
+                      excluirId={excluirRepetidaId}
                     />
                     <IntercambiarNombreArtista
                       disabled={!nombre.trim() && !artista.trim()}
@@ -5242,7 +5346,7 @@ export default function CifradoEditor({
                 {ingresoTab === "letra" && draftLyrics.trim() ? (
                   <>
                     <p className="mt-2 text-sm font-medium text-text-primary">
-                      {draftStats.verses} versos Ã‚Â· {draftStats.total} renglones
+                      {draftStats.verses} versos · {draftStats.total} renglones
                     </p>
                     <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
                       {draftLyrics.trim()}
@@ -5253,7 +5357,7 @@ export default function CifradoEditor({
                   draftPastePreview.text ? (
                   <>
                     <p className="mt-2 text-sm font-medium text-text-primary">
-                      {draftPastePreview.stats.verses} versos Ã‚Â·{" "}
+                      {draftPastePreview.stats.verses} versos ·{" "}
                       {draftPastePreview.stats.total} renglones
                     </p>
                     <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
@@ -5264,11 +5368,11 @@ export default function CifradoEditor({
                   <p className="mt-2 text-sm text-text-muted">
                     {ingresoTab === "web"
                       ? pendingWebImport
-                        ? "RevisÃƒÂ¡ los datos y confirmÃƒÂ¡ para ir al editor."
-                        : "BuscÃƒÂ¡ una canciÃƒÂ³n y previsualizala antes de importarla."
+                        ? "Revisá los datos y confirmá para ir al editor."
+                        : "Buscá una canción y previsualizala antes de importarla."
                       : ingresoTab === "pegar"
-                        ? "PegÃƒÂ¡ la letra con acordes a la izquierda para ver un resumen acÃƒÂ¡."
-                        : "PegÃƒÂ¡ la letra a la izquierda para ver un resumen acÃƒÂ¡."}
+                        ? "Pegá la letra con acordes a la izquierda para ver un resumen acá."
+                        : "Pegá la letra a la izquierda para ver un resumen acá."}
                   </p>
                 )}
               </div>
@@ -5278,33 +5382,33 @@ export default function CifradoEditor({
                 <ul className="space-y-2 text-xs leading-relaxed text-text-muted">
                   {ingresoTab === "letra" ? (
                     <>
-                      <li>Ã‚Â· ElegÃƒÂ­ el tono y el modo antes de continuar.</li>
-                      <li>Ã‚Â· Un renglÃƒÂ³n por verso; lÃƒÂ­neas vacÃƒÂ­as entre estrofas.</li>
-                      <li>Ã‚Â· PegÃƒÂ¡ solo la letra, sin acordes (los agregÃƒÂ¡s despuÃƒÂ©s).</li>
-                      <li>Ã‚Â· PodÃƒÂ©s completar nombre y artista ahora o al guardar.</li>
+                      <li>· Elegí el tono y el modo antes de continuar.</li>
+                      <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
+                      <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
+                      <li>· Podés completar nombre y artista ahora o al guardar.</li>
                     </>
                   ) : ingresoTab === "web" ? (
                     pendingWebImport ? (
                       <>
-                        <li>Ã‚Â· RevisÃƒÂ¡ nombre, artista y tonalidad sugeridos.</li>
-                        <li>Ã‚Â· PodÃƒÂ©s corregir la letra con acordes a la izquierda.</li>
-                        <li>Ã‚Â· Cuando estÃƒÂ© bien, usÃƒÂ¡ Ã‚Â«Importar y editarÃ‚Â».</li>
+                        <li>· Revisá nombre, artista y tonalidad sugeridos.</li>
+                        <li>· Podés corregir la letra con acordes a la izquierda.</li>
+                        <li>· Cuando esté bien, usá «Importar y editar».</li>
                       </>
                     ) : (
                       <>
-                        <li>Ã‚Â· BuscÃƒÂ¡ y previsualizÃƒÂ¡ la canciÃƒÂ³n.</li>
-                        <li>Ã‚Â· Con Ã‚Â«Usar esta canciÃƒÂ³nÃ‚Â» se completan los campos.</li>
-                        <li>Ã‚Â· DespuÃƒÂ©s revisÃƒÂ¡s y confirmÃƒÂ¡s para editar.</li>
-                        <li>Ã‚Â· Solo se busca en Acordes de Canciones.</li>
+                        <li>· Buscá y previsualizá la canción.</li>
+                        <li>· Con «Usar esta canción» se completan los campos.</li>
+                        <li>· Después revisás y confirmás para editar.</li>
+                        <li>· Solo se busca en Acordes de Canciones.</li>
                       </>
                     )
                   ) : (
                     <>
-                      <li>Ã‚Â· ElegÃƒÂ­ el tono y el modo antes de continuar.</li>
-                      <li>Ã‚Â· Si el pegado incluye Ã‚Â«Tono:Ã‚Â» (aunque falte la T), se detecta y no entra en la letra.</li>
-                      <li>Ã‚Â· Si no, la app puede sugerir el tono segÃƒÂºn los acordes pegados.</li>
-                      <li>Ã‚Â· PegÃƒÂ¡ el formato tradicional: acordes arriba, letra abajo.</li>
-                      <li>Ã‚Â· La app separa letra y acordes al importar.</li>
+                      <li>· Elegí el tono y el modo antes de continuar.</li>
+                      <li>· Si el pegado incluye «Tono:» (aunque falte la T), se detecta y no entra en la letra.</li>
+                      <li>· Si no, la app puede sugerir el tono según los acordes pegados.</li>
+                      <li>· Pegá el formato tradicional: acordes arriba, letra abajo.</li>
+                      <li>· La app separa letra y acordes al importar.</li>
                     </>
                   )}
                 </ul>

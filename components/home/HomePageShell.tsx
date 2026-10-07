@@ -8,13 +8,17 @@ import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems"
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
-import CantarControlHeaderActions from "@/components/salas/CantarControlHeaderActions";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
+import VideoFlotante from "@/components/video/VideoFlotante";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useCancionYoutube } from "@/hooks/useCancionYoutube";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
+import { useVideoLectura } from "@/hooks/useVideoLectura";
+import { parseCancioneroUrlId } from "@/lib/cancionero-url";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { triggerHaptic } from "@/lib/haptic";
 import {
@@ -32,9 +36,6 @@ import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const LECTURA_TOP_CHIP =
-  "rounded-full border border-border/50 bg-bg-dark/90 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md";
-
 export default function HomePageShell() {
   const cola = useColaIndividual();
   const colaSidePanel = useColaSidePanel();
@@ -45,6 +46,7 @@ export default function HomePageShell() {
     null,
   );
   const openColaRef = useRef<(() => void) | null>(null);
+  const arrastrarColaRef = useRef<((clientY: number, clientX: number) => void) | null>(null);
   const handleSiguienteRef = useRef<(() => void) | null>(null);
   const letraScrollRef = useRef<HTMLDivElement>(null);
   const embedIframeRef = useRef<HTMLIFrameElement>(null);
@@ -60,6 +62,21 @@ export default function HomePageShell() {
   const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
   const cancionActivaDelCancionero = Boolean(
     cola.cancionActiva?.url_letra.startsWith("cancionero://"),
+  );
+  const cancionActivaCancioneroId = parseCancioneroUrlId(
+    cola.cancionActiva?.url_letra ?? null,
+  );
+  // Video solo con la canción expandida (modo lectura) y del Cancionero.
+  const youtubeVideoId = useCancionYoutube({
+    cancionId: modoLectura ? cancionActivaCancioneroId : null,
+  });
+  const video = useVideoLectura(
+    modoLectura ? youtubeVideoId : null,
+    cancionActivaCancioneroId,
+  );
+  const lecturaExtraItems = useMemo(
+    () => (video.fabItem ? [video.fabItem] : []),
+    [video.fabItem],
   );
   const [colaAviso, setColaAviso] = useState<string | null>(null);
   const [colaAvisoExiting, setColaAvisoExiting] = useState(false);
@@ -102,9 +119,7 @@ export default function HomePageShell() {
     embedIframeRef,
   });
 
-  const handleColaAdded = useCallback(() => {
-    triggerHaptic();
-
+  const mostrarColaAviso = useCallback((texto: string) => {
     if (colaAvisoShowTimerRef.current) {
       clearTimeout(colaAvisoShowTimerRef.current);
     }
@@ -117,7 +132,7 @@ export default function HomePageShell() {
     setColaAviso(null);
 
     colaAvisoShowTimerRef.current = setTimeout(() => {
-      setColaAviso("Canción sumada a la lista");
+      setColaAviso(texto);
       colaAvisoShowTimerRef.current = null;
 
       colaAvisoHideTimerRef.current = setTimeout(() => {
@@ -132,12 +147,31 @@ export default function HomePageShell() {
     }, COLA_AVISO_SHOW_DELAY_MS);
   }, []);
 
+  const handleColaAdded = useCallback(() => {
+    triggerHaptic();
+    mostrarColaAviso("Canción sumada a la lista");
+  }, [mostrarColaAviso]);
+
+  const vaciarCola = cola.vaciarTodo;
+  const handleDeleteAll = useCallback(async () => {
+    try {
+      await vaciarCola();
+    } catch {
+      mostrarColaAviso("No se pudo borrar la lista. Probá de nuevo.");
+    }
+  }, [mostrarColaAviso, vaciarCola]);
+
   const salirModoLectura = useCallback(() => {
     resetVista();
     setModoLectura(false);
   }, [resetVista]);
 
   const handleModoLecturaBack = useCallback(() => {
+    if (video.abierto) {
+      video.cerrar();
+      return;
+    }
+
     if (tonoPanelAbierto) {
       setTonoPanelAbierto(false);
       return;
@@ -154,7 +188,7 @@ export default function HomePageShell() {
     }
 
     salirModoLectura();
-  }, [overlayAbierto, salirModoLectura, tonoPanelAbierto, zoomPanelAbierto]);
+  }, [overlayAbierto, salirModoLectura, tonoPanelAbierto, video, zoomPanelAbierto]);
 
   useHardwareBack(modoLectura, handleModoLecturaBack);
 
@@ -203,10 +237,13 @@ export default function HomePageShell() {
     };
   }, []);
 
-  const headerActions =
-    !modoLectura && !colaSidePanel ? (
-      <CantarControlHeaderActions onSearch={() => setBuscadorOpen(true)} />
-    ) : null;
+  // La lupa vive en la barrita de la fila (celular); en PC, en el panel lateral.
+  const proximaCola = useMemo(() => {
+    const proxima = [...cola.items]
+      .sort((a, b) => a.orden - b.orden)
+      .find((item) => item.estado === "pendiente" && !cola.noDisponibles.has(item.id));
+    return proxima ? { nombre: proxima.nombre, artista: proxima.artista } : null;
+  }, [cola.items, cola.noDisponibles]);
 
   const handleExpand = useCallback(() => {
     setModoLectura(true);
@@ -219,11 +256,12 @@ export default function HomePageShell() {
 
     return buildColaLecturaNavItems({
       pendientesCount: cola.pendientesCount,
+      siguienteDisabled: !cola.puedeAvanzar,
       onBuscar: () => setBuscadorOpen(true),
       onSiguiente: () => void handleSiguienteRef.current?.(),
       onCola: () => openColaRef.current?.(),
     });
-  }, [cola.pendientesCount, lecturaConColaLateral]);
+  }, [cola.pendientesCount, cola.puedeAvanzar, lecturaConColaLateral]);
 
   return (
     <div
@@ -250,7 +288,7 @@ export default function HomePageShell() {
               <h2>{cola.cancionActiva?.nombre}</h2>
               <p>Requiere conexión</p>
               <p className="text-sm text-text-muted">La canción sigue en tu lista. Sin internet podés usar las que están guardadas en el celular.</p>
-              <TapButton onClick={() => void cola.avanzar()} disabled={cola.pendientesCount === 0}>Siguiente disponible</TapButton>
+              <TapButton onClick={() => void cola.avanzar()} disabled={!cola.puedeAvanzar}>Siguiente disponible</TapButton>
               <TapButton onClick={() => setBuscadorOpen(true)}>Buscar canción descargada</TapButton>
               <TapButton onClick={() => openColaRef.current?.()}>Ver fila</TapButton>
             </div>
@@ -264,7 +302,6 @@ export default function HomePageShell() {
               letraScrollRef={letraScrollRef}
               embedIframeRef={embedIframeRef}
               nombreRevealGeneration={cancionNombreRevealGen}
-              headerAction={headerActions}
               letraZoomFactor={zoom.factor}
               onLecturaZoomEligibleChange={setLecturaZoomEligible}
               compasesOcultos={compasesOcultos}
@@ -286,8 +323,13 @@ export default function HomePageShell() {
                       colaAvisoExiting,
                       onOpenFila: () => openColaRef.current?.(),
                       onSiguiente: () => void handleSiguienteRef.current?.(),
-                      siguienteDisabled: cola.pendientesCount === 0,
+                      siguienteDisabled: !cola.puedeAvanzar,
                       showSiguiente: Boolean(cola.cancionActiva),
+                      barra: !colaSidePanel,
+                      proxima: proximaCola,
+                      onBuscar: () => setBuscadorOpen(true),
+                      onArrastrarFila: (clientY, clientX) =>
+                        arrastrarColaRef.current?.(clientY, clientX),
                     }
                   : null
               }
@@ -303,11 +345,14 @@ export default function HomePageShell() {
           onRequestOpen={(open) => {
             openColaRef.current = open;
           }}
+          onRequestArrastre={(arrastrar) => {
+            arrastrarColaRef.current = arrastrar;
+          }}
           onRequestSiguiente={(siguiente) => {
             handleSiguienteRef.current = siguiente;
           }}
           onSiguiente={cola.avanzar}
-          onDeleteAll={cola.vaciarTodo}
+          onDeleteAll={handleDeleteAll}
           onDeleteItem={cola.eliminarItem}
           onVolverAPendiente={cola.volverAPendiente}
           onReorder={cola.reordenarPendientes}
@@ -334,6 +379,7 @@ export default function HomePageShell() {
             fixedRightCss={lecturaFixedRightCss}
             onContraer={salirModoLectura}
             onAfinador={() => setAfinadorOpen(true)}
+            onVideo={video.abrir}
           />
 
           <TapButton
@@ -387,6 +433,7 @@ export default function HomePageShell() {
             showContraerOption={false}
             menuTopCss={lecturaOverlayMenuTopCss}
             navItems={lecturaNavItems}
+            extraItems={lecturaExtraItems}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
             showAcordesOption={Boolean(lecturaTonalidad)}
@@ -462,6 +509,14 @@ export default function HomePageShell() {
       ) : null}
 
       <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />
+
+      {video.videoId ? (
+        <VideoFlotante
+          videoId={video.videoId}
+          titulo={cola.cancionActiva?.nombre}
+          onCerrar={video.cerrar}
+        />
+      ) : null}
 
       {buscadorOpen ? (
         <BuscadorModal

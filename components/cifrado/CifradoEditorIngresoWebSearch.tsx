@@ -317,7 +317,13 @@ export default function CifradoEditorIngresoWebSearch({
           {previewDisplay === "texto" ? (
             <div className="h-full overflow-y-auto bg-letra-bg px-4 py-5 text-letra-text">
               {previewLoading ? (
-                <p className="text-sm">Cargando letra…</p>
+                <div role="status" className="flex h-full flex-col items-center justify-center gap-3 py-10">
+                  <span
+                    className="size-9 animate-spin rounded-full border-4 border-accent/25 border-t-accent"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm font-medium">Cargando la canción…</p>
+                </div>
               ) : previewError ? (
                 <div className="flex flex-col items-start gap-3 text-sm">
                   <p>{previewError}</p>
@@ -346,6 +352,7 @@ export default function CifradoEditorIngresoWebSearch({
                 url={seleccionado.url}
                 elevated
                 fill
+                showLoadingIndicator
                 initialScrollOffsetPx={previewEmbedOffsetPx}
                 initialScrollBottomOffsetPx={previewEmbedBottomClipPx}
                 revealExpanded={embedFullRevealed}

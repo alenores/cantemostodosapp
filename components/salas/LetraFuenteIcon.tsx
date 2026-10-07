@@ -20,6 +20,8 @@ type LetraFuenteIconProps = {
   compact?: boolean;
   /** Mismo tamaño (size-5) para hoja y web — p. ej. cards de cola. */
   uniform?: boolean;
+  /** size-3: etiqueta de origen bajo el artista (vista control). */
+  tiny?: boolean;
 };
 
 export default function LetraFuenteIcon({
@@ -28,9 +30,16 @@ export default function LetraFuenteIcon({
   favorita = false,
   compact = false,
   uniform = false,
+  tiny = false,
 }: LetraFuenteIconProps) {
   const base = ICONO_STYLE[tipo];
-  const sizeClass = compact ? "size-4" : uniform ? "size-5" : base.sizeClass;
+  const sizeClass = tiny
+    ? "size-3"
+    : compact
+      ? "size-4"
+      : uniform
+        ? "size-5"
+        : base.sizeClass;
   const className = `${sizeClass} shrink-0`;
 
   if (favorita) {

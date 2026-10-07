@@ -1,6 +1,7 @@
 -- Ejecutar en el proyecto Supabase de Cantemos Todos.
 -- El Cancionero global se puede leer entre todos; solo el autor puede cambiar o borrar su canción.
 -- Las canciones de sala conservan los permisos de sus miembros.
+-- Las políticas de escritura del Cancionero se reemplazan en cancionero-permisos-categorias.sql.
 
 ALTER TABLE public.canciones_guardadas ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.canciones_guardadas TO authenticated;

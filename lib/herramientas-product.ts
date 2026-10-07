@@ -42,6 +42,13 @@ export const HUB_DESTINATION_CANCIONERO_HELP =
   "Todas tus canciones guardadas, ordenadas y listas para usar";
 export const HUB_DESTINATION_AFINADOR_LABEL = "Afinador";
 export const HUB_DESTINATION_AFINADOR_DESCRIPTION = "Afinador y utilidades";
+/** Una sola frase por tarjeta en el inicio del celular (tablero con ilustraciones, 2026-10-04). */
+export const HUB_DESTINATION_SALAS_TAGLINE = "La ronda entera en la misma canción";
+export const HUB_DESTINATION_INDIVIDUAL_TAGLINE = "Vos, tu guitarra y tu lista";
+export const HUB_DESTINATION_CANCIONERO_TAGLINE = "Tu cuaderno de canciones";
+export const HUB_DESTINATION_PRACTICA_TAGLINE = "Voz, oído y tiempo";
+export const HUB_DESTINATION_AFINADOR_TAGLINE = "Dejá la guitarra lista";
+
 export const HUB_DESTINATION_AFINADOR_HELP =
   "Afiná tu instrumento antes de empezar a tocar";
 

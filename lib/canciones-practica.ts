@@ -47,6 +47,7 @@ export type CancionPractica = {
   tonalidad_default: NotaIndex | null;
   modo_tonal_default: ModoTonal;
   bpm_default: number | null;
+  youtube_url: string | null;
   tiene_cifrado_avanzado: boolean;
   nota_general: string | null;
   anotaciones: Anotacion[];
@@ -75,6 +76,8 @@ export type CancionPracticaSavePayload = {
   tonalidad_default: NotaIndex;
   modo_tonal_default: ModoTonal;
   bpm_default: number;
+  /** `undefined` = no tocar el link guardado. */
+  youtube_url?: string | null;
   origen_cancion_id?: number | null;
   nota_general?: string | null;
   anotaciones?: Anotacion[];
@@ -140,6 +143,7 @@ export function mapCancionPracticaRow(row: Record<string, unknown>): CancionPrac
       row.bpm_default == null
         ? null
         : Math.max(40, Math.min(240, Number(row.bpm_default))),
+    youtube_url: (row.youtube_url as string | null | undefined) ?? null,
     tiene_cifrado_avanzado: Boolean(row.tiene_cifrado_avanzado),
     nota_general: (row.nota_general as string | null) ?? null,
     anotaciones: parseAnotaciones(row.anotaciones),
@@ -162,6 +166,7 @@ function localRecordToCancion(record: CancionPracticaLocalRecord): CancionPracti
     tonalidad_default: record.tonalidad_default,
     modo_tonal_default: record.modo_tonal_default,
     bpm_default: record.bpm_default,
+    youtube_url: record.youtube_url ?? null,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado,
     nota_general: record.nota_general,
     anotaciones: record.anotaciones,
@@ -196,6 +201,7 @@ function cancionToLocalRecord(
     tonalidad_default: cancion.tonalidad_default,
     modo_tonal_default: cancion.modo_tonal_default,
     bpm_default: cancion.bpm_default,
+    youtube_url: cancion.youtube_url,
     tiene_cifrado_avanzado: cancion.tiene_cifrado_avanzado,
     nota_general: cancion.nota_general,
     anotaciones: cancion.anotaciones,
@@ -218,6 +224,7 @@ function payloadFromLocal(record: CancionPracticaLocalRecord) {
     tonalidad_default: record.tonalidad_default,
     modo_tonal_default: record.modo_tonal_default,
     bpm_default: record.bpm_default,
+    youtube_url: record.youtube_url,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado,
     nota_general: record.nota_general,
     anotaciones: record.anotaciones,
@@ -327,6 +334,7 @@ export async function insertCancionPractica(
     tonalidad_default: payload.tonalidad_default,
     modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
     bpm_default: clampedBpm,
+    youtube_url: payload.youtube_url ?? null,
     tiene_cifrado_avanzado: true,
     nota_general: payload.nota_general?.trim() || null,
     anotaciones: payload.anotaciones ?? [],
@@ -366,6 +374,7 @@ export async function updateCancionPractica(
     tonalidad_default: payload.tonalidad_default,
     modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
     bpm_default: Math.max(40, Math.min(240, payload.bpm_default)),
+    ...(payload.youtube_url !== undefined ? { youtube_url: payload.youtube_url } : {}),
     tiene_cifrado_avanzado: true,
     anotaciones: payload.anotaciones ?? [],
     updated_at: new Date().toISOString(),
@@ -550,6 +559,7 @@ export async function cloneCancioneroDetalleToPractica(
     tonalidad_default: tono,
     modo_tonal_default: detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL,
     bpm_default: bpm,
+    youtube_url: detalle.youtube_url ?? null,
     origen_cancion_id: origenCancionId,
   });
 }
@@ -611,6 +621,7 @@ export function cancionPracticaToDetalle(
     tonalidad_default: cancion.tonalidad_default ?? DEFAULT_TONALIDAD,
     modo_tonal_default: cancion.modo_tonal_default,
     bpm_default: cancion.bpm_default ?? DEFAULT_BPM,
+    youtube_url: cancion.youtube_url,
     tiene_cifrado_avanzado: true,
   };
 }
@@ -626,6 +637,7 @@ export function cancionPracticaToEditorSession(cancion: CancionPractica) {
     tonalidad_default: cancion.tonalidad_default ?? DEFAULT_TONALIDAD,
     modo_tonal_default: cancion.modo_tonal_default,
     bpm_default: cancion.bpm_default ?? DEFAULT_BPM,
+    youtube_url: cancion.youtube_url,
     skipIngreso: true,
   };
 }

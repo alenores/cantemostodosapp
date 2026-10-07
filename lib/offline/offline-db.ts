@@ -65,6 +65,8 @@ export type CancionPracticaLocalRecord = {
   tonalidad_default: NotaIndex | null;
   modo_tonal_default: ModoTonal;
   bpm_default: number | null;
+  /** Ausente en copias guardadas antes de existir el campo. */
+  youtube_url?: string | null;
   tiene_cifrado_avanzado: boolean;
   nota_general: string | null;
   anotaciones: Anotacion[];

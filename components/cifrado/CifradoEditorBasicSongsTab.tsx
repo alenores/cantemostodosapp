@@ -3,13 +3,16 @@ import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
 import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
 import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 
+import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { createClient } from "@/lib/supabase/client";
 import { fetchCancionesCancionero } from "@/lib/cancionero";
+import { puedeEditarCancionCancionero } from "@/lib/usuarios-categorias";
 import type { CancionCancionero } from "@/types";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
-  onSelect: (cancion: CancionCancionero, isOwner: boolean) => void;
+  /** `editable`: se guarda sobre la misma canción; si no, como copia nueva. */
+  onSelect: (cancion: CancionCancionero, editable: boolean) => void;
 };
 
 export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
@@ -19,6 +22,7 @@ export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const categoria = useCategoriaUsuario();
 
   useEffect(() => {
     let cancelled = false;
@@ -102,24 +106,31 @@ export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {filtered.map((cancion) => (
-            <button
-              key={cancion.id}
-              type="button"
-              onClick={() => onSelect(cancion, cancion.user_id === userId)}
-              className="rounded-estandar border border-border bg-bg-dark px-3 py-3 text-left hover:border-accent/60"
-            >
-              <span className="block font-semibold text-text-primary">{cancion.nombre}</span>
-              <span className="block text-sm text-text-muted">
-                {cancion.artista || "Artista sin nombre"}
-              </span>
-              {cancion.user_id !== userId ? (
-                <span className="mt-1 block text-xs text-text-faint">
-                  Se abrirá como copia en tu cancionero
+          {filtered.map((cancion) => {
+            // Mientras no se conoce la categoría, solo se edita lo propio (el resto va como copia).
+            const editable =
+              categoria === null
+                ? userId !== null && cancion.user_id === userId
+                : puedeEditarCancionCancionero(cancion, userId, categoria);
+            return (
+              <button
+                key={cancion.id}
+                type="button"
+                onClick={() => onSelect(cancion, editable)}
+                className="rounded-estandar border border-border bg-bg-dark px-3 py-3 text-left hover:border-accent/60"
+              >
+                <span className="block font-semibold text-text-primary">{cancion.nombre}</span>
+                <span className="block text-sm text-text-muted">
+                  {cancion.artista || "Artista sin nombre"}
                 </span>
-              ) : null}
-            </button>
-          ))}
+                {!editable ? (
+                  <span className="mt-1 block text-xs text-text-faint">
+                    Se abrirá como copia en tu cancionero
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

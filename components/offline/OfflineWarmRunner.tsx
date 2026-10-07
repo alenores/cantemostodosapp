@@ -21,7 +21,7 @@ export default function OfflineWarmRunner() {
     });
 
     function handleInstalled() {
-      void warmOfflineCache();
+      if (hayConexion()) void warmOfflineCache();
     }
 
     function handleVisible() {

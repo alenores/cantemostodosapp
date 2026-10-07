@@ -1,6 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import AppSelect from "@/components/ui/AppSelect";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -60,16 +61,18 @@ export default function UsuariosPageClient() {
               {usuario.categoria === "dueno" ? <p className="mt-1 text-xs text-text-muted">Dueño</p> : null}
             </div>
             {usuario.categoria === "dueno" ? null : (
-              <select
+              <AppSelect<"amigos" | "publico">
+                title="Categoría"
                 aria-label={`Categoría de ${usuario.email}`}
                 value={usuario.categoria}
                 disabled={savingId === usuario.user_id}
-                onChange={(event) => void cambiarCategoria(usuario.user_id, event.target.value as "amigos" | "publico")}
-                className="min-h-11 rounded-lg border border-border bg-bg-darker px-3 text-sm text-text-primary disabled:opacity-60"
-              >
-                <option value="amigos">Amigos</option>
-                <option value="publico">Público</option>
-              </select>
+                options={[
+                  { value: "amigos", label: "Amigos" },
+                  { value: "publico", label: "Público" },
+                ]}
+                onChange={(value) => void cambiarCategoria(usuario.user_id, value)}
+                className="min-h-11 min-w-[8rem] rounded-lg border border-border bg-bg-darker px-3 text-sm text-text-primary"
+              />
             )}
           </li>
         ))}

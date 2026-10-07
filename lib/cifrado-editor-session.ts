@@ -23,6 +23,8 @@ export type CifradoEditorSession = {
   tonalidad_default?: NotaIndex;
   modo_tonal_default?: ModoTonal;
   bpm_default?: number;
+  /** Link de YouTube guardado (null = sin video). */
+  youtube_url?: string | null;
   importWarnings?: string[];
   skipIngreso?: boolean;
 };
@@ -36,8 +38,8 @@ export type CifradoSaveResult = {
 };
 
 /**
- * Persistencia opcional del editor (p. ej. Entrenador â†’ canciones_practica).
- * Si no se provee, el editor PC usa el flujo histÃ³rico del Cancionero.
+ * Persistencia opcional del editor (p. ej. Entrenador → canciones_practica).
+ * Si no se provee, el editor PC usa el flujo histórico del Cancionero.
  */
 export type CifradoEditorPersistPayload = {
   nombre: string;
@@ -50,6 +52,8 @@ export type CifradoEditorPersistPayload = {
   tonalidad_default: NotaIndex;
   modo_tonal_default: ModoTonal;
   bpm_default: number;
+  /** Link de YouTube normalizado. `undefined` = no tocar el guardado. */
+  youtube_url?: string | null;
 };
 
 export type CifradoEditorPersistFn = (
@@ -65,6 +69,7 @@ export function buildCifradoEditorSession(input: {
   letra: string;
   esAvanzada?: boolean;
   detalle?: CancionCifradoDetalle | null;
+  youtube_url?: string | null;
 }): CifradoEditorSession {
   if (input.esAvanzada && input.detalle) {
     const compasConfig = normalizeCompasConfig(
@@ -84,6 +89,7 @@ export function buildCifradoEditorSession(input: {
       tonalidad_default: input.detalle.tonalidad_default,
       modo_tonal_default: input.detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL,
       bpm_default: input.detalle.bpm_default,
+      youtube_url: input.detalle.youtube_url ?? null,
       skipIngreso: true,
     };
   }
@@ -97,6 +103,7 @@ export function buildCifradoEditorSession(input: {
     letra: imported.letra,
     cifrado: imported.cifrado,
     compas_config: null,
+    youtube_url: input.youtube_url ?? null,
     importWarnings: imported.warnings,
     skipIngreso: true,
   };

@@ -92,15 +92,19 @@ Al abrir la app en el celular, la persona usuaria ve:
 - Un saludo: **"Bienvenid@"**
 - Su nombre, si inició sesión.
 - La pregunta: **"¿Qué querés hacer?"**
-- Cinco accesos principales en forma de tarjetas:
+- Cinco accesos principales en forma de tablero, con tarjetas de distinto tamaño y un dibujo de línea estilo boceto a lápiz, pintado con el color de cada tarjeta (se guardan para verse sin señal):
+  - **Salas** grande y a todo el ancho arriba.
+  - **Individual** y **Cancionero** lado a lado, altas.
+  - **Práctica** (con dibujo) y **Afinador** (solo ícono) abajo, bajitas.
+  - Cada tarjeta muestra el nombre grande arriba a la izquierda y una sola frase abajo; el dibujo va al costado o en el medio, sin taparlos.
 
 | Acceso | Qué dice | Qué permite |
 |--------|----------|-------------|
-| **Cancionero** | "Cancionero, favoritas y editor" | Ir al hub de canciones |
-| **Individual** | "Cantar solo con Lista de canciones" | Modo personal de canto |
-| **Salas** | "Cantar en grupo en tiempo real" | Salas compartidas (requiere internet) |
-| **Práctica** | "Metrónomo, voz, compositor y entrenador" | Herramientas de ensayo |
-| **Afinador** | "Afiná tu instrumento antes de empezar a tocar" | Se abre encima, sin salir del inicio |
+| **Salas** | "La ronda entera en la misma canción" | Salas compartidas (requiere internet) |
+| **Individual** | "Vos, tu guitarra y tu lista" | Modo personal de canto |
+| **Cancionero** | "Tu cuaderno de canciones" | Ir al hub de canciones |
+| **Práctica** | "Voz, oído y tiempo" | Herramientas de ensayo |
+| **Afinador** | "Dejá la guitarra lista" | Se abre encima, sin salir del inicio |
 
 Además, en el inicio pueden aparecer:
 
@@ -127,7 +131,7 @@ La barra **desaparece** cuando entrás en **modo lectura** (letra a pantalla com
 En computadora la experiencia es distinta:
 
 - Hay un **menú lateral izquierdo** permanente con secciones desplegables:
-  - **Canciones** → Cancionero, Favoritas, Editor de canciones
+  - **Canciones** → Cancionero, Favoritas
   - **Individual**
   - **Salas**
   - **Herramientas** → Afinador
@@ -137,6 +141,13 @@ En computadora la experiencia es distinta:
 - Varias herramientas (afinador, editor, metrónomo, etc.) se abren como **ventanas superpuestas** en lugar de ocupar toda la pantalla.
 - La fila de canciones aparece como **panel fijo al costado** de la letra, no como panel que sube desde abajo.
 
+### 5.3.1 Listas y avisos propios de la app
+
+La app **no abre pantallas del sistema** (las listas desplegables o avisos del navegador o del teléfono):
+
+- Para elegir una opción (tono, modo, ciclo guardado, instrumento, categoría de usuario, etc.) se abre una **lista propia que sube desde abajo**, con lo elegido marcado.
+- Los avisos y confirmaciones (por ejemplo, borrar un artista) aparecen en una **ventanita propia** con el estilo de la app.
+
 ### 5.4 Hub de Canciones y Hub de Práctica
 
 Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que agrupa sus submódulos con botones **Ver** u **Abrir**:
@@ -144,7 +155,8 @@ Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que 
 **Canciones:**
 - Cancionero
 - Favoritas (requiere cuenta)
-- Editor de canciones (requiere cuenta)
+
+El editor de canciones no tiene tarjeta propia: se entra con el botón **+** dentro del Cancionero (canción nueva) o con **Editar** en una canción que la cuenta puede editar (ver sección 18).
 
 **Práctica:**
 - Metrónomo
@@ -162,7 +174,7 @@ El modo **Individual** es la experiencia de **cantar solo**. Es la pantalla prin
 
 La persona usuaria ve:
 
-- La **canción activa** (letra en pantalla).
+- La **canción activa** (letra en pantalla). Arriba: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). Igual en Salas, en celular y computadora. La etiqueta de **Cifra Club** lleva un **?**: al tocarla abre la ayuda que explica por qué la letra se ve como página web. Sobre la letra de Cifra Club queda solo el botón **Recargar** (arriba a la izquierda) y las flechas de página completa (arriba a la derecha).
 - Un botón para **buscar canción**.
 - Acceso a la **fila de canciones** (lista personal de qué va a cantar).
 
@@ -170,7 +182,7 @@ La persona usuaria ve:
 
 La fila es una **cola personal** que no se comparte con nadie. Cada canción puede estar en uno de estos estados:
 
-En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera, o desde la lista cuando ya está arriba de todo. Igual en la fila de la juntada (Salas).
+En celular, debajo de la letra está la **barrita de la fila**: una pastillita arriba, **Próxima · N en fila** con el nombre y artista de la próxima canción, la **lupa** para buscar y **Siguiente**. Tocarla o deslizarla hacia arriba la estira hasta la fila completa, como un panel pegado abajo de borde a borde que sigue al dedo; mientras crece, la barrita se transforma en la lista. Para cerrarla se baja con el dedo desde la cabecera, o desde la lista cuando ya está arriba de todo; si se suelta a mitad de camino, termina de abrirse o de cerrarse según hacia dónde iba. También se cierra tocando el fondo oscuro. Igual en la fila de la juntada (Salas). En computadora la fila es el panel del costado.
 
 | Estado | Significado |
 |--------|-------------|
@@ -178,6 +190,8 @@ En celular, la fila se cierra deslizando el dedo hacia abajo: desde la cabecera,
 | **Próxima** | La siguiente en la fila |
 | **Pendiente** | En espera, más adelante en la fila |
 | **Ya tocada** | Ya se cantó; puede volver a pendiente |
+
+**Ya tocadas:** se ven las **últimas dos**. Al tocar una tercera (con **Siguiente**, **Ver ahora** o tocando una canción de la fila), la más vieja vuelve al **final de la fila como pendiente**: la lista no se borra y se puede volver a cantar otro día. Al terminar la fila, **Siguiente** sigue activo y vuelve a empezar por la tocada más vieja. Es distinto de la fila de la juntada (Salas), donde las tocadas más viejas desaparecen y la fila termina.
 
 **Acciones disponibles:**
 
@@ -206,6 +220,8 @@ Si el usuario edita desde el celular una canción que ya tenía descargada, la c
 **Volver a la app la deja donde estaba.** Si la app queda en segundo plano y el celular la rearma, vuelve a la misma pantalla (cancionero, editor, sala, etc.), nunca al inicio. Cerrarla a mano y abrirla desde el ícono sí arranca en el inicio.
 
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
+
+**Si la señal se cae al cambiar de pantalla**, a los 6 segundos se abre la copia guardada de esa pantalla en lugar de quedarse esperando (vale para las pantallas que funcionan sin conexión).
 
 En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. **Contraer** queda como botón independiente, arriba del filtro. El menú de controles comienza justo debajo del filtro. En los controles de tono, la flecha izquierda baja un semitono y la derecha lo sube.
 
@@ -250,7 +266,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 |--------|----------|
 | **Sumar a la lista** | Agrega la canción a la fila (individual o de la sala) |
 | **Ver ahora** | Pone la canción como activa. En sala, si ya hay una activa, pide confirmación |
-| **Guardar** | Guarda al cancionero. Puede preguntar si querés sumarla a Favoritas |
+| **Guardar** | Guarda al cancionero. Solo lo ven el dueño y los amigos. Puede preguntar si querés sumarla a Favoritas |
 
 **Restricción:** en Individual, "Sumar a la lista" puede estar deshabilitado si no hay canción activa ni pendientes en la fila.
 
@@ -260,7 +276,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 |--------|----------|------------|
 | Ver ahora | Sí | Sí |
 | Sumar a la lista | Sí* | Sí* |
-| Guardar en cancionero | No | Sí |
+| Guardar en cancionero | No | Solo dueño y amigos (al resto no se le muestra el botón) |
 | Pestaña Favoritas en buscador | No | Sí |
 | Ofrecer sumar a Favoritas tras guardar | — | Sí |
 
@@ -276,9 +292,10 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Búsqueda: *"Buscar por nombre o artista…"*.
 - **Otros nombres de artistas** (también en el buscador de Home/Sala, el filtro de artistas y los buscadores del editor): escribir un nombre alternativo anotado (ej. "Carlitos") encuentra las canciones del artista oficial (La Mona Jiménez). Funciona sin señal con la última copia guardada.
   - **Solo dueño:** debajo del buscador aparece un texto chico *"+ «…» es otro nombre de…"*; abre un panel para elegir el artista y anotar ese nombre.
-- Botón **+** para **Agregar canción** (requiere cuenta y conexión).
+- Botón **+** para **Agregar canción**: solo lo ven el dueño y los amigos; se usa con conexión.
+- Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
-- El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.
+- El marcador de **Favoritas** es una cinta: rellena (verde) en las canciones que la persona guardó allí y vacía en las demás. En computadora la cinta es un botón: un clic suma la canción a Favoritas y otro la quita, sin confirmación.
 
 **Mensajes según situación:**
 
@@ -293,9 +310,9 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 | Acción | Quién puede |
 |--------|-------------|
 | **Ver** | Todos |
-| **Guardar en Favoritas** | Usuarios con cuenta (requiere conexión) |
-| **Editar** | Solo el autor de la canción |
-| **Eliminar** | Solo el autor de la canción (con confirmación) |
+| **Guardar en Favoritas / Quitar de Favoritas** | Usuarios con cuenta (requiere conexión). Sin confirmación: en computadora con la cinta de la tarjeta; en celular manteniendo pulsada la tarjeta |
+| **Editar** | Dueño: cualquier canción. Amigos: solo las que subieron. Público: ninguna |
+| **Eliminar** | Igual que Editar (con confirmación) |
 
 **Cómo se accede a las acciones:**
 - En celular: mantener pulsado o menú contextual.
@@ -308,6 +325,7 @@ Al ver una canción:
 - Se muestra la letra, con o sin acordes y compases según cómo fue guardada.
 - Navegación **Anterior / Siguiente** entre canciones del listado filtrado.
 - Botón **Expandir** para entrar al **modo lectura**.
+- **Video de YouTube**: si la canción tiene link cargado y hay conexión, arriba de la letra aparece una tarjeta con la miniatura. Al tocarla se reproduce ahí mismo; recién entonces carga el video.
 
 ---
 
@@ -324,15 +342,16 @@ Las **Favoritas** son el cancionero personal de cada usuario con cuenta.
 
 ## 10. Editor de canciones
 
-El editor permite **crear canciones nuevas** o **editar las propias**. Requiere **cuenta iniciada** y **conexión** para guardar.
+El editor permite **crear canciones nuevas** y **editar canciones del Cancionero** según la categoría de la cuenta (sección 18). Requiere cuenta de **dueño** o **amigos** y **conexión** para guardar. Se abre desde el Cancionero: botón **+** para una canción nueva, o **Editar** en una canción que la cuenta puede editar.
 
 ### 10.1 Presentación según dispositivo
 
 - **Celular:** pantalla completa dedicada al editor.
-- **Computadora:** ventana superpuesta sobre el listado o el hub.
-- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
+- **Computadora:** ventana superpuesta sobre el listado.
+- Al buscar una canción en la web, la vista previa del celular muestra la letra y los acordes dentro de la app; en computadora muestra la página de origen. Mientras la página carga, se ve una ruedita con «Cargando la canción…» en lugar de una pantalla en blanco. Antes de importar, la app comprueba que haya recibido una letra suficiente; si solo obtiene un fragmento, avisa y no lo importa.
 - En celular, después de confirmar la canción web, la letra y los datos se revisan en una misma pantalla desplazable.
 - El ingreso muestra las pestañas en este orden: **Cancionero (simple)**, **Buscar en la web**, **Pegar letra+acordes** y **Escribir letra**. Cancionero ofrece canciones que todavía no tienen edición avanzada; al elegir una, el editor reconoce los renglones tradicionales de acordes y letra y los integra. Una canción propia se abre para completarla, y una de otra persona se abre como copia.
+- Al reconocer letra con acordes pegada o traída de internet: si hay un renglón vacío entre los acordes y su letra, los acordes van igual sobre esa letra; los renglones de solo acordes (introducción, puentes, final) se conservan en su lugar; un «–» o varios renglones vacíos se toman como corte de estrofa. Títulos como «[Intro]», repeticiones como «(x2)» y notas sueltas escritas en minúscula quedan como texto; las palabras de la letra en minúscula («mi», «la», «a») no se toman como acordes.
 
 ### 10.2 Tres modos de edición
 
@@ -350,6 +369,8 @@ El editor permite **crear canciones nuevas** o **editar las propias**. Requiere 
 
 Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese punto mientras se abre el selector.
 
+**Cómo se escriben los acordes:** además de mayor, menor, 7, m7, maj7, sus2, sus4, dim y 6, hay **quinta** (SI5) y **aumentado** (FA#aug). La **nota sumada** (2, 4, 6, 9, 11 o 13) se elige en el selector y se dibuja chica, abajo y pegada: SOLadd4 se ve SOL₄, DO9 se ve DO7₉, LAm9 se ve LAm7₉. Al leer una letra, «E4» se toma como MIsus4, «RE2» como REsus2 y los bemoles como sostenidos (SOLb → FA#, SIb → LA#).
+
 ### 10.4 Acciones por renglón
 
 - **Lápiz:** eliminar renglón, insertar abajo, copiar acordes/compás, unir renglones (con vista previa).
@@ -361,14 +382,18 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
 - Nombre y artista aparecen juntos en una tarjeta; tono y modo, en otra. Los títulos y campos usan mayúscula inicial y el resto en minúscula.
-- **Intercambiar nombre y artista**: un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- **Intercambiar nombre y artista**: botón chico y gris; un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
 - **Artista vinculado a la lista** (PC y celular): el campo artista se escribe libre (o llega de la web / texto pegado) y la app lo busca en la lista de artistas sin importar mayúsculas, tildes, orden de las palabras ni errores chicos de tipeo.
   - Coincidencia segura → *"✓ Artista de la lista"* o *"✓ Se anota como «…»"*; al guardar queda con el nombre oficial.
   - Varios parecidos (ej. solo "Sosa") → *"¿Es alguno de estos?"* con hasta 4 sugeridos y *"Es otro artista"*. No deja guardar hasta elegir.
   - Sin parecidos → *"Artista nuevo: se agrega a la lista al guardar"*.
   - **Memoria de nombres**: al elegir un sugerido escrito distinto (ej. "Los Redondos" → Patricio Rey…), la app lo recuerda y la próxima vez lo reconoce sola.
   - Sin señal o sin lista cargada se guarda solo el texto, como antes.
+- **Canción repetida**: si ya hay en el cancionero una canción con el mismo nombre (sin importar mayúsculas, tildes ni signos), aparece un aviso debajo del nombre, también en la confirmación al pegar. Al tocarlo se abre una ventana con artista, nombre y letra de cada una para comparar. No impide guardar, porque puede ser la misma canción de otro artista.
+- **Vista previa**: dos botones chicos en la barra lateral, uno alterna PC / Cel y el otro Previsualizar / Edición.
+- **Gestor de artistas**: no deja crear un artista que ya existe escrito de otra forma, y avisa si se parece a uno cargado antes de guardarlo.
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
+- **Video de YouTube** (opcional): tarjeta «Video» en la barra lateral (computadora) y en «Datos y ajustes» (celular). Acepta cualquier link de YouTube (compartir, largo, Shorts) y muestra la miniatura para confirmar que es el video correcto. Avisa si el link no es de YouTube. Solo se guarda el link; el video nunca se descarga.
 - Botón **Guardar**.
 - **Reproducir compás** para revisar el ritmo sobre la letra antes de guardar.
 
@@ -411,6 +436,8 @@ Todos los participantes conectados comparten:
 - La **misma canción activa** (sincronizada en tiempo real).
 - La **misma fila de canciones** (cola de la juntada).
 - Una **barra de presencia** con avatares, contador (*"X en la sala"*), indicador **"en vivo"** y botón **QR** para invitar.
+
+El encabezado de la canción es igual al de Individual: **sin flecha de volver**. En celular, para salir de la sala se usa el botón atrás del teléfono.
 
 **Controles de la fila** (iguales a Individual, más sincronización grupal):
 
@@ -499,6 +526,7 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 - **Afinador**
 - **Tema visual**: cicla entre **Claro → Sepia → Escenario** para canciones del Cancionero en Individual y Salas; en otras fuentes no se muestra.
 - En entrenador de canciones: mostrar/ocultar tipos de anotación, **Nota de la canción**, **Editar**
+- **Video** (en Cancionero, Individual y Entrenador de canciones, solo si la canción tiene link y hay conexión): abre una ventanita flotante con el video sobre la letra. Se mueve arrastrando la barra de arriba, se agranda o achica, y tiene pantalla completa desde el botón propio de YouTube. Se cierra con la X, con el botón atrás o al cambiar de canción. En computadora es un botón «Video» debajo de «Afinador». Sin conexión la opción no aparece.
 
 ### 12.3 Controles inferiores y en computadora
 
@@ -710,6 +738,7 @@ Para **Exigencia:** el primer toque marca el inicio del rango; el segundo marca 
 - Modo lectura permanente con cifrado, compases y anotaciones.
 - Mostrar/ocultar por tipo: Anotaciones, Intensidad, Texto, Respirar, Exigencia.
 - Acceso a **Nota de la canción**, **Editar**, cambio de tono, zoom y afinador.
+- **Video** de YouTube en ventanita flotante (con conexión). La copia de práctica lleva su propio link (se copia del Cancionero al crearla y se puede cambiar en el editor); si no tiene, usa el de la canción original.
 
 ---
 
@@ -760,7 +789,9 @@ Solo disponible **con cuenta iniciada**.
 
 ### 15.1 Requisito inicial
 
-La primera vez se necesita **conexión a internet** para abrir la app. La descarga inicial del Cancionero también requiere aceptación: todas las canciones aparecen como nuevas.
+La primera vez se necesita **conexión a internet** para abrir la app. La **primera descarga del Cancionero es automática**: si el celular todavía no tiene ninguna canción, se bajan todas solas al abrir la app con conexión, sin tocar la campanita, y al terminar aparece **"Todo listo en tu celular"**. Si falla, queda la campanita para reintentar, y se vuelve a intentar sola la próxima vez que se abre la app. Las novedades siguientes sí piden aceptación.
+
+- Las pantallas para usar sin conexión se guardan en el celular **una sola vez al abrir la app**, y después como mucho cada 10 minutos al volver a ella. Al iniciar sesión y al terminar una descarga del Cancionero se guardan de nuevo en el momento.
 
 - Al abrir la app o recuperar conexión se comprueba si hay novedades mediante una consulta liviana, sin descargar las letras.
 - En Inicio, una **campanita en la esquina superior derecha de la tarjeta Cancionero** indica novedades o un aviso pendiente y abre el listado de canciones **Nuevas** y **Actualizadas**. No hay un cartel flotante en las demás pantallas.
@@ -800,6 +831,7 @@ Si se abre sin conexión y nunca se cacheó nada:
 | Comunidad del Compositor | Requiere conexión |
 | Sonidos de instrumentos del Compositor | Requieren conexión; no se descargan al celular |
 | Búsqueda en internet de letras nuevas | No disponible |
+| Video de YouTube de la canción | No aparece; el video no se descarga |
 | Sincronización de fila en sala | No disponible |
 
 ### 15.4 Instalación en el celular (app instalable)
@@ -841,9 +873,9 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 | Función | Invitado | Con cuenta |
 |---------|----------|------------|
 | Individual: buscar, ver, fila | Sí (fila efímera) | Sí (fila guardada) |
-| Guardar en cancionero | No | Sí |
+| Guardar en cancionero | No | Solo dueño y amigos |
 | Favoritas | No | Sí |
-| Editor de canciones | No | Sí |
+| Editor de canciones | No | Solo dueño y amigos |
 | Salas | No | Sí |
 | Entrenador de canciones | No | Sí |
 | Afinador | Sí | Sí |
@@ -861,21 +893,23 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. El dueño tiene un módulo **Usuarios** en Práctica para cambiar las demás cuentas entre amigos y público. Solo el dueño ve y puede abrir el **Compositor**. Los demás beneficios concretos para cada grupo se definirán por separado.
 
-Todos los usuarios con cuenta tienen las mismas capacidades generales, con dos excepciones:
+Todos los usuarios con cuenta tienen las mismas capacidades generales, con estas excepciones:
 
-1. **Canciones del cancionero:** solo el **autor** puede editarlas o eliminarlas del cancionero global. Cualquier usuario con cuenta puede guardarlas en Favoritas.
-   Al guardar una canción nueva, queda asociada a la cuenta que la subió. Abrir directamente el editor con una canción ajena no da permiso para modificarla.
-2. **Salas:** existen roles de **creador** y **miembro** (detallados en la sección 11.6).
+1. **Canciones del cancionero:** el **dueño** suma canciones y edita o elimina cualquiera. Los **amigos** suman canciones y editan o eliminan solo las que subieron. El **público** no suma, no edita ni elimina; al público no se le muestran los botones **+** del Cancionero ni **Guardar** del buscador. Cualquier usuario con cuenta puede guardarlas en Favoritas.
+   Al guardar una canción nueva, queda asociada a la cuenta que la subió. Abrir directamente el editor con una canción que la cuenta no puede editar no da permiso para modificarla.
+2. **Entrenador de canciones:** cada cuenta, de cualquier categoría, tiene su propia versión de práctica. Es privada: nadie más la ve ni la edita, tampoco el dueño.
+3. **Salas:** existen roles de **creador** y **miembro** (detallados en la sección 11.6).
 
 ### 18.2 Permisos sobre canciones
 
-| Acción | Invitado | Autor (con cuenta) | Otro usuario (con cuenta) |
-|--------|----------|-------------------|--------------------------|
-| Ver / leer | Sí (local si offline) | Sí | Sí |
-| Agregar canción nueva | No | Sí | Sí |
-| Editar | No | Solo las propias | Solo las propias |
-| Eliminar del cancionero global | No | Solo las propias | No |
-| Guardar en Favoritas | No | Sí | Sí |
+| Acción | Invitado | Dueño | Amigos | Público |
+|--------|----------|-------|--------|---------|
+| Ver / leer | Sí (local si offline) | Sí | Sí | Sí |
+| Agregar canción nueva | No | Sí | Sí | No |
+| Editar | No | Cualquiera | Solo las propias | No |
+| Eliminar del cancionero global | No | Cualquiera | Solo las propias | No |
+| Guardar en Favoritas | No | Sí | Sí | Sí |
+| Entrenador de canciones (versión propia) | No | Sí, privada | Sí, privada | Sí, privada |
 
 ---
 
@@ -923,7 +957,7 @@ Escanear QR → (login si hace falta) → Entrar a sala → Misma fila y canció
 
 - Inicio, navegación móvil y de computadora.
 - Individual con fila, buscador y modo lectura.
-- Cancionero global, Favoritas y Editor de canciones.
+- Cancionero global y Favoritas (el editor se abre desde el Cancionero).
 - Salas con tiempo real (fila, presencia, scroll sincronizado, QR, invitación por email).
 - Afinador.
 - Metrónomo (módulo cerrado y estable).

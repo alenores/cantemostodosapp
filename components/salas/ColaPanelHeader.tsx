@@ -7,6 +7,8 @@ import { Shuffle, SkipForward, Trash2, X } from "lucide-react";
 
 type ColaPanelHeaderProps = {
   pendientesCount: number;
+  /** Por defecto: sin pendientes. Individual habilita volver a empezar al final de la fila. */
+  siguienteDisabled?: boolean;
   aleatorioActivo: boolean;
   onDeleteAll: () => void;
   onSiguiente: () => void;
@@ -17,6 +19,7 @@ type ColaPanelHeaderProps = {
 
 export default function ColaPanelHeader({
   pendientesCount,
+  siguienteDisabled = pendientesCount === 0,
   aleatorioActivo,
   onDeleteAll,
   onSiguiente,
@@ -78,10 +81,10 @@ export default function ColaPanelHeader({
         <TapButton
           type="button"
           aria-label="Siguiente canción"
-          disabled={pendientesCount === 0}
+          disabled={siguienteDisabled}
           onClick={onSiguiente}
           className={`flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary ${
-            pendientesCount === 0 ? "pointer-events-none opacity-40" : ""
+            siguienteDisabled ? "pointer-events-none opacity-40" : ""
           }`}
         >
           <SkipForward className="size-4" aria-hidden="true" />

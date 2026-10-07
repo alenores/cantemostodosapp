@@ -1,6 +1,7 @@
 ﻿import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import { agregarACola } from "@/lib/cola-logic";
 import {
+  ajustarLetraAAcordes,
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
   createEmptyCifrado,
@@ -29,13 +30,6 @@ export type CancioneroFormData = {
 };
 
 export type DuplicadoCancioneroNivel = "ninguno" | "nombre" | "nombre-artista";
-
-export function esCancionDelUsuario(
-  cancion: Pick<CancionCancionero, "user_id">,
-  usuarioId: string | null,
-): boolean {
-  return usuarioId !== null && cancion.user_id === usuarioId;
-}
 
 export function normalizeCancioneroText(value: string): string {
   return value.trim().toLowerCase();
@@ -184,7 +178,7 @@ export async function fetchCancionCifradoDetalle(
   id: number,
 ): Promise<CancionCifradoDetalle | null> {
   const selectWithModo =
-    "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default, tiene_cifrado_avanzado";
+    "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default, youtube_url, tiene_cifrado_avanzado";
   const selectBase =
     "id, nombre, artista, letra, cifrado, compas_config, tonalidad_default, bpm_default, tiene_cifrado_avanzado";
 
@@ -216,7 +210,10 @@ export async function fetchCancionCifradoDetalle(
   }
 
   const cifrado = parseCifradoData(data.cifrado) ?? createEmptyCifrado();
-  const row = data as typeof data & { modo_tonal_default?: string | null };
+  const row = data as typeof data & {
+    modo_tonal_default?: string | null;
+    youtube_url?: string | null;
+  };
 
   return {
     id: data.id,
@@ -235,6 +232,7 @@ export async function fetchCancionCifradoDetalle(
       40,
       Math.min(240, data.bpm_default ?? DEFAULT_BPM),
     ),
+    youtube_url: row.youtube_url ?? null,
     tiene_cifrado_avanzado: true,
   };
 }
@@ -250,7 +248,7 @@ export async function insertCancionCancionero(
   const userId = session?.user?.id;
 
   if (!userId) {
-    throw new Error("Se requiere sesiÃ³n activa para agregar al cancionero");
+    throw new Error("Se requiere sesión activa para agregar al cancionero");
   }
 
   const { error } = await supabase.from("canciones_guardadas").insert({
@@ -280,6 +278,7 @@ export async function updateCancionCifradoAvanzado(
     tonalidad_default: NotaIndex;
     modo_tonal_default: ModoTonal;
     bpm_default: number;
+    youtube_url?: string | null;
   },
 ): Promise<void> {
   const clampedBpm = Math.max(40, Math.min(240, payload.bpm_default));
@@ -296,7 +295,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (!existing) {
-    throw new Error("No se encontrÃ³ la canciÃ³n para actualizar.");
+    throw new Error("No se encontró la canción para actualizar.");
   }
 
   const { error, count } = await supabase
@@ -305,15 +304,14 @@ export async function updateCancionCifradoAvanzado(
       {
         nombre: payload.nombre.trim(),
         artista: payload.artista?.trim() || null,
-        ...(payload.artista_id !== undefined
-          ? { artista_id: payload.artista_id }
-          : {}),
-        letra: payload.letra.trim(),
+        ...(payload.artista_id !== undefined ? { artista_id: payload.artista_id } : {}),
+        letra: ajustarLetraAAcordes(payload.letra, payload.cifrado.acordes),
         cifrado: payload.cifrado,
         compas_config: payload.compas_config,
         tonalidad_default: payload.tonalidad_default,
         modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
         bpm_default: clampedBpm,
+        ...(payload.youtube_url !== undefined ? { youtube_url: payload.youtube_url } : {}),
         tiene_cifrado_avanzado: true,
       },
       { count: "exact" },
@@ -326,7 +324,7 @@ export async function updateCancionCifradoAvanzado(
   }
 
   if (count === 0) {
-    throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+    throw new Error("No tenés permiso para editar esta canción.");
   }
 }
 
@@ -350,7 +348,7 @@ export async function updateCancionCancioneroMetadatos(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+  if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 }
 
 export async function updateCancionCancionero(
@@ -371,7 +369,7 @@ export async function updateCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+  if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 }
 
 export async function deleteCancionCancionero(
@@ -387,7 +385,7 @@ export async function deleteCancionCancionero(
   if (error) {
     throw error;
   }
-  if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede eliminarla.");
+  if (count === 0) throw new Error("No tenés permiso para eliminar esta canción.");
 }
 
 export async function guardarLinkEnCancionero(
@@ -477,7 +475,7 @@ export async function guardarLetraEnCancionero(
     if (error) {
       throw error;
     }
-    if (count === 0) throw new Error("Solo quien subiÃ³ la canciÃ³n puede editarla.");
+    if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 
     return;
   }

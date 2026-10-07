@@ -13,6 +13,7 @@ import LetraViewer, {
 } from "@/components/salas/LetraViewer";
 import CifraClubEmbedBadge from "@/components/salas/CifraClubEmbedBadge";
 import CancionOrigenEtiqueta, {
+  CancionOrigenBadge,
   type ControlLetraFilaActions,
 } from "@/components/salas/CancionOrigenEtiqueta";
 import LecturaCancionChip from "@/components/salas/LecturaCancionChip";
@@ -57,17 +58,11 @@ import {
 
 function ControlLetraShell({
   children,
-  urlLetra,
-  letraTexto,
-  premium = false,
   filaActions = null,
   onExpand,
   className = "",
 }: {
   children: ReactNode;
-  urlLetra?: string | null;
-  letraTexto?: string | null;
-  premium?: boolean;
   filaActions?: ControlLetraFilaActions | null;
   onExpand?: () => void;
   className?: string;
@@ -86,12 +81,7 @@ function ControlLetraShell({
         {children}
         {onExpand ? <LetraExpandirFlotante onExpand={onExpand} /> : null}
       </div>
-      <CancionOrigenEtiqueta
-        urlLetra={urlLetra}
-        letraTexto={letraTexto}
-        premium={premium}
-        filaActions={filaActions}
-      />
+      <CancionOrigenEtiqueta filaActions={filaActions} />
       <div
         className="shrink-0 border-t border-border/80"
         style={{
@@ -107,6 +97,9 @@ function ControlLetraShell({
 function CancionActivaHeader({
   cancionNombre,
   artista,
+  urlLetra = null,
+  letraTexto = null,
+  premium = false,
   nombreRevealKey,
   nombreRevealClass,
   headerLeading,
@@ -115,6 +108,9 @@ function CancionActivaHeader({
 }: {
   cancionNombre: string | null;
   artista: string | null;
+  urlLetra?: string | null;
+  letraTexto?: string | null;
+  premium?: boolean;
   nombreRevealKey: string;
   nombreRevealClass: string;
   headerLeading?: ReactNode;
@@ -134,6 +130,9 @@ function CancionActivaHeader({
       <CancionActivaTitulo
         cancionNombre={cancionNombre}
         artista={artista}
+        urlLetra={urlLetra}
+        letraTexto={letraTexto}
+        premium={premium}
         nombreRevealKey={nombreRevealKey}
         nombreRevealClass={nombreRevealClass}
       />
@@ -145,11 +144,17 @@ function CancionActivaHeader({
 function CancionActivaTitulo({
   cancionNombre,
   artista,
+  urlLetra,
+  letraTexto,
+  premium,
   nombreRevealKey,
   nombreRevealClass,
 }: {
   cancionNombre: string | null;
   artista: string | null;
+  urlLetra?: string | null;
+  letraTexto?: string | null;
+  premium?: boolean;
   nombreRevealKey: string;
   nombreRevealClass: string;
 }) {
@@ -169,6 +174,11 @@ function CancionActivaTitulo({
           {artista}
         </p>
       ) : null}
+      <CancionOrigenBadge
+        urlLetra={urlLetra}
+        letraTexto={letraTexto}
+        premium={premium}
+      />
     </div>
   );
 }
@@ -476,6 +486,9 @@ export default function CancionActivaSection({
           <CancionActivaHeader
             cancionNombre={cancionNombre}
             artista={artista}
+            urlLetra={urlLetra}
+            letraTexto={letraTexto}
+            premium={showCifradoAvanzado}
             nombreRevealKey={nombreRevealKey}
             nombreRevealClass={nombreRevealClass}
             headerLeading={headerLeading}
@@ -552,9 +565,6 @@ export default function CancionActivaSection({
             </>
           ) : (
             <ControlLetraShell
-              urlLetra={urlLetra}
-              letraTexto={letraTexto}
-              premium={showCifradoAvanzado}
               filaActions={resolvedFilaActions}
               onExpand={onExpand}
             >
@@ -631,6 +641,8 @@ export default function CancionActivaSection({
             <CancionActivaHeader
               cancionNombre={cancionNombre}
               artista={artista}
+              urlLetra={urlLetra}
+              letraTexto={letraTexto}
               nombreRevealKey={nombreRevealKey}
               nombreRevealClass={nombreRevealClass}
               headerLeading={headerLeading}
@@ -651,8 +663,6 @@ export default function CancionActivaSection({
               </div>
             ) : (
               <ControlLetraShell
-                urlLetra={urlLetra}
-                letraTexto={letraTexto}
                 filaActions={resolvedFilaActions}
                 onExpand={onExpand}
               >
@@ -733,14 +743,13 @@ export default function CancionActivaSection({
               </div>
             ) : (
               <ControlLetraShell
-                urlLetra={urlLetra}
-                letraTexto={letraTexto}
                 filaActions={resolvedFilaActions}
                 onExpand={onExpand}
               >
                 {showCifraClubBadge ? (
                   <CifraClubEmbedBadge
                     placement="control"
+                    showHelp={false}
                     onReload={() => setEmbedReloadKey((value) => value + 1)}
                   />
                 ) : null}

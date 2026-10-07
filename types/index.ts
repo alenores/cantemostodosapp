@@ -49,6 +49,7 @@ export type CancionGuardada = {
   tonalidad_default?: NotaIndex | null;
   modo_tonal_default?: ModoTonal | null;
   bpm_default?: number | null;
+  youtube_url?: string | null;
   tiene_cifrado_avanzado: boolean;
   created_at: string;
   updated_at: string;
@@ -71,6 +72,7 @@ export type CancionCifradoDetalle = Pick<
   | "tonalidad_default"
   | "modo_tonal_default"
   | "bpm_default"
+  | "youtube_url"
   | "tiene_cifrado_avanzado"
 > & {
   cifrado: CifradoData;

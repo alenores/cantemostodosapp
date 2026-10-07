@@ -5,7 +5,7 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import { COLA_AVISO_EXIT_MS } from "@/lib/sala-layout";
 import type { CancionCancionero } from "@/types";
-import { Bookmark, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bookmark, Pencil, Trash2 } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -19,6 +19,7 @@ const LONG_PRESS_MOVE_CANCEL_PX = 10;
 const ACTION_FAB_CASCADE_STEP_MS = 55;
 const ACTION_FAB_ANIM_MS = 220;
 const SUMAR_FAB_LABEL = "Guardar en Favoritas";
+const QUITAR_FAB_LABEL = "Quitar de Favoritas";
 const SUMAR_FAB_LABEL_VISIBLE_MS = 2000;
 
 const DESKTOP_ACTION_BTN =
@@ -29,6 +30,7 @@ type ActionButton = {
   label: string;
   className: string;
   icon: typeof Bookmark;
+  iconClassName?: string;
   action: () => void;
 };
 
@@ -44,7 +46,8 @@ type CancioneroItemCardProps = {
   onOpenActions: () => void;
   onCloseActions: () => void;
   onVer: (cancion: CancionCancionero) => void;
-  onSumarAMisCanciones?: (cancion: CancionCancionero) => void;
+  /** Suma a Favoritas o la quita si ya está. */
+  onAlternarFavorita?: (cancion: CancionCancionero) => void;
   onEditar: (cancion: CancionCancionero) => void;
   onEliminar: (cancion: CancionCancionero) => void;
   artistaAvatarUrl?: string | null;
@@ -63,7 +66,7 @@ export default function CancioneroItemCard({
   onOpenActions,
   onCloseActions,
   onVer,
-  onSumarAMisCanciones,
+  onAlternarFavorita,
   onEditar,
   onEliminar,
 }: CancioneroItemCardProps) {
@@ -86,12 +89,12 @@ export default function CancioneroItemCard({
   const showDesktopActions =
     isDesktop &&
     !modoSeleccion &&
-    (Boolean(onSumarAMisCanciones) || puedeEditarEliminar);
+    (Boolean(onAlternarFavorita) || puedeEditarEliminar);
 
   const longPressEnabled =
     !isDesktop &&
     !modoSeleccion &&
-    ((mostrarSumarMisCanciones && Boolean(onSumarAMisCanciones)) ||
+    ((mostrarSumarMisCanciones && Boolean(onAlternarFavorita)) ||
       (mutationsEnabled && puedeEditarEliminar));
 
   useEffect(() => {
@@ -231,13 +234,18 @@ export default function CancioneroItemCard({
   }
 
   const actionButtons = [
-    mostrarSumarMisCanciones && onSumarAMisCanciones
+    mostrarSumarMisCanciones && onAlternarFavorita
       ? {
           key: "sumar",
-          label: `Guardar ${cancion.nombre} en Favoritas`,
+          label: isFavorita
+            ? `Quitar ${cancion.nombre} de Favoritas`
+            : `Guardar ${cancion.nombre} en Favoritas`,
           className: "",
           icon: Bookmark,
-          action: () => onSumarAMisCanciones(cancion),
+          iconClassName: isFavorita
+            ? "fill-current text-[var(--tuner-in-tune)]"
+            : undefined,
+          action: () => onAlternarFavorita(cancion),
         }
       : null,
     mutationsEnabled && puedeEditarEliminar
@@ -339,20 +347,30 @@ export default function CancioneroItemCard({
             className="flex shrink-0 items-center gap-px pb-px opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
             onClick={(event) => event.stopPropagation()}
           >
-            {isFavorita ? (
-              <Bookmark className="mx-2 size-3 fill-current text-[var(--tuner-in-tune)]" aria-label="En Favoritas" />
-            ) : onSumarAMisCanciones ? (
+            {onAlternarFavorita ? (
               <TapButton
                 type="button"
-                aria-label={`Guardar ${cancion.nombre} en Favoritas`}
-                title="Guardar en Favoritas"
+                aria-label={
+                  isFavorita
+                    ? `Quitar ${cancion.nombre} de Favoritas`
+                    : `Guardar ${cancion.nombre} en Favoritas`
+                }
+                aria-pressed={isFavorita}
+                title={isFavorita ? QUITAR_FAB_LABEL : SUMAR_FAB_LABEL}
                 onClick={(event) =>
-                  runDesktopAction(event, () => onSumarAMisCanciones(cancion))
+                  runDesktopAction(event, () => onAlternarFavorita(cancion))
                 }
                 disabled={!mostrarSumarMisCanciones}
-                className={`${DESKTOP_ACTION_BTN} hover:text-[var(--tuner-in-tune)]/85 disabled:opacity-40 disabled:hover:text-text-faint/55`}
+                className={`${DESKTOP_ACTION_BTN} hover:text-[var(--tuner-in-tune)]/85 disabled:hover:text-text-faint/55 ${
+                  isFavorita ? "hover:opacity-80" : "disabled:opacity-40"
+                }`}
               >
-                <Plus className="size-3" aria-hidden="true" />
+                <Bookmark
+                  className={`size-3 ${
+                    isFavorita ? "fill-current text-[var(--tuner-in-tune)]" : ""
+                  }`}
+                  aria-hidden="true"
+                />
               </TapButton>
             ) : null}
             {puedeEditarEliminar ? (
@@ -404,7 +422,10 @@ export default function CancioneroItemCard({
           />
           <div className="absolute right-3 top-1/2 z-50 flex -translate-y-1/2 flex-col items-end gap-2">
             {actionButtons.map(
-              ({ key, label, className, icon: Icon, action }, index) => {
+              (
+                { key, label, className, icon: Icon, iconClassName, action },
+                index,
+              ) => {
                 const cascadeIndex = actionButtons.length - 1 - index;
                 const isSumar = key === "sumar";
                 const showSumarLabel = isSumar && sumarLabelVisible;
@@ -452,10 +473,13 @@ export default function CancioneroItemCard({
                                 : ""
                             }`}
                           >
-                            {SUMAR_FAB_LABEL}
+                            {isFavorita ? QUITAR_FAB_LABEL : SUMAR_FAB_LABEL}
                           </span>
                         </span>
-                        <Icon className="size-5 shrink-0" aria-hidden="true" />
+                        <Icon
+                          className={`size-5 shrink-0 ${iconClassName ?? ""}`}
+                          aria-hidden="true"
+                        />
                       </>
                     ) : (
                       <Icon className="size-5" aria-hidden="true" />

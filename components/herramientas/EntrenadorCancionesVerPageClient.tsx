@@ -13,8 +13,11 @@ import LecturaCancionChip, {
   LECTURA_TOP_CHIP,
 } from "@/components/salas/LecturaCancionChip";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
+import VideoFlotante from "@/components/video/VideoFlotante";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
+import { useCancionYoutube } from "@/hooks/useCancionYoutube";
+import { useVideoLectura } from "@/hooks/useVideoLectura";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
 import { getLetraZoomStyle } from "@/lib/letra-zoom";
@@ -78,6 +81,9 @@ export default function EntrenadorCancionesVerPageClient() {
   const [notaLectura, setNotaLectura] = useState<Anotacion | null>(null);
   const [notaGeneralOpen, setNotaGeneralOpen] = useState(false);
   const [ocultarPanelAbierto, setOcultarPanelAbierto] = useState(false);
+  // El video se declara más abajo (depende de la canción cargada); el botón atrás lo cierra primero.
+  const videoAbiertoRef = useRef(false);
+  const videoCerrarRef = useRef<() => void>(() => {});
 
   const cocina = useModoLecturaCocina({
     active: true,
@@ -148,6 +154,11 @@ export default function EntrenadorCancionesVerPageClient() {
   }, [abrirTono]);
 
   const handleLecturaBack = useCallback(() => {
+    if (videoAbiertoRef.current) {
+      videoCerrarRef.current();
+      return;
+    }
+
     if (notaLectura) {
       setNotaLectura(null);
       return;
@@ -267,8 +278,21 @@ export default function EntrenadorCancionesVerPageClient() {
     setNotaGeneralOpen(true);
   }, []);
 
+  // La copia de práctica lleva su propio link; si no tiene, se usa el de la canción original.
+  const youtubeVideoId = useCancionYoutube(
+    cancion?.youtube_url
+      ? { youtubeUrl: cancion.youtube_url }
+      : { cancionId: cancion?.origen_cancion_id ?? null },
+  );
+  const video = useVideoLectura(youtubeVideoId, cancion?.id ?? null);
+  useEffect(() => {
+    videoAbiertoRef.current = video.abierto;
+    videoCerrarRef.current = video.cerrar;
+  }, [video.abierto, video.cerrar]);
+
   const lecturaExtraItems = useMemo<LecturaFabItem[]>(
     () => [
+      ...(video.fabItem ? [video.fabItem] : []),
       {
         key: "nota-general",
         icon: NotebookPen,
@@ -282,7 +306,7 @@ export default function EntrenadorCancionesVerPageClient() {
         onClick: goToEditor,
       },
     ],
-    [goToEditor, openNotaGeneral],
+    [goToEditor, openNotaGeneral, video.fabItem],
   );
 
   if (isLoggedIn !== true || !ready) {
@@ -344,6 +368,7 @@ export default function EntrenadorCancionesVerPageClient() {
         fixedRightCss={lecturaFixedRightCss}
         onContraer={goToList}
         onAfinador={() => setAfinadorOpen(true)}
+        onVideo={video.abrir}
       />
 
       <TapButton
@@ -462,6 +487,14 @@ export default function EntrenadorCancionesVerPageClient() {
 
           <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />
         </>
+      ) : null}
+
+      {video.videoId && cancion ? (
+        <VideoFlotante
+          videoId={video.videoId}
+          titulo={cancion.nombre}
+          onCerrar={video.cerrar}
+        />
       ) : null}
 
       <NotaCancionFab

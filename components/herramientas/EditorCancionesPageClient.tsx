@@ -27,6 +27,11 @@ import {
 } from "@/lib/offline/cancionero-store";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
+import {
+  obtenerCategoriaUsuario,
+  puedeEditarCancionCancionero,
+  puedeSumarCanciones,
+} from "@/lib/usuarios-categorias";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -61,8 +66,16 @@ export default function EditorCancionesPageClient() {
 
       setIsLoggedIn(loggedIn);
 
-      if (!loggedIn) {
+      if (!loggedIn || !authSession) {
         router.replace("/");
+        return;
+      }
+
+      const userId = authSession.user.id;
+      // Sin categoría conocida no se expulsa: la base igual rechaza lo que no corresponde.
+      const categoria = await obtenerCategoriaUsuario(supabase, userId);
+      if (categoria !== null && !puedeSumarCanciones(categoria)) {
+        router.replace(backHref);
         return;
       }
 
@@ -81,7 +94,13 @@ export default function EditorCancionesPageClient() {
           .maybeSingle();
 
         if (ownerError) throw ownerError;
-        if (!ownerRow || ownerRow.user_id !== authSession?.user.id) {
+        const puedeEditar = Boolean(
+          ownerRow &&
+            (categoria === null
+              ? ownerRow.user_id === userId
+              : puedeEditarCancionCancionero(ownerRow, userId, categoria)),
+        );
+        if (!puedeEditar) {
           router.replace(backHref);
           return;
         }
@@ -102,7 +121,7 @@ export default function EditorCancionesPageClient() {
         } else {
           const { data } = await supabase
             .from("canciones_guardadas")
-            .select("nombre, artista, letra")
+            .select("nombre, artista, letra, youtube_url")
             .eq("id", editingId)
             .is("sala_id", null)
             .maybeSingle();
@@ -115,6 +134,7 @@ export default function EditorCancionesPageClient() {
                 artista: data.artista ?? "",
                 letra: data.letra ?? "",
                 esAvanzada: false,
+                youtube_url: data.youtube_url ?? null,
               }),
             );
           }
@@ -156,6 +176,7 @@ export default function EditorCancionesPageClient() {
           tonalidad_default: payload.tonalidad_default,
           modo_tonal_default: normalizeModoTonal(payload.modo_tonal_default),
           bpm_default: clampBpm(payload.bpm_default),
+          youtube_url: payload.youtube_url ?? null,
           tiene_cifrado_avanzado: true,
         })
         .select("id")

@@ -11,6 +11,7 @@ import {
 } from "@/components/cifrado/cifrado-controls-ui";
 import { CifradoCompasTypeStepper } from "@/components/cifrado/CifradoCompasTypeStepper";
 import CifradoIntensidadPatternRow from "@/components/cifrado/CifradoIntensidadPatternRow";
+import AppSelect from "@/components/ui/AppSelect";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { MAX_COMPAS_PLACEMENT_CYCLE_COUNT } from "@/lib/cifrado";
@@ -122,26 +123,24 @@ function GuardadoCycleControls({
       <div className="flex items-end gap-2">
         <label className="min-w-0 flex-1">
           <span className={sectionLabelClass}>{CIFRADO_LABEL_CICLOS_GUARDADOS}</span>
-          <select
+          <AppSelect
+            title={CIFRADO_LABEL_CICLOS_GUARDADOS}
             value={activeCycleId ?? ""}
             disabled={cyclesLoading}
-            onChange={(event) => {
-              const next = event.target.value;
-              onSelectSavedCycle(next ? next : null);
-            }}
-            className={`mt-1.5 w-full rounded-[10px] border bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-accent disabled:opacity-50 ${
+            options={[
+              { value: "", label: CIFRADO_LABEL_SIN_CICLO },
+              ...savedCycles.map((cycle) => ({
+                value: cycle.id,
+                label: `${cycle.nombre} · ${formatCompositorCycleSummary(cycle.piece)}`,
+              })),
+            ]}
+            onChange={(next) => onSelectSavedCycle(next ? next : null)}
+            className={`mt-1.5 w-full rounded-[10px] border bg-bg-darker px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-accent ${
               activeCycleId
                 ? "border-accent/45 ring-1 ring-accent/25"
                 : "border-border"
             }`}
-          >
-            <option value="">{CIFRADO_LABEL_SIN_CICLO}</option>
-            {savedCycles.map((cycle) => (
-              <option key={cycle.id} value={cycle.id}>
-                {cycle.nombre} · {formatCompositorCycleSummary(cycle.piece)}
-              </option>
-            ))}
-          </select>
+          />
         </label>
 
         <TapButton

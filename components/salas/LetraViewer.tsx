@@ -43,6 +43,8 @@ type LetraViewerProps = {
   fillScaleX?: number;
   /** Al incrementar, vuelve a cargar el iframe (recargar desde el padre). */
   reloadKey?: number;
+  /** Muestra «Cargando la canción…» hasta que la página termina de abrir. */
+  showLoadingIndicator?: boolean;
   /** Oculta el botón Recargar interno (si el padre ya muestra uno). */
   hideReloadControl?: boolean;
 };
@@ -176,11 +178,9 @@ export function LetraRevealFullControl({
       style={{
         color: "var(--voz-config)",
         borderColor: "var(--voz-config-border)",
-        backgroundColor:
-          "color-mix(in srgb, var(--bg-card) 78%, transparent)",
         ...style,
       }}
-      className={`z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
+      className={`z-20 flex h-8 w-7 flex-col items-center justify-center gap-0 rounded-full border bg-bg-cola-sheet/90 p-0 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
     >
       {expanded ? (
         <>
@@ -247,7 +247,7 @@ export function LetraEmbedReloadControl({
       aria-label="Recargar página"
       onClick={onReload}
       style={style}
-      className={`pointer-events-auto flex items-center gap-1 rounded-full border py-0.5 pl-2 pr-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
+      className={`pointer-events-auto flex items-center gap-1 rounded-full border bg-bg-cola-sheet/90 py-0.5 pl-2 pr-1.5 shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-[6px] ${className}`}
     >
       <RefreshCw
         className="size-3 shrink-0 text-accent"
@@ -294,6 +294,7 @@ type EmbedShellProps = {
   showReloadControl?: boolean;
   onReload?: () => void;
   loadStatus: EmbedLoadStatus;
+  showLoadingIndicator?: boolean;
   children: ReactNode;
 };
 
@@ -310,6 +311,7 @@ function EmbedShell({
   showReloadControl,
   onReload,
   loadStatus,
+  showLoadingIndicator = false,
   children,
 }: EmbedShellProps) {
   return (
@@ -318,6 +320,21 @@ function EmbedShell({
       className={`relative overflow-hidden bg-letra-bg ${className}`}
     >
       <div className="absolute inset-0">{children}</div>
+      {showLoadingIndicator && loadStatus === "loading" ? (
+        <div
+          role="status"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-letra-bg text-letra-text"
+        >
+          <span
+            className="size-9 animate-spin rounded-full border-4 border-accent/25 border-t-accent"
+            aria-hidden="true"
+          />
+          <p className="text-sm font-medium">Cargando la canción…</p>
+          <p className="max-w-[16rem] text-center text-xs opacity-70">
+            La página tarda unos segundos en abrir.
+          </p>
+        </div>
+      ) : null}
       {loadStatus === "error" && onReload ? (
         <EmbedLoadErrorBanner onReload={onReload} />
       ) : null}
@@ -355,6 +372,7 @@ export default function LetraViewer({
   fillScaleX,
   reloadKey = 0,
   hideReloadControl = false,
+  showLoadingIndicator = false,
 }: LetraViewerProps) {
   const [localReloadKey, setLocalReloadKey] = useState(0);
   const [loadStatus, setLoadStatus] = useState<EmbedLoadStatus>("loading");
@@ -408,6 +426,7 @@ export default function LetraViewer({
         showReloadControl={showReloadControl}
         onReload={handleReload}
         loadStatus={loadStatus}
+        showLoadingIndicator={showLoadingIndicator}
         className={`h-full w-full ${radiusClass} ${elevatedClass}`}
       >
         {iframe}
@@ -426,6 +445,7 @@ export default function LetraViewer({
       showReloadControl={showReloadControl}
       onReload={handleReload}
       loadStatus={loadStatus}
+      showLoadingIndicator={showLoadingIndicator}
       className={`flex min-h-0 flex-col ${radiusClass} ${elevated ? "h-full min-h-0 flex-1" : "min-h-[320px]"} ${elevatedClass}`}
     >
       {iframe}

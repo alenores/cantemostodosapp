@@ -6,6 +6,7 @@ import {
   activarGuestColaItem,
   avanzarGuestCola,
   colaHasActivaOPendiente,
+  colaIndividualPuedeAvanzar,
   deleteGuestColaItem,
   deriveCancionActivaFromGuestCola,
   reorderGuestColaPendientes,
@@ -25,6 +26,7 @@ import {
   eliminarDeColaIndividual,
   getColaIndividual,
   persistirOrdenColaIndividual,
+  reciclarTocadasViejasIndividual,
   vaciarColaIndividual,
   volverAPendienteIndividual,
 } from "@/lib/cola-individual";
@@ -166,6 +168,11 @@ export function useColaIndividual() {
     [items, noDisponibles],
   );
 
+  const puedeAvanzar = useMemo(
+    () => colaIndividualPuedeAvanzar(items, (item) => !noDisponibles.has(item.id)),
+    [items, noDisponibles],
+  );
+
   const setItems = useCallback(
     (next: ColaIndividualRow[]) => {
       if (isGuest) {
@@ -232,6 +239,7 @@ export function useColaIndividual() {
         throw error;
       }
 
+      await reciclarTocadasViejasIndividual(supabase, userId);
       await loadAuthCola();
       dispatchColaIndividualChanged();
     },
@@ -285,6 +293,9 @@ export function useColaIndividual() {
         .from("cola_individual")
         .update({ estado: "activa" })
         .eq("id", itemId);
+
+      const userId = await getActiveUserId(supabase);
+      if (userId) await reciclarTocadasViejasIndividual(supabase, userId);
 
       await loadAuthCola();
     },
@@ -385,6 +396,7 @@ export function useColaIndividual() {
     cancionActiva,
     hasActivaOPendiente,
     pendientesCount,
+    puedeAvanzar,
     setItems,
     refresh,
     verAhora,

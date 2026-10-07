@@ -4,6 +4,7 @@ import { CIFRADO_CONTROLS_INPUT_CLASS } from "@/components/cifrado/cifrado-contr
 import { NOTAS_ES, type NotaIndex } from "@/lib/cifrado";
 import { MODOS_TONALES, type ModoTonal } from "@/lib/cifrado-escala";
 import { COMPOSITOR_HELP_TONALIDAD_COMPOSICION } from "@/lib/ritmo-terminologia";
+import AppSelect from "@/components/ui/AppSelect";
 
 type CompositorTonalidadPanelProps = {
   tonalidadComposicion: NotaIndex;
@@ -33,42 +34,30 @@ export function CompositorTonalidadPanel({
           <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-compositor-config">
             Tono
           </span>
-          <select
+          <AppSelect
             id="compositor-tonalidad-composicion"
+            title="Tono de composición"
             value={tonalidadComposicion}
             disabled={disabled}
-            onChange={(event) =>
-              onTonalidadChange(Number(event.target.value) as NotaIndex)
-            }
+            options={NOTAS_ES.map((nota, index) => ({ value: index as NotaIndex, label: nota }))}
+            onChange={onTonalidadChange}
             className={selectClassName}
-          >
-            {NOTAS_ES.map((nota, index) => (
-              <option key={nota} value={index}>
-                {nota}
-              </option>
-            ))}
-          </select>
+          />
         </label>
 
         <label htmlFor="compositor-modo-tonal-composicion">
           <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-compositor-config">
             Modo
           </span>
-          <select
+          <AppSelect
             id="compositor-modo-tonal-composicion"
+            title="Modo tonal de composición"
             value={modoTonalComposicion}
             disabled={disabled}
-            onChange={(event) =>
-              onModoTonalChange(event.target.value as ModoTonal)
-            }
+            options={MODOS_TONALES.map((modo) => ({ value: modo.id, label: modo.label }))}
+            onChange={onModoTonalChange}
             className={selectClassName}
-          >
-            {MODOS_TONALES.map((modo) => (
-              <option key={modo.id} value={modo.id}>
-                {modo.label}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       </div>
 

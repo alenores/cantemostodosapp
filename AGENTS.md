@@ -226,25 +226,38 @@ El celular congela o cierra la app en segundo plano y, al volver, rearma la pant
 Tiene que rearmarse **en la misma pantalla**, nunca en el inicio. Pasó con el editor de canciones:
 volvía al inicio y se perdía lo que no estaba guardado.
 
-- Toda pantalla que se abre desde lo guardado va en `SHELL_URLS` de `app/sw.ts`.
-- `APP_SHELL_PATHS` (el `navigateFallback` al inicio) lista **solo** pantallas que están en
-  `SHELL_URLS`. Una pantalla ahí sin copia propia abre el inicio **aunque haya señal**.
+- Toda pantalla que se abre desde lo guardado va en `OFFLINE_SHELL_URLS` de `lib/offline/shell-urls.ts`
+  (lista única: la usan el service worker, el guardado de pantallas y la navegación sin señal).
+- `APP_SHELL_PATHS` (el `navigateFallback` al inicio, en `app/sw.ts`) lista **solo** pantallas que están en
+  `OFFLINE_SHELL_URLS`. Una pantalla ahí sin copia propia abre el inicio **aunque haya señal**.
 - Cerrar la app a mano y abrirla desde el ícono sí arranca en el inicio: eso lo decide el teléfono.
 
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida
   en Supabase si hay sesión; en memoria (efímera) para invitados.
+  Ya tocadas: se ven las últimas dos; la más vieja vuelve al final como pendiente
+  (no se borra). Regla única: `reciclarTocadasViejas` / `reciclarTocadasViejasIndividual`.
 - **Cola de la juntada** — setlist compartido y sincronizado en tiempo real.
   Vive en Sala. Tiene botón "Siguiente" para avanzar la canción activa.
 
 ### Componentes de UI
 - **Sheet** — panel que aparece desde abajo con animación suave. Usado para
   cola individual, cola de la juntada y afinador.
+  Fila en celular (Individual y Salas): **un solo panel** (`ColaPanelDeslizable`) que
+  cerrado es la **barrita** (`ColaBarraProxima`: pastilla, próxima, lupa, siguiente) y
+  al arrastrarlo crece siguiendo al dedo hasta la fila completa, pegada abajo de borde
+  a borde. Soltar: tirón rápido manda; si no, abre/cierra pasado un tercio. En PC la
+  fila sigue siendo el panel lateral.
 - **Overlay** — capa semitransparente sobre la letra. Usado en modo lectura
   para mostrar controles secundarios (buscador, afinador, footer).
 - **Modal** — pantalla que cubre todo. Usado para el buscador de canciones.
 - **Snackbar** — notificación breve desde abajo, desaparece automáticamente a los 3 segundos.
 - **Botón flotante** — botón fijo sobre la letra, siempre visible en modo lectura.
+
+### Sin pantallas del sistema (2026-10-02)
+
+- **Nunca `<select>` nativo**: usar `AppSelect` (`components/ui/AppSelect.tsx`), lista propia que sube desde abajo.
+- **Nunca `alert` / `confirm` / `prompt`**: usar `ConfirmDialog` (con `hideCancel` para un aviso de un solo botón).
 
 ### Estados de items en la cola de la juntada
 - **tocada** — ya fue reproducida. Se muestran las últimas dos.
@@ -256,7 +269,7 @@ volvía al inicio y se perdía lo que no estaba guardado.
 
 ## Layout: letra activa (sala)
 
-**Leer esta sección antes de editar** `SalaPageShell.tsx`, `CancionActivaSection.tsx`, `ColaBottomSheet.tsx`, `LetraViewer.tsx` o `lib/sala-layout.ts`.
+**Leer esta sección antes de editar** `SalaPageShell.tsx`, `CancionActivaSection.tsx`, `ColaPanelDeslizable.tsx`, `LetraViewer.tsx` o `lib/sala-layout.ts`.
 
 ### Causa raíz del bug (jun 2026)
 
@@ -264,9 +277,9 @@ El `main` quedaba con ~82px de altura porque el panel de cola en `ColaBottomShee
 
 ### Reglas obligatorias
 
-1. **`ColaBottomSheet` — panel del drawer**
-   - Solo `fixed`. **Nunca** `relative` (ni otra posición) en el mismo nodo que `fixed`.
-   - La cola no debe competir en el flex del `main`.
+1. **`ColaPanelDeslizable` — panel de la fila en celular** (antes `ColaBottomSheet`)
+   - Solo `fixed`, en un portal a `body`. **Nunca** `relative` (ni otra posición) en el mismo nodo que `fixed`.
+   - La cola no debe competir en el flex del `main`: lo único en el flujo es la barrita bajo la letra.
 
 2. **`SalaPageShell` — cadena de altura**
    - Raíz: `style={{ height: "100dvh" }}` + `flex flex-col overflow-hidden`.
@@ -308,7 +321,7 @@ Debe ser ~600–700px en móvil, **no ~80px**.
 
 Probar siempre:
 
-- **Te Quiero – Hombres G** (Cifra Club): iframe grande hasta la barra «En fila».
+- **Te Quiero – Hombres G** (Cifra Club): iframe grande hasta la barrita de la fila.
 - **La M.O.D.A – Ojalá** (Acordes de Canciones): hoja blanca, scroll de pantalla.
 
 ---
@@ -325,14 +338,14 @@ Probar siempre:
 ### Usuario logueado
 - Cola persistida en Supabase (`cola_individual`).
 - Buscador Home: pestañas **General | Mis canciones**.
-- Preview General: **Ver ahora · Agregar a la lista · Guardar** (cancionero).
+- Preview General: **Ver ahora · Agregar a la lista · Guardar** (cancionero). «Guardar» solo para dueño y amigos (permisos en `lib/usuarios-categorias.ts`).
 - Tras Guardar en cancionero: prompt opcional **«¿Sumar a Mis canciones?»**.
 - Preview Mis canciones: **Ver ahora · Agregar a la lista** (sin Guardar).
 - **Agregar a la lista** deshabilitado si no hay activa ni pendiente en cola.
 
 ### Diferencias vs Sala
 - Sin `SalaPresenceBar` ni avatares en tarjetas de cola (`showAgregadoAvatar={false}`).
-- Lupa en header de modo control (`headerAction` en `CancionActivaSection`).
+- Lupa en la barrita de la fila (celular), no en el header.
 - Sin realtime / presence / offline cola de juntada.
 
 ### APIs lectura pública (invitados)

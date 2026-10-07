@@ -65,7 +65,6 @@ export default function HubSectionPageClient({
   const [metronomoOpen, setMetronomoOpen] = useState(false);
   const [vozOpen, setVozOpen] = useState(false);
   const [compositorOpen, setCompositorOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [toolsLayerMounted, setToolsLayerMounted] = useState(false);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
   const [verifiedOwnerId, setVerifiedOwnerId] = useState<string | null>(null);
@@ -197,20 +196,6 @@ export default function HubSectionPageClient({
       return;
     }
 
-    if (moduleDef.kind === "editor-canciones") {
-      // Celular: pantalla nueva del editor. PC: modal del editor actual (sin tocar).
-      if (!isDesktop && href) {
-        setPendingModuleId(moduleId);
-        const separator = href.includes("?") ? "&" : "?";
-        navigateWithProgress(`${href}${separator}desde=hub`);
-        return;
-      }
-
-      mountToolsLayer();
-      setEditorOpen(true);
-      return;
-    }
-
     if (href) {
       setPendingModuleId(moduleId);
       navigateWithProgress(href);
@@ -238,8 +223,6 @@ export default function HubSectionPageClient({
         return "Abrir entrenador vocal";
       case "compositor":
         return "Abrir compositor";
-      case "editor-canciones":
-        return "Abrir editor de canciones";
       default:
         return `Abrir ${label}`;
     }
@@ -333,13 +316,10 @@ export default function HubSectionPageClient({
           metronomoOpen={metronomoOpen}
           vozOpen={vozOpen}
           compositorOpen={compositorOpen}
-          editorOpen={editorOpen}
           onAfinadorOpenChange={setAfinadorOpen}
           onMetronomoOpenChange={setMetronomoOpen}
           onVozOpenChange={setVozOpen}
           onCompositorOpenChange={setCompositorOpen}
-          onEditorOpenChange={setEditorOpen}
-          onGlobalCountRefresh={refreshGlobalCount}
         />
       ) : null}
     </div>

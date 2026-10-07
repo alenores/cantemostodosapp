@@ -11,13 +11,18 @@ import { useMemo, useState } from "react";
 type VincularNombreArtistaProps = {
   /** Lo que se escribió en el buscador. */
   texto: string;
+  /** Avisa qué artista se eligió (p. ej. el editor lo deja vinculado). */
+  onVinculado?: (artista: Artista) => void;
 };
 
 /**
  * Solo dueño: botón sutil debajo de un buscador para anotar que lo escrito
  * («Carlitos») es otro nombre de un artista de la lista («La Mona Jiménez»).
  */
-export default function VincularNombreArtista({ texto }: VincularNombreArtistaProps) {
+export default function VincularNombreArtista({
+  texto,
+  onVinculado,
+}: VincularNombreArtistaProps) {
   const esDueno = useEsDueno();
   const [abierto, setAbierto] = useState(false);
   const [artistas, setArtistas] = useState<Artista[]>([]);
@@ -57,7 +62,10 @@ export default function VincularNombreArtista({ texto }: VincularNombreArtistaPr
 
     await recargarAliasBusqueda(supabase);
     setMensaje(`Listo: «${nombre}» ahora encuentra a ${artista.nombre}.`);
-    setTimeout(() => setAbierto(false), 1500);
+    setTimeout(() => {
+      setAbierto(false);
+      onVinculado?.(artista);
+    }, 1500);
   }
 
   return (

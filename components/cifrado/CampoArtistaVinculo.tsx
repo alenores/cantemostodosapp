@@ -1,5 +1,6 @@
 "use client";
 
+import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
 import type { ArtistaVinculo } from "@/hooks/useArtistaVinculo";
 
 type CampoArtistaVinculoProps = {
@@ -15,7 +16,10 @@ const LINK_CLASS = "text-xs text-text-muted underline underline-offset-2";
  * Aviso debajo del campo Artista: muestra con qué artista de la lista
  * queda anotada la canción, o pide elegir cuando hay varios parecidos.
  */
-export default function CampoArtistaVinculo({ vinculo, texto }: CampoArtistaVinculoProps) {
+export default function CampoArtistaVinculo({
+  vinculo,
+  texto,
+}: CampoArtistaVinculoProps) {
   const { cargado, resultado, nuevoConfirmado } = vinculo;
 
   if (!cargado || resultado.tipo === "vacio") return null;
@@ -31,19 +35,33 @@ export default function CampoArtistaVinculo({ vinculo, texto }: CampoArtistaVinc
     );
   }
 
+  /** Solo dueño: anotar lo escrito como otro nombre de un artista de la lista. */
+  const vincularDueno = (
+    <div className="mt-2 flex">
+      <VincularNombreArtista texto={texto} onVinculado={vinculo.elegir} />
+    </div>
+  );
+
   if (resultado.tipo === "nuevo" || nuevoConfirmado) {
     return (
-      <p className="mt-1.5 text-xs text-text-muted">
-        Artista nuevo: se agrega a la lista al guardar.
-        {nuevoConfirmado ? (
-          <>
-            {" "}
-            <button type="button" className={LINK_CLASS} onClick={vinculo.deshacerNuevo}>
-              Ver sugeridos
-            </button>
-          </>
-        ) : null}
-      </p>
+      <>
+        <p className="mt-1.5 text-xs text-text-muted">
+          Artista nuevo: se agrega a la lista al guardar.
+          {nuevoConfirmado ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className={LINK_CLASS}
+                onClick={vinculo.deshacerNuevo}
+              >
+                Ver sugeridos
+              </button>
+            </>
+          ) : null}
+        </p>
+        {vincularDueno}
+      </>
     );
   }
 
@@ -62,9 +80,14 @@ export default function CampoArtistaVinculo({ vinculo, texto }: CampoArtistaVinc
           </button>
         ))}
       </div>
-      <button type="button" className={LINK_CLASS} onClick={vinculo.confirmarNuevo}>
+      <button
+        type="button"
+        className={LINK_CLASS}
+        onClick={vinculo.confirmarNuevo}
+      >
         Es otro artista
       </button>
+      {vincularDueno}
     </div>
   );
 }

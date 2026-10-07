@@ -229,14 +229,10 @@ function ControlFilaButtonSkeleton() {
 }
 
 /**
- * Shell modo control (Individual / Sala): header con buscar (+ back opcional),
+ * Shell modo control (Individual / Sala): header con buscar,
  * panel de letra vacío y botón Fila inline — alineado a CancionActivaSection vacío.
  */
-export function ControlModeShellSkeleton({
-  showBack = false,
-}: {
-  showBack?: boolean;
-}) {
+export function ControlModeShellSkeleton() {
   return (
     <section
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala pt-0"
@@ -252,9 +248,6 @@ export function ControlModeShellSkeleton({
         className="flex shrink-0 items-start gap-2 overflow-hidden border-b border-border bg-bg-sala"
         style={getControlHeaderVerticalPaddingStyle()}
       >
-        {showBack ? (
-          <ShimmerBlock className="size-9 shrink-0 rounded-full" />
-        ) : null}
         <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
           <ShimmerBlock className="h-5 w-[48%] rounded-md" delayMs={30} />
           <ShimmerBlock className="h-3 w-[28%] rounded-md" delayMs={60} />
@@ -436,7 +429,7 @@ export function SalaPageSkeleton() {
         style={{ paddingBottom: getSalaMainFooterPaddingCss() }}
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <ControlModeShellSkeleton showBack />
+          <ControlModeShellSkeleton />
         </div>
       </main>
       <SalasFooterSpacer />
@@ -445,14 +438,10 @@ export function SalaPageSkeleton() {
 }
 
 /** Skeleton inline mientras la cola inicial se sincroniza. */
-export function SalaColaBootstrapSkeleton({
-  showBack = false,
-}: {
-  showBack?: boolean;
-}) {
+export function SalaColaBootstrapSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <ControlModeShellSkeleton showBack={showBack} />
+      <ControlModeShellSkeleton />
     </div>
   );
 }

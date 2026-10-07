@@ -29,7 +29,7 @@ export default function AutoScrollControl({
 
   return (
     <div
-      className={`flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-dark/90 p-0.5 backdrop-blur-md ${
+      className={`flex w-fit shrink-0 select-none items-center rounded-2xl border bg-bg-cola-sheet/90 p-0.5 backdrop-blur-md ${
         isScrolling ? "border-accent/30" : "border-border/50"
       } ${isFixed ? "fixed z-[45]" : ""}`}
       style={

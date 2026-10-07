@@ -20,7 +20,7 @@ export default function LecturaCompasToggleIcon({
         compasesOcultos ? "Mostrar compases" : "Ocultar compases"
       }
       aria-pressed={!compasesOcultos}
-      className="flex size-9 items-center justify-center rounded-full border border-border/50 bg-bg-dark/90 text-text-primary shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md"
+      className="flex size-9 items-center justify-center rounded-full border border-border/50 bg-bg-cola-sheet/90 text-text-primary shadow-[0_2px_10px_rgba(0,0,0,0.28)] backdrop-blur-md"
     >
       <span className="relative inline-flex size-4 items-center justify-center">
         <Music2 className="size-4" aria-hidden="true" />

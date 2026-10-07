@@ -6,7 +6,7 @@ import type { LucideIcon } from "lucide-react";
 export const LECTURA_FAB_CASCADE_STEP_MS = 55;
 
 const FLOAT_BTN_SECONDARY =
-  "rounded-2xl border border-accent/50 bg-bg-dark text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
+  "rounded-2xl border border-accent/50 bg-bg-cola-sheet text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.5)]";
 const FLOAT_BTN_DISABLED = "pointer-events-none opacity-40";
 
 export type LecturaFabItem = {

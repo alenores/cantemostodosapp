@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Artista } from "@/types";
+import type { Artista, ArtistaAlias } from "@/types";
+import { normalizarNombreArtista } from "@/lib/artistas-match";
 
 export async function getArtistas(supabase: SupabaseClient): Promise<Artista[]> {
   const { data, error } = await supabase
@@ -13,6 +14,50 @@ export async function getArtistas(supabase: SupabaseClient): Promise<Artista[]> 
   }
 
   return data as Artista[];
+}
+
+export async function getArtistasAlias(
+  supabase: SupabaseClient,
+): Promise<ArtistaAlias[]> {
+  const { data, error } = await supabase
+    .from("artistas_alias")
+    .select("id, artista_id, alias, alias_norm");
+
+  if (error) {
+    console.error("Error al obtener alias de artistas:", error);
+    return [];
+  }
+
+  return data as ArtistaAlias[];
+}
+
+/**
+ * Guarda un nombre alternativo para un artista. Si ese nombre ya está
+ * anotado (para este u otro artista), no hace nada y devuelve null.
+ */
+export async function addArtistaAlias(
+  supabase: SupabaseClient,
+  artistaId: string,
+  alias: string,
+): Promise<ArtistaAlias | null> {
+  const aliasNorm = normalizarNombreArtista(alias);
+  if (!aliasNorm) return null;
+
+  const { data, error } = await supabase
+    .from("artistas_alias")
+    .upsert(
+      { artista_id: artistaId, alias: alias.trim(), alias_norm: aliasNorm },
+      { onConflict: "alias_norm", ignoreDuplicates: true },
+    )
+    .select("id, artista_id, alias, alias_norm")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error al guardar alias de artista:", error);
+    return null;
+  }
+
+  return (data as ArtistaAlias | null) ?? null;
 }
 
 export async function addArtista(

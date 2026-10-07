@@ -32,6 +32,11 @@ import {
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
+import CampoArtistaVinculo from "@/components/cifrado/CampoArtistaVinculo";
+import {
+  useArtistaVinculo,
+  type ArtistaParaGuardar,
+} from "@/hooks/useArtistaVinculo";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { buildIntensidadForGolpes } from "@/lib/cifrado-barra-cycles";
@@ -177,6 +182,7 @@ export default function CifradoEditorMobile({
   const [ingresoTab, setIngresoTab] = useState<IngresoTab>("letra");
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
+  const artistaVinculo = useArtistaVinculo(artista, setArtista);
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex | null>(null);
   const [modoTonal, setModoTonal] = useState<ModoTonal | null>(null);
   const [draftLyrics, setDraftLyrics] = useState("");
@@ -422,6 +428,16 @@ export default function CifradoEditorMobile({
       return;
     }
 
+    let artistaGuardar: ArtistaParaGuardar;
+    try {
+      artistaGuardar = await artistaVinculo.resolverParaGuardar();
+    } catch (artistaError) {
+      setError(
+        artistaError instanceof Error ? artistaError.message : String(artistaError),
+      );
+      return;
+    }
+
     setSaveLoading(true);
     setError(null);
 
@@ -436,7 +452,8 @@ export default function CifradoEditorMobile({
           : editingCancionIdRef.current ?? session?.cancionId;
       const savedId = await onPersist(editingId, {
         nombre: nombre.trim(),
-        artista: artista.trim() || null,
+        artista: artistaGuardar.artista,
+        artista_id: artistaGuardar.artista_id,
         letra: lyricsText,
         cifrado,
         compas_config: normalizeCompasConfig({
@@ -453,7 +470,7 @@ export default function CifradoEditorMobile({
       onSaved?.({
         id: savedId,
         nombre: nombre.trim(),
-        artista: artista.trim() || null,
+        artista: artistaGuardar.artista,
         letra: lyricsText,
         tiene_cifrado_avanzado: true,
       });
@@ -1399,6 +1416,7 @@ export default function CifradoEditorMobile({
                     className={CIFRADO_CONTROLS_INPUT_CLASS}
                     placeholder="Artista"
                   />
+                  <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                 </div>
                 <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                   <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>Tono y modo</p>
@@ -1763,6 +1781,7 @@ export default function CifradoEditorMobile({
                   className={CIFRADO_CONTROLS_INPUT_CLASS}
                   placeholder="Artista"
                 />
+                <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
               </div>
 
               <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>

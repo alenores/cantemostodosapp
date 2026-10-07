@@ -1,6 +1,9 @@
 ﻿"use client";
-import type { Artista } from "@/types";
-import { getArtistas } from "@/lib/artistas";
+import CampoArtistaVinculo from "@/components/cifrado/CampoArtistaVinculo";
+import {
+  useArtistaVinculo,
+  type ArtistaParaGuardar,
+} from "@/hooks/useArtistaVinculo";
 
 import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
@@ -2557,10 +2560,7 @@ export default function CifradoEditor({
   );
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
-  const [artistaId, setArtistaId] = useState<string | null>(() => session?.artista_id ?? null);
-  const supabaseClient = useMemo(() => createClient(), []);
-  const [artistas, setArtistas] = useState<Artista[]>([]);
-  useEffect(() => { getArtistas(supabaseClient).then(setArtistas); }, [supabaseClient]);
+  const artistaVinculo = useArtistaVinculo(artista, setArtista);
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [ingresoTonalidadIndex, setIngresoTonalidadIndex] =
@@ -2856,7 +2856,6 @@ export default function CifradoEditor({
       setCompasConfig(createDefaultCompasConfig());
       setNombre("");
       setArtista("");
-      setArtistaId(null);
       setTonalidadIndex(7);
       setModoTonal(DEFAULT_MODO_TONAL);
       setIngresoTonalidadIndex(null);
@@ -2906,7 +2905,6 @@ export default function CifradoEditor({
       editingCancionIdRef.current = session.cancionId;
       setNombre(session.nombre);
       setArtista(session.artista);
-      setArtistaId(session.artista_id ?? null);
       setLyricsText(session.letra);
       setDraftLyrics(session.letra);
       setCifrado(session.cifrado ?? createEmptyCifrado());
@@ -2959,7 +2957,6 @@ export default function CifradoEditor({
     setCompasConfig(createDefaultCompasConfig());
     setNombre("");
     setArtista("");
-      setArtistaId(null);
     setTonalidadIndex(DEFAULT_TONALIDAD);
     setModoTonal(DEFAULT_MODO_TONAL);
     setIngresoTonalidadIndex(null);
@@ -4251,6 +4248,16 @@ export default function CifradoEditor({
       return;
     }
 
+    let artistaGuardar: ArtistaParaGuardar;
+    try {
+      artistaGuardar = await artistaVinculo.resolverParaGuardar();
+    } catch (artistaError) {
+      setSaveValidation(
+        artistaError instanceof Error ? artistaError.message : String(artistaError),
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSaveValidation(null);
@@ -4274,7 +4281,8 @@ export default function CifradoEditor({
       const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
       const payload = {
         nombre: nombre.trim(),
-        artista: artista.trim() || null,
+        artista: artistaGuardar.artista,
+        artista_id: artistaGuardar.artista_id,
         letra: lyricsText,
         cifrado,
         compas_config: normalizeCompasConfig({
@@ -4297,6 +4305,7 @@ export default function CifradoEditor({
           {
             nombre: payload.nombre,
             artista: payload.artista,
+            artista_id: payload.artista_id,
             letra: payload.letra,
             cifrado: payload.cifrado,
             compas_config: payload.compas_config,
@@ -4310,6 +4319,7 @@ export default function CifradoEditor({
         await updateCancionCifradoAvanzado(supabase, editingId, {
           nombre: payload.nombre,
           artista: payload.artista,
+          artista_id: payload.artista_id,
           letra: payload.letra,
           cifrado: payload.cifrado,
           compas_config: payload.compas_config,
@@ -5035,21 +5045,19 @@ export default function CifradoEditor({
                   >
                     Artista
                   </label>
-                  <select
+                  <input
                     id="cifrado-artista"
-                    value={artistaId || ""}
+                    value={artista}
                     onChange={(event) => {
-                      const id = event.target.value || null;
-                      setArtistaId(id);
-                      setArtista(id ? (artistas.find(a => a.id === id)?.nombre || "") : "");
+                      setArtista(event.target.value);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
                     }}
                     className={inputClassName}
-                  >
-                    <option value="">Sin artista / Seleccionar...</option>
-                    {artistas.map(a => (
-                      <option key={a.id} value={a.id}>{a.nombre}</option>
-                    ))}
-                  </select>
+                    placeholder="Artista"
+                  />
+                  <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                 </VozPcConfigCard>
 
                 <VozPcConfigCard
@@ -5195,21 +5203,19 @@ export default function CifradoEditor({
                     >
                       Artista
                     </label>
-                    <select
-                        id="cifrado-artista-ingreso"
-                        value={artistaId || ""}
-                        onChange={(event) => {
-                          const id = event.target.value || null;
-                          setArtistaId(id);
-                          setArtista(id ? (artistas.find(a => a.id === id)?.nombre || "") : "");
-                        }}
-                        className={inputClassName}
-                      >
-                        <option value="">Sin artista / Seleccionar...</option>
-                        {artistas.map(a => (
-                          <option key={a.id} value={a.id}>{a.nombre}</option>
-                        ))}
-                      </select>
+                    <input
+                      id="cifrado-artista-ingreso"
+                      value={artista}
+                      onChange={(event) => {
+                        setArtista(event.target.value);
+                        if (saveValidation) {
+                          setSaveValidation(null);
+                        }
+                      }}
+                      className={inputClassName}
+                      placeholder="Artista"
+                    />
+                    <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                     <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>

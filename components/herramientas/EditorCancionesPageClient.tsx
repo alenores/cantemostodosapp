@@ -149,6 +149,7 @@ export default function EditorCancionesPageClient() {
           url_letra: null,
           nombre: payload.nombre.trim(),
           artista: payload.artista?.trim() || null,
+          artista_id: payload.artista_id ?? null,
           letra: payload.letra,
           cifrado: payload.cifrado,
           compas_config: payload.compas_config,

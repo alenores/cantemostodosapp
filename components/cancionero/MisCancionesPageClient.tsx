@@ -53,7 +53,7 @@ function filterMisCanciones(
 
   return canciones.filter((cancion) => {
     const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, getAliasBusqueda());
+    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, getAliasBusqueda(), cancion.nombre);
 
     return matchesNombre || Boolean(matchesArtista);
   });

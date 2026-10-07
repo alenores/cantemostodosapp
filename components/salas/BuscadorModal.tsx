@@ -136,7 +136,7 @@ function filterMisCanciones(
 
   return canciones.filter((cancion) => {
     const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, getAliasBusqueda());
+    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, getAliasBusqueda(), cancion.nombre);
     return matchesNombre || Boolean(matchesArtista);
   });
 }
@@ -661,7 +661,7 @@ export default function BuscadorModal({
             const practicaClient = createClient();
             const items = await listCancionesPractica(practicaClient);
             const normalized = trimmed.toLowerCase();
-            const matched = items.filter((item) => item.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(item.artista, normalized, getAliasBusqueda()));
+            const matched = items.filter((item) => item.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(item.artista, normalized, getAliasBusqueda(), item.nombre));
             const details = await Promise.all(matched.map((item) => getCancionPractica(practicaClient, item.id)));
             return details.filter((item): item is NonNullable<typeof item> => item !== null && Boolean(item.letra?.trim())).map((item): ResultadoBusquedaBuscador => ({
               id: item.id,

@@ -87,7 +87,7 @@ export function CifradoEditorSavedLinksModal({
 
     return links.filter((link) => {
       const searchStr = `${link.nombre} ${link.artista || ""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return searchStr.includes(q) || artistaCoincideBusqueda(link.artista, q, aliasBusqueda);
+      return searchStr.includes(q) || artistaCoincideBusqueda(link.artista, q, aliasBusqueda, link.nombre);
     });
   }, [aliasBusqueda, links, query]);
 

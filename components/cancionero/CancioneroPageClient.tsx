@@ -140,7 +140,7 @@ export default function CancioneroPageClient({
   const practicaFiltradas = useMemo(() => {
     if (!usuarioLogueado) return [];
     const normalized = query.trim().toLowerCase();
-    let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda));
+    let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda, cancion.nombre));
     if (selectedArtistaIds.size > 0) {
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));

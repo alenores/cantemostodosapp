@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizarNombreArtista } from "@/lib/artistas-match";
+import { distanciaEdicion, normalizarNombreArtista } from "@/lib/artistas-match";
 
 /**
  * Otros nombres de artistas para los buscadores (cancionero, Home/Sala, editor):
@@ -71,24 +71,71 @@ export async function recargarAliasBusqueda(supabase: SupabaseClient): Promise<v
   window.dispatchEvent(new Event(EVENTO_CAMBIO));
 }
 
+/** Palabras que no identifican nada al buscar ("los redondos" = "redondos"). */
+const PALABRAS_RELLENO = new Set(["los", "las", "la", "el", "lo", "the", "y", "de", "del", "sus"]);
+
+function palabras(texto: string): string[] {
+  return normalizarNombreArtista(texto).split(" ").filter(Boolean);
+}
+
+function palabrasBuscadas(query: string): string[] {
+  const todas = palabras(query);
+  const clave = todas.filter((palabra) => !PALABRAS_RELLENO.has(palabra));
+  return clave.length > 0 ? clave : todas;
+}
+
+/** Errores de tipeo tolerados según el largo de la palabra buscada. */
+function toleranciaTipeo(largo: number): number {
+  if (largo < 4) return 0;
+  if (largo <= 8) return 1;
+  return 2;
+}
+
 /**
- * ¿El artista de una canción coincide con lo buscado?
- * Mantiene la búsqueda de siempre (texto contenido) y suma los otros nombres.
- * `query` puede venir en minúsculas o sin normalizar.
+ * La palabra buscada está en la palabra candidata: completa, empezada
+ * ("redon" → "redondos") o con un error chico de tipeo ("jimenes" → "jimenez").
+ */
+function palabraCoincide(buscada: string, candidata: string): boolean {
+  if (candidata.startsWith(buscada)) return true;
+  const tolerancia = toleranciaTipeo(buscada.length);
+  if (tolerancia === 0) return false;
+  if (distanciaEdicion(buscada, candidata) <= tolerancia) return true;
+  return (
+    candidata.length > buscada.length &&
+    distanciaEdicion(buscada, candidata.slice(0, buscada.length)) <= tolerancia
+  );
+}
+
+/**
+ * ¿La canción (o el artista) coincide con lo buscado?
+ * - Mantiene la búsqueda de siempre (texto contenido en el artista).
+ * - Separa lo buscado en palabras, ignora las de relleno y no importa el orden:
+ *   cada palabra tiene que estar en el artista, en alguno de sus otros nombres
+ *   o en el nombre de la canción (si se pasa), tolerando errores chicos de tipeo.
  */
 export function artistaCoincideBusqueda(
   artista: string | null | undefined,
   query: string,
   alias: AliasBusqueda,
+  nombreCancion?: string | null,
 ): boolean {
-  if (!artista) return false;
-  if (artista.toLowerCase().includes(query.trim().toLowerCase())) return true;
+  const queryTrim = query.trim().toLowerCase();
+  if (!queryTrim) return true;
+  if (artista?.toLowerCase().includes(queryTrim)) return true;
 
-  const queryNorm = normalizarNombreArtista(query);
-  if (queryNorm.length < 2) return false;
+  const buscadas = palabrasBuscadas(query);
+  if (buscadas.length === 0) return false;
 
-  const artistaNorm = normalizarNombreArtista(artista);
-  if (artistaNorm.includes(queryNorm)) return true;
+  const artistaNorm = artista ? normalizarNombreArtista(artista) : "";
+  const candidatas = [
+    ...(artistaNorm ? artistaNorm.split(" ") : []),
+    ...(alias.get(artistaNorm) ?? []).flatMap((nombre) => nombre.split(" ")),
+    ...(nombreCancion ? palabras(nombreCancion) : []),
+  ].filter(Boolean);
 
-  return (alias.get(artistaNorm) ?? []).some((nombre) => nombre.includes(queryNorm));
+  if (candidatas.length === 0) return false;
+
+  return buscadas.every((buscada) =>
+    candidatas.some((candidata) => palabraCoincide(buscada, candidata)),
+  );
 }

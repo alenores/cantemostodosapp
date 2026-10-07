@@ -89,7 +89,7 @@ export function filterCancionesCancionero(
 
   return canciones.filter((cancion) => {
     const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, alias);
+    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, alias, cancion.nombre);
 
     return matchesNombre || matchesArtista;
   });

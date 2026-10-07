@@ -290,7 +290,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
-- **Otros nombres de artistas** (también en el buscador de Home/Sala, el filtro de artistas y los buscadores del editor): escribir un nombre alternativo anotado (ej. "Carlitos") encuentra las canciones del artista oficial (La Mona Jiménez). Funciona sin señal con la última copia guardada.
+- **Otros nombres de artistas** (también en el buscador de Home/Sala, el filtro de artistas y los buscadores del editor): escribir un nombre alternativo anotado (ej. "Carlitos") encuentra las canciones del artista oficial (La Mona Jiménez). Funciona sin señal con la última copia guardada. La búsqueda separa lo escrito en palabras, ignora las de relleno («los», «la», «de»…), no importa el orden y tolera errores chicos de tipeo: «los redondos», «ricota patricio» o «jimenes mona» encuentran al artista; las palabras pueden estar también en el nombre de la canción («mona beso»).
   - **Solo dueño:** debajo del buscador aparece un texto chico *"+ «…» es otro nombre de…"*; abre un panel para elegir el artista y anotar ese nombre.
 - Botón **+** para **Agregar canción**: solo lo ven el dueño y los amigos; se usa con conexión.
 - Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.

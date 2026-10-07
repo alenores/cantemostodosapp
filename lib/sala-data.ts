@@ -2,7 +2,7 @@ import {
   getCancioneroLocalAll,
   getCancioneroLocalForBusqueda,
 } from "@/lib/offline/cancionero-store";
-import { getAliasBusqueda } from "@/lib/artistas-alias-busqueda";
+import { artistaCoincideBusqueda, getAliasBusqueda } from "@/lib/artistas-alias-busqueda";
 import { normalizarNombreArtista } from "@/lib/artistas-match";
 import type { ColaItem, SesionSala } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -64,11 +64,17 @@ function scoreCancionLocal(
     ),
   );
 
-  return (
+  const score =
     scoreCampo(nombre, normalizedQuery, PESO_NOMBRE) +
     Math.max(scoreCampo(artista, normalizedQuery, PESO_ARTISTA), scoreAlias) +
-    scoreCampo(letra, normalizedQuery, PESO_LETRA)
-  );
+    scoreCampo(letra, normalizedQuery, PESO_LETRA);
+
+  if (score > 0) return score;
+
+  // Palabra por palabra, sin orden y con errores chicos ("los redondos", "jimenes mona").
+  return artistaCoincideBusqueda(cancion.artista, query, getAliasBusqueda(), cancion.nombre)
+    ? PESO_ARTISTA * 10
+    : 0;
 }
 
 export type BuscarEnCancioneroOptions = {

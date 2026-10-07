@@ -77,7 +77,7 @@ export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
         `${cancion.nombre} ${cancion.artista ?? ""}`
           .toLocaleLowerCase()
           .includes(normalized) ||
-        artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda),
+        artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda, cancion.nombre),
     );
   }, [aliasBusqueda, canciones, query]);
 

@@ -54,23 +54,30 @@ function palabrasClave(normalizado: string): string[] {
   return clave.length > 0 ? clave : todas;
 }
 
-function distanciaEdicion(a: string, b: string): number {
+/** Cambios de letras entre dos palabras; dos letras invertidas cuentan como uno. */
+export function distanciaEdicion(a: string, b: string): number {
   if (a === b) return 0;
   if (!a.length) return b.length;
   if (!b.length) return a.length;
 
+  let anterior: number[] = [];
   let previa = Array.from({ length: b.length + 1 }, (_, index) => index);
 
   for (let i = 1; i <= a.length; i++) {
     const actual = [i];
     for (let j = 1; j <= b.length; j++) {
       const costo = a[i - 1] === b[j - 1] ? 0 : 1;
-      actual[j] = Math.min(
+      let valor = Math.min(
         previa[j]! + 1,
         actual[j - 1]! + 1,
         previa[j - 1]! + costo,
       );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        valor = Math.min(valor, anterior[j - 2]! + 1);
+      }
+      actual[j] = valor;
     }
+    anterior = previa;
     previa = actual;
   }
 

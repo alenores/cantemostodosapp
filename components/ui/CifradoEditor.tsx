@@ -1,8 +1,9 @@
 ﻿"use client";
-import type { Artista } from "@/types";
-import { getArtistas } from "@/lib/artistas";
-import { buscarArtistaCoincidente, resolverArtistaId } from "@/lib/artistas-match";
-import ArtistaSelector from "@/components/cifrado/ArtistaSelector";
+import CampoArtistaVinculo from "@/components/cifrado/CampoArtistaVinculo";
+import {
+  useArtistaVinculo,
+  type ArtistaParaGuardar,
+} from "@/hooks/useArtistaVinculo";
 
 import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
@@ -2598,32 +2599,10 @@ export default function CifradoEditor({
   );
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
-  const [artistaId, setArtistaId] = useState<string | null>(() => session?.artista_id ?? null);
+  const artistaVinculo = useArtistaVinculo(artista, setArtista);
   const [youtubeUrl, setYoutubeUrl] = useState(() => session?.youtube_url ?? "");
   /** Solo se guarda el link si la persona lo tocó: no pisa uno guardado que no se cargó. */
   const [youtubeTocado, setYoutubeTocado] = useState(false);
-  const supabaseClient = useMemo(() => createClient(), []);
-  const [artistas, setArtistas] = useState<Artista[]>([]);
-  useEffect(() => { getArtistas(supabaseClient).then(setArtistas); }, [supabaseClient]);
-
-  /** Texto de artista que llega de afuera: si ya está en la lista, se vincula a esa ficha. */
-  function aplicarArtistaTexto(texto: string) {
-    const limpio = texto.trim();
-    const { exacto } = buscarArtistaCoincidente(limpio, artistas);
-    setArtista(exacto ? exacto.nombre : limpio);
-    setArtistaId(exacto ? exacto.id : null);
-  }
-
-  function elegirArtista(elegido: Artista | null) {
-    setArtista(elegido?.nombre ?? "");
-    setArtistaId(elegido?.id ?? null);
-  }
-
-  function agregarArtistaALista(nuevo: Artista) {
-    setArtistas((prev) =>
-      [...prev, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    );
-  }
   const [tonalidadIndex, setTonalidadIndex] = useState<NotaIndex>(7);
   const [modoTonal, setModoTonal] = useState<ModoTonal>(DEFAULT_MODO_TONAL);
   const [ingresoTonalidadIndex, setIngresoTonalidadIndex] =
@@ -2922,7 +2901,6 @@ export default function CifradoEditor({
       setCompasConfig(createDefaultCompasConfig());
       setNombre("");
       setArtista("");
-      setArtistaId(null);
       setYoutubeUrl("");
       setYoutubeTocado(false);
       setTonalidadIndex(7);
@@ -2975,7 +2953,6 @@ export default function CifradoEditor({
       setExcluirRepetidaId(session.cancionId ?? null);
       setNombre(session.nombre);
       setArtista(session.artista);
-      setArtistaId(session.artista_id ?? null);
       setYoutubeUrl(session.youtube_url ?? "");
       setYoutubeTocado(false);
       setLyricsText(session.letra);
@@ -3031,7 +3008,6 @@ export default function CifradoEditor({
     setCompasConfig(createDefaultCompasConfig());
     setNombre("");
     setArtista("");
-      setArtistaId(null);
     setYoutubeUrl("");
     setYoutubeTocado(false);
     setTonalidadIndex(DEFAULT_TONALIDAD);
@@ -3291,11 +3267,8 @@ export default function CifradoEditor({
       setNombre(result.nombre);
     }
 
-    if (result.artistaId) {
-      setArtista(result.artista);
-      setArtistaId(result.artistaId);
-    } else if (result.artista) {
-      aplicarArtistaTexto(result.artista);
+    if (result.artista) {
+      setArtista(result.artista.trim());
     }
 
     if (result.eliminate && pasteAnalysis?.textKeptIfEliminate !== undefined) {
@@ -3338,7 +3311,7 @@ export default function CifradoEditor({
     }
 
     if (options?.artista?.trim()) {
-      aplicarArtistaTexto(options.artista);
+      setArtista(options.artista.trim());
     }
 
     const warnings = options?.warnings ?? [];
@@ -3391,7 +3364,7 @@ export default function CifradoEditor({
     }
 
     if (data.artista?.trim()) {
-      aplicarArtistaTexto(data.artista);
+      setArtista(data.artista.trim());
     }
 
     const texto = data.textoTradicional.trim();
@@ -3435,7 +3408,7 @@ export default function CifradoEditor({
     editingCancionIdRef.current = editable ? cancion.id : 0;
     setExcluirRepetidaId(cancion.id);
     setNombre(cancion.nombre);
-    aplicarArtistaTexto(cancion.artista ?? "");
+    setArtista((cancion.artista ?? "").trim());
     setIngresoTab("basicas");
     const imported = parseLetraTradicional(cancion.letra ?? "");
     applyImportedCifrado(imported.letra, imported.cifrado, {
@@ -4331,6 +4304,16 @@ export default function CifradoEditor({
       return;
     }
 
+    let artistaGuardar: ArtistaParaGuardar;
+    try {
+      artistaGuardar = await artistaVinculo.resolverParaGuardar();
+    } catch (artistaError) {
+      setSaveValidation(
+        artistaError instanceof Error ? artistaError.message : String(artistaError),
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSaveValidation(null);
@@ -4352,24 +4335,16 @@ export default function CifradoEditor({
       }
 
       const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
-      const artistaIdGuardar = resolverArtistaId(artista, artistaId, artistas);
-      if (artistaIdGuardar === null && artista.trim()) {
-        setSaveValidation("Elegí el artista de la lista, o agregalo con «+ Agregar».");
-        return;
-      }
       const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
       if (!youtubeNormalizado.ok) {
         setSaveValidation("El link del video no es de YouTube. Corregilo o borralo.");
         return;
       }
       const youtubeGuardar = youtubeTocado ? youtubeNormalizado.url : undefined;
-      const artistaVinculado = artistaIdGuardar
-        ? artistas.find((item) => item.id === artistaIdGuardar)
-        : undefined;
       const payload = {
         nombre: nombre.trim(),
-        artista: artistaVinculado?.nombre ?? (artista.trim() || null),
-        ...(artistaIdGuardar !== undefined ? { artista_id: artistaIdGuardar } : {}),
+        artista: artistaGuardar.artista,
+        artista_id: artistaGuardar.artista_id,
         letra: lyricsText,
         cifrado,
         compas_config: normalizeCompasConfig({
@@ -4392,7 +4367,7 @@ export default function CifradoEditor({
           {
             nombre: payload.nombre,
             artista: payload.artista,
-            artista_id: artistaIdGuardar,
+            artista_id: payload.artista_id,
             letra: payload.letra,
             cifrado: payload.cifrado,
             compas_config: payload.compas_config,
@@ -4408,7 +4383,7 @@ export default function CifradoEditor({
         await updateCancionCifradoAvanzado(supabase, editingId, {
           nombre: payload.nombre,
           artista: payload.artista,
-          artista_id: artistaIdGuardar,
+          artista_id: payload.artista_id,
           letra: payload.letra,
           cifrado: payload.cifrado,
           compas_config: payload.compas_config,
@@ -5139,7 +5114,7 @@ export default function CifradoEditor({
                     disabled={!nombre.trim() && !artista.trim()}
                     onIntercambiar={() => {
                       setNombre(artista);
-                      aplicarArtistaTexto(nombre);
+                      setArtista(nombre);
                       if (saveValidation) {
                         setSaveValidation(null);
                       }
@@ -5151,15 +5126,19 @@ export default function CifradoEditor({
                   >
                     Artista
                   </label>
-                  <ArtistaSelector
+                  <input
                     id="cifrado-artista"
-                    artistas={artistas}
-                    artistaId={artistaId}
-                    textoDetectado={artista}
-                    selectClassName={inputClassName}
-                    onElegir={elegirArtista}
-                    onAgregado={agregarArtistaALista}
+                    value={artista}
+                    onChange={(event) => {
+                      setArtista(event.target.value);
+                      if (saveValidation) {
+                        setSaveValidation(null);
+                      }
+                    }}
+                    className={inputClassName}
+                    placeholder="Artista"
                   />
+                  <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                 </VozPcConfigCard>
 
                 <VozPcConfigCard
@@ -5316,7 +5295,7 @@ export default function CifradoEditor({
                       disabled={!nombre.trim() && !artista.trim()}
                       onIntercambiar={() => {
                         setNombre(artista);
-                        aplicarArtistaTexto(nombre);
+                        setArtista(nombre);
                         if (saveValidation) {
                           setSaveValidation(null);
                         }
@@ -5328,15 +5307,19 @@ export default function CifradoEditor({
                     >
                       Artista
                     </label>
-                    <ArtistaSelector
+                    <input
                       id="cifrado-artista-ingreso"
-                      artistas={artistas}
-                      artistaId={artistaId}
-                      textoDetectado={artista}
-                      selectClassName={inputClassName}
-                      onElegir={elegirArtista}
-                      onAgregado={agregarArtistaALista}
+                      value={artista}
+                      onChange={(event) => {
+                        setArtista(event.target.value);
+                        if (saveValidation) {
+                          setSaveValidation(null);
+                        }
+                      }}
+                      className={inputClassName}
+                      placeholder="Artista"
                     />
+                    <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                     <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
@@ -5551,8 +5534,6 @@ export default function CifradoEditor({
         multipleTonalidades={tonalidadInferResult?.multipleTonalidades ?? false}
         notacion={notacion}
         zIndex={70}
-        artistas={artistas}
-        onArtistaAgregado={agregarArtistaALista}
         onConfirm={handleConfirmPasteIngreso}
         onDismiss={() => setPasteProposeOpen(false)}
       />

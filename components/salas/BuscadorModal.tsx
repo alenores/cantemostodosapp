@@ -1,4 +1,6 @@
 "use client";
+import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
+import { artistaCoincideBusqueda, getAliasBusqueda } from "@/lib/artistas-alias-busqueda";
 
 import {
   BuscadorInternetPendingSkeleton,
@@ -134,7 +136,7 @@ function filterMisCanciones(
 
   return canciones.filter((cancion) => {
     const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = cancion.artista?.toLowerCase().includes(normalized);
+    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, getAliasBusqueda());
     return matchesNombre || Boolean(matchesArtista);
   });
 }
@@ -659,7 +661,7 @@ export default function BuscadorModal({
             const practicaClient = createClient();
             const items = await listCancionesPractica(practicaClient);
             const normalized = trimmed.toLowerCase();
-            const matched = items.filter((item) => item.nombre.toLowerCase().includes(normalized) || Boolean(item.artista?.toLowerCase().includes(normalized)));
+            const matched = items.filter((item) => item.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(item.artista, normalized, getAliasBusqueda()));
             const details = await Promise.all(matched.map((item) => getCancionPractica(practicaClient, item.id)));
             return details.filter((item): item is NonNullable<typeof item> => item !== null && Boolean(item.letra?.trim())).map((item): ResultadoBusquedaBuscador => ({
               id: item.id,
@@ -1270,6 +1272,8 @@ export default function BuscadorModal({
                 <Search className="size-5 text-white" aria-hidden="true" />
               </button>
             </form>
+
+            <VincularNombreArtista texto={query} />
 
             {isHome ? (
               <div

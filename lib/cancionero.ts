@@ -17,6 +17,11 @@ import {
 } from "@/lib/cifrado-escala";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMissingColumnError } from "@/lib/supabase/errors";
+import {
+  artistaCoincideBusqueda,
+  getAliasBusqueda,
+  type AliasBusqueda,
+} from "@/lib/artistas-alias-busqueda";
 
 export type CancioneroFormData = {
   nombre: string;
@@ -74,6 +79,7 @@ export function getDuplicadoCancioneroNivel(
 export function filterCancionesCancionero(
   canciones: CancionCancionero[],
   query: string,
+  alias: AliasBusqueda = getAliasBusqueda(),
 ): CancionCancionero[] {
   const normalized = query.trim().toLowerCase();
 
@@ -83,9 +89,9 @@ export function filterCancionesCancionero(
 
   return canciones.filter((cancion) => {
     const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = cancion.artista?.toLowerCase().includes(normalized);
+    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, alias);
 
-    return matchesNombre || Boolean(matchesArtista);
+    return matchesNombre || matchesArtista;
   });
 }
 

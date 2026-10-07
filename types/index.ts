@@ -27,6 +27,14 @@ export type Artista = {
   created_at?: string;
 };
 
+/** Nombre alternativo de un artista (tabla `artistas_alias`). */
+export type ArtistaAlias = {
+  id: string;
+  artista_id: string;
+  alias: string;
+  alias_norm: string;
+};
+
 export type CancionGuardada = {
   id: number;
   sala_id: number | null;

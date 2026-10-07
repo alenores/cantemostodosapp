@@ -1,4 +1,6 @@
 "use client";
+import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
+import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -26,6 +28,7 @@ export function CifradoEditorSavedLinksModal({
   const [links, setLinks] = useState<CancionBusquedaLocal[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
+  const aliasBusqueda = useAliasBusqueda();
 
   useEffect(() => {
     if (!open) {
@@ -84,9 +87,9 @@ export function CifradoEditorSavedLinksModal({
 
     return links.filter((link) => {
       const searchStr = `${link.nombre} ${link.artista || ""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return searchStr.includes(q);
+      return searchStr.includes(q) || artistaCoincideBusqueda(link.artista, q, aliasBusqueda);
     });
-  }, [links, query]);
+  }, [aliasBusqueda, links, query]);
 
   if (!open) {
     return null;

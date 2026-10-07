@@ -44,7 +44,7 @@ export type CifradoSaveResult = {
 export type CifradoEditorPersistPayload = {
   nombre: string;
   artista: string | null;
-  /** Ficha del artista. `undefined` = no se pudo comparar: no tocar el vínculo guardado. */
+  /** Artista de la tabla `artistas` (undefined = no tocar el vínculo). */
   artista_id?: string | null;
   letra: string;
   cifrado: CifradoData;

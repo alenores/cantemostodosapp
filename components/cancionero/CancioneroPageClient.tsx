@@ -1,4 +1,7 @@
 "use client";
+import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
+import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
+import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
@@ -109,6 +112,7 @@ export default function CancioneroPageClient({
   const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
   const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
   const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
+  const aliasBusqueda = useAliasBusqueda();
 
   useEffect(() => {
     getArtistas(supabase).then(setArtistas);
@@ -126,23 +130,23 @@ export default function CancioneroPageClient({
   }, [canciones]);
 
   const cancionesFiltradas = useMemo(() => {
-    let list = filterCancionesCancionero(canciones, query);
+    let list = filterCancionesCancionero(canciones, query, aliasBusqueda);
     if (selectedArtistaIds.size > 0) {
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
     return list;
-  }, [canciones, query, selectedArtistaIds, artistas]);
+  }, [canciones, query, selectedArtistaIds, artistas, aliasBusqueda]);
   const practicaFiltradas = useMemo(() => {
     if (!usuarioLogueado) return [];
     const normalized = query.trim().toLowerCase();
-    let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || Boolean(cancion.artista?.toLowerCase().includes(normalized)));
+    let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda));
     if (selectedArtistaIds.size > 0) {
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
     return list;
-  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas]);
+  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas, aliasBusqueda]);
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {
@@ -721,6 +725,7 @@ export default function CancioneroPageClient({
                   <Users className="size-5" />
                 </TapButton>
               </div>
+              <VincularNombreArtista texto={query} />
               {selectedArtistaIds.size > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
                   {Array.from(selectedArtistaIds).map(id => {

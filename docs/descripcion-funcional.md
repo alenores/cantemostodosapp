@@ -290,6 +290,8 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
+- **Otros nombres de artistas** (también en el buscador de Home/Sala, el filtro de artistas y los buscadores del editor): escribir un nombre alternativo anotado (ej. "Carlitos") encuentra las canciones del artista oficial (La Mona Jiménez). Funciona sin señal con la última copia guardada.
+  - **Solo dueño:** debajo del buscador aparece un texto chico *"+ «…» es otro nombre de…"*; abre un panel para elegir el artista y anotar ese nombre.
 - Botón **+** para **Agregar canción**: solo lo ven el dueño y los amigos; se usa con conexión.
 - Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
@@ -381,9 +383,14 @@ Al elegir dónde colocar un acorde, aparece una marca naranja temporal en ese pu
 - **Nombre** (obligatorio), **artista**, **tonalidad**, **modo tonal**, **velocidad (BPM)**.
 - Nombre y artista aparecen juntos en una tarjeta; tono y modo, en otra. Los títulos y campos usan mayúscula inicial y el resto en minúscula.
 - **Intercambiar nombre y artista**: botón chico y gris; un toque los da vuelta (la búsqueda en la web a veces los reconoce al revés).
+- **Artista vinculado a la lista** (PC y celular): el campo artista se escribe libre (o llega de la web / texto pegado) y la app lo busca en la lista de artistas sin importar mayúsculas, tildes, orden de las palabras ni errores chicos de tipeo.
+  - Coincidencia segura → *"✓ Artista de la lista"* o *"✓ Se anota como «…»"*; al guardar queda con el nombre oficial.
+  - Varios parecidos (ej. solo "Sosa") → *"¿Es alguno de estos?"* con hasta 4 sugeridos y *"Es otro artista"*. No deja guardar hasta elegir.
+  - Sin parecidos → *"Artista nuevo: se agrega a la lista al guardar"*.
+  - **Memoria de nombres**: al elegir un sugerido escrito distinto (ej. "Los Redondos" → Patricio Rey…), la app lo recuerda y la próxima vez lo reconoce sola.
+  - Sin señal o sin lista cargada se guarda solo el texto, como antes.
 - **Canción repetida**: si ya hay en el cancionero una canción con el mismo nombre (sin importar mayúsculas, tildes ni signos), aparece un aviso debajo del nombre, también en la confirmación al pegar. Al tocarlo se abre una ventana con artista, nombre y letra de cada una para comparar. No impide guardar, porque puede ser la misma canción de otro artista.
 - **Vista previa**: dos botones chicos en la barra lateral, uno alterna PC / Cel y el otro Previsualizar / Edición.
-- **Artista desde la lista**: el artista se elige siempre de una lista propia de la app (con foto y buscador) que se abre desde abajo (computadora, celular y confirmación al pegar). Al pegar, traer de la web o elegir una canción simple, la app compara el nombre detectado con la lista sin importar mayúsculas, tildes, signos, artículos («Los», «La»…), «&» o el orden de las palabras: si es el mismo, lo deja elegido. Si no está, muestra «Se detectó …», sugiere los parecidos («¿Es …?») y ofrece «+ Agregar … a la lista». No se puede guardar un artista que no esté en la lista.
 - **Gestor de artistas**: no deja crear un artista que ya existe escrito de otra forma, y avisa si se parece a uno cargado antes de guardarlo.
 - El cuadro de **letra con acordes** al ingresar una canción muestra al menos diez renglones.
 - **Video de YouTube** (opcional): tarjeta «Video» en la barra lateral (computadora) y en «Datos y ajustes» (celular). Acepta cualquier link de YouTube (compartir, largo, Shorts) y muestra la miniatura para confirmar que es el video correcto. Avisa si el link no es de YouTube. Solo se guarda el link; el video nunca se descarga.

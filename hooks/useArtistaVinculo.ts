@@ -6,6 +6,7 @@ import {
   getArtistas,
   getArtistasAlias,
 } from "@/lib/artistas";
+import { recargarAliasBusqueda } from "@/lib/artistas-alias-busqueda";
 import {
   normalizarNombreArtista,
   resolverArtista,
@@ -84,7 +85,9 @@ export function useArtistaVinculo(
       // Memoria: si venía escrito distinto, se anota ese nombre para la próxima.
       if (originalNorm && originalNorm !== normalizarNombreArtista(artista.nombre)) {
         void addArtistaAlias(supabase, artista.id, original).then((nuevo) => {
-          if (nuevo) setAlias((current) => [...current, nuevo]);
+          if (!nuevo) return;
+          setAlias((current) => [...current, nuevo]);
+          void recargarAliasBusqueda(supabase);
         });
       }
 

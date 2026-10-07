@@ -1,3 +1,5 @@
+import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
+import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 import { Search, X, Settings, Check } from "lucide-react";
 import { useState, useMemo } from "react";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -23,11 +25,12 @@ export function ArtistasFilterModal({
   const [query, setQuery] = useState("");
   const [draftSelected, setDraftSelected] = useState<Set<string>>(selectedIds);
 
+  const aliasBusqueda = useAliasBusqueda();
+
   const filteredArtistas = useMemo(() => {
     if (!query.trim()) return artistas;
-    const lowerQuery = query.toLowerCase();
-    return artistas.filter((a) => a.nombre.toLowerCase().includes(lowerQuery));
-  }, [artistas, query]);
+    return artistas.filter((a) => artistaCoincideBusqueda(a.nombre, query, aliasBusqueda));
+  }, [aliasBusqueda, artistas, query]);
 
   if (!isOpen) return null;
 

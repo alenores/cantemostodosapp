@@ -1,4 +1,5 @@
 "use client";
+import { artistaCoincideBusqueda, getAliasBusqueda } from "@/lib/artistas-alias-busqueda";
 
 import CancioneroListSkeleton from "@/components/cancionero/CancioneroListSkeleton";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
@@ -52,7 +53,7 @@ function filterMisCanciones(
 
   return canciones.filter((cancion) => {
     const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = cancion.artista?.toLowerCase().includes(normalized);
+    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, getAliasBusqueda());
 
     return matchesNombre || Boolean(matchesArtista);
   });

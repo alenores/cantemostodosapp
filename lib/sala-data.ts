@@ -2,6 +2,8 @@ import {
   getCancioneroLocalAll,
   getCancioneroLocalForBusqueda,
 } from "@/lib/offline/cancionero-store";
+import { getAliasBusqueda } from "@/lib/artistas-alias-busqueda";
+import { normalizarNombreArtista } from "@/lib/artistas-match";
 import type { ColaItem, SesionSala } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -54,10 +56,17 @@ function scoreCancionLocal(
   const nombre = normalizeForSearch(cancion.nombre);
   const artista = normalizeForSearch(cancion.artista ?? "");
   const letra = normalizeForSearch(cancion.letra ?? "");
+  const queryArtista = normalizarNombreArtista(query);
+  const scoreAlias = Math.max(
+    0,
+    ...(getAliasBusqueda().get(normalizarNombreArtista(cancion.artista ?? "")) ?? []).map(
+      (alias) => scoreCampo(alias, queryArtista, PESO_ARTISTA),
+    ),
+  );
 
   return (
     scoreCampo(nombre, normalizedQuery, PESO_NOMBRE) +
-    scoreCampo(artista, normalizedQuery, PESO_ARTISTA) +
+    Math.max(scoreCampo(artista, normalizedQuery, PESO_ARTISTA), scoreAlias) +
     scoreCampo(letra, normalizedQuery, PESO_LETRA)
   );
 }

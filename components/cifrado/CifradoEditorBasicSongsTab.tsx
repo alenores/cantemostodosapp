@@ -1,4 +1,7 @@
 "use client";
+import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
+import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
+import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 
 import { createClient } from "@/lib/supabase/client";
 import { fetchCancionesCancionero } from "@/lib/cancionero";
@@ -12,6 +15,7 @@ type Props = {
 export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [query, setQuery] = useState("");
+  const aliasBusqueda = useAliasBusqueda();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -64,12 +68,14 @@ export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return canciones;
-    return canciones.filter((cancion) =>
-      `${cancion.nombre} ${cancion.artista ?? ""}`
-        .toLocaleLowerCase()
-        .includes(normalized),
+    return canciones.filter(
+      (cancion) =>
+        `${cancion.nombre} ${cancion.artista ?? ""}`
+          .toLocaleLowerCase()
+          .includes(normalized) ||
+        artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda),
     );
-  }, [canciones, query]);
+  }, [aliasBusqueda, canciones, query]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-estandar border border-border bg-bg-card p-3">
@@ -83,6 +89,7 @@ export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
         placeholder="Buscar canción o artista…"
         aria-label="Buscar letras básicas"
       />
+      <VincularNombreArtista texto={query} />
       {loading ? (
         <p className="py-6 text-center text-sm text-text-muted">Cargando…</p>
       ) : error ? (

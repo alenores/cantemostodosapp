@@ -274,6 +274,8 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 
 - Título: **Cancionero**.
 - Búsqueda: *"Buscar por nombre o artista…"*.
+- **Otros nombres de artistas** (también en el buscador de Home/Sala, el filtro de artistas y los buscadores del editor): escribir un nombre alternativo anotado (ej. "Carlitos") encuentra las canciones del artista oficial (La Mona Jiménez). Funciona sin señal con la última copia guardada.
+  - **Solo dueño:** debajo del buscador aparece un texto chico *"+ «…» es otro nombre de…"*; abre un panel para elegir el artista y anotar ese nombre.
 - Botón **+** para **Agregar canción** (requiere cuenta y conexión).
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
 - El marcador de **Favoritas** se muestra únicamente en las canciones que la persona guardó allí.

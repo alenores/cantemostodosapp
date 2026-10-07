@@ -1,5 +1,6 @@
 import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
 import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
+import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
 import { Search, X, Settings, Check } from "lucide-react";
 import { useState, useMemo } from "react";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -101,6 +102,9 @@ export function ArtistasFilterModal({
               placeholder="Buscar artista…"
               className="w-full rounded-xl border border-border bg-bg-darker py-2.5 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent"
             />
+          </div>
+          <div className="mt-2 flex">
+            <VincularNombreArtista texto={query} />
           </div>
         </div>
 

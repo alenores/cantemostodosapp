@@ -1,11 +1,15 @@
 "use client";
 
 import PresenceAvatarStack from "@/components/salas/PresenceAvatarStack";
+import { triggerHaptic } from "@/lib/haptic";
 import type { PresenceUsuario, Sala, SalaMiembro } from "@/types";
-import { ArrowRight, Loader2, Users } from "lucide-react";
-import { useMemo, useState, type MouseEvent } from "react";
+import { ArrowRight, Loader2, MoreHorizontal, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 
 type SalaRef = Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">;
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_CANCEL_PX = 10;
 
 type SalaCardProps = {
   sala: SalaRef;
@@ -13,6 +17,7 @@ type SalaCardProps = {
   miembros?: SalaMiembro[];
   onOpen: (sala: SalaRef) => void;
   onOpenMiembros: (sala: SalaRef) => void;
+  onEdit: (sala: SalaRef) => void;
 };
 
 export default function SalaCard({
@@ -21,8 +26,12 @@ export default function SalaCard({
   miembros = [],
   onOpen,
   onOpenMiembros,
+  onEdit,
 }: SalaCardProps) {
   const [pending, setPending] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickRef = useRef(false);
 
   const avatares = useMemo((): PresenceUsuario[] => {
     return miembros.map((m) => ({
@@ -32,7 +41,21 @@ export default function SalaCard({
     }));
   }, [miembros]);
 
+  function clearLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+  }
+
+  useEffect(() => () => clearLongPress(), []);
+
   function handleOpen() {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     if (pending || disabled) {
       return;
     }
@@ -41,9 +64,53 @@ export default function SalaCard({
     onOpen(sala);
   }
 
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || pending || disabled) {
+      return;
+    }
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-sala-editar]")) {
+      return;
+    }
+    clearLongPress();
+    longPressStartRef.current = { x: event.clientX, y: event.clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      suppressClickRef.current = true;
+      triggerHaptic();
+      onEdit(sala);
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const start = longPressStartRef.current;
+    if (!start) {
+      return;
+    }
+    if (
+      Math.abs(event.clientX - start.x) >= LONG_PRESS_MOVE_CANCEL_PX ||
+      Math.abs(event.clientY - start.y) >= LONG_PRESS_MOVE_CANCEL_PX
+    ) {
+      clearLongPress();
+    }
+  }
+
+  function handleEdit(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (disabled) {
+      return;
+    }
+    onEdit(sala);
+  }
+
   function handleOpenMiembros(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     if (disabled) {
       return;
     }
@@ -53,7 +120,19 @@ export default function SalaCard({
   const inicial = (sala.nombre.trim()[0] ?? "?").toUpperCase();
 
   return (
-    <div className={`home-destination-card relative flex w-full flex-col overflow-hidden rounded-[28px] ${disabled ? "opacity-50" : ""}`}>
+    <div
+      className={`home-destination-card relative flex w-full flex-col overflow-hidden rounded-[28px] ${disabled ? "opacity-50" : ""}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        if (!disabled) {
+          onEdit(sala);
+        }
+      }}
+    >
       {pending && (
         <span
           className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-[#29292b]/75"
@@ -110,6 +189,18 @@ export default function SalaCard({
           <ArrowRight className="mb-0.5 size-5 shrink-0 text-white" aria-hidden="true" />
         </span>
       </button>
+
+      {!disabled ? (
+        <button
+          type="button"
+          data-sala-editar=""
+          aria-label={`Editar ${sala.nombre}`}
+          onClick={handleEdit}
+          className="absolute right-2 top-2 z-20 flex size-10 items-center justify-center text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]"
+        >
+          <MoreHorizontal className="size-5" aria-hidden="true" />
+        </button>
+      ) : null}
 
       <button
         type="button"

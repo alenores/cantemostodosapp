@@ -3,6 +3,7 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import BuildVersionFooter from "@/components/BuildVersionFooter";
 import CrearSalaModal from "@/components/salas/CrearSalaModal";
+import EditarSalaModal from "@/components/salas/EditarSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
 import SalaMiembrosDetalleModal from "@/components/salas/SalaMiembrosDetalleModal";
 import AppTopHeader from "@/components/ui/AppTopHeader";
@@ -39,12 +40,17 @@ export default function SalasPageClient({
     Sala,
     "id" | "nombre" | "descripcion" | "avatar_url"
   > | null>(null);
+  const [editarSala, setEditarSala] = useState<Pick<
+    Sala,
+    "id" | "nombre" | "descripcion" | "avatar_url"
+  > | null>(null);
   const [miembrosBySala, setMiembrosBySala] = useState<
     Record<number, SalaMiembro[]>
   >({});
   const avisoMensaje = getPerfilAvisoMensaje(avisoInicial);
   const salaIds = useMemo(() => salas.map((sala) => sala.id), [salas]);
   const detalleOpen = detalleSala !== null;
+  const editorOpen = editarSala !== null;
 
   const loadMiembros = useCallback(async () => {
     if (!online || salaIds.length === 0) {
@@ -115,6 +121,10 @@ export default function SalasPageClient({
     setDetalleSala(null);
   });
 
+  useHardwareBack(editorOpen, () => {
+    setEditarSala(null);
+  });
+
   return (
     <div className="relative flex min-h-full flex-1 flex-col bg-[#181818]">
       <AppReadyMarker />
@@ -173,6 +183,7 @@ export default function SalasPageClient({
                   miembros={online ? (miembrosBySala[sala.id] ?? []) : []}
                   onOpen={openSala}
                   onOpenMiembros={openMiembros}
+                  onEdit={setEditarSala}
                 />
               ))}
             </div>
@@ -209,6 +220,21 @@ export default function SalasPageClient({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onCreated={() => router.refresh()}
+      />
+
+      <EditarSalaModal
+        open={editorOpen}
+        sala={editarSala}
+        esDueno={
+          editarSala
+            ? (miembrosBySala[editarSala.id] ?? []).some(
+                (miembro) =>
+                  miembro.user_id === usuario.id && miembro.rol === "owner",
+              )
+            : false
+        }
+        onClose={() => setEditarSala(null)}
+        onSaved={() => router.refresh()}
       />
 
       <SalaMiembrosDetalleModal

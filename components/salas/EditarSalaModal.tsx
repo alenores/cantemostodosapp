@@ -2,32 +2,53 @@
 
 import SalaAvatar from "@/components/salas/SalaAvatar";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { prepararFotoLiviana } from "@/lib/imagen-liviana";
 import { uploadSalaAvatar, validateSalaAvatarFile } from "@/lib/sala-avatar";
 import { createClient } from "@/lib/supabase/client";
+import type { Sala } from "@/types";
 import { Camera, X } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-estandar border border-border bg-bg-app px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent transition-colors duration-150";
 
-type CrearSalaModalProps = {
+type SalaRef = Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">;
+
+type EditarSalaModalProps = {
   open: boolean;
+  sala: SalaRef | null;
+  esDueno: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: () => void;
 };
 
-export default function CrearSalaModal({
+export default function EditarSalaModal({
   open,
+  sala,
+  esDueno,
   onClose,
-  onCreated,
-}: CrearSalaModalProps) {
+  onSaved,
+}: EditarSalaModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !sala) {
+      return;
+    }
+    setNombre(sala.nombre);
+    setDescripcion(sala.descripcion ?? "");
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setError(null);
+    setPreparandoFoto(false);
+  }, [open, sala]);
 
   useEffect(() => {
     return () => {
@@ -37,22 +58,11 @@ export default function CrearSalaModal({
     };
   }, [avatarPreview]);
 
-  if (!open) {
+  if (!open || !sala) {
     return null;
   }
 
-  function resetForm() {
-    setNombre("");
-    setDescripcion("");
-    setAvatarFile(null);
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview);
-    }
-    setAvatarPreview(null);
-    setError(null);
-  }
-
-  function handleAvatarPick(file: File | null) {
+  async function handleAvatarPick(file: File | null) {
     if (!file) {
       return;
     }
@@ -61,76 +71,82 @@ export default function CrearSalaModal({
       setError(validationError);
       return;
     }
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview);
-    }
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    setPreparandoFoto(true);
     setError(null);
+    try {
+      const liviana = await prepararFotoLiviana(file, "sala");
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+      setAvatarFile(liviana);
+      setAvatarPreview(URL.createObjectURL(liviana));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo usar esa foto.");
+    } finally {
+      setPreparandoFoto(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!sala || preparandoFoto) {
+      return;
+    }
+
+    const nombreLimpio = nombre.trim();
+    if (esDueno && !nombreLimpio) {
+      setError("El nombre es obligatorio.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("Tenés que iniciar sesión para crear una sala.");
-      setLoading(false);
-      return;
+    const cambios: { nombre?: string; descripcion: string | null } = {
+      descripcion: descripcion.trim() || null,
+    };
+    if (esDueno) {
+      cambios.nombre = nombreLimpio;
     }
 
-    const { data: salaCreada, error: insertError } = await supabase
+    const { error: updateError } = await supabase
       .from("salas")
-      .insert({
-        nombre: nombre.trim(),
-        descripcion: descripcion.trim() || null,
-        visible: true,
-        creado_por: user.id,
-      })
-      .select("id")
-      .single();
+      .update(cambios)
+      .eq("id", sala.id);
 
-    if (insertError || !salaCreada) {
+    if (updateError) {
       setLoading(false);
-      setError(insertError?.message ?? "No se pudo crear la sala.");
+      setError("No se pudo guardar.");
       return;
     }
 
     if (avatarFile) {
       try {
-        await uploadSalaAvatar(salaCreada.id, avatarFile);
+        await uploadSalaAvatar(sala.id, avatarFile);
       } catch (err) {
         setLoading(false);
         setError(
-          err instanceof Error
-            ? `${err.message} La sala se creó igual; podés subir la foto después.`
-            : "La sala se creó, pero no se pudo subir la foto.",
+          err instanceof Error ? err.message : "No se pudo guardar la foto.",
         );
-        onCreated();
+        onSaved();
         return;
       }
     }
 
     setLoading(false);
-    resetForm();
-    onCreated();
+    onSaved();
     onClose();
   }
 
   function handleClose() {
-    if (loading) {
+    if (loading || preparandoFoto) {
       return;
     }
-
-    resetForm();
     onClose();
   }
+
+  const foto = avatarPreview ?? sala.avatar_url;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-8 sm:items-center">
@@ -143,25 +159,25 @@ export default function CrearSalaModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="crear-sala-titulo"
+        aria-labelledby="editar-sala-titulo"
         className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-[16px] border border-border bg-bg-card p-5 shadow-xl"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[1.5px] text-accent">
-              Nueva sala
+              Sala
             </p>
             <h2
-              id="crear-sala-titulo"
-              className="mt-1 text-lg font-extrabold text-text-primary"
+              id="editar-sala-titulo"
+              className="mt-1 truncate text-lg font-extrabold text-text-primary"
             >
-              Crear sala
+              {esDueno ? "Editar sala" : sala.nombre}
             </h2>
           </div>
           <TapButton
             aria-label="Cerrar"
             onClick={handleClose}
-            className="flex size-10 items-center justify-center rounded-full border border-border bg-bg-app text-text-primary"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg-app text-text-primary"
           >
             <X className="size-5" aria-hidden="true" />
           </TapButton>
@@ -171,17 +187,18 @@ export default function CrearSalaModal({
           <div className="flex flex-col items-center gap-2">
             <div className="relative">
               <SalaAvatar
-                nombre={nombre || "Sala"}
-                avatarUrl={avatarPreview}
+                nombre={nombre || sala.nombre}
+                avatarUrl={foto}
                 sizeClassName="size-20"
                 iconClassName="size-8"
                 roundedClassName="rounded-2xl"
               />
               <TapButton
                 type="button"
-                aria-label="Elegir foto de la sala"
+                aria-label="Cambiar foto de la sala"
+                disabled={loading || preparandoFoto}
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full border border-border bg-bg-app text-text-primary shadow"
+                className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full border border-border bg-bg-app text-text-primary shadow disabled:opacity-60"
               >
                 <Camera className="size-4" aria-hidden="true" />
               </TapButton>
@@ -191,65 +208,51 @@ export default function CrearSalaModal({
                 accept="image/*"
                 className="hidden"
                 onChange={(event) => {
-                  handleAvatarPick(event.target.files?.[0] ?? null);
+                  void handleAvatarPick(event.target.files?.[0] ?? null);
                   event.target.value = "";
                 }}
               />
             </div>
-            <p className="text-center text-[11px] text-text-faint">
-              Foto opcional. Se guarda liviana, sola.
-            </p>
+            {preparandoFoto ? (
+              <p className="text-xs text-text-muted">Preparando la foto…</p>
+            ) : null}
           </div>
 
-          <div>
-            <label
-              htmlFor="sala-nombre"
-              className="mb-1.5 block text-xs font-medium text-text-muted"
-            >
-              Nombre
+          {esDueno ? (
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-text-secondary">Nombre</span>
+              <input
+                value={nombre}
+                onChange={(event) => setNombre(event.target.value)}
+                className={inputClassName}
+                maxLength={80}
+                required
+              />
             </label>
-            <input
-              id="sala-nombre"
-              type="text"
-              required
-              maxLength={80}
-              placeholder="Ej: Los del viernes"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
-              className={inputClassName}
-            />
-          </div>
+          ) : null}
 
-          <div>
-            <label
-              htmlFor="sala-descripcion"
-              className="mb-1.5 block text-xs font-medium text-text-muted"
-            >
-              Descripción (opcional)
-            </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-text-secondary">Descripción</span>
             <textarea
-              id="sala-descripcion"
-              rows={3}
-              maxLength={200}
-              placeholder="Una frase sobre esta sala..."
               value={descripcion}
               onChange={(event) => setDescripcion(event.target.value)}
-              className={`${inputClassName} min-h-[88px] resize-none py-3`}
+              className={`${inputClassName} min-h-24 py-3`}
+              maxLength={280}
             />
-          </div>
+          </label>
 
-          {error && (
+          {error ? (
             <p className="text-sm text-accent" role="alert">
               {error}
             </p>
-          )}
+          ) : null}
 
           <TapButton
             type="submit"
-            disabled={loading || !nombre.trim()}
-            className="min-h-11 w-full rounded-[10px] bg-accent text-base font-semibold text-white disabled:opacity-60"
+            disabled={loading || preparandoFoto}
+            className="min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white disabled:opacity-60"
           >
-            {loading ? "Creando..." : "Crear sala"}
+            {loading ? "Guardando…" : "Guardar"}
           </TapButton>
         </form>
       </div>

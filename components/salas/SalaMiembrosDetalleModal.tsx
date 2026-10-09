@@ -161,7 +161,7 @@ export default function SalaMiembrosDetalleModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/*"
                     className="hidden"
                     onChange={(event) => {
                       void handleAvatarFile(event.target.files?.[0] ?? null);

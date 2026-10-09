@@ -1,6 +1,6 @@
 -- Foto de perfil de sala (Storage + columna avatar_url).
 -- Ejecutar en Supabase → SQL Editor DESPUÉS de sala-miembros.sql
--- (usa public.es_owner_sala).
+-- (usa public.es_miembro_sala).
 
 -- 1) Columna en salas
 ALTER TABLE public.salas
@@ -25,7 +25,7 @@ CREATE POLICY "sala-avatars owner upload"
   TO authenticated
   WITH CHECK (
     bucket_id = 'sala-avatars'
-    AND public.es_owner_sala(((storage.foldername(name))[1])::bigint)
+    AND public.es_miembro_sala(((storage.foldername(name))[1])::bigint)
   );
 
 DROP POLICY IF EXISTS "sala-avatars owner update" ON storage.objects;
@@ -35,11 +35,11 @@ CREATE POLICY "sala-avatars owner update"
   TO authenticated
   USING (
     bucket_id = 'sala-avatars'
-    AND public.es_owner_sala(((storage.foldername(name))[1])::bigint)
+    AND public.es_miembro_sala(((storage.foldername(name))[1])::bigint)
   )
   WITH CHECK (
     bucket_id = 'sala-avatars'
-    AND public.es_owner_sala(((storage.foldername(name))[1])::bigint)
+    AND public.es_miembro_sala(((storage.foldername(name))[1])::bigint)
   );
 
 DROP POLICY IF EXISTS "sala-avatars owner delete" ON storage.objects;
@@ -49,5 +49,5 @@ CREATE POLICY "sala-avatars owner delete"
   TO authenticated
   USING (
     bucket_id = 'sala-avatars'
-    AND public.es_owner_sala(((storage.foldername(name))[1])::bigint)
+    AND public.es_miembro_sala(((storage.foldername(name))[1])::bigint)
   );

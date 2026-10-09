@@ -1,29 +1,14 @@
+import { prepararFotoLiviana } from "@/lib/imagen-liviana";
 import { createClient } from "@/lib/supabase/client";
 
-const MAX_SALA_AVATAR_BYTES = 2 * 1024 * 1024;
-const SALA_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-export function getSalaAvatarExtension(mimeType: string): string {
-  if (mimeType === "image/png") {
-    return "png";
-  }
-  if (mimeType === "image/webp") {
-    return "webp";
-  }
-  return "jpg";
-}
-
 export function validateSalaAvatarFile(file: File): string | null {
-  if (!SALA_AVATAR_TYPES.has(file.type)) {
-    return "Usá una imagen JPG, PNG o WebP.";
-  }
-  if (file.size > MAX_SALA_AVATAR_BYTES) {
-    return "La imagen debe pesar menos de 2 MB.";
+  if (!file.type.startsWith("image/")) {
+    return "Elegí una foto.";
   }
   return null;
 }
 
-/** Sube la foto y actualiza salas.avatar_url. Solo owner (RLS + storage). */
+/** Sube la foto ya liviana y actualiza salas.avatar_url. */
 export async function uploadSalaAvatar(
   salaId: number,
   file: File,
@@ -33,21 +18,19 @@ export async function uploadSalaAvatar(
     throw new Error(validationError);
   }
 
+  const liviana = await prepararFotoLiviana(file, "sala");
   const supabase = createClient();
-  const extension = getSalaAvatarExtension(file.type);
-  const path = `${salaId}/avatar.${extension}`;
+  const path = `${salaId}/avatar.webp`;
 
   const { error: uploadError } = await supabase.storage
     .from("sala-avatars")
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, liviana, { upsert: true, contentType: "image/webp" });
 
   if (uploadError) {
     if (uploadError.message.includes("Bucket not found")) {
-      throw new Error(
-        "Falta configurar el bucket de fotos de sala. Ejecutá supabase/sala-avatars.sql.",
-      );
+      throw new Error("Todavía no se pueden guardar fotos de sala.");
     }
-    throw new Error(uploadError.message);
+    throw new Error("No se pudo guardar la foto.");
   }
 
   const {
@@ -62,7 +45,7 @@ export async function uploadSalaAvatar(
     .eq("id", salaId);
 
   if (updateError) {
-    throw new Error(updateError.message);
+    throw new Error("No se pudo guardar la foto.");
   }
 
   return avatarUrl;

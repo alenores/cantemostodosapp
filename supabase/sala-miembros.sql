@@ -389,8 +389,8 @@ CREATE POLICY "owner actualiza salas"
   ON public.salas
   FOR UPDATE
   TO authenticated
-  USING (public.es_owner_sala(id))
-  WITH CHECK (public.es_owner_sala(id));
+  USING (public.es_miembro_sala(id))
+  WITH CHECK (public.es_miembro_sala(id));
 
 -- 13) RLS sala_miembros
 DROP POLICY IF EXISTS "miembros leen sala_miembros" ON public.sala_miembros;

@@ -4,6 +4,7 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
+import { prepararFotoLiviana } from "@/lib/imagen-liviana";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import { ArrowLeft, Camera } from "lucide-react";
@@ -17,18 +18,6 @@ const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
 
 const MIN_PASSWORD_LENGTH = 6;
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-function getAvatarExtension(mimeType: string): string {
-  if (mimeType === "image/png") {
-    return "png";
-  }
-  if (mimeType === "image/webp") {
-    return "webp";
-  }
-  return "jpg";
-}
 
 type PerfilPageClientProps = {
   usuarioInicial: UsuarioActivo;
@@ -48,6 +37,7 @@ export default function PerfilPageClient({
   const [avatarUrl, setAvatarUrl] = useState(usuarioInicial.avatar_url);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [preparandoFoto, setPreparandoFoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cambiarContraseñaAbierto, setCambiarContraseñaAbierto] = useState(false);
@@ -59,7 +49,7 @@ export default function PerfilPageClient({
     setConfirmarContraseña("");
   }
 
-  function handleAvatarPick(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAvatarPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -67,19 +57,25 @@ export default function PerfilPageClient({
       return;
     }
 
-    if (!AVATAR_TYPES.has(file.type)) {
-      setError("Usá una imagen JPG, PNG o WebP.");
+    if (!file.type.startsWith("image/")) {
+      setError("Elegí una foto.");
       return;
     }
 
-    if (file.size > MAX_AVATAR_BYTES) {
-      setError("La imagen no puede superar 2 MB.");
-      return;
-    }
-
+    setPreparandoFoto(true);
     setError(null);
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    try {
+      const liviana = await prepararFotoLiviana(file, "perfil");
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+      setAvatarFile(liviana);
+      setAvatarPreview(URL.createObjectURL(liviana));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo usar esa foto.");
+    } finally {
+      setPreparandoFoto(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -125,19 +121,18 @@ export default function PerfilPageClient({
     let nextAvatarUrl = avatarUrl;
 
     if (avatarFile) {
-      const extension = getAvatarExtension(avatarFile.type);
-      const path = `${usuarioInicial.id}/avatar.${extension}`;
+      const path = `${usuarioInicial.id}/avatar.webp`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
+        .upload(path, avatarFile, { upsert: true, contentType: "image/webp" });
 
       if (uploadError) {
         setLoading(false);
         setError(
           uploadError.message.includes("Bucket not found")
-            ? "Falta configurar el bucket de avatares en Supabase. Ejecutá supabase/avatars.sql."
-            : uploadError.message,
+            ? "Todavía no se pueden guardar fotos de perfil."
+            : "No se pudo guardar la foto.",
         );
         return;
       }
@@ -234,12 +229,14 @@ export default function PerfilPageClient({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         className="sr-only"
-        onChange={handleAvatarPick}
+        onChange={(event) => {
+          void handleAvatarPick(event);
+        }}
       />
       <p className="text-center text-xs text-text-muted lg:text-left">
-        JPG, PNG o WebP · máx. 2 MB
+        {preparandoFoto ? "Preparando la foto…" : "Se guarda liviana, sola."}
       </p>
     </>
   );
@@ -425,7 +422,7 @@ export default function PerfilPageClient({
             <div className="hidden lg:flex lg:justify-end">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || preparandoFoto}
                 className="min-h-10 rounded-[10px] bg-accent px-6 text-sm font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60"
                 style={{ transitionTimingFunction: "var(--transition-timing)" }}
               >
@@ -435,7 +432,7 @@ export default function PerfilPageClient({
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || preparandoFoto}
               className={`${buttonClassName} lg:hidden`}
               style={{ transitionTimingFunction: "var(--transition-timing)" }}
             >

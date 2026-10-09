@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { leerUsuarioDeLaSesion } from "@/lib/auth/usuario-servidor";
 import { redirect } from "next/navigation";
 
 export const revalidate = 0;
@@ -14,10 +14,7 @@ export default async function UnirseSalaPage({ searchParams }: UnirsePageProps) 
     redirect("/salas?aviso=sin-acceso-sala");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await leerUsuarioDeLaSesion();
 
   if (!user) {
     redirect(

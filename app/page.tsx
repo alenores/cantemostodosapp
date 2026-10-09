@@ -1,9 +1,11 @@
 import CancioneroHubPageClient from "@/components/cancionero/CancioneroHubPageClient";
+import RecordarEntrada from "@/components/auth/RecordarEntrada";
 import DesktopHomeRedirect from "@/components/home/DesktopHomeRedirect";
 import AppTopHeader from "@/components/ui/AppTopHeader";
-import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { createClient } from "@/lib/supabase/server";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
+import {
+  categoriaDeEstaEntrada,
+  leerUsuarioDeLaSesion,
+} from "@/lib/auth/usuario-servidor";
 
 export const revalidate = 0;
 
@@ -13,23 +15,19 @@ type HomePageProps = {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { aviso = null } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const usuario = user
-    ? mapUserToUsuarioActivo(user)
-    : OFFLINE_GUEST_USUARIO;
-  const { data: categoria } = user
-    ? await supabase.from("usuarios_categorias").select("categoria").eq("user_id", user.id).maybeSingle()
-    : { data: null };
+  const { supabase, user, usuario } = await leerUsuarioDeLaSesion();
+  const categoria = user ? await categoriaDeEstaEntrada(supabase, user.id) : null;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+      <RecordarEntrada userId={user?.id ?? null} categoria={categoria} />
       <DesktopHomeRedirect />
       <AppTopHeader usuario={usuario} mostrarQr />
-      <CancioneroHubPageClient usuario={usuario} avisoInicial={aviso} isOwner={categoria?.categoria === "dueno"} />
+      <CancioneroHubPageClient
+        usuario={usuario}
+        avisoInicial={aviso}
+        isOwner={categoria === "dueno"}
+      />
     </div>
   );
 }

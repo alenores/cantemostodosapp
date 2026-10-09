@@ -1,12 +1,18 @@
+import { noHayCookieDeSesion, sesionSigueVigente } from "@/lib/auth/sesion-vigente";
 import { resolveAuthCookieName } from "@/lib/supabase/auth-cookie";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Refresca la sesión de Supabase y escribe cookies en la respuesta.
- * Sin redirecciones: la protección de rutas sigue en cada Server Component.
+ * Renueva la sesión solo cuando está por vencer.
+ * Si ya sabemos quién está adentro, cada pantalla sigue de largo.
  */
 export async function updateSession(request: NextRequest) {
+  const cookies = request.cookies.getAll();
+  if (noHayCookieDeSesion(cookies) || sesionSigueVigente(cookies)) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

@@ -1,23 +1,24 @@
 import HubSectionPageClient from "@/components/cancionero/HubSectionPageClient";
-import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { createClient } from "@/lib/supabase/server";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
+import RecordarEntrada from "@/components/auth/RecordarEntrada";
+import {
+  categoriaDeEstaEntrada,
+  leerUsuarioDeLaSesion,
+} from "@/lib/auth/usuario-servidor";
 
 export const revalidate = 0;
 
 export default async function PracticaHubPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, usuario } = await leerUsuarioDeLaSesion();
+  const categoria = user ? await categoriaDeEstaEntrada(supabase, user.id) : null;
 
-  const usuario = user
-    ? mapUserToUsuarioActivo(user)
-    : OFFLINE_GUEST_USUARIO;
-
-  const { data: categoria } = user
-    ? await supabase.from("usuarios_categorias").select("categoria").eq("user_id", user.id).maybeSingle()
-    : { data: null };
-
-  return <HubSectionPageClient usuario={usuario} section="practica" isOwner={categoria?.categoria === "dueno"} />;
+  return (
+    <>
+      <RecordarEntrada userId={user?.id ?? null} categoria={categoria} />
+      <HubSectionPageClient
+        usuario={usuario}
+        section="practica"
+        isOwner={categoria === "dueno"}
+      />
+    </>
+  );
 }

@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type CategoriaUsuario = "dueno" | "amigos" | "publico";
 
 const CATEGORIA_STORAGE_PREFIX = "cantemos-categoria-usuario:";
+export const CATEGORIA_COOKIE = "cantemos-categoria";
 
 function normalizeCategoriaUsuario(value: unknown): CategoriaUsuario | null {
   return value === "dueno" || value === "amigos" || value === "publico"
@@ -58,6 +59,52 @@ export function leerCategoriaGuardada(userId: string): CategoriaUsuario | null {
   }
 }
 
+export function parseCategoriaCookie(
+  raw: string | undefined,
+  userId: string,
+): CategoriaUsuario | null {
+  if (!raw) return null;
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  const sep = decoded.indexOf(":");
+  if (sep < 0) return null;
+  if (decoded.slice(0, sep) !== userId) return null;
+  return normalizeCategoriaUsuario(decoded.slice(sep + 1));
+}
+
+export function recordarCategoriaEnCookie(
+  userId: string,
+  categoria: CategoriaUsuario | null,
+) {
+  if (typeof document === "undefined") return;
+  if (!categoria) {
+    document.cookie = `${CATEGORIA_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    return;
+  }
+  const value = encodeURIComponent(`${userId}:${categoria}`);
+  document.cookie = `${CATEGORIA_COOKIE}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
+}
+
+export function olvidarCategoriaRecordada() {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(CATEGORIA_STORAGE_PREFIX)) keys.push(key);
+    }
+    for (const key of keys) window.localStorage.removeItem(key);
+  } catch {
+    // Sin almacenamiento.
+  }
+  if (typeof document !== "undefined") {
+    document.cookie = `${CATEGORIA_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  }
+}
+
 function guardarCategoria(userId: string, categoria: CategoriaUsuario | null) {
   try {
     const key = `${CATEGORIA_STORAGE_PREFIX}${userId}`;
@@ -66,6 +113,7 @@ function guardarCategoria(userId: string, categoria: CategoriaUsuario | null) {
   } catch {
     // Sin almacenamiento: se vuelve a consultar la próxima vez.
   }
+  recordarCategoriaEnCookie(userId, categoria);
 }
 
 /**
@@ -75,8 +123,15 @@ function guardarCategoria(userId: string, categoria: CategoriaUsuario | null) {
 export async function obtenerCategoriaUsuario(
   supabase: SupabaseClient,
   userId: string,
+  opciones?: { refrescar?: boolean },
 ): Promise<CategoriaUsuario | null> {
-  if (!hayConexion()) return leerCategoriaGuardada(userId);
+  const guardada = leerCategoriaGuardada(userId);
+  if (guardada && !opciones?.refrescar) {
+    recordarCategoriaEnCookie(userId, guardada);
+    return guardada;
+  }
+
+  if (!hayConexion()) return guardada;
 
   try {
     const { data, error } = await supabase
@@ -93,4 +148,12 @@ export async function obtenerCategoriaUsuario(
   } catch {
     return leerCategoriaGuardada(userId);
   }
+}
+
+/** Guarda el permiso ya conocido, en el celular y en la cookie, sin volver a preguntar. */
+export function recordarCategoriaConocida(
+  userId: string,
+  categoria: CategoriaUsuario | null,
+) {
+  guardarCategoria(userId, categoria);
 }

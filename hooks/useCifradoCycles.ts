@@ -40,8 +40,8 @@ export function useCifradoCycles({
       return;
     }
 
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsLoggedInDetected(Boolean(user));
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedInDetected(Boolean(session?.user));
     });
   }, [isLoggedInProp, supabase]);
 

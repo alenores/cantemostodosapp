@@ -1,5 +1,5 @@
+import { leerUsuarioDeLaSesion } from "@/lib/auth/usuario-servidor";
 import { usuarioEstaEnSala } from "@/lib/sala-miembros";
-import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -19,10 +19,7 @@ export async function generateMetadata({
     return { title: "Sala no encontrada | CantemosTodosApp" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await leerUsuarioDeLaSesion();
 
   if (!user || !(await usuarioEstaEnSala(supabase, salaId, user.id))) {
     return { title: "Sala | CantemosTodosApp" };
@@ -49,11 +46,7 @@ export default async function SalaPage({ params }: SalasPageProps) {
     redirect("/salas?aviso=sin-acceso-sala");
   }
 
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await leerUsuarioDeLaSesion();
 
   if (!user) {
     redirect("/auth/login");

@@ -14,8 +14,8 @@ import CancioneroListSkeleton, {
 import CancioneroModoLectura from "@/components/cancionero/CancioneroModoLectura";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
+import CancioneroVirtualGrid from "@/components/cancionero/CancioneroVirtualGrid";
 import ValidacionFichaDialog from "@/components/cancionero/ValidacionFichaDialog";
-import AddButton from "@/components/ui/AddButton";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -62,7 +62,6 @@ import { createClient } from "@/lib/supabase/client";
 import {
   puedeEditarCancionCancionero,
   puedeQuitarValidacion,
-  puedeSumarCanciones,
   puedeValidarCancion,
 } from "@/lib/usuarios-categorias";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
@@ -100,7 +99,6 @@ export default function CancioneroPageClient({
   const supabase = useMemo(() => createClient(), []);
   const usuarioLogueado = usuarioId !== null;
   const categoria = useCategoriaUsuario();
-  const puedeSumar = usuarioLogueado && puedeSumarCanciones(categoria);
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [cancionesPractica, setCancionesPractica] = useState<CancionPracticaListItem[]>([]);
   const [localReady, setLocalReady] = useState(false);
@@ -514,21 +512,6 @@ export default function CancioneroPageClient({
     [misCancionesIds, quitarDeFavoritas, sumarAMisCanciones],
   );
 
-  function handleNuevaCancion() {
-    if (!online || !puedeSumar) {
-      return;
-    }
-
-    // Celular: pantalla nueva del editor. PC: modal del editor actual (sin tocar).
-    if (!isDesktop) {
-      navigateWithProgress("/canciones/editor?desde=cancionero");
-      return;
-    }
-
-    setEditorSession(null);
-    setEditorOpen(true);
-  }
-
   async function openEditorForCancion(cancion: CancionCancionero) {
     if (!online || !usuarioLogueado || editorLoading) {
       return;
@@ -872,17 +855,9 @@ export default function CancioneroPageClient({
       ) : null}
       <CancioneroSubpageShell
         title="Cancionero"
+        backOnRight
+        backAriaLabel="Cerrar"
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}
-        headerAction={
-          puedeSumar ? (
-            <AddButton
-              ariaLabel="Agregar canción"
-              onClick={handleNuevaCancion}
-              disabled={!online}
-              className={!online ? "opacity-40" : ""}
-            />
-          ) : null
-        }
       >
         {isDesktop && novedades.count > 0 ? (
           <button type="button" onClick={novedades.open} aria-label="Ver novedades del Cancionero"
@@ -1013,83 +988,90 @@ export default function CancioneroPageClient({
                 No hay canciones que coincidan con tu búsqueda.
               </p>
             ) : (
-              <div className="app-list-grid">
-                {cancionesFiltradas.map((cancion, index) => (
-                  <div
-                    key={cancion.id}
-                    className={`min-w-0 max-w-full${
-                      cascadeActive ? " cancionero-item-cascade" : ""
-                    }`}
-                    style={
-                      cascadeActive
-                        ? {
-                            animationDelay: `${Math.min(
-                              index * CASCADE_STAGGER_MS,
-                              CASCADE_MAX_DELAY_MS,
-                            )}ms`,
+              <div className="flex flex-col gap-3">
+                <CancioneroVirtualGrid
+                  items={cancionesFiltradas}
+                  getKey={(cancion) => cancion.id}
+                  renderItem={(cancion, index) => (
+                    <div
+                      className={`min-w-0 max-w-full${
+                        cascadeActive ? " cancionero-item-cascade" : ""
+                      }`}
+                      style={
+                        cascadeActive
+                          ? {
+                              animationDelay: `${Math.min(
+                                index * CASCADE_STAGGER_MS,
+                                CASCADE_MAX_DELAY_MS,
+                              )}ms`,
+                            }
+                          : undefined
+                      }
+                    >
+                      <CancioneroItemCard
+                        cancion={cancion}
+                        artistaAvatarUrl={fotoArtista(cancion.artista_id, cancion.artista)}
+                        mostrarAvatarUsuario={online}
+                        isDesktop={isDesktop}
+                        mutationsEnabled={mutationsEnabled}
+                        puedeEditarEliminar={puedeEditarCancionCancionero(
+                          cancion,
+                          usuarioId,
+                          categoria,
+                        )}
+                        isFavorita={misCancionesIds.has(cancion.id)}
+                        mostrarSumarMisCanciones={mostrarSumarMisCanciones}
+                        modoSeleccion={modoSeleccionMisCanciones}
+                        actionsOpen={activeCardId === cancion.id}
+                        onOpenActions={() => setActiveCardId(cancion.id)}
+                        onCloseActions={() => setActiveCardId(null)}
+                        onVer={handleVer}
+                        onAlternarFavorita={(item) =>
+                          void alternarFavorita(item)
+                        }
+                        onEditar={handleEditar}
+                        onEliminar={handleEliminar}
+                        puedePonerValidacion={
+                          mutationsEnabled &&
+                          puedeValidarCancion(categoria) &&
+                          !cancion.validada_por
+                        }
+                        onValidar={(item) => {
+                          setCancionValidacion(item);
+                          setValidacionPaso("confirmar");
+                        }}
+                        onVerValidacion={(item) => {
+                          setCancionValidacion(item);
+                          setValidacionPaso("ficha");
+                        }}
+                      />
+                    </div>
+                  )}
+                />
+                {practicaFiltradas.length > 0 ? (
+                  <div className="app-list-grid">
+                    {practicaFiltradas.map((cancion) => (
+                      <button
+                        key={`practica-${cancion.id}`}
+                        type="button"
+                        onClick={() => navigateWithProgress(`/practica/entrenador-canciones/ver?id=${cancion.id}`)}
+                        className="relative min-w-0 rounded-[12px] border border-border-card bg-bg-card p-3 text-left transition-colors hover:border-text-faint/50"
+                      >
+                        <CancioneroCardVisual
+                          nombre={cancion.nombre}
+                          artista={cancion.artista}
+                          artistaAvatarUrl={fotoArtista(null, cancion.artista)}
+                          iconos={
+                            <Star
+                              className="size-4 fill-current text-[var(--accent-vocal)]"
+                              aria-label="Entrenador de canciones"
+                            />
                           }
-                        : undefined
-                    }
-                  >
-                    <CancioneroItemCard
-                      cancion={cancion}
-                      artistaAvatarUrl={fotoArtista(cancion.artista_id, cancion.artista)}
-                      mostrarAvatarUsuario={online}
-                      isDesktop={isDesktop}
-                      mutationsEnabled={mutationsEnabled}
-                      puedeEditarEliminar={puedeEditarCancionCancionero(
-                        cancion,
-                        usuarioId,
-                        categoria,
-                      )}
-                      isFavorita={misCancionesIds.has(cancion.id)}
-                      mostrarSumarMisCanciones={mostrarSumarMisCanciones}
-                      modoSeleccion={modoSeleccionMisCanciones}
-                      actionsOpen={activeCardId === cancion.id}
-                      onOpenActions={() => setActiveCardId(cancion.id)}
-                      onCloseActions={() => setActiveCardId(null)}
-                      onVer={handleVer}
-                      onAlternarFavorita={(item) =>
-                        void alternarFavorita(item)
-                      }
-                      onEditar={handleEditar}
-                      onEliminar={handleEliminar}
-                      puedePonerValidacion={
-                        mutationsEnabled &&
-                        puedeValidarCancion(categoria) &&
-                        !cancion.validada_por
-                      }
-                      onValidar={(item) => {
-                        setCancionValidacion(item);
-                        setValidacionPaso("confirmar");
-                      }}
-                      onVerValidacion={(item) => {
-                        setCancionValidacion(item);
-                        setValidacionPaso("ficha");
-                      }}
-                    />
-                  </div>
-                ))}
-                {practicaFiltradas.map((cancion) => (
-                  <button
-                    key={`practica-${cancion.id}`}
-                    type="button"
-                    onClick={() => navigateWithProgress(`/practica/entrenador-canciones/ver?id=${cancion.id}`)}
-                    className="relative min-w-0 rounded-[12px] border border-border-card bg-bg-card p-3 text-left transition-colors hover:border-text-faint/50"
-                  >
-                    <CancioneroCardVisual
-                      nombre={cancion.nombre}
-                      artista={cancion.artista}
-                      artistaAvatarUrl={fotoArtista(null, cancion.artista)}
-                      iconos={
-                        <Star
-                          className="size-4 fill-current text-[var(--accent-vocal)]"
-                          aria-label="Entrenador de canciones"
                         />
-                      }
-                    />
-                  </button>
-                ))}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
           </>

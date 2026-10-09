@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import {
   leerCategoriaGuardada,
   obtenerCategoriaUsuario,
+  olvidarCategoriaRecordada,
+  recordarCategoriaEnCookie,
   type CategoriaUsuario,
 } from "@/lib/usuarios-categorias";
 import { useEffect, useMemo, useState } from "react";
@@ -21,7 +23,7 @@ export function useCategoriaUsuario(): CategoriaUsuario | null {
     let active = true;
     let version = 0;
 
-    async function cargar() {
+    async function cargar(refrescar = false) {
       const current = ++version;
       const userId = await getActiveUserId(supabase);
       if (!active || current !== version) return;
@@ -30,8 +32,14 @@ export function useCategoriaUsuario(): CategoriaUsuario | null {
         return;
       }
 
-      setCategoria(leerCategoriaGuardada(userId));
-      const actual = await obtenerCategoriaUsuario(supabase, userId);
+      const conocida = leerCategoriaGuardada(userId);
+      if (conocida && !refrescar) {
+        recordarCategoriaEnCookie(userId, conocida);
+        setCategoria(conocida);
+        return;
+      }
+
+      const actual = await obtenerCategoriaUsuario(supabase, userId, { refrescar });
       if (active && current === version) setCategoria(actual);
     }
 
@@ -40,8 +48,13 @@ export function useCategoriaUsuario(): CategoriaUsuario | null {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       // Fuera del callback: consultar la sesión dentro de él puede trabar Supabase.
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+      if (event === "SIGNED_OUT") {
+        olvidarCategoriaRecordada();
         window.setTimeout(() => void cargar().catch(() => {}), 0);
+        return;
+      }
+      if (event === "SIGNED_IN") {
+        window.setTimeout(() => void cargar(true).catch(() => {}), 0);
       }
     });
 

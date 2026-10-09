@@ -1,5 +1,6 @@
 "use client";
 
+import { olvidarCategoriaRecordada } from "@/lib/usuarios-categorias";
 import { hayConexion } from "@/lib/conexion";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,8 @@ export default function AuthSessionListener() {
       if (event !== "SIGNED_OUT" || !hayConexion()) {
         return;
       }
+
+      olvidarCategoriaRecordada();
 
       const path = window.location.pathname;
 

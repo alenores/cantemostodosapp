@@ -2,7 +2,7 @@
 
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 type CancioneroSubpageShellProps = {
@@ -14,6 +14,8 @@ type CancioneroSubpageShellProps = {
   /** Si se pasa, el volver llama a esto en vez de navegar con backHref. */
   onBack?: () => void;
   backAriaLabel?: string;
+  /** Título a la izquierda y una X a la derecha, en lugar de la flecha. */
+  backOnRight?: boolean;
   /** @deprecated El bloqueo de scroll con modales lo hace cada modal en `document.body`. */
   modalOpen?: boolean;
 };
@@ -25,8 +27,14 @@ export default function CancioneroSubpageShell({
   backHref = "/canciones",
   onBack,
   backAriaLabel = "Volver al cancionero",
+  backOnRight = false,
 }: CancioneroSubpageShellProps) {
   const isDesktop = useIsDesktop();
+  const backIcon = backOnRight ? (
+    <X className="size-5 text-text-primary" aria-hidden="true" />
+  ) : (
+    <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+  );
 
   const backControl = onBack ? (
     <TapButton
@@ -35,7 +43,7 @@ export default function CancioneroSubpageShell({
       onClick={onBack}
       className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95"
     >
-      <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+      {backIcon}
     </TapButton>
   ) : (
     <TapLink
@@ -43,7 +51,7 @@ export default function CancioneroSubpageShell({
       ariaLabel={backAriaLabel}
       className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-bg-card transition-all active:scale-95"
     >
-      <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+      {backIcon}
     </TapLink>
   );
 
@@ -53,11 +61,12 @@ export default function CancioneroSubpageShell({
       {!isDesktop ? (
         <header className="shrink-0 border-b border-border/80 bg-bg-dark px-4 py-2.5">
           <div className="app-page-container flex min-h-11 items-center gap-3">
-            {backControl}
+            {backOnRight ? null : backControl}
             <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-text-primary">
               {title}
             </h1>
             {headerAction}
+            {backOnRight ? backControl : null}
           </div>
         </header>
       ) : null}
@@ -68,12 +77,13 @@ export default function CancioneroSubpageShell({
           {isDesktop ? (
             <header className="mb-2 flex items-center justify-between gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                {onBack ? backControl : null}
+                {backOnRight || !onBack ? null : backControl}
                 <h1 className="text-2xl font-extrabold tracking-tight text-text-primary lg:text-[1.75rem]">
                   {title}
                 </h1>
               </div>
               {headerAction}
+              {backOnRight ? backControl : null}
             </header>
           ) : null}
           {children}

@@ -1,20 +1,15 @@
 import PerfilPageClient from "@/components/perfil/PerfilPageClient";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import { createClient } from "@/lib/supabase/server";
+import { leerUsuarioDeLaSesion } from "@/lib/auth/usuario-servidor";
 import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
 export default async function PerfilEditarPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, usuario } = await leerUsuarioDeLaSesion();
 
   if (!user) {
     redirect("/auth/login");
   }
 
-  return <PerfilPageClient usuarioInicial={mapUserToUsuarioActivo(user)} />;
+  return <PerfilPageClient usuarioInicial={usuario} />;
 }

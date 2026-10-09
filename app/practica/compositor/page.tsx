@@ -1,12 +1,20 @@
+import RecordarEntrada from "@/components/auth/RecordarEntrada";
 import CompositorOwnerGate from "@/components/herramientas/CompositorOwnerGate";
-import { createClient } from "@/lib/supabase/server";
+import {
+  categoriaDeEstaEntrada,
+  leerUsuarioDeLaSesion,
+} from "@/lib/auth/usuario-servidor";
 import { redirect } from "next/navigation";
 
 export default async function PracticaCompositorPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await leerUsuarioDeLaSesion();
   if (!user) redirect("/practica");
-  const { data } = await supabase.from("usuarios_categorias").select("categoria").eq("user_id", user.id).maybeSingle();
-  if (data?.categoria !== "dueno") redirect("/practica");
-  return <CompositorOwnerGate ownerUserId={user.id} />;
+  const categoria = await categoriaDeEstaEntrada(supabase, user.id);
+  if (categoria !== "dueno") redirect("/practica");
+  return (
+    <>
+      <RecordarEntrada userId={user.id} categoria={categoria} />
+      <CompositorOwnerGate ownerUserId={user.id} />
+    </>
+  );
 }

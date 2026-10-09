@@ -1,7 +1,6 @@
 import PerfilVistaClient from "@/components/perfil/PerfilVistaClient";
+import { leerUsuarioDeLaSesion } from "@/lib/auth/usuario-servidor";
 import { fetchSalasDelUsuario } from "@/lib/sala-miembros";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export const revalidate = 0;
@@ -25,12 +24,8 @@ function filasCancion(data: CancionRow[] | null): CancionRow[] {
 }
 
 export default async function PerfilPage({ searchParams }: PerfilPageProps) {
-  const supabase = await createClient();
   const { aviso = null } = await searchParams;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, usuario } = await leerUsuarioDeLaSesion();
 
   if (!user) {
     redirect("/auth/login");
@@ -57,7 +52,7 @@ export default async function PerfilPage({ searchParams }: PerfilPageProps) {
 
   return (
     <PerfilVistaClient
-      usuario={mapUserToUsuarioActivo(user)}
+      usuario={usuario}
       avisoInicial={aviso}
       aportadas={filasCancion(aportadasRes.data)}
       favoritas={filasCancion(favoritasRes.data)}

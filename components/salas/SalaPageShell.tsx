@@ -327,8 +327,9 @@ export default function SalaPageShell({
 
     void (async () => {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (cancelled) {
         return;
       }
@@ -512,8 +513,9 @@ export default function SalaPageShell({
 
       async function trackPresence(channel: RealtimeChannel) {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user;
 
         if (!user || cancelled) {
           return;

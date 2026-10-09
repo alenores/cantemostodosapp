@@ -1,5 +1,5 @@
 import CancioneroPageClient from "@/components/cancionero/CancioneroPageClient";
-import { createClient } from "@/lib/supabase/server";
+import { leerUsuarioDeLaSesion } from "@/lib/auth/usuario-servidor";
 
 export const revalidate = 0;
 
@@ -10,10 +10,7 @@ type CancioneroPageProps = {
 export default async function CancionesCancioneroPage({
   searchParams,
 }: CancioneroPageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await leerUsuarioDeLaSesion();
   const { seleccionar } = await searchParams;
 
   return (

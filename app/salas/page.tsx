@@ -1,7 +1,6 @@
 import SalasPageGate from "@/components/salas/SalasPageGate";
+import { leerUsuarioDeLaSesion } from "@/lib/auth/usuario-servidor";
 import { fetchSalasDelUsuario } from "@/lib/sala-miembros";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
-import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
 
 export const revalidate = 0;
@@ -11,12 +10,7 @@ type SalasPageProps = {
 };
 
 export default async function SalasPage({ searchParams }: SalasPageProps) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { supabase, user, usuario } = await leerUsuarioDeLaSesion();
   const { aviso = null } = await searchParams;
 
   if (!user) {
@@ -40,7 +34,7 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
   return (
     <Suspense fallback={null}>
       <SalasPageGate
-        serverUsuario={mapUserToUsuarioActivo(user)}
+        serverUsuario={usuario}
         serverSalas={salas}
         errorMessage={salasError}
         avisoInicial={aviso}

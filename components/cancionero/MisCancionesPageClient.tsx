@@ -9,6 +9,7 @@ import UrlLetraModal from "@/components/salas/UrlLetraModal";
 import AddButton from "@/components/ui/AddButton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -21,8 +22,9 @@ import {
 } from "@/lib/mis-canciones";
 import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
 import { createClient } from "@/lib/supabase/client";
+import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
 import type { CancionCancionero, UsuarioCancion } from "@/types";
-import { ListPlus, Music, Search, Trash2 } from "lucide-react";
+import { ListPlus, Music, Plus, Search, Trash2 } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import {
   useCallback,
@@ -262,6 +264,8 @@ function MiCancionItem({
 export default function MisCancionesPageClient() {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const categoria = useCategoriaUsuario();
+  const puedeCrear = puedeSumarCanciones(categoria);
   const supabase = useMemo(() => createClient(), []);
   const cola = useColaIndividual();
   const [canciones, setCanciones] = useState<UsuarioCancion[]>([]);
@@ -609,6 +613,27 @@ export default function MisCancionesPageClient() {
                 className={inputClassName}
               />
             </div>
+
+            {puedeCrear ? (
+              <button
+                type="button"
+                disabled={!online}
+                onClick={() => {
+                  if (!online) return;
+                  navigateWithProgress("/canciones/editor?desde=favoritas");
+                }}
+                className={`flex w-full items-center gap-3 rounded-estandar border border-border-card bg-bg-card p-3 text-left ${
+                  online ? "" : "cursor-not-allowed opacity-45"
+                }`}
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent">
+                  <Plus className="size-5 text-white" aria-hidden="true" />
+                </span>
+                <span className="text-[17px] font-bold text-text-primary">
+                  Sumar canción
+                </span>
+              </button>
+            ) : null}
 
             {(actionError || viewError) && (
               <p className="text-sm text-accent" role="alert">

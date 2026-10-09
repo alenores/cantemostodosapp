@@ -44,9 +44,17 @@ export default function EditorCancionesPageClient() {
   const editingId = idParam ? Number(idParam) : null;
   const desde = searchParams.get("desde");
   const backHref =
-    desde === "hub" ? "/canciones" : "/canciones/cancionero";
+    desde === "hub"
+      ? "/canciones"
+      : desde === "favoritas"
+        ? "/canciones/favoritas"
+        : "/canciones/cancionero";
   const backAriaLabel =
-    desde === "hub" ? "Volver a Canciones" : "Volver al cancionero";
+    desde === "hub"
+      ? "Volver a Canciones"
+      : desde === "favoritas"
+        ? "Volver a Favoritas"
+        : "Volver al cancionero";
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [session, setSession] = useState<CifradoEditorSession | null>(null);
   const [ready, setReady] = useState(false);

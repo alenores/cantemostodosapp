@@ -43,30 +43,30 @@ export function CancioneroCardSkeleton({
             className={`cancionero-skeleton-shimmer h-[17px] rounded-md ${titleWidth}`}
             style={{ animationDelay: `${shimmerDelayMs}ms` }}
           />
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-3 flex items-end gap-3">
             <div
               className="cancionero-skeleton-shimmer size-[76px] shrink-0 rounded-full"
               style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
             />
-            <div className="min-w-0 flex-1 space-y-2">
+            <div className="min-w-0 flex-1 self-center">
               <div
                 className={`cancionero-skeleton-shimmer h-[15px] rounded-md ${artistWidth}`}
                 style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
               />
-              <div className="flex items-center gap-2">
-                <div
-                  className="cancionero-skeleton-shimmer size-5 rounded-full"
-                  style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
-                />
-                <div
-                  className="cancionero-skeleton-shimmer size-4 rounded-sm"
-                  style={{ animationDelay: `${shimmerDelayMs + 150}ms` }}
-                />
-                <div
-                  className="cancionero-skeleton-shimmer size-4 rounded-sm"
-                  style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
-                />
-              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <div
+                className="cancionero-skeleton-shimmer size-5 rounded-full"
+                style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
+              />
+              <div
+                className="cancionero-skeleton-shimmer size-4 rounded-sm"
+                style={{ animationDelay: `${shimmerDelayMs + 150}ms` }}
+              />
+              <div
+                className="cancionero-skeleton-shimmer size-4 rounded-sm"
+                style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
+              />
             </div>
           </div>
         </div>

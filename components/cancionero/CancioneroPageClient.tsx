@@ -102,6 +102,10 @@ export default function CancioneroPageClient({
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [cancionesPractica, setCancionesPractica] = useState<CancionPracticaListItem[]>([]);
   const [localReady, setLocalReady] = useState(false);
+  const busquedaRef = useRef<HTMLDivElement>(null);
+  const busquedaSentinelaRef = useRef<HTMLDivElement>(null);
+  const [busquedaFija, setBusquedaFija] = useState(false);
+  const [busquedaAlto, setBusquedaAlto] = useState(0);
   const [query, setQuery] = useState("");
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
@@ -244,6 +248,31 @@ export default function CancioneroPageClient({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!localReady) return;
+    const media = window.matchMedia("(max-width: 1023px)");
+    if (!media.matches) return;
+
+    function update() {
+      const sentinela = busquedaSentinelaRef.current;
+      const barra = busquedaRef.current;
+      if (!sentinela || !barra) return;
+      const fija = sentinela.getBoundingClientRect().top <= 0;
+      setBusquedaFija(fija);
+      if (fija) setBusquedaAlto(barra.offsetHeight);
+    }
+
+    update();
+    document.addEventListener("scroll", update, { capture: true, passive: true });
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      document.removeEventListener("scroll", update, { capture: true });
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [localReady]);
 
   const loadMisCancionesRefs = useCallback(async () => {
     if (!usuarioLogueado) {
@@ -898,7 +927,16 @@ export default function CancioneroPageClient({
           <CancioneroListSkeleton includeSearch cardCount={6} />
         ) : (
           <>
-            <div className="flex flex-col gap-3">
+            <div ref={busquedaSentinelaRef} className="h-0" />
+            {busquedaFija ? (
+              <div style={{ height: busquedaAlto }} aria-hidden="true" />
+            ) : null}
+            <div
+              ref={busquedaRef}
+              className={`cancionero-busqueda-fija flex flex-col gap-3${
+                busquedaFija ? " cancionero-busqueda-fija--pin" : ""
+              }`}
+            >
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search
@@ -912,7 +950,7 @@ export default function CancioneroPageClient({
                       setQuery(event.target.value);
                       setActiveCardId(null);
                     }}
-                    placeholder="Buscar por nombre o artista..."
+                    placeholder="Buscar por nombre, artista o letra..."
                     autoCorrect="off"
                     autoCapitalize="off"
                     spellCheck={false}

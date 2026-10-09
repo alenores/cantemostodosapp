@@ -1697,6 +1697,23 @@ html.splash-active body {
   padding-bottom: var(--app-main-bottom-padding);
 }
 
+/* El buscador del Cancionero se queda arriba cuando el encabezado ya se fue. */
+.cancionero-busqueda-fija {
+  background: var(--bg-app);
+  padding-bottom: 0.75rem;
+}
+
+.cancionero-busqueda-fija--pin {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 40;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-inline: 1rem;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.28);
+}
+
 @media (min-width: 1024px) {
   .app-page-main {
     padding-bottom: 1.5rem;

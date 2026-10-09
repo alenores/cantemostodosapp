@@ -76,6 +76,9 @@ export function getDuplicadoCancioneroNivel(
   return "nombre";
 }
 
+/** Menos de esto no se busca en la letra: una letra suelta coincidiría con casi todo. */
+const BUSQUEDA_LETRA_MIN = 3;
+
 export function filterCancionesCancionero(
   canciones: CancionCancionero[],
   query: string,
@@ -87,12 +90,29 @@ export function filterCancionesCancionero(
     return canciones;
   }
 
-  return canciones.filter((cancion) => {
-    const matchesNombre = cancion.nombre.toLowerCase().includes(normalized);
-    const matchesArtista = artistaCoincideBusqueda(cancion.artista, normalized, alias, cancion.nombre);
+  const buscarLetra = normalized.length >= BUSQUEDA_LETRA_MIN;
+  const ranked: { cancion: CancionCancionero; score: number; index: number }[] = [];
 
-    return matchesNombre || matchesArtista;
-  });
+  for (let index = 0; index < canciones.length; index += 1) {
+    const cancion = canciones[index]!;
+    const titleHit =
+      cancion.nombre.toLowerCase().includes(normalized) ||
+      artistaCoincideBusqueda(null, normalized, alias, cancion.nombre);
+    if (titleHit) {
+      ranked.push({ cancion, score: 3, index });
+      continue;
+    }
+    if (artistaCoincideBusqueda(cancion.artista, normalized, alias)) {
+      ranked.push({ cancion, score: 2, index });
+      continue;
+    }
+    if (buscarLetra && cancion.letra?.toLowerCase().includes(normalized)) {
+      ranked.push({ cancion, score: 1, index });
+    }
+  }
+
+  ranked.sort((a, b) => b.score - a.score || a.index - b.index);
+  return ranked.map((item) => item.cancion);
 }
 
 export async function countCancionesCancionero(

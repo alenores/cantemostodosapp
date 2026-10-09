@@ -3,7 +3,7 @@ export const PERFIL_AVISO_MENSAJES: Record<string, string> = {
   "email-pendiente":
     "Te enviamos un email para confirmar el cambio. Hasta entonces seguís entrando con el email actual.",
   "sin-acceso-sala":
-    "No pertenecés a esa sala. Pedile al creador el QR o que te sume por email.",
+    "No estás en esa sala. Alguien que ya está tiene que sumarte.",
 };
 
 export function getPerfilAvisoMensaje(aviso: string | null | undefined): string | null {

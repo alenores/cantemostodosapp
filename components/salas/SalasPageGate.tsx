@@ -6,6 +6,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { resolveOfflineSalasPayload } from "@/lib/auth/offline-entry";
 import { getAppSnapshot, saveAppSnapshot } from "@/lib/offline/app-snapshot-store";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
+import { fetchSalasDelUsuario } from "@/lib/sala-miembros";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { Sala, UsuarioActivo } from "@/types";
@@ -111,19 +112,19 @@ export default function SalasPageGate({
       }
 
       const usuario = mapUserToUsuarioActivo(session.user);
-      const { data: salas, error: salasError } = await supabase
-        .from("salas")
-        .select("id, nombre, descripcion, avatar_url")
-        .order("nombre");
+      const { salas, error: salasError } = await fetchSalasDelUsuario(
+        supabase,
+        session.user.id,
+      );
 
       if (cancelled) {
         return;
       }
 
       const payload = {
-        salas: salas ?? [],
+        salas,
         usuario,
-        errorMessage: salasError?.message ?? null,
+        errorMessage: salasError,
         avisoInicial,
       };
 

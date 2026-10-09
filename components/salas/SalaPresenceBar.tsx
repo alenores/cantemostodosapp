@@ -3,7 +3,7 @@
 import PresenceAvatarStack from "@/components/salas/PresenceAvatarStack";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { PresenceUsuario } from "@/types";
-import { QrCode } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 type SalaPresenceBarProps = {
   usuarios: PresenceUsuario[];
@@ -32,11 +32,11 @@ export default function SalaPresenceBar({
         {onOpenInvite ? (
           <TapButton
             type="button"
-            aria-label="Mostrar código QR de invitación"
+            aria-label="Sumar gente a la sala"
             onClick={onOpenInvite}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-muted hover:text-accent"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-text-secondary"
           >
-            <QrCode className="size-3.5" strokeWidth={2} aria-hidden="true" />
+            <UserPlus className="size-5" strokeWidth={2} aria-hidden="true" />
           </TapButton>
         ) : null}
 

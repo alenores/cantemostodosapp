@@ -1,7 +1,7 @@
 "use client";
 
+import { FilaPersonaSala, SumarPersona } from "@/components/salas/PersonaDeSala";
 import {
-  agregarMiembroPorEmail,
   eliminarMiembroSala,
   inviteUrlFromToken,
   obtenerInviteToken,
@@ -9,9 +9,9 @@ import {
 } from "@/lib/sala-miembros";
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { SalaMiembro } from "@/types";
-import { Loader2, RefreshCw, Trash2, X } from "lucide-react";
+import { Loader2, RefreshCw, X } from "lucide-react";
 import QRCode from "qrcode";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type SalaInviteQrModalProps = {
   open: boolean;
@@ -38,7 +38,6 @@ export default function SalaInviteQrModal({
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -105,26 +104,6 @@ export default function SalaInviteQrModal({
       setQrDataUrl(dataUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo rotar el código");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleAgregarEmail(event: FormEvent) {
-    event.preventDefault();
-    if (!email.trim()) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await agregarMiembroPorEmail(salaId, email.trim());
-      setEmail("");
-      onMiembrosChange();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "No se pudo sumar a esa persona",
-      );
     } finally {
       setBusy(false);
     }
@@ -201,8 +180,8 @@ export default function SalaInviteQrModal({
           ) : null}
         </div>
 
-        {isOwner ? (
-          <div className="mt-4 space-y-4 border-t border-border pt-4">
+        <div className="mt-4 space-y-4 border-t border-border pt-4">
+          {isOwner ? (
             <TapButton
               type="button"
               disabled={busy}
@@ -212,67 +191,23 @@ export default function SalaInviteQrModal({
               <RefreshCw className="size-4" aria-hidden="true" />
               Generar código nuevo
             </TapButton>
+          ) : null}
 
-            <form
-              onSubmit={(event) => void handleAgregarEmail(event)}
-              className="space-y-2"
-            >
-              <label
-                htmlFor="invitar-email"
-                className="block text-xs font-medium text-text-muted"
-              >
-                Sumar por email
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="invitar-email"
-                  type="email"
-                  required
-                  placeholder="amigo@email.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-app px-3 text-sm text-text-primary outline-none focus:border-accent"
-                />
-                <TapButton
-                  type="submit"
-                  disabled={busy || !email.trim()}
-                  className="min-h-11 shrink-0 rounded-[10px] bg-accent px-3 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  Sumar
-                </TapButton>
-              </div>
-            </form>
-          </div>
-        ) : null}
+          <SumarPersona salaId={salaId} onSumada={onMiembrosChange} />
+        </div>
 
-        <div className="mt-4 border-t border-border pt-4">
-          <p className="mb-2 text-xs font-medium text-text-muted">Miembros</p>
-          <ul className="space-y-2">
+        <div className="mt-5 border-t border-border pt-4">
+          <p className="mb-2 text-sm font-semibold text-text-primary">Miembros</p>
+          <ul>
             {miembros.map((m) => (
-              <li
+              <FilaPersonaSala
                 key={m.user_id}
-                className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-app px-3 py-2"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
-                  {m.nombre}
-                  {m.rol === "owner" ? (
-                    <span className="ml-1 text-[10px] text-text-faint">
-                      (creador)
-                    </span>
-                  ) : null}
-                </span>
-                {isOwner && m.rol === "member" && m.user_id !== userId ? (
-                  <TapButton
-                    type="button"
-                    aria-label={`Eliminar a ${m.nombre}`}
-                    disabled={busy}
-                    onClick={() => void handleEliminar(m.user_id)}
-                    className="flex size-8 items-center justify-center rounded-full text-accent disabled:opacity-60"
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </TapButton>
-                ) : null}
-              </li>
+                miembro={m}
+                esVos={m.user_id === userId}
+                puedeSacar={isOwner && m.user_id !== userId}
+                disabled={busy}
+                onSacar={(id) => void handleEliminar(id)}
+              />
             ))}
           </ul>
         </div>

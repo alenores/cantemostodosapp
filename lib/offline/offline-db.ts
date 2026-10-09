@@ -14,11 +14,16 @@ export type CancioneroLocalRecord = {
   artista_id?: string | null;
   agregado_nombre?: string | null;
   agregado_avatar_url?: string | null;
+  created_at?: string | null;
   letra: string | null;
   url_letra: string;
   updated_at: string;
   tiene_cifrado_avanzado?: boolean;
   user_id?: string | null;
+  validada_por?: string | null;
+  validada_en?: string | null;
+  validada_nombre?: string | null;
+  validada_avatar_url?: string | null;
   cifrado?: CifradoData | null;
   compas_config?: CompasConfig | null;
   tonalidad_default?: NotaIndex | null;

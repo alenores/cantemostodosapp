@@ -1,4 +1,5 @@
 import SalasPageGate from "@/components/salas/SalasPageGate";
+import { fetchSalasDelUsuario } from "@/lib/sala-miembros";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
@@ -31,18 +32,17 @@ export default async function SalasPage({ searchParams }: SalasPageProps) {
     );
   }
 
-  // RLS filtra: solo salas propias o donde el usuario es miembro.
-  const { data: salas, error: salasError } = await supabase
-    .from("salas")
-    .select("id, nombre, descripcion, avatar_url")
-    .order("nombre");
+  const { salas, error: salasError } = await fetchSalasDelUsuario(
+    supabase,
+    user.id,
+  );
 
   return (
     <Suspense fallback={null}>
       <SalasPageGate
         serverUsuario={mapUserToUsuarioActivo(user)}
-        serverSalas={salas ?? []}
-        errorMessage={salasError?.message ?? null}
+        serverSalas={salas}
+        errorMessage={salasError}
         avisoInicial={aviso}
       />
     </Suspense>

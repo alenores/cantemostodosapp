@@ -51,16 +51,35 @@ export type CancionGuardada = {
   bpm_default?: number | null;
   youtube_url?: string | null;
   tiene_cifrado_avanzado: boolean;
+  /** Hay al menos un compás marcado en la canción. */
+  tiene_compases?: boolean;
+  validada_por?: string | null;
+  validada_en?: string | null;
+  validada_nombre?: string | null;
+  validada_avatar_url?: string | null;
   created_at: string;
   updated_at: string;
 };
 
 export type CancionCancionero = Pick<
   CancionGuardada,
-  "id" | "nombre" | "artista" | "artista_id" | "letra" | "tiene_cifrado_avanzado" | "user_id"
+  | "id"
+  | "nombre"
+  | "artista"
+  | "artista_id"
+  | "letra"
+  | "tiene_cifrado_avanzado"
+  | "tiene_compases"
+  | "user_id"
+  | "validada_por"
+  | "validada_en"
+  | "validada_nombre"
+  | "validada_avatar_url"
 > & {
   agregado_nombre?: string | null;
   agregado_avatar_url?: string | null;
+  /** Día en que se sumó al cancionero. Puede faltar en copias viejas. */
+  created_at?: string | null;
 };
 
 export type CancionCifradoDetalle = Pick<

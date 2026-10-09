@@ -55,6 +55,14 @@ export default function PerfilPageClient({
   const [loading, setLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cambiarContraseñaAbierto, setCambiarContraseñaAbierto] = useState(false);
+
+  function cerrarCambioContraseña() {
+    setCambiarContraseñaAbierto(false);
+    setContraseñaActual("");
+    setNuevaContraseña("");
+    setConfirmarContraseña("");
+  }
 
   function handleAvatarPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -111,7 +119,8 @@ export default function PerfilPageClient({
       return;
     }
 
-    const quiereCambiarContraseña = nuevaContraseña.length > 0;
+    const quiereCambiarContraseña =
+      cambiarContraseñaAbierto && nuevaContraseña.length > 0;
 
     if (quiereCambiarContraseña) {
       if (!contraseñaActual) {
@@ -209,7 +218,7 @@ export default function PerfilPageClient({
     router.refresh();
     const aviso = emailCambiado ? "email-pendiente" : "perfil-actualizado";
     startNavigation();
-    router.push(`/?aviso=${aviso}`);
+    router.push(`/perfil?aviso=${aviso}`);
   }
 
   const previewUrl = avatarPreview ?? avatarUrl;
@@ -266,14 +275,14 @@ export default function PerfilPageClient({
       >
         <div className="app-page-container flex items-center gap-3">
           <TapLink
-            href="/"
-            ariaLabel="Volver al inicio"
+            href="/perfil"
+            ariaLabel="Volver a mi perfil"
             className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card border border-border/40 shadow-sm"
           >
             <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
           </TapLink>
           <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
-            Mi perfil
+            Editar perfil
           </h1>
         </div>
       </header>
@@ -281,9 +290,18 @@ export default function PerfilPageClient({
       <main className="app-page-main flex flex-1 flex-col gap-6 px-4 py-4 pb-24 lg:gap-5 lg:px-8 lg:py-8 lg:pb-8">
         <div className="app-page-container flex w-full flex-col gap-6 lg:gap-5">
           <div className="hidden items-center justify-between gap-4 lg:flex">
-            <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
-              Mi perfil
-            </h1>
+            <div className="flex min-w-0 items-center gap-3">
+              <TapLink
+                href="/perfil"
+                ariaLabel="Volver a mi perfil"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border/40 bg-bg-card shadow-sm"
+              >
+                <ArrowLeft className="size-5 text-text-primary" aria-hidden="true" />
+              </TapLink>
+              <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
+                Editar perfil
+              </h1>
+            </div>
             <TapButton
               type="button"
               onClick={() => void handleLogout()}
@@ -305,65 +323,66 @@ export default function PerfilPageClient({
             onSubmit={handleSubmit}
             className="flex flex-col gap-5 lg:gap-4"
           >
-            <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8 lg:gap-y-4">
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col items-center gap-3 lg:items-start">
-                  {avatarBlock}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="perfil-nombre"
-                    className="text-sm text-text-secondary"
-                  >
-                    Nombre
-                  </label>
-                  <input
-                    id="perfil-nombre"
-                    type="text"
-                    required
-                    autoComplete="name"
-                    placeholder="Tu nombre"
-                    value={nombre}
-                    onChange={(event) => setNombre(event.target.value)}
-                    className={inputClassName}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="perfil-email"
-                    className="text-sm text-text-secondary"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="perfil-email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className={inputClassName}
-                  />
-                  <p className="text-xs text-text-muted">
-                    Si lo cambiás, Supabase envía un email de confirmación.
-                    Hasta confirmarlo seguís entrando con el email actual.
-                  </p>
-                </div>
+            <div className="flex max-w-xl flex-col gap-5">
+              <div className="flex flex-col items-center gap-3 lg:items-start">
+                {avatarBlock}
               </div>
 
-              <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-card/50 p-4 lg:bg-bg-card lg:p-5">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-semibold text-text-primary">
-                    Cambiar contraseña
-                  </p>
-                  <p className="text-xs text-text-muted">
-                    Dejá estos campos vacíos si no querés cambiarla. Supabase
-                    puede pedir tu contraseña actual por seguridad.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="perfil-nombre"
+                  className="text-sm text-text-secondary"
+                >
+                  Nombre
+                </label>
+                <input
+                  id="perfil-nombre"
+                  type="text"
+                  required
+                  autoComplete="name"
+                  placeholder="Tu nombre"
+                  value={nombre}
+                  onChange={(event) => setNombre(event.target.value)}
+                  className={inputClassName}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="perfil-email"
+                  className="text-sm text-text-secondary"
+                >
+                  Email
+                </label>
+                <input
+                  id="perfil-email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className={inputClassName}
+                />
+                <p className="text-xs text-text-muted">
+                  Si lo cambiás, llega un email de confirmación. Hasta
+                  confirmarlo seguís entrando con el email actual.
+                </p>
+              </div>
+
+              {cambiarContraseñaAbierto ? (
+                <div className="flex flex-col gap-3 rounded-[10px] border border-border bg-bg-card/50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-text-primary">
+                      Cambiar contraseña
+                    </p>
+                    <TapButton
+                      type="button"
+                      onClick={cerrarCambioContraseña}
+                      className="text-sm text-text-muted"
+                    >
+                      Cancelar
+                    </TapButton>
+                  </div>
                   <div className="flex flex-col gap-2">
                     <label
                       htmlFor="perfil-password-actual"
@@ -375,7 +394,6 @@ export default function PerfilPageClient({
                       id="perfil-password-actual"
                       type="password"
                       autoComplete="current-password"
-                      placeholder="Solo si querés cambiarla"
                       value={contraseñaActual}
                       onChange={(event) =>
                         setContraseñaActual(event.target.value)
@@ -422,7 +440,15 @@ export default function PerfilPageClient({
                     />
                   </div>
                 </div>
-              </div>
+              ) : (
+                <TapButton
+                  type="button"
+                  onClick={() => setCambiarContraseñaAbierto(true)}
+                  className="min-h-10 w-fit rounded-[10px] border border-border bg-bg-card px-4 text-sm font-medium text-text-primary"
+                >
+                  Cambiar contraseña
+                </TapButton>
+              )}
             </div>
 
             <div className="hidden lg:flex lg:justify-end">

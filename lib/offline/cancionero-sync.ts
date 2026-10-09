@@ -11,7 +11,7 @@ const CONTENT_VERSION = 4;
 const PAGE_SIZE = 500;
 const DOWNLOAD_BATCH_SIZE = 100;
 const SONG_COLUMNS =
-  "id, nombre, artista, artista_id, agregado_nombre, agregado_avatar_url, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default";
+  "id, nombre, artista, artista_id, agregado_nombre, agregado_avatar_url, letra, url_letra, created_at, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default";
 
 type RemoteSnapshot = { maxUpdatedAt: string | null; count: number };
 type RemoteVersion = { id: number; updated_at: string };
@@ -123,7 +123,10 @@ export async function downloadCancioneroUpdates(
       throw new Error("La descarga quedó incompleta. Tu Cancionero anterior sigue disponible.");
     }
     records.push(...data.map((row) => ({
-      ...row, url_letra: row.url_letra ?? "", updated_at: timestamp(row.updated_at)!,
+      ...row,
+      url_letra: row.url_letra ?? "",
+      created_at: timestamp(row.created_at),
+      updated_at: timestamp(row.updated_at)!,
     })));
     onProgress?.(records.length, pending.length);
   }

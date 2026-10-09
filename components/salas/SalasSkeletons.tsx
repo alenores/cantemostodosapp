@@ -9,12 +9,7 @@ import {
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
 
-const CARD_LAYOUTS = [
-  { title: "w-[68%]", subtitle: "w-[42%]" },
-  { title: "w-[74%]", subtitle: "w-[36%]" },
-  { title: "w-[62%]", subtitle: "w-[48%]" },
-  { title: "w-[70%]", subtitle: "w-[40%]" },
-] as const;
+const SALA_CARD_SKELETON_COUNT = 4;
 
 const LETRA_LINE_WIDTHS = [
   "w-[88%]",
@@ -61,29 +56,32 @@ function ShimmerBlock({
   );
 }
 
-/** Replica visual de AppTopHeader (accent). */
-export function AppTopHeaderSkeleton() {
+/** Replica visual de AppTopHeader (accent). En el inicio también está el QR. */
+export function AppTopHeaderSkeleton({ conQr = false }: { conQr?: boolean } = {}) {
   return (
-    <header className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 py-3 lg:hidden">
+    <header
+      className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 pb-3 lg:hidden"
+      style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}
+    >
       <div className="app-page-container flex w-full min-w-0 items-center gap-2.5">
         <div
           className="size-8 shrink-0 animate-pulse rounded-lg bg-bg-darker/25"
           aria-hidden="true"
         />
         <div
-          className="h-6 flex-1 animate-pulse rounded-lg bg-bg-darker/25"
+          className="h-5 max-w-[11.5rem] flex-1 animate-pulse rounded-lg bg-bg-darker/25"
           aria-hidden="true"
         />
-        <div className="flex shrink-0 items-center gap-2 rounded-full py-1 pl-2 pr-1">
+        {conQr ? (
           <div
-            className="h-4 w-16 animate-pulse rounded-md bg-bg-darker/25"
+            className="size-9 shrink-0 animate-pulse rounded-full bg-bg-darker/20"
             aria-hidden="true"
           />
-          <div
-            className="size-8 shrink-0 animate-pulse rounded-full bg-bg-darker/25"
-            aria-hidden="true"
-          />
-        </div>
+        ) : null}
+        <div
+          className="size-8 shrink-0 animate-pulse rounded-full bg-bg-darker/25"
+          aria-hidden="true"
+        />
       </div>
     </header>
   );
@@ -98,13 +96,18 @@ function HomeDestinationCardSkeleton({
 }) {
   return (
     <div
-      className={`relative flex w-full flex-col items-center justify-between gap-3 rounded-[28px] border border-[#3a3a3d] bg-[#2d2d2f] px-3 py-6 ${featured ? "min-h-[170px]" : "min-h-[190px]"}`}
+      className={`home-destination-card flex w-full flex-col items-center justify-between gap-3 rounded-[28px] px-3 py-6 ${
+        featured ? "min-h-[170px]" : "min-h-[190px]"
+      }`}
       aria-hidden="true"
     >
       <div className="flex flex-1 items-center justify-center">
-        <ShimmerBlock className="size-[52px] rounded-xl" delayMs={delayMs} />
+        <ShimmerBlock
+          className={featured ? "size-[58px] rounded-2xl" : "size-[52px] rounded-2xl"}
+          delayMs={delayMs}
+        />
       </div>
-      <ShimmerBlock className="h-[18px] w-[65%] rounded-md" delayMs={delayMs + 30} />
+      <ShimmerBlock className="h-[15px] w-[72%] rounded-md" delayMs={delayMs + 30} />
       <ShimmerBlock className="h-[13px] w-[48%] rounded-md" delayMs={delayMs + 60} />
     </div>
   );
@@ -132,32 +135,18 @@ function HubModuleCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
   );
 }
 
-function SalaCardSkeleton({
-  titleWidth,
-  subtitleWidth,
-  delayMs = 0,
-}: {
-  titleWidth: string;
-  subtitleWidth: string;
-  delayMs?: number;
-}) {
+function SalaCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
   return (
     <div
-      className="home-destination-card flex min-h-[148px] flex-col rounded-[28px] px-4 py-3.5"
+      className="home-destination-card flex flex-col overflow-hidden rounded-[28px]"
       aria-hidden="true"
     >
-      <div className="flex min-h-[82px] min-w-0 flex-1 items-center gap-4">
-        <ShimmerBlock className="size-16 shrink-0 rounded-2xl" delayMs={delayMs} />
-        <div className="min-w-0 flex-1 space-y-2">
-          <ShimmerBlock className={`h-5 ${titleWidth}`} delayMs={delayMs + 40} />
-          <ShimmerBlock
-            className={`h-3 ${subtitleWidth}`}
-            delayMs={delayMs + 70}
-          />
-        </div>
-        <ShimmerBlock className="size-5 shrink-0 rounded-md" delayMs={delayMs + 80} />
-      </div>
-      <div className="mt-3 flex min-h-11 items-center justify-between gap-2 border-t border-white/10 pt-3">
+      <div
+        className="sala-skeleton-shimmer h-[188px] w-full"
+        style={delayMs > 0 ? { animationDelay: `${delayMs}ms` } : undefined}
+        aria-hidden="true"
+      />
+      <div className="flex min-h-11 items-center justify-between gap-2 border-t border-white/10 px-4 py-3">
         <ShimmerBlock className="h-3 w-24" delayMs={delayMs + 90} />
         <ShimmerBlock className="h-7 w-16 rounded-full" delayMs={delayMs + 110} />
       </div>
@@ -299,13 +288,13 @@ export function HomeWelcomeSkeleton() {
       aria-live="polite"
       aria-label="Cargando inicio"
     >
-      <AppTopHeaderSkeleton />
+      <AppTopHeaderSkeleton conQr />
       <main className="app-page-main flex flex-col gap-3 bg-[#181818] px-5 py-7 pb-28 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-col gap-7">
+          <div className="h-[46px] w-full rounded-xl bg-accent/40" aria-hidden="true" />
           <div className="flex flex-col items-start gap-2 pt-1">
-            <ShimmerBlock className="h-9 w-[52%] rounded-md" />
-            <ShimmerBlock className="h-9 w-[68%] rounded-md" delayMs={40} />
-            <ShimmerBlock className="h-9 w-[80%] rounded-md" delayMs={80} />
+            <ShimmerBlock className="h-9 w-[58%] rounded-md" />
+            <ShimmerBlock className="mt-1 h-9 w-[84%] rounded-md" delayMs={50} />
           </div>
 
           <div className="grid grid-cols-2 gap-3.5">
@@ -389,13 +378,8 @@ export function SalasPageSkeleton() {
           <SalasSectionLabelSkeleton />
 
           <div className="app-list-grid">
-            {CARD_LAYOUTS.map((layout, index) => (
-              <SalaCardSkeleton
-                key={index}
-                titleWidth={layout.title}
-                subtitleWidth={layout.subtitle}
-                delayMs={index * 80}
-              />
+            {Array.from({ length: SALA_CARD_SKELETON_COUNT }, (_, index) => (
+              <SalaCardSkeleton key={index} delayMs={index * 80} />
             ))}
           </div>
         </div>

@@ -120,7 +120,7 @@ export async function fetchCancionesCancionero(
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("canciones_guardadas")
-      .select("id, nombre, artista, artista_id, agregado_nombre, agregado_avatar_url, letra, tiene_cifrado_avanzado, user_id")
+      .select("id, nombre, artista, artista_id, agregado_nombre, agregado_avatar_url, letra, tiene_cifrado_avanzado, user_id, created_at")
       .is("sala_id", null)
       .not("letra", "is", null)
       .order("nombre", { ascending: true })
@@ -143,6 +143,7 @@ export async function fetchCancionesCancionero(
         letra: row.letra,
         tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
         user_id: row.user_id ?? null,
+        created_at: row.created_at ?? null,
       })),
     );
 
@@ -152,6 +153,40 @@ export async function fetchCancionesCancionero(
   }
 
   return canciones;
+}
+
+/** Solo el día de alta, sin bajar letras de nuevo. */
+export async function fetchFechasAltaCancionero(
+  supabase: SupabaseClient,
+): Promise<Array<{ id: number; created_at: string }>> {
+  const pageSize = 1000;
+  const fechas: Array<{ id: number; created_at: string }> = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("canciones_guardadas")
+      .select("id, created_at")
+      .is("sala_id", null)
+      .not("letra", "is", null)
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of data ?? []) {
+      if (row.created_at) {
+        fechas.push({ id: row.id, created_at: row.created_at });
+      }
+    }
+
+    if ((data ?? []).length < pageSize) {
+      break;
+    }
+  }
+
+  return fechas;
 }
 
 function parseCifradoData(value: unknown): CifradoData | null {

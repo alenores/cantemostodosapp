@@ -1,135 +1,135 @@
 "use client";
 
-import { useState } from "react";
-import AppLogoMark from "@/components/pwa/AppLogoMark";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useChromeIntentFallbackReveal } from "@/hooks/useChromeIntentFallbackReveal";
+import { AndroidInAppManualSteps } from "@/components/pwa/AndroidInAppManualSteps";
+import { OfflineIcon } from "@/components/pwa/OfflineIcon";
+import { TapButton } from "@/components/ui/TapFeedback";
+import { ANDROID_IN_APP_CHROME_INTENT_WAIT_MS } from "@/lib/pwa-open-in-chrome";
 
-const ANDROID_IN_APP_STEPS = [
-  "Tocá los tres puntitos (⋮) arriba a la derecha",
-  'Elegí "Abrir en Chrome"',
-  'Instalá la app desde ahí con el botón "Instalar app"',
-] as const;
+const COPY_FEEDBACK_MS = 2000;
 
-function buildChromeIntentUrl(pageUrl: string): string {
-  const parsed = new URL(pageUrl);
-  const scheme = parsed.protocol.replace(":", "");
-  const intentPath = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
-  return `intent://${intentPath}#Intent;scheme=${scheme};package=com.android.chrome;end`;
-}
+type AndroidInAppBrowserInstallHelpProps = {
+  /**
+   * Navegador del teléfono que no es Chrome. Samsung Internet instala un paquete
+   * que el teléfono bloquea; los demás no instalan.
+   */
+  otroNavegador?: "samsung" | "otro" | null;
+};
 
-function openPageInChrome() {
-  const pageUrl = window.location.href;
+/**
+ * Android fuera de Chrome (WhatsApp, Instagram, Samsung u otro navegador):
+ * primero abre Chrome. Los pasos a mano aparecen solo si eso no funciona.
+ */
+export function AndroidInAppBrowserInstallHelp({
+  otroNavegador = null,
+}: AndroidInAppBrowserInstallHelpProps = {}) {
+  const { manualRevealed, attempting, startAttempt } = useChromeIntentFallbackReveal(
+    ANDROID_IN_APP_CHROME_INTENT_WAIT_MS,
+  );
+  const [copyConfirmed, setCopyConfirmed] = useState(false);
+  const [copiaManual, setCopiaManual] = useState<string | null>(null);
+  const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  try {
-    window.location.href = buildChromeIntentUrl(pageUrl);
-    return;
-  } catch {
-    // Fall through to alternate Chrome deep link below.
-  }
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimerRef.current !== null) {
+        clearTimeout(copyFeedbackTimerRef.current);
+      }
+    };
+  }, []);
 
-  window.location.href = `googlechrome://navigate?url=${encodeURIComponent(pageUrl)}`;
-}
-
-export default function AndroidInAppBrowserInstallHelp() {
-  /** "copiado" = se copió solo; si no se pudo, se muestra el link para copiarlo a mano. */
-  const [copia, setCopia] = useState<{ estado: "copiado" | "manual"; url: string } | null>(null);
-
-  const copyAppLink = async () => {
+  const copyAppLink = useCallback(async () => {
     const url = window.location.href;
 
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
-        setCopia({ estado: "copiado", url });
+        setCopyConfirmed(true);
+        setCopiaManual(null);
+        if (copyFeedbackTimerRef.current !== null) {
+          clearTimeout(copyFeedbackTimerRef.current);
+        }
+        copyFeedbackTimerRef.current = setTimeout(() => {
+          setCopyConfirmed(false);
+          copyFeedbackTimerRef.current = null;
+        }, COPY_FEEDBACK_MS);
         return;
       }
     } catch {
-      // Fall through to manual fallback below.
+      // Si no se puede copiar solo, se muestra el link para copiarlo a mano.
     }
 
-    setCopia({ estado: "manual", url });
-  };
+    setCopiaManual(url);
+  }, []);
+
+  const chromeButtonLabel = attempting ? "Abriendo Chrome…" : "Abrí en Chrome";
 
   return (
-    <div className="rounded-2xl border border-accent/50 bg-bg-card px-4 py-5">
-      <div className="mb-3.5 flex justify-center">
-        <div className="inline-flex items-center gap-2.5 rounded-[14px] border border-border bg-bg-dark px-4 py-2.5">
-          <AppLogoMark size={44} />
-          <div className="text-left">
-            <p className="m-0 text-[13px] font-medium leading-snug text-text-primary">
-              CantemosTodos
-            </p>
-            <p className="m-0 text-[11px] text-text-muted">Letras en tiempo real</p>
-          </div>
-        </div>
-      </div>
-
-      <p className="m-0 mb-1.5 text-center text-[15px] font-semibold text-text-primary">
-        Abrí la app en Chrome
-      </p>
-      <p className="m-0 mb-4 text-left text-xs leading-relaxed text-text-secondary">
-        Estás en un navegador embebido (Instagram, WhatsApp u otra app). Para instalar la app y
-        usarla sin conexión, necesitás abrirla en{" "}
-        <button
-          type="button"
-          onClick={openPageInChrome}
-          aria-label="Abrir esta página en Chrome"
-          className="font-semibold text-accent underline underline-offset-2"
-        >
-          Chrome
-        </button>
-        .
-      </p>
-
-      <div className="mb-4 rounded-[10px] border border-border bg-bg-dark px-3.5 py-2.5 text-left">
-        <p className="m-0 mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-          Cómo hacerlo:
+    <div className="android-install-banner android-install-enter rounded-2xl px-4 py-5 text-center">
+      <div className="in-app-install-intro mb-4 text-left">
+        <p className="in-app-install-intro-title m-0">Instalá la app</p>
+        <p className="in-app-install-intro-offline m-0">
+          <OfflineIcon className="in-app-install-intro-offline-icon" />
+          Uso offline
         </p>
-        <ol className="m-0 flex list-none flex-col gap-2 p-0">
-          {ANDROID_IN_APP_STEPS.map((text, index) => (
-            <li key={text} className="flex items-start gap-2.5">
-              <span
-                aria-hidden
-                className="mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-semibold leading-none text-white"
-              >
-                {index + 1}
-              </span>
-              <span className="min-w-0 flex-1 text-xs leading-snug text-text-secondary">
-                {text}
-              </span>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      <button
-        type="button"
-        className="w-full rounded-xl bg-accent py-3 text-[13px] font-semibold text-white"
-        onClick={() => {
-          void copyAppLink();
-        }}
-      >
-        Copiar link de la app
-      </button>
-
-      {copia?.estado === "copiado" ? (
-        <p role="status" className="m-0 mt-3 text-center text-xs font-semibold text-accent">
-          ¡Link copiado! Pegalo en Chrome para abrir la app.
-        </p>
-      ) : null}
-      {copia?.estado === "manual" ? (
-        <div className="mt-3 text-left">
-          <p className="m-0 mb-1.5 text-xs text-text-secondary">
-            Copiá este link y abrilo en Chrome:
+        {!manualRevealed ? (
+          <p className="in-app-install-intro-body m-0">
+            {otroNavegador === "samsung"
+              ? "Estás en el navegador de Samsung. La app se instala desde Chrome:"
+              : otroNavegador === "otro"
+                ? "La app se instala desde Chrome. Abrila ahí:"
+                : "Estás en el navegador de Instagram o WhatsApp. Abrí desde Chrome:"}
           </p>
-          <input
-            type="text"
-            readOnly
-            value={copia.url}
-            onFocus={(event) => event.currentTarget.select()}
-            autoFocus
-            className="w-full rounded-[10px] border border-border bg-bg-dark px-3 py-2 text-xs text-text-primary outline-none focus:border-accent"
-          />
-        </div>
+        ) : null}
+      </div>
+
+      <div className={!attempting && !manualRevealed ? "preinstall-install-cta-ring" : undefined}>
+        <TapButton
+          type="button"
+          className={`relative z-[1] w-full rounded-xl border border-[var(--install-cta)] bg-[var(--install-cta)] py-3 text-[13px] font-semibold text-white hover:border-[var(--install-cta-hover)] hover:bg-[var(--install-cta-hover)]${
+            manualRevealed ? " opacity-95" : ""
+          }`}
+          onClick={startAttempt}
+          aria-label={chromeButtonLabel}
+        >
+          {chromeButtonLabel}
+        </TapButton>
+      </div>
+
+      {manualRevealed ? (
+        <>
+          <AndroidInAppManualSteps otroNavegador={Boolean(otroNavegador)} />
+          {!otroNavegador ? (
+            <p className="in-app-manual-copy-hint m-0">Si no, copiá el link y pegalo en Chrome</p>
+          ) : null}
+          <TapButton
+            type="button"
+            className="in-app-manual-fallback-copy"
+            onClick={() => {
+              void copyAppLink();
+            }}
+            aria-label={copyConfirmed ? "Link copiado" : "Copiar link de la app"}
+          >
+            {copyConfirmed ? "¡Copiado!" : "Copiar link"}
+          </TapButton>
+          {copiaManual ? (
+            <div className="mt-3 text-left">
+              <p className="m-0 text-[13px] font-semibold text-[var(--rock)]">Copiá el link</p>
+              <p className="m-0 mt-1 text-xs leading-relaxed text-[var(--rock-mid)]">
+                Mantené apretado el link para copiarlo y abrilo en Chrome:
+              </p>
+              <p className="m-0 mt-2 break-all text-xs text-[var(--rock)]">{copiaManual}</p>
+              <TapButton
+                type="button"
+                className="mt-3 text-xs font-semibold text-[var(--chapa)]"
+                onClick={() => setCopiaManual(null)}
+              >
+                Listo
+              </TapButton>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

@@ -1,12 +1,15 @@
 ﻿"use client";
 
+import AgregadoFichaDialog from "@/components/cancionero/AgregadoFichaDialog";
+import CompasMarcaIcon from "@/components/cancionero/CompasMarcaIcon";
+import ValidacionMarcaIcon from "@/components/cancionero/ValidacionMarcaIcon";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import CancioneroCardVisual from "@/components/cancionero/CancioneroCardVisual";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import { COLA_AVISO_EXIT_MS } from "@/lib/sala-layout";
 import type { CancionCancionero } from "@/types";
-import { Bookmark, Pencil, Trash2 } from "lucide-react";
+import { Bookmark, Check, Pencil, Trash2 } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -22,9 +25,6 @@ const ACTION_FAB_ANIM_MS = 220;
 const SUMAR_FAB_LABEL = "Guardar en Favoritas";
 const QUITAR_FAB_LABEL = "Quitar de Favoritas";
 const SUMAR_FAB_LABEL_VISIBLE_MS = 2000;
-
-const DESKTOP_ACTION_BTN =
-  "flex size-5 items-center justify-center rounded-sm p-0 text-text-secondary transition-colors duration-150";
 
 type ActionButton = {
   key: string;
@@ -51,6 +51,10 @@ type CancioneroItemCardProps = {
   onAlternarFavorita?: (cancion: CancionCancionero) => void;
   onEditar: (cancion: CancionCancionero) => void;
   onEliminar: (cancion: CancionCancionero) => void;
+  /** Dueño o amigo, con la canción todavía sin validar. */
+  puedePonerValidacion?: boolean;
+  onValidar?: (cancion: CancionCancionero) => void;
+  onVerValidacion?: (cancion: CancionCancionero) => void;
   artistaAvatarUrl?: string | null;
 };
 
@@ -70,6 +74,9 @@ export default function CancioneroItemCard({
   onAlternarFavorita,
   onEditar,
   onEliminar,
+  puedePonerValidacion = false,
+  onValidar,
+  onVerValidacion,
 }: CancioneroItemCardProps) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sumarLabelShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -86,17 +93,23 @@ export default function CancioneroItemCard({
   const [sumarLabelVisible, setSumarLabelVisible] = useState(false);
   const [sumarLabelExiting, setSumarLabelExiting] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  const [agregadoAbierto, setAgregadoAbierto] = useState(false);
 
-  const showDesktopActions =
+  const agregadoNombre = cancion.agregado_nombre?.trim() ?? "";
+  const mostrarMarcaFavorita = isFavorita;
+  const puedeTocarFavorita =
+    mostrarMarcaFavorita &&
     isDesktop &&
     !modoSeleccion &&
-    (Boolean(onAlternarFavorita) || puedeEditarEliminar);
+    Boolean(onAlternarFavorita) &&
+    mostrarSumarMisCanciones;
 
   const longPressEnabled =
     !isDesktop &&
     !modoSeleccion &&
     ((mostrarSumarMisCanciones && Boolean(onAlternarFavorita)) ||
-      (mutationsEnabled && puedeEditarEliminar));
+      (mutationsEnabled && puedeEditarEliminar) ||
+      puedePonerValidacion);
 
   useEffect(() => {
     return () => {
@@ -199,6 +212,11 @@ export default function CancioneroItemCard({
   }
 
   function handleClick() {
+    if (agregadoAbierto) {
+      setAgregadoAbierto(false);
+      return;
+    }
+
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
       return;
@@ -247,6 +265,16 @@ export default function CancioneroItemCard({
             ? "fill-current text-[var(--tuner-in-tune)]"
             : undefined,
           action: () => onAlternarFavorita(cancion),
+        }
+      : null,
+    puedePonerValidacion && onValidar
+      ? {
+          key: "validar",
+          label: `Validar ${cancion.nombre}`,
+          className:
+            "flex size-12 items-center justify-center rounded-full bg-[#0095F6] text-white shadow-[0_6px_20px_rgba(0,0,0,0.38)]",
+          icon: Check,
+          action: () => onValidar(cancion),
         }
       : null,
     mutationsEnabled && puedeEditarEliminar
@@ -312,7 +340,7 @@ export default function CancioneroItemCard({
   return (
     <article
       style={isPressed ? { transform: "scale(0.97)" } : undefined}
-      className={`group relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-estandar border bg-bg-card p-3 select-none transition-transform duration-100 ease-out hover:border-text-faint/50 ${
+      className={`relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-estandar border bg-bg-card p-3 select-none transition-transform duration-100 ease-out hover:border-text-faint/50 ${
         (!isDesktop && actionsOpen) || modoSeleccion
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
@@ -329,77 +357,149 @@ export default function CancioneroItemCard({
         nombre={cancion.nombre}
         artista={cancion.artista}
         artistaAvatarUrl={artistaAvatarUrl}
-        agregadoNombre={cancion.agregado_nombre}
-        agregadoAvatarUrl={cancion.agregado_avatar_url}
-        insignia={<LetraFuenteIcon tipo="cancionero" premium={cancion.tiene_cifrado_avanzado} compact />}
-      />
-      {showDesktopActions ? (
-          <div
-            className="absolute left-4 top-[70px] flex shrink-0 items-center gap-px rounded-md bg-bg-darker/85 px-1 py-0.5 opacity-75 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {onAlternarFavorita ? (
+        iconos={
+          <>
+            {agregadoNombre ? (
+              <button
+                type="button"
+                aria-label={`Ver quién agregó ${cancion.nombre}`}
+                title={agregadoNombre}
+                className="size-[22px] shrink-0 overflow-hidden rounded-full"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setAgregadoAbierto(true);
+                }}
+              >
+                {cancion.agregado_avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={cancion.agregado_avatar_url}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <span className="flex size-full items-center justify-center bg-[#57515b] text-[10px] font-semibold text-text-primary">
+                    {agregadoNombre.charAt(0).toLocaleUpperCase("es")}
+                  </span>
+                )}
+              </button>
+            ) : null}
+            <LetraFuenteIcon
+              tipo="cancionero"
+              premium={cancion.tiene_cifrado_avanzado}
+              compact
+            />
+            {cancion.tiene_compases ? <CompasMarcaIcon /> : null}
+            {cancion.validada_por ? (
+              modoSeleccion ? (
+                <ValidacionMarcaIcon />
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Ver quién validó ${cancion.nombre}`}
+                  className="rounded-full"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onVerValidacion?.(cancion);
+                  }}
+                >
+                  <ValidacionMarcaIcon silenciosa />
+                </button>
+              )
+            ) : null}
+            {mostrarMarcaFavorita ? (
+              puedeTocarFavorita ? (
+                <TapButton
+                  type="button"
+                  aria-label={
+                    isFavorita
+                      ? `Quitar ${cancion.nombre} de Favoritas`
+                      : `Guardar ${cancion.nombre} en Favoritas`
+                  }
+                  aria-pressed={isFavorita}
+                  title={isFavorita ? QUITAR_FAB_LABEL : SUMAR_FAB_LABEL}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) =>
+                    runDesktopAction(event, () => onAlternarFavorita?.(cancion))
+                  }
+                  className="flex size-6 items-center justify-center rounded-md text-text-secondary hover:text-[var(--tuner-in-tune)]/85"
+                >
+                  <Bookmark
+                    className={`size-4 ${
+                      isFavorita ? "fill-current text-[var(--tuner-in-tune)]" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
+                </TapButton>
+              ) : (
+                <span
+                  aria-label="En Favoritas"
+                  className="flex size-6 items-center justify-center"
+                >
+                  <Bookmark
+                    className="size-4 fill-current"
+                    style={{ color: "var(--tuner-in-tune)" }}
+                    aria-hidden="true"
+                  />
+                </span>
+              )
+            ) : null}
+            {isDesktop && !modoSeleccion && puedePonerValidacion ? (
               <TapButton
                 type="button"
-                aria-label={
-                  isFavorita
-                    ? `Quitar ${cancion.nombre} de Favoritas`
-                    : `Guardar ${cancion.nombre} en Favoritas`
-                }
-                aria-pressed={isFavorita}
-                title={isFavorita ? QUITAR_FAB_LABEL : SUMAR_FAB_LABEL}
+                aria-label={`Validar ${cancion.nombre}`}
+                title="Validar"
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) =>
-                  runDesktopAction(event, () => onAlternarFavorita(cancion))
+                  runDesktopAction(event, () => onValidar?.(cancion))
                 }
-                disabled={!mostrarSumarMisCanciones}
-                className={`${DESKTOP_ACTION_BTN} hover:text-[var(--tuner-in-tune)]/85 disabled:hover:text-text-faint/55 ${
-                  isFavorita ? "hover:opacity-80" : "disabled:opacity-40"
-                }`}
+                className="flex size-6 items-center justify-center rounded-md"
               >
-                <Bookmark
-                  className={`size-3 ${
-                    isFavorita ? "fill-current text-[var(--tuner-in-tune)]" : ""
-                  }`}
-                  aria-hidden="true"
-                />
+                <ValidacionMarcaIcon className="size-[18px]" silenciosa />
               </TapButton>
             ) : null}
-            {puedeEditarEliminar ? (
+            {isDesktop && !modoSeleccion && puedeEditarEliminar ? (
               <>
                 <TapButton
                   type="button"
                   aria-label={`Editar ${cancion.nombre}`}
                   title="Editar"
+                  onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) =>
                     runDesktopAction(event, () => onEditar(cancion))
                   }
                   disabled={!mutationsEnabled}
-                  className={`${DESKTOP_ACTION_BTN} hover:text-text-secondary disabled:opacity-40 disabled:hover:text-text-faint/55`}
+                  className="flex size-6 items-center justify-center rounded-md text-text-secondary hover:text-text-primary disabled:opacity-40"
                 >
-                  <Pencil className="size-3.5" aria-hidden="true" />
+                  <Pencil className="size-[18px]" aria-hidden="true" />
                 </TapButton>
                 <TapButton
                   type="button"
                   aria-label={`Eliminar ${cancion.nombre}`}
                   title="Eliminar"
+                  onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) =>
                     runDesktopAction(event, () => onEliminar(cancion))
                   }
                   disabled={!mutationsEnabled}
-                  className={`${DESKTOP_ACTION_BTN} hover:text-[#d94a3d]/80 disabled:opacity-40 disabled:hover:text-text-faint/55`}
+                  className="flex size-6 items-center justify-center rounded-md text-text-secondary hover:text-[#d94a3d] disabled:opacity-40"
                 >
-                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  <Trash2 className="size-[18px]" aria-hidden="true" />
                 </TapButton>
               </>
             ) : null}
-          </div>
-      ) : isFavorita ? (
-          <Bookmark
-            className="absolute bottom-3 right-3 size-3 fill-current"
-            style={{ color: "var(--tuner-in-tune)" }}
-            aria-hidden="true"
-          />
-      ) : null}
+          </>
+        }
+      />
+      <AgregadoFichaDialog
+        open={agregadoAbierto && Boolean(agregadoNombre)}
+        nombre={agregadoNombre}
+        avatarUrl={cancion.agregado_avatar_url ?? null}
+        fecha={cancion.created_at ?? null}
+        onCerrar={() => setAgregadoAbierto(false)}
+      />
 
       {actionsOpen && actionButtons.length > 0 && !isDesktop && (
         <>

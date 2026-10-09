@@ -14,6 +14,7 @@ import CancioneroListSkeleton, {
 import CancioneroModoLectura from "@/components/cancionero/CancioneroModoLectura";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
 import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
+import ValidacionFichaDialog from "@/components/cancionero/ValidacionFichaDialog";
 import AddButton from "@/components/ui/AddButton";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -24,8 +25,14 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import {
+  fetchValidacionesCancionero,
+  quitarValidacionCancionCancionero,
+  validarCancionCancionero,
+} from "@/lib/cancion-validacion";
+import {
   deleteCancionCancionero,
   fetchCancionCifradoDetalle,
+  fetchFechasAltaCancionero,
   filterCancionesCancionero,
 } from "@/lib/cancionero";
 import {
@@ -39,9 +46,12 @@ import {
   requestCancioneroUpdateCheck,
 } from "@/lib/offline/cancionero-events";
 import {
+  aplicarFechasAltaLocales,
+  aplicarValidacionesLocales,
   getCancioneroLocalAsCancionero,
   getCancioneroLocalCifradoDetalle,
   deleteCancioneroLocalRecord,
+  patchValidacionLocal,
 } from "@/lib/offline/cancionero-store";
 import { buildCifradoEditorSession } from "@/lib/cifrado-editor-session";
 import type {
@@ -51,15 +61,16 @@ import type {
 import { createClient } from "@/lib/supabase/client";
 import {
   puedeEditarCancionCancionero,
+  puedeQuitarValidacion,
   puedeSumarCanciones,
+  puedeValidarCancion,
 } from "@/lib/usuarios-categorias";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
-import type { CancionCancionero, CancionCifradoDetalle, Artista, UsuarioActivo } from "@/types";
+import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types";
 import { ArtistasManagerModal } from "@/components/ui/ArtistasManagerModal";
 import { ArtistasFilterModal } from "@/components/ui/ArtistasFilterModal";
 import { getArtistas } from "@/lib/artistas";
-import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { Bell, Music, Search, Star, WifiOff, X, Settings, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -104,6 +115,12 @@ export default function CancioneroPageClient({
   const [cancionAEliminar, setCancionAEliminar] = useState<CancionCancionero | null>(
     null,
   );
+  const [cancionValidacion, setCancionValidacion] = useState<CancionCancionero | null>(null);
+  const [validacionPaso, setValidacionPaso] = useState<null | "confirmar" | "ficha" | "quitar">(
+    null,
+  );
+  const [validacionLoading, setValidacionLoading] = useState(false);
+  const validacionEpoch = useRef(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<number | null>(null);
@@ -111,7 +128,6 @@ export default function CancioneroPageClient({
   const [misCancionesIds, setMisCancionesIds] = useState<Set<number>>(new Set());
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [artistas, setArtistas] = useState<Artista[]>([]);
-  const [usuarioActual, setUsuarioActual] = useState<UsuarioActivo | null>(null);
   const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
   const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
   const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
@@ -120,16 +136,6 @@ export default function CancioneroPageClient({
   useEffect(() => {
     getArtistas(supabase).then(setArtistas);
   }, [supabase]);
-  useEffect(() => {
-    if (!usuarioLogueado) return;
-    let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (active && data.session?.user) {
-        setUsuarioActual(mapUserToUsuarioActivo(data.session.user));
-      }
-    });
-    return () => { active = false; };
-  }, [supabase, usuarioLogueado]);
   const artistasPorId = useMemo(() => new Map(artistas.map((artista) => [artista.id, artista])), [artistas]);
   const artistasPorNombre = useMemo(() => new Map(artistas.map((artista) => [artista.nombre.toLocaleLowerCase("es"), artista])), [artistas]);
   const fotoArtista = useCallback((artistaId: string | null | undefined, nombre: string | null) =>
@@ -221,6 +227,26 @@ export default function CancioneroPageClient({
     setLocalReady(true);
   }, []);
 
+  const recordarValidacion = useCallback(
+    (
+      id: number,
+      marca: {
+        validada_por: string | null;
+        validada_en: string | null;
+        validada_nombre: string | null;
+        validada_avatar_url: string | null;
+      },
+    ) => {
+      validacionEpoch.current += 1;
+      setCanciones((prev) =>
+        prev.map((cancion) => (cancion.id === id ? { ...cancion, ...marca } : cancion)),
+      );
+      setCancionValidacion((prev) => (prev?.id === id ? { ...prev, ...marca } : prev));
+      void patchValidacionLocal(id, marca);
+    },
+    [],
+  );
+
   const loadPractica = useCallback(async (skipSync = false) => {
     try {
       setCancionesPractica(await listCancionesPractica(supabase, { skipSync }));
@@ -236,6 +262,83 @@ export default function CancioneroPageClient({
     window.addEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleChange);
     return () => window.removeEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleChange);
   }, [loadPractica, usuarioLogueado]);
+
+  useEffect(() => {
+    if (!localReady || !online) return;
+
+    const epoch = validacionEpoch.current;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const marcas = await fetchValidacionesCancionero(supabase);
+        if (cancelled || epoch !== validacionEpoch.current) return;
+
+        const porId = new Map(marcas.map((marca) => [marca.id, marca]));
+        setCanciones((prev) =>
+          prev.map((cancion) => {
+            const marca = porId.get(cancion.id);
+            if (marca) {
+              return {
+                ...cancion,
+                validada_por: marca.validada_por,
+                validada_en: marca.validada_en,
+                validada_nombre: marca.validada_nombre,
+                validada_avatar_url: marca.validada_avatar_url,
+              };
+            }
+            if (!cancion.validada_por) return cancion;
+            return {
+              ...cancion,
+              validada_por: null,
+              validada_en: null,
+              validada_nombre: null,
+              validada_avatar_url: null,
+            };
+          }),
+        );
+        await aplicarValidacionesLocales(marcas);
+      } catch {
+        // El listado sigue usable si esta consulta no responde.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [localReady, online, supabase]);
+
+  useEffect(() => {
+    if (!localReady || !online) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const fechas = await fetchFechasAltaCancionero(supabase);
+        if (cancelled) return;
+
+        const porId = new Map(fechas.map((fecha) => [fecha.id, fecha.created_at]));
+        setCanciones((prev) => {
+          let changed = false;
+          const next = prev.map((cancion) => {
+            const created_at = porId.get(cancion.id);
+            if (!created_at || cancion.created_at === created_at) return cancion;
+            changed = true;
+            return { ...cancion, created_at };
+          });
+          return changed ? next : prev;
+        });
+        await aplicarFechasAltaLocales(fechas);
+      } catch {
+        // El listado sigue usable si esta consulta no responde.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [localReady, online, supabase]);
 
   useEffect(() => {
     void loadLocalCanciones();
@@ -457,6 +560,7 @@ export default function CancioneroPageClient({
                 artista: result.artista,
                 letra: result.letra,
                 tiene_cifrado_avanzado: result.tiene_cifrado_avanzado,
+                tiene_compases: result.tiene_compases ?? cancion.tiene_compases,
               }
             : cancion,
         ),
@@ -471,6 +575,7 @@ export default function CancioneroPageClient({
                 artista: result.artista,
                 letra: result.letra,
                 tiene_cifrado_avanzado: result.tiene_cifrado_avanzado,
+                tiene_compases: result.tiene_compases ?? prev.tiene_compases,
               }
             : prev,
         );
@@ -619,6 +724,51 @@ export default function CancioneroPageClient({
     setActionError(null);
   }
 
+  function cerrarValidacion() {
+    if (validacionLoading) return;
+    setValidacionPaso(null);
+    setCancionValidacion(null);
+  }
+
+  async function confirmarValidacion() {
+    if (!cancionValidacion || validacionLoading || !online) return;
+
+    setValidacionLoading(true);
+    try {
+      const marca = await validarCancionCancionero(supabase, cancionValidacion.id);
+      recordarValidacion(cancionValidacion.id, marca);
+      setValidacionPaso(null);
+      setCancionValidacion(null);
+      showSnackbar("Canción validada");
+    } catch (error) {
+      showSnackbar(
+        error instanceof Error ? error.message : "No se pudo validar la canción.",
+      );
+    } finally {
+      setValidacionLoading(false);
+    }
+  }
+
+  async function confirmarQuitarValidacion() {
+    if (!cancionValidacion || validacionLoading || !online) return;
+    if (!puedeQuitarValidacion(cancionValidacion, usuarioId, categoria)) return;
+
+    setValidacionLoading(true);
+    try {
+      const marca = await quitarValidacionCancionCancionero(supabase, cancionValidacion.id);
+      recordarValidacion(cancionValidacion.id, marca);
+      setValidacionPaso(null);
+      setCancionValidacion(null);
+      showSnackbar("Validación quitada");
+    } catch (error) {
+      showSnackbar(
+        error instanceof Error ? error.message : "No se pudo quitar la validación.",
+      );
+    } finally {
+      setValidacionLoading(false);
+    }
+  }
+
   function cancelarModoSeleccion() {
     navigateWithProgress("/canciones/favoritas");
   }
@@ -636,6 +786,15 @@ export default function CancioneroPageClient({
       handleCancelEliminar();
     },
   );
+
+  useHardwareBack(validacionPaso !== null, () => {
+    if (validacionLoading) return;
+    if (validacionPaso === "quitar") {
+      setValidacionPaso("ficha");
+      return;
+    }
+    cerrarValidacion();
+  });
 
   const mutationsEnabled = online && usuarioLogueado;
   const mostrarSumarMisCanciones = usuarioLogueado && online;
@@ -841,6 +1000,19 @@ export default function CancioneroPageClient({
                       }
                       onEditar={handleEditar}
                       onEliminar={handleEliminar}
+                      puedePonerValidacion={
+                        mutationsEnabled &&
+                        puedeValidarCancion(categoria) &&
+                        !cancion.validada_por
+                      }
+                      onValidar={(item) => {
+                        setCancionValidacion(item);
+                        setValidacionPaso("confirmar");
+                      }}
+                      onVerValidacion={(item) => {
+                        setCancionValidacion(item);
+                        setValidacionPaso("ficha");
+                      }}
                     />
                   </div>
                 ))}
@@ -855,9 +1027,12 @@ export default function CancioneroPageClient({
                       nombre={cancion.nombre}
                       artista={cancion.artista}
                       artistaAvatarUrl={fotoArtista(null, cancion.artista)}
-                      agregadoNombre={usuarioActual?.nombre.trim() || "Vos"}
-                      agregadoAvatarUrl={usuarioActual?.avatar_url}
-                      insignia={<Star className="size-4 fill-current text-[var(--accent-vocal)]" aria-label="Entrenador de canciones" />}
+                      iconos={
+                        <Star
+                          className="size-4 fill-current text-[var(--accent-vocal)]"
+                          aria-label="Entrenador de canciones"
+                        />
+                      }
                     />
                   </button>
                 ))}
@@ -931,6 +1106,50 @@ export default function CancioneroPageClient({
         deleteConfirm
         onConfirm={() => void handleConfirmEliminar()}
         onCancel={handleCancelEliminar}
+      />
+
+      <ConfirmDialog
+        open={validacionPaso === "confirmar" && cancionValidacion !== null}
+        zIndex={400}
+        message={
+          cancionValidacion
+            ? `¿Validar «${cancionValidacion.nombre}»?\n\nEl tilde azul significa que revisaste la letra y los acordes y están bien. Va a mostrarse en el listado, con tu nombre y la fecha.\n\nSolo vos y el dueño de la app pueden quitarlo después.`
+            : ""
+        }
+        confirmLabel={validacionLoading ? "Validando..." : "Validar"}
+        onConfirm={() => void confirmarValidacion()}
+        onCancel={cerrarValidacion}
+      />
+
+      <ValidacionFichaDialog
+        open={validacionPaso === "ficha" && cancionValidacion !== null}
+        nombre={cancionValidacion?.validada_nombre?.trim() || "Usuario"}
+        avatarUrl={cancionValidacion?.validada_avatar_url ?? null}
+        fecha={cancionValidacion?.validada_en ?? null}
+        puedeQuitar={
+          online &&
+          cancionValidacion !== null &&
+          puedeQuitarValidacion(cancionValidacion, usuarioId, categoria)
+        }
+        onCerrar={cerrarValidacion}
+        onQuitar={() => setValidacionPaso("quitar")}
+      />
+
+      <ConfirmDialog
+        open={validacionPaso === "quitar" && cancionValidacion !== null}
+        zIndex={400}
+        message={
+          cancionValidacion
+            ? `¿Quitar la validación de «${cancionValidacion.nombre}»?\n\nEl tilde azul deja de mostrarse en el listado.`
+            : ""
+        }
+        confirmLabel={validacionLoading ? "Quitando..." : "Quitar"}
+        cancelLabel="Volver"
+        onConfirm={() => void confirmarQuitarValidacion()}
+        onCancel={() => {
+          if (validacionLoading) return;
+          setValidacionPaso("ficha");
+        }}
       />
 
       {snackbar && (

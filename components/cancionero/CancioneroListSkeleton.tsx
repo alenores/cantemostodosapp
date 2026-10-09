@@ -33,52 +33,71 @@ export function CancioneroCardSkeleton({
   return (
     <div
       className={`rounded-[12px] border border-border-card bg-bg-card px-3 ${
-        isCancionero ? "min-h-[116px] py-3" : isFavoritas ? "py-3" : "py-2.5"
+        isCancionero ? "py-3" : isFavoritas ? "py-3" : "py-2.5"
       }`}
       aria-hidden="true"
     >
-      <div
-        className={`flex ${isCancionero || isFavoritas ? "items-center gap-3" : "items-end gap-2.5"}`}
-      >
-        <div
-          className={`cancionero-skeleton-shimmer shrink-0 rounded-md ${isCancionero ? "size-[86px]" : "size-6"}`}
-          style={{ animationDelay: `${shimmerDelayMs}ms` }}
-        />
-        <div
-          className={`min-w-0 flex-1 space-y-1.5 ${
-            isFavoritas ? "" : "pb-px"
-          }`}
-        >
+      {isCancionero ? (
+        <div>
           <div
             className={`cancionero-skeleton-shimmer h-[17px] rounded-md ${titleWidth}`}
-            style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
+            style={{ animationDelay: `${shimmerDelayMs}ms` }}
           />
-          <div
-            className={`cancionero-skeleton-shimmer rounded-md ${
-              isFavoritas ? "h-[14px]" : "h-[13px]"
-            } ${artistWidth}`}
-            style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
-          />
-          {isCancionero ? (
+          <div className="mt-3 flex items-center gap-3">
             <div
-              className="cancionero-skeleton-shimmer h-[11px] w-[62%] rounded-md"
-              style={{ animationDelay: `${shimmerDelayMs + 100}ms` }}
+              className="cancionero-skeleton-shimmer size-[76px] shrink-0 rounded-full"
+              style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
+            />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div
+                className={`cancionero-skeleton-shimmer h-[15px] rounded-md ${artistWidth}`}
+                style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
+              />
+              <div className="flex items-center gap-2">
+                <div
+                  className="cancionero-skeleton-shimmer size-5 rounded-full"
+                  style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
+                />
+                <div
+                  className="cancionero-skeleton-shimmer size-4 rounded-sm"
+                  style={{ animationDelay: `${shimmerDelayMs + 150}ms` }}
+                />
+                <div
+                  className="cancionero-skeleton-shimmer size-4 rounded-sm"
+                  style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`flex ${isFavoritas ? "items-center gap-3" : "items-end gap-2.5"}`}
+        >
+          <div
+            className="cancionero-skeleton-shimmer size-6 shrink-0 rounded-md"
+            style={{ animationDelay: `${shimmerDelayMs}ms` }}
+          />
+          <div className={`min-w-0 flex-1 space-y-1.5 ${isFavoritas ? "" : "pb-px"}`}>
+            <div
+              className={`cancionero-skeleton-shimmer h-[17px] rounded-md ${titleWidth}`}
+              style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
+            />
+            <div
+              className={`cancionero-skeleton-shimmer rounded-md ${
+                isFavoritas ? "h-[14px]" : "h-[13px]"
+              } ${artistWidth}`}
+              style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
+            />
+          </div>
+          {trailing === "listPlus" ? (
+            <div
+              className="cancionero-skeleton-shimmer size-10 shrink-0 rounded-full border border-border"
+              style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
             />
           ) : null}
         </div>
-        {trailing === "bookmark" ? (
-          <div
-            className="cancionero-skeleton-shimmer size-4 shrink-0 self-start rounded-sm"
-            style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
-          />
-        ) : null}
-        {trailing === "listPlus" ? (
-          <div
-            className="cancionero-skeleton-shimmer size-10 shrink-0 rounded-full border border-border"
-            style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
-          />
-        ) : null}
-      </div>
+      )}
     </div>
   );
 }

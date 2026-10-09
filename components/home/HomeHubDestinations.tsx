@@ -24,18 +24,20 @@ import {
 import type { UsuarioActivo } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, Gauge, Guitar, Library, Loader2, MicVocal, Users, WifiOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type HomeHubDestinationsProps = {
   usuario: UsuarioActivo;
   isOwner: boolean;
   onOpenAfinador: () => void;
+  installSlot?: ReactNode;
 };
 
 export default function HomeHubDestinations({
   usuario,
   isOwner,
   onOpenAfinador,
+  installSlot = null,
 }: HomeHubDestinationsProps) {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
@@ -67,6 +69,7 @@ export default function HomeHubDestinations({
 
   return (
     <section className="flex flex-col gap-7 pb-3">
+      {installSlot}
       <div className="pt-1 text-left">
         <p className="text-[clamp(30px,8vw,36px)] font-extrabold leading-[1.12] tracking-tight text-text-primary">
           {HUB_WELCOME_TITLE},

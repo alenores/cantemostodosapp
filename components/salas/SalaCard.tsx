@@ -1,7 +1,6 @@
 "use client";
 
 import PresenceAvatarStack from "@/components/salas/PresenceAvatarStack";
-import SalaAvatar from "@/components/salas/SalaAvatar";
 import type { PresenceUsuario, Sala, SalaMiembro } from "@/types";
 import { ArrowRight, Loader2, Users } from "lucide-react";
 import { useMemo, useState, type MouseEvent } from "react";
@@ -51,8 +50,10 @@ export default function SalaCard({
     onOpenMiembros(sala);
   }
 
+  const inicial = (sala.nombre.trim()[0] ?? "?").toUpperCase();
+
   return (
-    <div className={`home-destination-card relative flex min-h-[148px] w-full flex-col rounded-[28px] px-4 py-3.5 ${disabled ? "opacity-50" : ""}`}>
+    <div className={`home-destination-card relative flex w-full flex-col overflow-hidden rounded-[28px] ${disabled ? "opacity-50" : ""}`}>
       {pending && (
         <span
           className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-[#29292b]/75"
@@ -72,31 +73,42 @@ export default function SalaCard({
         }
         onClick={handleOpen}
         disabled={pending || disabled}
-        className="flex min-h-[82px] w-full min-w-0 items-center gap-4 rounded-2xl text-left transition-transform active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="relative block h-[188px] w-full overflow-hidden text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
       >
-        <SalaAvatar
-          nombre={sala.nombre}
-          avatarUrl={sala.avatar_url}
-          sizeClassName="size-16"
-          iconClassName="size-7"
-          roundedClassName="rounded-2xl"
-          neutral
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[19px] font-extrabold leading-tight text-text-primary">
-            {sala.nombre}
+        {sala.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={sala.avatar_url}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <span
+            className="absolute inset-0 flex items-center justify-center bg-[#3a3a3d]"
+            aria-hidden="true"
+          >
+            <span className="text-[72px] font-extrabold leading-none text-white/20">
+              {inicial}
+            </span>
           </span>
-          {sala.descripcion ? (
-            <span className="mt-1 block truncate text-[13px] text-text-muted">
-              {sala.descripcion}
+        )}
+        <span
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.28)_46%,transparent_72%)]"
+          aria-hidden="true"
+        />
+        <span className="absolute inset-x-0 bottom-0 flex items-end gap-3 px-4 pb-3.5">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[22px] font-extrabold leading-tight text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.65)]">
+              {sala.nombre}
             </span>
-          ) : (
-            <span className="mt-1 block text-[13px] text-text-muted">
-              Entrar a la sala
-            </span>
-          )}
+            {sala.descripcion ? (
+              <span className="mt-1 block truncate text-[13px] text-white/85 [text-shadow:0_1px_6px_rgba(0,0,0,0.55)]">
+                {sala.descripcion}
+              </span>
+            ) : null}
+          </span>
+          <ArrowRight className="mb-0.5 size-5 shrink-0 text-white" aria-hidden="true" />
         </span>
-        <ArrowRight className="size-5 shrink-0 text-text-secondary" aria-hidden="true" />
       </button>
 
       <button
@@ -110,7 +122,7 @@ export default function SalaCard({
         title="Ver miembros"
         onClick={handleOpenMiembros}
         disabled={disabled}
-        className="mt-3 flex min-h-11 w-full items-center justify-between gap-2 border-t border-white/10 pt-3 text-left text-[12px] text-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="flex min-h-11 w-full items-center justify-between gap-2 border-t border-white/10 px-4 py-3 text-left text-[12px] text-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span className="font-medium">Participantes</span>
         {avatares.length > 0 ? (

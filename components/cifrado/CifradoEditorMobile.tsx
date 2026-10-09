@@ -493,6 +493,7 @@ export default function CifradoEditorMobile({
         artista: artistaGuardar.artista,
         letra: lyricsText,
         tiene_cifrado_avanzado: true,
+        tiene_compases: (compasConfig.barras?.length ?? 0) > 0,
       });
     } catch (saveError) {
       setError(

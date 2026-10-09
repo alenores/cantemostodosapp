@@ -4429,6 +4429,7 @@ export default function CifradoEditor({
         artista: payload.artista,
         letra: payload.letra,
         tiene_cifrado_avanzado: true,
+        tiene_compases: payload.compas_config.barras.length > 0,
       });
       onClose();
     } catch (saveError) {

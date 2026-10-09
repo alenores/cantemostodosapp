@@ -1,17 +1,13 @@
 "use client";
 
+import { FilaPersonaSala, SumarPersona } from "@/components/salas/PersonaDeSala";
 import SalaAvatar from "@/components/salas/SalaAvatar";
 import { TapButton } from "@/components/ui/TapFeedback";
-import { colorPorUsuario } from "@/lib/presence";
 import { uploadSalaAvatar, validateSalaAvatarFile } from "@/lib/sala-avatar";
-import {
-  agregarMiembroPorEmail,
-  eliminarMiembroSala,
-  salirDeSala,
-} from "@/lib/sala-miembros";
+import { eliminarMiembroSala, salirDeSala } from "@/lib/sala-miembros";
 import type { Sala, SalaMiembro } from "@/types";
-import { Camera, LogOut, Trash2, X } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { Camera, LogOut, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type SalaRef = Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">;
 
@@ -35,7 +31,6 @@ export default function SalaMiembrosDetalleModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
   const [confirmSalir, setConfirmSalir] = useState(false);
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
 
@@ -49,32 +44,13 @@ export default function SalaMiembrosDetalleModal({
   const isMemberOnly = miembros.some(
     (m) => m.user_id === currentUserId && m.rol === "member",
   );
+  const puedeSumar = isOwner || isMemberOnly;
 
   if (!open || !sala) {
     return null;
   }
 
   const displayAvatarUrl = localAvatarUrl ?? sala.avatar_url;
-
-  async function handleAgregarEmail(event: FormEvent) {
-    event.preventDefault();
-    if (!sala || !email.trim()) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await agregarMiembroPorEmail(sala.id, email.trim());
-      setEmail("");
-      onChanged();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "No se pudo sumar a esa persona",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleEliminar(userId: string) {
     if (!sala) {
@@ -144,7 +120,6 @@ export default function SalaMiembrosDetalleModal({
     }
     setConfirmSalir(false);
     setError(null);
-    setEmail("");
     onClose();
   }
 
@@ -222,87 +197,27 @@ export default function SalaMiembrosDetalleModal({
           </TapButton>
         </div>
 
-        <ul className="space-y-2">
+        <ul>
           {miembros.length === 0 ? (
-            <li className="text-sm text-text-muted">Nadie en esta sala aún.</li>
+            <li className="text-sm text-text-muted">Todavía no hay nadie.</li>
           ) : (
             miembros.map((m) => (
-              <li
+              <FilaPersonaSala
                 key={m.user_id}
-                className="flex items-center gap-3 rounded-[10px] border border-border bg-bg-app px-3 py-2.5"
-              >
-                {m.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={m.avatar_url}
-                    alt=""
-                    className="size-8 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ background: colorPorUsuario(m.user_id) }}
-                  >
-                    {m.nombre.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
-                  {m.nombre}
-                  {m.user_id === currentUserId ? (
-                    <span className="ml-1 text-[10px] text-text-faint">(vos)</span>
-                  ) : null}
-                  {m.rol === "owner" ? (
-                    <span className="ml-1 text-[10px] text-text-faint">
-                      (creador)
-                    </span>
-                  ) : null}
-                </span>
-                {isOwner && m.rol === "member" ? (
-                  <TapButton
-                    type="button"
-                    aria-label={`Eliminar a ${m.nombre}`}
-                    disabled={busy}
-                    onClick={() => void handleEliminar(m.user_id)}
-                    className="flex size-8 items-center justify-center rounded-full text-accent disabled:opacity-60"
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                  </TapButton>
-                ) : null}
-              </li>
+                miembro={m}
+                esVos={m.user_id === currentUserId}
+                puedeSacar={isOwner && m.user_id !== currentUserId}
+                disabled={busy}
+                onSacar={(id) => void handleEliminar(id)}
+              />
             ))
           )}
         </ul>
 
-        {isOwner ? (
-          <form
-            onSubmit={(event) => void handleAgregarEmail(event)}
-            className="mt-4 space-y-2 border-t border-border pt-4"
-          >
-            <label
-              htmlFor="detalle-invitar-email"
-              className="block text-xs font-medium text-text-muted"
-            >
-              Sumar por email
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="detalle-invitar-email"
-                type="email"
-                required
-                placeholder="amigo@email.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-app px-3 text-sm text-text-primary outline-none focus:border-accent"
-              />
-              <TapButton
-                type="submit"
-                disabled={busy || !email.trim()}
-                className="min-h-11 shrink-0 rounded-[10px] bg-accent px-3 text-sm font-semibold text-white disabled:opacity-60"
-              >
-                Sumar
-              </TapButton>
-            </div>
-          </form>
+        {puedeSumar ? (
+          <div className="mt-4 border-t border-border pt-4">
+            <SumarPersona salaId={sala.id} onSumada={onChanged} />
+          </div>
         ) : null}
 
         {isMemberOnly ? (

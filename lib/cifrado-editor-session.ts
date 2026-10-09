@@ -35,6 +35,7 @@ export type CifradoSaveResult = {
   artista: string | null;
   letra: string;
   tiene_cifrado_avanzado: boolean;
+  tiene_compases?: boolean;
 };
 
 /**

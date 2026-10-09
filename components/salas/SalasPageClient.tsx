@@ -186,8 +186,7 @@ export default function SalasPageClient({
                   Todavía no tenés salas
                 </p>
                 <p className="text-sm text-text-muted">
-                  Creá la primera o pedí que te inviten con el QR desde dentro
-                  de una sala.
+                  Creá la primera o pedile a alguien de una sala que te sume.
                 </p>
               </div>
               <TapButton

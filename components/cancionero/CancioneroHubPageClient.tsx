@@ -2,14 +2,24 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import HomeHubDestinations from "@/components/home/HomeHubDestinations";
-import PwaInstallBanners from "@/components/pwa/PwaInstallBanners";
+import InstallHomeButton from "@/components/pwa/InstallHomeButton";
+import { OpenFromHomeHelp } from "@/components/pwa/OpenFromHomeHelp";
+import { usePwaOnDeviceInBrowser } from "@/hooks/usePwaOnDeviceInBrowser";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getPerfilAvisoMensaje } from "@/lib/perfil-avisos";
+import "@/lib/pwa-install-prompt";
+import {
+  getPwaInstalledServerSnapshot,
+  getPwaInstalledSnapshot,
+  isIphoneForPwaInstall,
+  isLikelyInAppBrowser,
+  subscribePwaInstalled,
+} from "@/lib/pwa-platform";
 import type { UsuarioActivo } from "@/types";
 import { WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 const AfinadorLayer = dynamic(() => import("@/components/ui/AfinadorLayer"), {
   ssr: false,
@@ -28,10 +38,33 @@ export default function CancioneroHubPageClient({
 }: CancioneroHubPageClientProps) {
   const online = useOnlineStatus();
   const isDesktop = useIsDesktop();
+  const isInstalledMode = useSyncExternalStore(
+    subscribePwaInstalled,
+    getPwaInstalledSnapshot,
+    getPwaInstalledServerSnapshot,
+  );
+  const pwaOnDeviceInBrowser = usePwaOnDeviceInBrowser(isInstalledMode);
+  const [iphone, setIphone] = useState(false);
+  const [inApp, setInApp] = useState(false);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [afinadorMounted, setAfinadorMounted] = useState(false);
 
   const avisoMensaje = getPerfilAvisoMensaje(avisoInicial);
+  const tapaInicio = !isInstalledMode && pwaOnDeviceInBrowser === true;
+  const mostrarBotonInstalar = !isInstalledMode && pwaOnDeviceInBrowser === false;
+
+  useEffect(() => {
+    setIphone(isIphoneForPwaInstall());
+    setInApp(isLikelyInAppBrowser());
+  }, []);
+
+  useEffect(() => {
+    if (!tapaInicio) return;
+    document.body.setAttribute("data-pwa-abrir-desde-icono", "");
+    return () => {
+      document.body.removeAttribute("data-pwa-abrir-desde-icono");
+    };
+  }, [tapaInicio]);
 
   const openAfinador = useCallback(() => {
     setAfinadorMounted(true);
@@ -45,9 +78,13 @@ export default function CancioneroHubPageClient({
       {!isDesktop ? (
         <main className="app-page-main flex flex-col gap-3 bg-[#181818] px-5 py-7 pb-28 lg:px-8 lg:py-8">
           <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-            <PwaInstallBanners />
+            {tapaInicio ? (
+              <div className="pwa-install-tema pt-2">
+                <OpenFromHomeHelp platform={iphone ? "ios" : "android"} inAppBrowser={inApp} />
+              </div>
+            ) : null}
 
-            {avisoMensaje ? (
+            {!tapaInicio && avisoMensaje ? (
               <p
                 className="rounded-[10px] border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
                 role="status"
@@ -56,7 +93,7 @@ export default function CancioneroHubPageClient({
               </p>
             ) : null}
 
-            {!online ? (
+            {!tapaInicio && !online ? (
               <p
                 className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
                 role="status"
@@ -66,11 +103,14 @@ export default function CancioneroHubPageClient({
               </p>
             ) : null}
 
-            <HomeHubDestinations
-              usuario={usuario}
-              isOwner={isOwner}
-              onOpenAfinador={openAfinador}
-            />
+            {!tapaInicio ? (
+              <HomeHubDestinations
+                usuario={usuario}
+                isOwner={isOwner}
+                onOpenAfinador={openAfinador}
+                installSlot={mostrarBotonInstalar ? <InstallHomeButton /> : null}
+              />
+            ) : null}
           </div>
         </main>
       ) : null}

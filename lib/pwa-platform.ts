@@ -33,6 +33,15 @@ export function hasEverOpenedStandalone(): boolean {
   }
 }
 
+export function clearEverOpenedStandaloneMark(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(PWA_EVER_STANDALONE_KEY);
+  } catch {
+    // Ignore quota / private mode errors.
+  }
+}
+
 export function markPwaInstalled(): void {
   if (typeof window === "undefined") return;
   try {
@@ -121,4 +130,23 @@ export function isLikelyInAppBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent.toLowerCase();
   return /whatsapp|instagram|fban|fbav|fb_iab|line\//.test(ua);
+}
+
+/**
+ * Android con un navegador que no es Chrome. Ahí la app no se instala bien:
+ * se pide abrir Chrome antes de intentar instalar.
+ */
+export function navegadorAndroidQueNoEsChrome(): "samsung" | "otro" | null {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent.toLowerCase();
+  if (!/android/.test(ua)) return null;
+  if (/samsungbrowser/.test(ua)) return "samsung";
+  if (
+    /firefox|edga\/|opr\/|opera|miuibrowser|huaweibrowser|heytapbrowser|vivobrowser|yabrowser|ucbrowser/.test(
+      ua,
+    )
+  ) {
+    return "otro";
+  }
+  return null;
 }

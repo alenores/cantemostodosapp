@@ -1,5 +1,65 @@
 import { createClient } from "@/lib/supabase/client";
-import type { SalaMiembro } from "@/types";
+import type { Sala, SalaMiembro } from "@/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type SalaListado = Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">;
+
+/** Solo las salas en las que esta persona figura como integrante. */
+export async function fetchSalasDelUsuario(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ salas: SalaListado[]; error: string | null }> {
+  const { data: filas, error: miembrosError } = await supabase
+    .from("sala_miembros")
+    .select("sala_id")
+    .eq("user_id", userId);
+
+  if (miembrosError) {
+    return { salas: [], error: miembrosError.message };
+  }
+
+  const ids = (filas ?? [])
+    .map((fila) => fila.sala_id)
+    .filter((id): id is number => typeof id === "number");
+
+  if (ids.length === 0) {
+    return { salas: [], error: null };
+  }
+
+  const { data: salas, error: salasError } = await supabase
+    .from("salas")
+    .select("id, nombre, descripcion, avatar_url")
+    .in("id", ids)
+    .order("nombre");
+
+  if (salasError) {
+    return { salas: [], error: salasError.message };
+  }
+
+  return {
+    salas: (salas ?? []) as SalaListado[],
+    error: null,
+  };
+}
+
+export async function usuarioEstaEnSala(
+  supabase: SupabaseClient,
+  salaId: number,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("sala_miembros")
+    .select("user_id")
+    .eq("sala_id", salaId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return false;
+  }
+
+  return true;
+}
 
 type MiembroRow = {
   sala_id: number;
@@ -85,14 +145,43 @@ export async function rotarInviteToken(salaId: number): Promise<string> {
   return data as string;
 }
 
-export async function agregarMiembroPorEmail(
+export type PersonaBuscada = {
+  user_id: string;
+  nombre: string;
+  avatar_url: string | null;
+  ya_esta: boolean;
+};
+
+export async function buscarPersonasParaSala(
   salaId: number,
-  email: string,
+  nombre: string,
+): Promise<PersonaBuscada[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("buscar_personas_para_sala", {
+    p_sala_id: salaId,
+    p_nombre: nombre,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as PersonaBuscada[]).map((persona) => ({
+    user_id: persona.user_id,
+    nombre: persona.nombre,
+    avatar_url: persona.avatar_url,
+    ya_esta: Boolean(persona.ya_esta),
+  }));
+}
+
+export async function agregarPersonaASala(
+  salaId: number,
+  userId: string,
 ): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.rpc("agregar_miembro_por_email", {
+  const { error } = await supabase.rpc("agregar_persona_a_sala", {
     p_sala_id: salaId,
-    p_email: email,
+    p_user_id: userId,
   });
 
   if (error) {

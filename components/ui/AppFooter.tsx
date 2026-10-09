@@ -68,17 +68,20 @@ export default function AppFooter() {
   const pathname = usePathname();
   const online = useOnlineStatus();
   const [modoLecturaHidden, setModoLecturaHidden] = useState(false);
+  const [abrirDesdeIcono, setAbrirDesdeIcono] = useState(false);
   const [salaNombre, setSalaNombre] = useState<string | null>(null);
   const [conectados, setConectados] = useState(0);
 
   useEffect(() => {
     setModoLecturaHidden(readModoLecturaHidden());
+    setAbrirDesdeIcono(document.body.hasAttribute("data-pwa-abrir-desde-icono"));
     const { salaNombre: nombre, conectados: count } = readSalaFooterState();
     setSalaNombre(nombre);
     setConectados(count);
 
     const observer = new MutationObserver(() => {
       setModoLecturaHidden(readModoLecturaHidden());
+      setAbrirDesdeIcono(document.body.hasAttribute("data-pwa-abrir-desde-icono"));
       const { salaNombre: nextNombre, conectados: nextCount } =
         readSalaFooterState();
       setSalaNombre(nextNombre);
@@ -91,13 +94,14 @@ export default function AppFooter() {
         "data-modo-lectura",
         "data-sala-nombre",
         "data-sala-conectados",
+        "data-pwa-abrir-desde-icono",
       ],
     });
 
     return () => observer.disconnect();
   }, []);
 
-  if (pathname.startsWith("/auth") || modoLecturaHidden) {
+  if (pathname.startsWith("/auth") || modoLecturaHidden || abrirDesdeIcono) {
     return null;
   }
 

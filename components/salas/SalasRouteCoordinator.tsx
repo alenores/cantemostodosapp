@@ -62,6 +62,7 @@ export default function SalasRouteCoordinator({
 
   const [optimisticSala, setOptimisticSala] = useState<SalaRef | null>(null);
   const [nombreById, setNombreById] = useState<Record<number, string>>({});
+  const [accesoSalaId, setAccesoSalaId] = useState<number | null>(null);
 
   const registerSalaNames = useCallback((salas: SalaRef[]) => {
     setNombreById((current) => {
@@ -78,6 +79,7 @@ export default function SalasRouteCoordinator({
   const enterSala = useCallback(
     (sala: SalaRef) => {
       setNombreById((current) => ({ ...current, [sala.id]: sala.nombre }));
+      setAccesoSalaId(sala.id);
       setOptimisticSala(sala);
       router.push(`/salas/${sala.id}`);
     },
@@ -97,45 +99,82 @@ export default function SalasRouteCoordinator({
   }, [optimisticSala, routeSalaId]);
 
   useEffect(() => {
-    if (!routeSalaId || nombreById[routeSalaId]) {
+    if (!routeSalaId) {
+      return;
+    }
+
+    if (optimisticSala?.id === routeSalaId) {
+      setAccesoSalaId(routeSalaId);
       return;
     }
 
     let cancelled = false;
     const supabase = createClient();
 
-    void supabase
-      .from("salas")
-      .select("nombre")
-      .eq("id", routeSalaId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) {
-          return;
-        }
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        if (!data?.nombre) {
-          router.replace("/salas?aviso=sin-acceso-sala");
-          return;
-        }
+      if (cancelled) {
+        return;
+      }
 
-        setNombreById((current) => ({
-          ...current,
-          [routeSalaId]: data.nombre,
-        }));
-      });
+      if (!user) {
+        router.replace("/auth/login");
+        return;
+      }
+
+      const { data: membresia, error } = await supabase
+        .from("sala_miembros")
+        .select("sala_id")
+        .eq("sala_id", routeSalaId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (error || !membresia) {
+        setAccesoSalaId(null);
+        router.replace("/salas?aviso=sin-acceso-sala");
+        return;
+      }
+
+      setAccesoSalaId(routeSalaId);
+
+      if (nombreById[routeSalaId]) {
+        return;
+      }
+
+      const { data: sala } = await supabase
+        .from("salas")
+        .select("nombre")
+        .eq("id", routeSalaId)
+        .maybeSingle();
+
+      if (cancelled || !sala?.nombre) {
+        return;
+      }
+
+      setNombreById((current) => ({
+        ...current,
+        [routeSalaId]: sala.nombre,
+      }));
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [nombreById, routeSalaId, router]);
+  }, [nombreById, optimisticSala?.id, routeSalaId, router]);
 
   const shellSala = useMemo((): SalaRef | null => {
     if (optimisticSala && (!routeSalaId || routeSalaId === optimisticSala.id)) {
       return optimisticSala;
     }
 
-    if (routeSalaId) {
+    if (routeSalaId && accesoSalaId === routeSalaId) {
       return {
         id: routeSalaId,
         nombre: nombreById[routeSalaId] ?? "Sala",
@@ -143,7 +182,7 @@ export default function SalasRouteCoordinator({
     }
 
     return null;
-  }, [nombreById, optimisticSala, routeSalaId]);
+  }, [accesoSalaId, nombreById, optimisticSala, routeSalaId]);
 
   const navigationValue = useMemo(
     () => ({

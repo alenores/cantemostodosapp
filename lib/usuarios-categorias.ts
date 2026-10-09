@@ -32,6 +32,22 @@ export function puedeEditarCancionCancionero(
   return categoria === "amigos" && cancion.user_id === usuarioId;
 }
 
+/** Dueño y amigos pueden marcar una canción como revisada. El público no. */
+export function puedeValidarCancion(categoria: CategoriaUsuario | null): boolean {
+  return categoria === "dueno" || categoria === "amigos";
+}
+
+/** Quitar el tilde: quien lo puso, y el dueño. */
+export function puedeQuitarValidacion(
+  cancion: { validada_por?: string | null },
+  usuarioId: string | null,
+  categoria: CategoriaUsuario | null,
+): boolean {
+  if (!cancion.validada_por || usuarioId === null) return false;
+  if (categoria === "dueno") return true;
+  return cancion.validada_por === usuarioId;
+}
+
 export function leerCategoriaGuardada(userId: string): CategoriaUsuario | null {
   try {
     return normalizeCategoriaUsuario(

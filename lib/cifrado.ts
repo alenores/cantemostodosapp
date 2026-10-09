@@ -144,6 +144,12 @@ export type CompasConfig = {
   lineTerminalOffsets?: LineTerminalOffset[];
 };
 
+export function tieneBarrasDeCompas(
+  config: CompasConfig | null | undefined,
+): boolean {
+  return Boolean(config && Array.isArray(config.barras) && config.barras.length > 0);
+}
+
 export type LineTerminalOffset = {
   lineIndex: number;
   charOffset: number;

@@ -1,3 +1,4 @@
+import { usuarioEstaEnSala } from "@/lib/sala-miembros";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -19,6 +20,14 @@ export async function generateMetadata({
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !(await usuarioEstaEnSala(supabase, salaId, user.id))) {
+    return { title: "Sala | CantemosTodosApp" };
+  }
+
   const { data: sala } = await supabase
     .from("salas")
     .select("nombre")
@@ -50,14 +59,9 @@ export default async function SalaPage({ params }: SalasPageProps) {
     redirect("/auth/login");
   }
 
-  // RLS: solo miembros ven la fila. Si no hay fila → no pertenece.
-  const { data: sala } = await supabase
-    .from("salas")
-    .select("id, nombre")
-    .eq("id", salaId)
-    .maybeSingle();
+  const esta = await usuarioEstaEnSala(supabase, salaId, user.id);
 
-  if (!sala) {
+  if (!esta) {
     redirect("/salas?aviso=sin-acceso-sala");
   }
 

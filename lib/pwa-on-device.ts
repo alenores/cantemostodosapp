@@ -68,6 +68,7 @@ export function markPwaOnDeviceFromInstallEvent(): void {
   } catch {
     // Ignore private mode / quota errors.
   }
+  markPwaOnDeviceConfirmedByApi();
 }
 
 function markPwaOnDeviceConfirmedByApi(): void {
@@ -145,7 +146,6 @@ async function resolveAndroidPwaOnDeviceInBrowser(): Promise<boolean> {
   }
 
   if (byApi === false) {
-    clearPwaOnDeviceMarks();
     return false;
   }
 

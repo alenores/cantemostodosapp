@@ -2108,4 +2108,495 @@ html.splash-active body {
   -webkit-backdrop-filter: blur(10px);
 }
 
+/* Invitación a instalar: mismos textos y dibujos, colores de Cantemos. */
+.pwa-install-tema {
+  --chalk: #232323;
+  --chalk-mid: #2a2a2a;
+  --chalk-dark: #4a4a4e;
+  --rock: #f5f5f7;
+  --rock-mid: #c5c5cb;
+  --rock-light: #8e8e93;
+  --chapa: #f4845f;
+  --chapa-hover: #e0704c;
+  --chapa-soft: #f5a48a;
+  --install-cta: #f4845f;
+  --install-cta-hover: #e0704c;
+  --transition-timing: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.android-install-banner {
+  border: 1.5px solid var(--chalk-dark);
+  background: var(--chalk-mid);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--rock) 6%, transparent);
+}
+
+@keyframes android-install-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.android-install-enter {
+  animation: android-install-enter 420ms var(--transition-timing) both;
+}
+
+@keyframes android-install-manual-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.android-install-manual-reveal {
+  animation: android-install-manual-reveal 420ms var(--transition-timing) both;
+}
+
+.preinstall-install-cta-ring {
+  position: relative;
+  isolation: isolate;
+}
+
+.preinstall-install-cta-ring::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  border: 2px solid var(--chapa);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chapa) 45%, transparent);
+  pointer-events: none;
+  z-index: 0;
+  animation: preinstall-install-ring-pulse 2.4s ease-out infinite;
+}
+
+.preinstall-install-cta-ring > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes preinstall-install-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.62;
+  }
+  75%,
+  100% {
+    transform: scale(1.035);
+    opacity: 0;
+  }
+}
+
+.in-app-manual-fallback {
+  position: relative;
+  margin-top: 0.85rem;
+  border-radius: 1rem;
+  border: 1px solid var(--chalk-dark);
+  background: var(--chalk-mid);
+  padding: 0.9rem 1rem 1rem;
+  text-align: left;
+}
+
+.in-app-manual-fallback-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--rock);
+}
+
+.in-app-manual-fallback-lead {
+  margin: 0.25rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--rock-light);
+}
+
+.in-app-manual-fallback-steps {
+  margin: 0.65rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.in-app-manual-fallback-step {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  animation: in-app-manual-step-in 380ms var(--transition-timing) both;
+  animation-delay: calc(var(--step-index, 0) * 90ms + 120ms);
+}
+
+@keyframes in-app-manual-step-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes in-app-manual-step-num-cycle {
+  0%,
+  20%,
+  100% {
+    transform: scale(1);
+    background: color-mix(in srgb, var(--chapa) 42%, var(--chalk-dark));
+    box-shadow: none;
+  }
+  6%,
+  14% {
+    transform: scale(1.12);
+    background: var(--chapa);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--chapa) 28%, transparent);
+  }
+}
+
+.in-app-manual-fallback-step-num {
+  display: inline-flex;
+  width: 1.375rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chapa) 42%, var(--chalk-dark));
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  color: white;
+  animation: in-app-manual-step-num-cycle 3.6s ease-in-out infinite;
+}
+
+.in-app-manual-fallback-step:nth-child(1) .in-app-manual-fallback-step-num {
+  animation-delay: 0s;
+}
+
+.in-app-manual-fallback-step:nth-child(2) .in-app-manual-fallback-step-num {
+  animation-delay: 1.2s;
+}
+
+.in-app-manual-fallback-step:nth-child(3) .in-app-manual-fallback-step-num {
+  animation-delay: 2.4s;
+}
+
+.in-app-manual-fallback-step-label {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--rock-mid);
+}
+
+.in-app-manual-fallback-copy {
+  margin-top: 0.45rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--chapa) 40%, var(--chalk-dark));
+  background: color-mix(in srgb, var(--chalk) 88%, transparent);
+  padding: 0.55rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--chapa);
+}
+
+.in-app-install-intro-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--rock);
+}
+
+.in-app-install-intro-offline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rock-light);
+}
+
+.in-app-install-intro-offline-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  opacity: 0.55;
+  color: var(--chapa);
+}
+
+.in-app-install-intro-body {
+  margin-top: 0.55rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--rock-mid);
+}
+
+.in-app-manual-copy-hint {
+  margin-top: 0.65rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--rock-light);
+}
+
+.ios-install-paso {
+  opacity: 0;
+  transform: translateY(14px);
+  animation:
+    ios-install-entrar 0.42s cubic-bezier(0.22, 0.9, 0.3, 1) forwards,
+    ios-install-resaltar 1s ease-out 1;
+}
+
+.ios-install-paso-1 {
+  animation-delay: 0.1s, 0.52s;
+}
+
+.ios-install-paso-2 {
+  animation-delay: 0.52s, 0.94s;
+}
+
+.ios-install-paso-3 {
+  animation-delay: 0.94s, 1.36s;
+}
+
+@keyframes ios-install-entrar {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ios-install-resaltar {
+  0% {
+    border-color: var(--chapa);
+    background: color-mix(in srgb, var(--chapa) 9%, var(--chalk-mid));
+  }
+  100% {
+    border-color: var(--chalk-dark);
+    background: var(--chalk-mid);
+  }
+}
+
+.ios-install-halo {
+  animation: ios-install-latido 1.8s ease-out infinite;
+}
+
+@keyframes ios-install-latido {
+  0% {
+    transform: scale(0.75);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.ios-install-dedo {
+  transform: translateX(-50%);
+  animation: ios-install-toque 1.8s ease-in-out infinite;
+}
+
+@keyframes ios-install-toque {
+  0%,
+  100% {
+    transform: translate(-50%, 4px);
+  }
+  45% {
+    transform: translate(-50%, -3px);
+  }
+}
+
+.ios-install-opcion {
+  height: 14px;
+  color: var(--rock-mid);
+  background: var(--chalk-dark);
+  border: 1.5px solid transparent;
+  animation: ios-install-elegir-opcion 3.4s ease-in-out infinite;
+}
+
+.ios-install-agregar {
+  height: 13px;
+  color: var(--rock-light);
+  background: transparent;
+  border: 1.5px solid var(--chalk-dark);
+  animation: ios-install-elegir-agregar 3.4s ease-in-out infinite;
+}
+
+@keyframes ios-install-elegir-opcion {
+  0%,
+  8% {
+    background: var(--chalk-dark);
+    border-color: transparent;
+    color: var(--rock-mid);
+  }
+  16%,
+  44% {
+    background: color-mix(in srgb, var(--chapa) 16%, transparent);
+    border-color: var(--chapa);
+    color: var(--chapa);
+  }
+  56%,
+  100% {
+    background: var(--chalk-dark);
+    border-color: transparent;
+    color: var(--rock-mid);
+  }
+}
+
+@keyframes ios-install-elegir-agregar {
+  0%,
+  50% {
+    background: transparent;
+    border-color: var(--chalk-dark);
+    color: var(--rock-light);
+  }
+  58%,
+  88% {
+    background: color-mix(in srgb, var(--chapa) 16%, transparent);
+    border-color: var(--chapa);
+    color: var(--chapa);
+  }
+  96%,
+  100% {
+    background: transparent;
+    border-color: var(--chalk-dark);
+    color: var(--rock-light);
+  }
+}
+
+.ios-install-nuestra {
+  animation: ios-install-brillo 2s ease-in-out infinite;
+}
+
+@keyframes ios-install-brillo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--chapa) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--chapa) 12%, transparent);
+  }
+}
+
+.open-from-home-phrase {
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease,
+    color 0.45s ease,
+    background-color 0.45s ease,
+    box-shadow 0.45s ease;
+}
+
+.open-from-home-phrase-idle {
+  opacity: 0.34;
+  transform: scale(0.98);
+}
+
+.open-from-home-phrase-active {
+  opacity: 1;
+  transform: scale(1);
+  border-radius: 10px;
+  background-color: rgba(52, 211, 153, 0.14);
+  box-shadow: none;
+}
+
+.open-from-home-phrase-settled {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-active,
+.pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-settled {
+  color: #f5f5f7;
+}
+
+.pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-idle {
+  color: #8e8e93;
+}
+
+.pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-active {
+  font-size: 1.125rem;
+}
+
+.pwa-install-tema .open-from-home-phrase-body.open-from-home-phrase-active {
+  color: #6ee7b7;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.pwa-install-tema .open-from-home-phrase-body.open-from-home-phrase-idle {
+  color: rgba(110, 231, 183, 0.55);
+  font-size: 0.8125rem;
+}
+
+.pwa-install-tema .open-from-home-phrase-body.open-from-home-phrase-settled {
+  color: #c5c5cb;
+}
+
+.open-from-home-icon-focus {
+  transition:
+    transform 0.45s ease,
+    box-shadow 0.45s ease,
+    border-color 0.45s ease;
+}
+
+.open-from-home-icon-focus.is-active {
+  transform: scale(1.04);
+  border-color: #34d399;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .android-install-enter,
+  .android-install-manual-reveal,
+  .preinstall-install-cta-ring::before,
+  .in-app-manual-fallback-step,
+  .in-app-manual-fallback-step-num,
+  .ios-install-paso,
+  .ios-install-halo,
+  .ios-install-dedo,
+  .ios-install-opcion,
+  .ios-install-agregar,
+  .ios-install-nuestra,
+  .open-from-home-phrase,
+  .open-from-home-icon-focus {
+    animation: none;
+    transition: none;
+  }
+
+  .ios-install-paso {
+    opacity: 1;
+    transform: none;
+  }
+
+  .open-from-home-phrase-idle {
+    opacity: 1;
+    transform: none;
+  }
+
+  .open-from-home-phrase-active {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .open-from-home-icon-focus.is-active {
+    transform: none;
+  }
+}
+
 

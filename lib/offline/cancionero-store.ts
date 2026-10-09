@@ -3,6 +3,7 @@ import {
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
   normalizeNotaIndex,
+  tieneBarrasDeCompas,
   type CifradoData,
 } from "@/lib/cifrado";
 import {
@@ -35,9 +36,15 @@ export function toCancionCancionero(
     artista_id: record.artista_id ?? null,
     agregado_nombre: record.agregado_nombre ?? null,
     agregado_avatar_url: record.agregado_avatar_url ?? null,
+    created_at: record.created_at ?? null,
     letra: record.letra,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
+    tiene_compases: tieneBarrasDeCompas(record.compas_config),
     user_id: record.user_id ?? null,
+    validada_por: record.validada_por ?? null,
+    validada_en: record.validada_en ?? null,
+    validada_nombre: record.validada_nombre ?? null,
+    validada_avatar_url: record.validada_avatar_url ?? null,
   };
 }
 
@@ -164,7 +171,22 @@ export async function mergeCancioneroLocalUpdates(
     const existing = await cancionesStore.get(record.id);
     // No sobrescribir una versión más nueva guardada desde otra pestaña.
     if (!existing || new Date(existing.updated_at) <= new Date(record.updated_at)) {
-      await cancionesStore.put(record);
+      const conservarValidacion =
+        record.validada_por === undefined && existing
+          ? {
+              validada_por: existing.validada_por,
+              validada_en: existing.validada_en,
+              validada_nombre: existing.validada_nombre,
+              validada_avatar_url: existing.validada_avatar_url,
+            }
+          : null;
+      const siguiente = conservarValidacion
+        ? { ...record, ...conservarValidacion }
+        : record;
+      await cancionesStore.put({
+        ...siguiente,
+        created_at: siguiente.created_at ?? existing?.created_at ?? null,
+      });
     }
   }
 
@@ -200,6 +222,93 @@ export async function clearCancioneroLocal(): Promise<void> {
 
   await tx.objectStore("canciones").clear();
   await tx.objectStore("meta").clear();
+  await tx.done;
+}
+
+export async function aplicarFechasAltaLocales(
+  fechas: Array<{ id: number; created_at: string }>,
+): Promise<void> {
+  if (!isOfflineBrowser() || fechas.length === 0) return;
+
+  const db = await getOfflineDb();
+  const porId = new Map(fechas.map((fecha) => [fecha.id, fecha.created_at]));
+  const rows = await db.getAll("canciones");
+  const tx = db.transaction("canciones", "readwrite");
+
+  for (const row of rows) {
+    const created_at = porId.get(row.id);
+    if (!created_at || row.created_at === created_at) continue;
+    await tx.store.put({ ...row, created_at });
+  }
+
+  await tx.done;
+}
+
+export async function patchValidacionLocal(
+  id: number,
+  validacion: {
+    validada_por: string | null;
+    validada_en: string | null;
+    validada_nombre: string | null;
+    validada_avatar_url: string | null;
+  },
+): Promise<void> {
+  if (!isOfflineBrowser()) return;
+
+  const db = await getOfflineDb();
+  const record = await db.get("canciones", id);
+  if (!record) return;
+
+  await db.put("canciones", { ...record, ...validacion });
+}
+
+export async function aplicarValidacionesLocales(
+  activas: Array<{
+    id: number;
+    validada_por: string | null;
+    validada_en: string | null;
+    validada_nombre: string | null;
+    validada_avatar_url: string | null;
+  }>,
+): Promise<void> {
+  if (!isOfflineBrowser()) return;
+
+  const db = await getOfflineDb();
+  const rows = await db.getAll("canciones");
+  const porId = new Map(activas.map((marca) => [marca.id, marca]));
+  const tx = db.transaction("canciones", "readwrite");
+
+  for (const row of rows) {
+    const marca = porId.get(row.id);
+    const siguiente = marca
+      ? {
+          validada_por: marca.validada_por,
+          validada_en: marca.validada_en,
+          validada_nombre: marca.validada_nombre,
+          validada_avatar_url: marca.validada_avatar_url,
+        }
+      : row.validada_por
+        ? {
+            validada_por: null,
+            validada_en: null,
+            validada_nombre: null,
+            validada_avatar_url: null,
+          }
+        : null;
+
+    if (!siguiente) continue;
+    if (
+      row.validada_por === siguiente.validada_por &&
+      row.validada_en === siguiente.validada_en &&
+      row.validada_nombre === siguiente.validada_nombre &&
+      row.validada_avatar_url === siguiente.validada_avatar_url
+    ) {
+      continue;
+    }
+
+    await tx.store.put({ ...row, ...siguiente });
+  }
+
   await tx.done;
 }
 

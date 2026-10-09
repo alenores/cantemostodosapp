@@ -1,6 +1,7 @@
 "use client";
 
 import AppReadyMarker from "@/components/AppReadyMarker";
+import UserAvatar from "@/components/perfil/UserAvatar";
 import AppSelect from "@/components/ui/AppSelect";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,6 +9,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type UsuarioCategoria = {
   user_id: string;
   email: string;
+  nombre: string | null;
+  avatar_url: string | null;
   categoria: "dueno" | "amigos" | "publico";
 };
 
@@ -56,9 +59,22 @@ export default function UsuariosPageClient() {
       <ul className="mt-5 space-y-3">
         {usuarios.map((usuario) => (
           <li key={usuario.user_id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg-card p-4">
-            <div className="min-w-0">
-              <p className="break-all text-sm font-semibold">{usuario.email}</p>
-              {usuario.categoria === "dueno" ? <p className="mt-1 text-xs text-text-muted">Dueño</p> : null}
+            <div className="flex min-w-0 items-center gap-3">
+              <UserAvatar
+                nombre={usuario.nombre ?? ""}
+                email={usuario.email}
+                avatarUrl={usuario.avatar_url}
+                size={40}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">
+                  {usuario.nombre?.trim() || "Sin nombre"}
+                </p>
+                <p className="break-all text-xs text-text-muted">{usuario.email}</p>
+                {usuario.categoria === "dueno" ? (
+                  <p className="mt-1 text-xs text-text-muted">Dueño</p>
+                ) : null}
+              </div>
             </div>
             {usuario.categoria === "dueno" ? null : (
               <AppSelect<"amigos" | "publico">

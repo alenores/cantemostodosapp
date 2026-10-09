@@ -5,7 +5,7 @@ import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 6;
+export const OFFLINE_DB_VERSION = 7;
 
 export type CancioneroLocalRecord = {
   id: number;
@@ -90,6 +90,16 @@ export type MiCancionLocalRecord = UsuarioCancion & {
   owner_user_id: string;
 };
 
+/** Foto chica del artista, guardada con el Cancionero para verla sin internet. */
+export type ArtistaFotoLocalRecord = {
+  id: string;
+  nombre: string;
+  avatar_url: string | null;
+  blob: Blob | null;
+  /** Había foto y no se pudo guardar: se reintenta la próxima vez. */
+  incompleta?: boolean;
+};
+
 export interface OfflineDB extends DBSchema {
   cola_individual_snapshot: {
     key: string;
@@ -126,6 +136,10 @@ export interface OfflineDB extends DBSchema {
     key: string;
     value: MiCancionLocalRecord;
     indexes: { "by-user": string };
+  };
+  artistas_fotos: {
+    key: string;
+    value: ArtistaFotoLocalRecord;
   };
 }
 
@@ -173,8 +187,11 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
           });
           favoritas.createIndex("by-user", "owner_user_id");
         }
-        if (oldVersion < 6) {
+        if (oldVersion < 6 && !db.objectStoreNames.contains("cola_individual_snapshot")) {
           db.createObjectStore("cola_individual_snapshot", { keyPath: "userId" });
+        }
+        if (oldVersion < 7 && !db.objectStoreNames.contains("artistas_fotos")) {
+          db.createObjectStore("artistas_fotos", { keyPath: "id" });
         }
       },
     });

@@ -56,6 +56,8 @@ type CancioneroItemCardProps = {
   onValidar?: (cancion: CancionCancionero) => void;
   onVerValidacion?: (cancion: CancionCancionero) => void;
   artistaAvatarUrl?: string | null;
+  /** Sin conexión no se muestra la foto de quien agregó la canción. */
+  mostrarAvatarUsuario?: boolean;
 };
 
 export default function CancioneroItemCard({
@@ -77,7 +79,9 @@ export default function CancioneroItemCard({
   puedePonerValidacion = false,
   onValidar,
   onVerValidacion,
+  mostrarAvatarUsuario = true,
 }: CancioneroItemCardProps) {
+  const avatarUsuario = mostrarAvatarUsuario ? (cancion.agregado_avatar_url ?? null) : null;
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sumarLabelShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -371,10 +375,10 @@ export default function CancioneroItemCard({
                   setAgregadoAbierto(true);
                 }}
               >
-                {cancion.agregado_avatar_url ? (
+                {avatarUsuario ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={cancion.agregado_avatar_url}
+                    src={avatarUsuario}
                     alt=""
                     className="size-full object-cover"
                   />
@@ -496,7 +500,7 @@ export default function CancioneroItemCard({
       <AgregadoFichaDialog
         open={agregadoAbierto && Boolean(agregadoNombre)}
         nombre={agregadoNombre}
-        avatarUrl={cancion.agregado_avatar_url ?? null}
+        avatarUrl={avatarUsuario}
         fecha={cancion.created_at ?? null}
         onCerrar={() => setAgregadoAbierto(false)}
       />

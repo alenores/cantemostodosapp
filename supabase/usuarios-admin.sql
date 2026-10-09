@@ -1,8 +1,10 @@
 -- Administración de categorías para la cuenta dueña.
 -- Aplicada al proyecto Supabase de Cantemos Todos el 30/09/2026.
 
-CREATE OR REPLACE FUNCTION public.listar_usuarios_admin()
-RETURNS TABLE(user_id uuid, email text, categoria text)
+DROP FUNCTION IF EXISTS public.listar_usuarios_admin();
+
+CREATE FUNCTION public.listar_usuarios_admin()
+RETURNS TABLE(user_id uuid, email text, nombre text, avatar_url text, categoria text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 BEGIN
@@ -14,7 +16,12 @@ BEGIN
   END IF;
 
   RETURN QUERY
-    SELECT uc.user_id, au.email::text, uc.categoria
+    SELECT
+      uc.user_id,
+      au.email::text,
+      NULLIF(pg_catalog.btrim(au.raw_user_meta_data ->> 'nombre'), '')::text,
+      NULLIF(pg_catalog.btrim(au.raw_user_meta_data ->> 'avatar_url'), '')::text,
+      uc.categoria
     FROM public.usuarios_categorias uc
     JOIN auth.users au ON au.id = uc.user_id
     ORDER BY CASE uc.categoria

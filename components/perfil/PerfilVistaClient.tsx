@@ -3,6 +3,7 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import SalaAvatar from "@/components/salas/SalaAvatar";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { listCancionesPractica } from "@/lib/canciones-practica";
@@ -62,7 +63,7 @@ function filasCancion(
 
 type PestanaId = "aportadas" | "favoritas" | "entrenador" | "salas";
 
-function MenuPerfil() {
+function MenuPerfil({ onCerrarSesion }: { onCerrarSesion: () => void }) {
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +115,17 @@ function MenuPerfil() {
           >
             Editar
           </TapLink>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setAbierto(false);
+              onCerrarSesion();
+            }}
+            className="block w-full px-3 py-2.5 text-left text-sm text-text-primary"
+          >
+            Cerrar sesión
+          </button>
         </div>
       ) : null}
     </div>
@@ -227,6 +239,7 @@ export default function PerfilVistaClient({
   const router = useRouter();
   const startNavigation = useStartNavigation();
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
   const [pestana, setPestana] = useState<PestanaId>("aportadas");
   const [entrenador, setEntrenador] = useState(entrenadorInicial);
   const [entrenadorConEnlace, setEntrenadorConEnlace] = useState(false);
@@ -358,7 +371,7 @@ export default function PerfilVistaClient({
           <h1 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
             Mi perfil
           </h1>
-          <MenuPerfil />
+          <MenuPerfil onCerrarSesion={() => setConfirmarSalida(true)} />
         </div>
       </header>
 
@@ -368,17 +381,7 @@ export default function PerfilVistaClient({
             <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
               Mi perfil
             </h1>
-            <div className="flex items-center gap-2">
-              <TapButton
-                type="button"
-                onClick={() => void handleLogout()}
-                disabled={logoutLoading}
-                className="min-h-10 rounded-[10px] border border-border bg-bg-card px-5 text-sm font-semibold text-text-primary disabled:opacity-60"
-              >
-                {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
-              </TapButton>
-              <MenuPerfil />
-            </div>
+            <MenuPerfil onCerrarSesion={() => setConfirmarSalida(true)} />
           </div>
 
           {avisoMensaje ? (
@@ -451,16 +454,22 @@ export default function PerfilVistaClient({
             </div>
           </div>
 
-          <TapButton
-            type="button"
-            onClick={() => void handleLogout()}
-            disabled={logoutLoading}
-            className="min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-medium text-text-muted disabled:opacity-60 lg:hidden"
-          >
-            {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
-          </TapButton>
         </div>
       </main>
+      <ConfirmDialog
+        open={confirmarSalida}
+        message="¿Cerrar sesión?"
+        confirmLabel={logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          void handleLogout();
+        }}
+        onCancel={() => {
+          if (!logoutLoading) {
+            setConfirmarSalida(false);
+          }
+        }}
+      />
     </div>
   );
 }

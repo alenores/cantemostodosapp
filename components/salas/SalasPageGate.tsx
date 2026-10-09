@@ -86,6 +86,11 @@ export default function SalasPageGate({
         return;
       }
 
+      if (!session) {
+        router.replace("/auth/login");
+        return;
+      }
+
       if (!online) {
         const snapshot = await getAppSnapshot();
 
@@ -97,11 +102,6 @@ export default function SalasPageGate({
           status: "ready",
           payload: resolveOfflineSalasPayload(snapshot, session, avisoInicial),
         });
-        return;
-      }
-
-      if (!session) {
-        router.replace("/auth/login");
         return;
       }
 

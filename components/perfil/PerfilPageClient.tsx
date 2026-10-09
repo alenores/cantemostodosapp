@@ -4,7 +4,6 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
-import { clearAppSnapshot } from "@/lib/offline/app-snapshot-store";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import { ArrowLeft, Camera } from "lucide-react";
@@ -16,9 +15,6 @@ const inputClassName =
 
 const buttonClassName =
   "min-h-11 w-full rounded-[10px] bg-accent px-4 text-base font-semibold text-white transition-[opacity] duration-350 disabled:opacity-60";
-
-const logoutButtonClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-bg-card px-4 text-base font-medium text-text-muted disabled:opacity-60";
 
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -53,7 +49,6 @@ export default function PerfilPageClient({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cambiarContraseñaAbierto, setCambiarContraseñaAbierto] = useState(false);
 
@@ -85,22 +80,6 @@ export default function PerfilPageClient({
     setError(null);
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
-  }
-
-  async function handleLogout() {
-    if (logoutLoading) {
-      return;
-    }
-
-    setLogoutLoading(true);
-    setError(null);
-
-    const supabase = createClient();
-    await clearAppSnapshot();
-    await supabase.auth.signOut();
-
-    startNavigation();
-    router.replace("/auth/login");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -302,14 +281,6 @@ export default function PerfilPageClient({
                 Editar perfil
               </h1>
             </div>
-            <TapButton
-              type="button"
-              onClick={() => void handleLogout()}
-              disabled={logoutLoading || loading}
-              className="min-h-10 rounded-[10px] border border-border bg-bg-card px-5 text-sm font-semibold text-text-primary disabled:opacity-60"
-            >
-              {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
-            </TapButton>
           </div>
 
           {!tieneNombreGuardado && (
@@ -481,13 +452,6 @@ export default function PerfilPageClient({
             )}
           </form>
 
-          <TapButton
-            onClick={() => void handleLogout()}
-            disabled={logoutLoading || loading}
-            className={`${logoutButtonClassName} mt-4 mb-5 lg:hidden`}
-          >
-            {logoutLoading ? "Cerrando sesión..." : "Cerrar sesión"}
-          </TapButton>
         </div>
       </main>
     </div>

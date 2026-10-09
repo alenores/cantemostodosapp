@@ -10,6 +10,7 @@ import {
   downloadCancioneroUpdates,
   type CancioneroUpdatePlan,
 } from "@/lib/offline/cancionero-sync";
+import { syncArtistaFotos } from "@/lib/offline/artista-fotos";
 import { getCancioneroLocalMeta } from "@/lib/offline/cancionero-store";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
@@ -41,6 +42,7 @@ export function useCancioneroSync() {
         setPlan(await checkCancioneroUpdates(createClient()));
       } while (checkRequested.current && hayConexion());
       setError(null);
+      void syncArtistaFotos(createClient()).catch(() => {});
     } catch {
       setError("No se pudieron comprobar las novedades. Tu Cancionero sigue disponible.");
     } finally {
@@ -69,6 +71,7 @@ export function useCancioneroSync() {
         setProgress({ completed, total });
       });
       setPreparingOffline(true);
+      await syncArtistaFotos(createClient());
       const offlineReady = await warmOfflineCache({ force: true });
       if (!offlineReady) {
         throw new Error("offline-preparation-incomplete");

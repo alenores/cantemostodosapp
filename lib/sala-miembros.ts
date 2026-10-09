@@ -163,7 +163,16 @@ export async function buscarPersonasParaSala(
   });
 
   if (error) {
-    throw error;
+    const crudo = typeof error.message === "string" ? error.message : "";
+    const mensaje =
+      crudo.startsWith("Tenés") ||
+      crudo.startsWith("Debés") ||
+      crudo.startsWith("Elegí") ||
+      crudo.startsWith("No encontramos") ||
+      crudo.startsWith("Ya está")
+        ? crudo
+        : "No se pudo buscar a esa persona";
+    throw new Error(mensaje);
   }
 
   return ((data ?? []) as PersonaBuscada[]).map((persona) => ({

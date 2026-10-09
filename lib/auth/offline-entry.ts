@@ -22,11 +22,16 @@ export function resolveOfflineSalasPayload(
   session: Session | null,
   avisoInicial: string | null,
 ): OfflineSalasPayload {
-  const usuario =
-    snapshot?.usuario ??
-    (session?.user
-      ? mapUserToUsuarioActivo(session.user)
-      : OFFLINE_GUEST_USUARIO);
+  if (!session?.user) {
+    return {
+      salas: [],
+      usuario: OFFLINE_GUEST_USUARIO,
+      errorMessage: null,
+      avisoInicial,
+    };
+  }
+
+  const usuario = snapshot?.usuario ?? mapUserToUsuarioActivo(session.user);
 
   return {
     salas: snapshot?.salas ?? [],

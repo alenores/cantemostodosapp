@@ -85,20 +85,9 @@ export default function HomeHubDestinations({
       </div>
 
       <div className="grid grid-cols-2 gap-3.5">
-        <div className="col-span-2 min-w-0">
+        <div className="relative col-span-2 min-w-0">
           <HomeDestinationCard
             featured
-            label={HUB_DESTINATION_INDIVIDUAL_LABEL}
-            subtitle="Cantar solo"
-            icon={Guitar}
-            ariaLabel={`Ir a Individual: ${HUB_DESTINATION_INDIVIDUAL_DESCRIPTION}`}
-            onClick={() => goTo("/individual")}
-            pending={pendingHref === "/individual"}
-          />
-        </div>
-
-        <div className="relative min-w-0">
-          <HomeDestinationCard
             label={HUB_DESTINATION_CANCIONERO_LABEL}
             subtitle="Explorar"
             icon={Library}
@@ -118,6 +107,15 @@ export default function HomeHubDestinations({
             </button>
           ) : null}
         </div>
+
+        <HomeDestinationCard
+          label={HUB_DESTINATION_INDIVIDUAL_LABEL}
+          subtitle="Cantar solo"
+          icon={Guitar}
+          ariaLabel={`Ir a Individual: ${HUB_DESTINATION_INDIVIDUAL_DESCRIPTION}`}
+          onClick={() => goTo("/individual")}
+          pending={pendingHref === "/individual"}
+        />
 
         <HomeDestinationCard
           label={HUB_DESTINATION_SALAS_LABEL}

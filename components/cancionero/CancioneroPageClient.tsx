@@ -71,6 +71,11 @@ import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types"
 import { ArtistasManagerModal } from "@/components/ui/ArtistasManagerModal";
 import { ArtistasFilterModal } from "@/components/ui/ArtistasFilterModal";
 import { getArtistas } from "@/lib/artistas";
+import {
+  ARTISTAS_FOTOS_EVENT,
+  artistasConFotoLocal,
+  leerArtistasFotos,
+} from "@/lib/offline/artista-fotos";
 import { Bell, Music, Search, Star, WifiOff, X, Settings, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -133,9 +138,57 @@ export default function CancioneroPageClient({
   const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
   const aliasBusqueda = useAliasBusqueda();
 
+  const revokeFotosRef = useRef<() => void>(() => {});
   useEffect(() => {
-    getArtistas(supabase).then(setArtistas);
-  }, [supabase]);
+    let cancelado = false;
+
+    function aplicar(lista: Artista[], revoke: () => void) {
+      if (cancelado) {
+        revoke();
+        return;
+      }
+      revokeFotosRef.current();
+      revokeFotosRef.current = revoke;
+      setArtistas(lista);
+    }
+
+    async function cargarArtistas() {
+      const locales = await leerArtistasFotos().catch(() => []);
+      if (!online) {
+        const copia = artistasConFotoLocal(locales);
+        aplicar(copia.artistas, copia.revoke);
+        return;
+      }
+
+      const remotos = await getArtistas(supabase);
+      if (remotos.length === 0) {
+        const copia = artistasConFotoLocal(locales);
+        aplicar(copia.artistas, copia.revoke);
+        return;
+      }
+
+      const localPorId = new Map(locales.map((fila) => [fila.id, fila]));
+      const urls: string[] = [];
+      const lista = remotos.map((artista) => {
+        const local = localPorId.get(artista.id);
+        if (!local?.blob || local.avatar_url !== artista.avatar_url) return artista;
+        const url = URL.createObjectURL(local.blob);
+        urls.push(url);
+        return { ...artista, avatar_url: url };
+      });
+      aplicar(lista, () => {
+        for (const url of urls) URL.revokeObjectURL(url);
+      });
+    }
+
+    void cargarArtistas();
+    window.addEventListener(ARTISTAS_FOTOS_EVENT, cargarArtistas);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(ARTISTAS_FOTOS_EVENT, cargarArtistas);
+    };
+  }, [online, supabase]);
+  useEffect(() => () => revokeFotosRef.current(), []);
   const artistasPorId = useMemo(() => new Map(artistas.map((artista) => [artista.id, artista])), [artistas]);
   const artistasPorNombre = useMemo(() => new Map(artistas.map((artista) => [artista.nombre.toLocaleLowerCase("es"), artista])), [artistas]);
   const fotoArtista = useCallback((artistaId: string | null | undefined, nombre: string | null) =>
@@ -981,6 +1034,7 @@ export default function CancioneroPageClient({
                     <CancioneroItemCard
                       cancion={cancion}
                       artistaAvatarUrl={fotoArtista(cancion.artista_id, cancion.artista)}
+                      mostrarAvatarUsuario={online}
                       isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
                       puedeEditarEliminar={puedeEditarCancionCancionero(
@@ -1124,7 +1178,7 @@ export default function CancioneroPageClient({
       <ValidacionFichaDialog
         open={validacionPaso === "ficha" && cancionValidacion !== null}
         nombre={cancionValidacion?.validada_nombre?.trim() || "Usuario"}
-        avatarUrl={cancionValidacion?.validada_avatar_url ?? null}
+        avatarUrl={online ? (cancionValidacion?.validada_avatar_url ?? null) : null}
         fecha={cancionValidacion?.validada_en ?? null}
         puedeQuitar={
           online &&

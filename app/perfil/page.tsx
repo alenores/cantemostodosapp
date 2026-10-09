@@ -65,7 +65,7 @@ export default async function PerfilPage({ searchParams }: PerfilPageProps) {
       salas={salasRes.salas.map((sala) => ({
         id: sala.id,
         nombre: sala.nombre,
-        avatar_url: sala.avatar_url,
+        avatar_url: sala.avatar_url ?? null,
       }))}
       aportadasConError={Boolean(aportadasRes.error)}
       favoritasConError={Boolean(favoritasRes.error)}

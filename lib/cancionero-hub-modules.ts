@@ -7,7 +7,6 @@ import {
   Music2,
   NotebookPen,
   Timer,
-  Users,
 } from "lucide-react";
 
 export type HubModuleKind =
@@ -135,20 +134,6 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     ctaVariant: "accent",
     ctaMode: "solid",
     ctaTextTone: "on-light",
-  },
-  {
-    id: "usuarios",
-    label: "Usuarios",
-    icon: Users,
-    accentVar: "--accent",
-    accentDimVar: "--accent-dim",
-    kind: "route",
-    section: "practica",
-    href: "/practica/usuarios",
-    requiresOwner: true,
-    ctaLabel: "Administrar",
-    ctaMode: "soft",
-    ctaTextTone: "accent",
   },
   {
     id: "entrenador-canciones",

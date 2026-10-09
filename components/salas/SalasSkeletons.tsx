@@ -43,15 +43,6 @@ const LETRA_LINE_WIDTHS = [
   "w-[76%]",
 ] as const;
 
-/** Tablero del inicio: Salas grande, Individual y Cancionero altas, Práctica y Afinador bajitas. */
-const HOME_DESTINATION_LAYOUTS = [
-  { size: "home-destination-card--hero", span: "col-span-2" },
-  { size: "home-destination-card--tall", span: "" },
-  { size: "home-destination-card--tall", span: "" },
-  { size: "home-destination-card--compact", span: "" },
-  { size: "home-destination-card--compact", span: "" },
-] as const;
-
 function ShimmerBlock({
   className = "",
   delayMs = 0,
@@ -99,21 +90,22 @@ export function AppTopHeaderSkeleton() {
 }
 
 function HomeDestinationCardSkeleton({
-  sizeClass,
-  spanClass,
+  featured = false,
   delayMs = 0,
 }: {
-  sizeClass: string;
-  spanClass: string;
+  featured?: boolean;
   delayMs?: number;
 }) {
   return (
     <div
-      className={`relative flex w-full flex-col justify-between rounded-amplio border border-border bg-bg-card p-3 ${sizeClass} ${spanClass}`.trim()}
+      className={`relative flex w-full flex-col items-center justify-between gap-3 rounded-[28px] border border-[#3a3a3d] bg-[#2d2d2f] px-3 py-6 ${featured ? "min-h-[170px]" : "min-h-[190px]"}`}
       aria-hidden="true"
     >
-      <ShimmerBlock className="h-[17px] w-[45%]" delayMs={delayMs} />
-      <ShimmerBlock className="h-[12px] w-[70%]" delayMs={delayMs + 40} />
+      <div className="flex flex-1 items-center justify-center">
+        <ShimmerBlock className="size-[52px] rounded-xl" delayMs={delayMs} />
+      </div>
+      <ShimmerBlock className="h-[18px] w-[65%] rounded-md" delayMs={delayMs + 30} />
+      <ShimmerBlock className="h-[13px] w-[48%] rounded-md" delayMs={delayMs + 60} />
     </div>
   );
 }
@@ -151,22 +143,23 @@ function SalaCardSkeleton({
 }) {
   return (
     <div
-      className="flex min-h-[4.25rem] items-stretch gap-2 rounded-2xl border border-border bg-bg-card p-1.5"
+      className="home-destination-card flex min-h-[148px] flex-col rounded-[28px] px-4 py-3.5"
       aria-hidden="true"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[14px] px-3 py-2.5">
-        <ShimmerBlock className="size-10 shrink-0 rounded-xl" delayMs={delayMs} />
+      <div className="flex min-h-[82px] min-w-0 flex-1 items-center gap-4">
+        <ShimmerBlock className="size-16 shrink-0 rounded-2xl" delayMs={delayMs} />
         <div className="min-w-0 flex-1 space-y-2">
-          <ShimmerBlock className={`h-4 ${titleWidth}`} delayMs={delayMs + 40} />
+          <ShimmerBlock className={`h-5 ${titleWidth}`} delayMs={delayMs + 40} />
           <ShimmerBlock
             className={`h-3 ${subtitleWidth}`}
             delayMs={delayMs + 70}
           />
         </div>
+        <ShimmerBlock className="size-5 shrink-0 rounded-md" delayMs={delayMs + 80} />
       </div>
-      <div className="flex w-[4.75rem] shrink-0 flex-col items-center justify-center gap-1.5 rounded-[14px] border border-border/80 bg-bg-app/60 px-1.5 py-2">
-        <ShimmerBlock className="size-6 rounded-full" delayMs={delayMs + 90} />
-        <ShimmerBlock className="h-2.5 w-10" delayMs={delayMs + 110} />
+      <div className="mt-3 flex min-h-11 items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <ShimmerBlock className="h-3 w-24" delayMs={delayMs + 90} />
+        <ShimmerBlock className="h-7 w-16 rounded-full" delayMs={delayMs + 110} />
       </div>
     </div>
   );
@@ -174,12 +167,12 @@ function SalaCardSkeleton({
 
 function SalasSectionLabelSkeleton() {
   return (
-    <div className="flex items-start justify-between gap-3" aria-hidden="true">
+    <div className="flex items-start justify-between gap-3 pt-1" aria-hidden="true">
       <div className="min-w-0 flex-1 space-y-2">
-        <ShimmerBlock className="h-7 w-28" />
-        <ShimmerBlock className="h-3 w-[70%]" delayMs={40} />
+        <ShimmerBlock className="h-9 w-28" />
+        <ShimmerBlock className="h-4 w-[70%]" delayMs={40} />
       </div>
-      <ShimmerBlock className="mt-1 size-[18px] shrink-0 rounded-full" delayMs={40} />
+      <ShimmerBlock className="h-11 w-21 shrink-0 rounded-2xl" delayMs={40} />
     </div>
   );
 }
@@ -301,27 +294,24 @@ export function SalaLetraSkeleton({
 export function HomeWelcomeSkeleton() {
   return (
     <div
-      className="flex min-h-full flex-1 flex-col bg-bg-app"
+      className="flex min-h-full flex-1 flex-col bg-[#181818]"
       role="status"
       aria-live="polite"
       aria-label="Cargando inicio"
     >
       <AppTopHeaderSkeleton />
-      <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
-        <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-          <div className="flex flex-col items-center gap-3">
-            <ShimmerBlock className="h-7 w-[42%] rounded-md" />
-            <ShimmerBlock className="h-5 w-[36%] rounded-md" delayMs={40} />
+      <main className="app-page-main flex flex-col gap-3 bg-[#181818] px-5 py-7 pb-28 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-col gap-7">
+          <div className="flex flex-col items-start gap-2 pt-1">
+            <ShimmerBlock className="h-9 w-[52%] rounded-md" />
+            <ShimmerBlock className="h-9 w-[68%] rounded-md" delayMs={40} />
+            <ShimmerBlock className="h-9 w-[80%] rounded-md" delayMs={80} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {HOME_DESTINATION_LAYOUTS.map((layout, index) => (
-              <HomeDestinationCardSkeleton
-                key={index}
-                sizeClass={layout.size}
-                spanClass={layout.span}
-                delayMs={index * 70}
-              />
+          <div className="grid grid-cols-2 gap-3.5">
+            <div className="col-span-2"><HomeDestinationCardSkeleton featured /></div>
+            {[1, 2, 3, 4].map((index) => (
+              <HomeDestinationCardSkeleton key={index} delayMs={index * 70} />
             ))}
           </div>
         </div>
@@ -394,8 +384,8 @@ export function SalasPageSkeleton() {
     >
       <AppTopHeaderSkeleton />
 
-      <main className="app-page-main flex flex-1 flex-col gap-4 px-4 py-6 pb-24 lg:gap-5 lg:px-8 lg:py-8">
-        <div className="app-page-container flex flex-1 flex-col gap-4 lg:gap-5">
+      <main className="app-page-main flex flex-1 flex-col gap-5 px-5 py-7 pb-28 lg:gap-6 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-1 flex-col gap-5 lg:gap-6">
           <SalasSectionLabelSkeleton />
 
           <div className="app-list-grid">

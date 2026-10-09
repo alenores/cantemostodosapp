@@ -6,6 +6,7 @@ import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 import AppReadyMarker from "@/components/AppReadyMarker";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import CancioneroItemCard from "@/components/cancionero/CancioneroItemCard";
+import CancioneroCardVisual from "@/components/cancionero/CancioneroCardVisual";
 import CancioneroListSkeleton, {
   CASCADE_MAX_DELAY_MS,
   CASCADE_STAGGER_MS,
@@ -54,10 +55,11 @@ import {
 } from "@/lib/usuarios-categorias";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
-import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types";
+import type { CancionCancionero, CancionCifradoDetalle, Artista, UsuarioActivo } from "@/types";
 import { ArtistasManagerModal } from "@/components/ui/ArtistasManagerModal";
 import { ArtistasFilterModal } from "@/components/ui/ArtistasFilterModal";
 import { getArtistas } from "@/lib/artistas";
+import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import { Bell, Music, Search, Star, WifiOff, X, Settings, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -109,6 +111,7 @@ export default function CancioneroPageClient({
   const [misCancionesIds, setMisCancionesIds] = useState<Set<number>>(new Set());
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [artistas, setArtistas] = useState<Artista[]>([]);
+  const [usuarioActual, setUsuarioActual] = useState<UsuarioActivo | null>(null);
   const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
   const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
   const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
@@ -117,6 +120,23 @@ export default function CancioneroPageClient({
   useEffect(() => {
     getArtistas(supabase).then(setArtistas);
   }, [supabase]);
+  useEffect(() => {
+    if (!usuarioLogueado) return;
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active && data.session?.user) {
+        setUsuarioActual(mapUserToUsuarioActivo(data.session.user));
+      }
+    });
+    return () => { active = false; };
+  }, [supabase, usuarioLogueado]);
+  const artistasPorId = useMemo(() => new Map(artistas.map((artista) => [artista.id, artista])), [artistas]);
+  const artistasPorNombre = useMemo(() => new Map(artistas.map((artista) => [artista.nombre.toLocaleLowerCase("es"), artista])), [artistas]);
+  const fotoArtista = useCallback((artistaId: string | null | undefined, nombre: string | null) =>
+    (artistaId ? artistasPorId.get(artistaId) : null)?.avatar_url
+      ?? (nombre ? artistasPorNombre.get(nombre.toLocaleLowerCase("es"))?.avatar_url : null)
+      ?? null,
+  [artistasPorId, artistasPorNombre]);
   const hadLoadedRef = useRef(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -801,7 +821,7 @@ export default function CancioneroPageClient({
                   >
                     <CancioneroItemCard
                       cancion={cancion}
-                      artistaAvatarUrl={artistas.find(a => cancion.artista && a.nombre === cancion.artista)?.avatar_url}
+                      artistaAvatarUrl={fotoArtista(cancion.artista_id, cancion.artista)}
                       isDesktop={isDesktop}
                       mutationsEnabled={mutationsEnabled}
                       puedeEditarEliminar={puedeEditarCancionCancionero(
@@ -829,14 +849,16 @@ export default function CancioneroPageClient({
                     key={`practica-${cancion.id}`}
                     type="button"
                     onClick={() => navigateWithProgress(`/practica/entrenador-canciones/ver?id=${cancion.id}`)}
-                    className="flex min-w-0 items-center gap-3 rounded-[12px] border border-border-card bg-bg-card px-4 py-3 text-left"
+                    className="relative min-w-0 rounded-[12px] border border-border-card bg-bg-card p-3 text-left transition-colors hover:border-text-faint/50"
                   >
-                    <Star className="size-6 shrink-0 fill-current text-[var(--accent-vocal)]" aria-label="Entrenador de canciones" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[17px] font-semibold text-text-primary">{cancion.nombre}</span>
-                      {cancion.artista ? <span className="block truncate text-[13px] text-text-muted">{cancion.artista}</span> : null}
-                      <span className="block text-[11px] text-text-muted">Mi versión de práctica</span>
-                    </span>
+                    <CancioneroCardVisual
+                      nombre={cancion.nombre}
+                      artista={cancion.artista}
+                      artistaAvatarUrl={fotoArtista(null, cancion.artista)}
+                      agregadoNombre={usuarioActual?.nombre.trim() || "Vos"}
+                      agregadoAvatarUrl={usuarioActual?.avatar_url}
+                      insignia={<Star className="size-4 fill-current text-[var(--accent-vocal)]" aria-label="Entrenador de canciones" />}
+                    />
                   </button>
                 ))}
               </div>

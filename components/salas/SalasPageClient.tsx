@@ -14,7 +14,7 @@ import { fetchMiembrosSalas } from "@/lib/sala-miembros";
 import type { Sala, SalaMiembro, UsuarioActivo } from "@/types";
 import { Plus, Users, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getPerfilAvisoMensaje } from "@/lib/perfil-avisos";
 
@@ -46,17 +46,16 @@ export default function SalasPageClient({
   const salaIds = useMemo(() => salas.map((sala) => sala.id), [salas]);
   const detalleOpen = detalleSala !== null;
 
-  const reloadMiembros = useCallback(async () => {
+  const loadMiembros = useCallback(async () => {
     if (!online || salaIds.length === 0) {
-      setMiembrosBySala({});
-      return;
+      return null;
     }
 
     try {
-      const bySala = await fetchMiembrosSalas(salaIds);
-      setMiembrosBySala(bySala);
+      return await fetchMiembrosSalas(salaIds);
     } catch (err) {
       console.warn("[salas] miembros:", err);
+      return null;
     }
   }, [online, salaIds]);
 
@@ -70,8 +69,16 @@ export default function SalasPageClient({
   }, [registerSalaNames, salas]);
 
   useEffect(() => {
-    void reloadMiembros();
-  }, [reloadMiembros]);
+    let cancelled = false;
+    void loadMiembros().then((bySala) => {
+      if (!cancelled && bySala) {
+        setMiembrosBySala(bySala);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadMiembros]);
 
   function openSala(
     sala: Pick<Sala, "id" | "nombre" | "descripcion" | "avatar_url">,
@@ -93,7 +100,10 @@ export default function SalasPageClient({
   }
 
   async function handleMiembrosChanged() {
-    await reloadMiembros();
+    const bySala = await loadMiembros();
+    if (bySala) {
+      setMiembrosBySala(bySala);
+    }
     router.refresh();
   }
 
@@ -105,49 +115,38 @@ export default function SalasPageClient({
     setDetalleSala(null);
   });
 
-  const pageAtmosphereStyle = {
-    backgroundImage:
-      "radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in srgb, var(--accent-salas) 18%, transparent), transparent 70%)",
-  } satisfies CSSProperties;
-
   return (
-    <div
-      className="relative flex min-h-full flex-1 flex-col bg-bg-app"
-      style={pageAtmosphereStyle}
-    >
+    <div className="relative flex min-h-full flex-1 flex-col bg-[#181818]">
       <AppReadyMarker />
       <AppTopHeader usuario={usuario} />
 
-      <main className="app-page-main flex flex-1 flex-col gap-4 px-4 py-6 pb-24 lg:gap-5 lg:px-8 lg:py-8">
-        <div className="app-page-container flex flex-1 flex-col gap-4 lg:gap-5">
-          <header
-            className="home-cascade-item flex items-start justify-between gap-3"
-            style={{ ["--cascade-delay" as string]: "0ms" }}
-          >
+      <main className="app-page-main flex flex-1 flex-col gap-5 px-5 py-7 pb-28 lg:gap-6 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-1 flex-col gap-5 lg:gap-6">
+          <header className="flex items-start justify-between gap-3 pt-1">
             <div className="min-w-0">
-              <h2 className="text-2xl font-extrabold tracking-tight text-text-primary lg:text-[1.75rem]">
+              <h2 className="text-[clamp(30px,8vw,36px)] font-extrabold leading-[1.12] tracking-tight text-text-primary">
                 Salas
               </h2>
-              <p className="mt-1 max-w-md text-sm text-text-muted">
+              <p className="mt-2 max-w-md text-[14px] text-text-muted">
                 Entrá a tocar con tu gente
               </p>
             </div>
-            <TapButton
-              aria-label="Crear sala"
-              onClick={() => setModalOpen(true)}
-              disabled={!online}
-              className="mt-1 flex size-[18px] shrink-0 items-center justify-center rounded-full bg-black text-text-faint disabled:opacity-40"
-            >
-              <Plus className="size-2.5" strokeWidth={2.5} aria-hidden="true" />
-            </TapButton>
+            {salas.length > 0 || errorMessage ? (
+              <TapButton
+                type="button"
+                aria-label="Crear sala"
+                onClick={() => setModalOpen(true)}
+                disabled={!online}
+                className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-2xl border border-[#3a3a3d] bg-[#303032] px-3.5 text-[13px] font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.2)] disabled:opacity-40"
+              >
+                <Plus className="size-4" strokeWidth={2.4} aria-hidden="true" />
+                <span>Crear</span>
+              </TapButton>
+            ) : null}
           </header>
 
           {!online && (
-            <p
-              className="home-cascade-item flex items-center gap-2 rounded-xl border border-border bg-bg-card/80 px-3 py-2.5 text-sm text-text-muted backdrop-blur-sm"
-              style={{ ["--cascade-delay" as string]: "60ms" }}
-              role="status"
-            >
+            <p className="flex items-center gap-2 rounded-2xl border border-[#3a3a3d] bg-[#29292b] px-4 py-3 text-sm text-text-muted" role="status">
               <WifiOff className="size-4 shrink-0" aria-hidden="true" />
               Sin conexión · las salas necesitan internet. Usá Individual para
               tocar solo.
@@ -155,11 +154,7 @@ export default function SalasPageClient({
           )}
 
           {avisoMensaje && (
-            <p
-              className="home-cascade-item rounded-xl border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary"
-              style={{ ["--cascade-delay" as string]: "80ms" }}
-              role="status"
-            >
+            <p className="rounded-2xl border border-accent/40 bg-accent-dim px-4 py-3 text-sm text-text-primary" role="status">
               {avisoMensaje}
             </p>
           )}
@@ -170,38 +165,21 @@ export default function SalasPageClient({
             </p>
           ) : salas.length > 0 ? (
             <div className="app-list-grid">
-              {salas.map((sala, index) => (
+              {salas.map((sala) => (
                 <SalaCard
                   key={sala.id}
                   sala={sala}
                   disabled={!online}
-                  miembros={miembrosBySala[sala.id] ?? []}
-                  cascadeDelayMs={100 + index * 70}
+                  miembros={online ? (miembrosBySala[sala.id] ?? []) : []}
                   onOpen={openSala}
                   onOpenMiembros={openMiembros}
                 />
               ))}
             </div>
           ) : (
-            <div
-              className="home-cascade-item flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed px-6 py-12 text-center"
-              style={{
-                ["--cascade-delay" as string]: "100ms",
-                borderColor:
-                  "color-mix(in srgb, var(--accent-salas) 35%, var(--border-card))",
-                background:
-                  "color-mix(in srgb, var(--accent-salas-dim) 55%, transparent)",
-              }}
-            >
-              <span
-                className="flex size-14 items-center justify-center rounded-2xl"
-                style={{ background: "var(--accent-salas-dim)" }}
-                aria-hidden="true"
-              >
-                <Users
-                  className="size-7"
-                  style={{ color: "var(--accent-salas)" }}
-                />
+            <div className="home-destination-card flex flex-1 flex-col items-center justify-center gap-5 rounded-[28px] px-6 py-12 text-center">
+              <span className="flex size-16 items-center justify-center rounded-2xl bg-[#3d3d40] text-white" aria-hidden="true">
+                <Users className="size-8" />
               </span>
               <div className="max-w-xs space-y-1.5">
                 <p className="text-base font-bold text-text-primary">
@@ -216,8 +194,7 @@ export default function SalasPageClient({
                 type="button"
                 onClick={() => setModalOpen(true)}
                 disabled={!online}
-                className="mt-1 flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "var(--accent-salas)" }}
+                className="mt-1 flex min-h-11 items-center gap-2 rounded-2xl bg-accent px-5 text-sm font-semibold text-white disabled:opacity-40"
               >
                 <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
                 Crear sala
@@ -239,7 +216,7 @@ export default function SalasPageClient({
         open={detalleOpen}
         sala={detalleSala}
         miembros={
-          detalleSala ? (miembrosBySala[detalleSala.id] ?? []) : []
+          detalleSala && online ? (miembrosBySala[detalleSala.id] ?? []) : []
         }
         currentUserId={usuario.id}
         onClose={() => setDetalleSala(null)}

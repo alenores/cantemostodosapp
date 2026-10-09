@@ -8,6 +8,7 @@ type SalaAvatarProps = {
   sizeClassName?: string;
   iconClassName?: string;
   roundedClassName?: string;
+  neutral?: boolean;
 };
 
 export default function SalaAvatar({
@@ -16,6 +17,7 @@ export default function SalaAvatar({
   sizeClassName = "size-10",
   iconClassName = "size-5",
   roundedClassName = "rounded-xl",
+  neutral = false,
 }: SalaAvatarProps) {
   if (avatarUrl) {
     return (
@@ -33,20 +35,20 @@ export default function SalaAvatar({
   return (
     <span
       className={`flex ${sizeClassName} ${roundedClassName} shrink-0 items-center justify-center`}
-      style={{ background: "var(--accent-salas-dim)" }}
+      style={{ background: neutral ? "#3d3d40" : "var(--accent-salas-dim)" }}
       aria-hidden="true"
     >
       {nombre.trim() ? (
         <span
           className="text-sm font-extrabold"
-          style={{ color: "var(--accent-salas)" }}
+          style={{ color: neutral ? "#ffffff" : "var(--accent-salas)" }}
         >
           {inicial}
         </span>
       ) : (
         <Users
           className={iconClassName}
-          style={{ color: "var(--accent-salas)" }}
+          style={{ color: neutral ? "#ffffff" : "var(--accent-salas)" }}
         />
       )}
     </span>

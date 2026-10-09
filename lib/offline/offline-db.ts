@@ -11,6 +11,9 @@ export type CancioneroLocalRecord = {
   id: number;
   nombre: string;
   artista: string | null;
+  artista_id?: string | null;
+  agregado_nombre?: string | null;
+  agregado_avatar_url?: string | null;
   letra: string | null;
   url_letra: string;
   updated_at: string;

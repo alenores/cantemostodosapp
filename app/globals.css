@@ -188,10 +188,12 @@ body[data-tema-lectura] button {
   transition: background-color 450ms cubic-bezier(0.2, 0.8, 0.2, 1), color 450ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 450ms cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
-/* Tarjetas del inicio con profundidad táctil (Paso 2) */
+/* Inicio y selector de Salas: tarjetas sobrias con profundidad suave. */
 .home-destination-card {
-  border-color: var(--accent-card-var) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-card-var) 15%, transparent), 0 4px 14px color-mix(in srgb, var(--accent-card-var) 10%, transparent) !important;
+  background: linear-gradient(145deg, #303032 0%, #29292b 100%);
+  border: 1px solid #3a3a3d;
+  box-shadow: 0 13px 22px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.045);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 /*
@@ -243,19 +245,17 @@ body[data-tema-lectura] button {
 }
 
 .home-destination-card:active {
-  border-color: color-mix(in srgb, var(--accent-card-var) 60%, var(--border-card)) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-card-var) 8%, transparent), 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(2px) scale(0.99);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.22);
 }
 
-/* Tarjetas de salas con profundidad táctil (Paso 2) */
-.sala-card-depth {
-  border-color: color-mix(in srgb, var(--accent-salas) 45%, var(--border-card)) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-salas) 12%, transparent), 0 6px 18px color-mix(in srgb, var(--accent-salas) 8%, transparent) !important;
+.home-destination-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
-.sala-card-depth:active {
-  border-color: color-mix(in srgb, var(--accent-salas) 20%, var(--border-card)) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-salas) 4%, transparent), 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+.home-destination-card:focus-within {
+  border-color: var(--accent);
 }
 
 @theme inline {
@@ -1728,68 +1728,6 @@ html.splash-active body {
 @media (min-width: 768px) {
   .app-hub-grid-destinos {
     gap: 14px;
-  }
-}
-
-/* Inicio — cascada de entrada y atención de títulos */
-@keyframes home-cascade-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes home-title-invite {
-  0%,
-  100% {
-    transform: scale(1);
-    letter-spacing: normal;
-    filter: brightness(1);
-  }
-
-  35% {
-    transform: scale(1.045);
-    letter-spacing: 0.02em;
-    filter: brightness(1.18);
-  }
-
-  70% {
-    transform: scale(1.02);
-    filter: brightness(1.08);
-  }
-}
-
-.home-cascade-item {
-  opacity: 0;
-  animation: home-cascade-in 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-  animation-delay: var(--cascade-delay, 0ms);
-}
-
-.home-title-invite {
-  display: inline-block;
-  transform-origin: left center;
-  color: var(--home-title-accent, var(--text-primary));
-  animation: home-title-invite 2s ease-in-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-cascade-item {
-    opacity: 1;
-    animation: none;
-    transform: none;
-  }
-
-  .home-title-invite {
-    animation: none;
-    color: var(--text-primary);
-    filter: none;
-    transform: none;
-    letter-spacing: normal;
   }
 }
 

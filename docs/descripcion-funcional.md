@@ -92,19 +92,16 @@ Al abrir la app en el celular, la persona usuaria ve:
 - Un saludo: **"Bienvenid@"**
 - Su nombre, si inició sesión.
 - La pregunta: **"¿Qué querés hacer?"**
-- Cinco accesos principales en forma de tablero, con tarjetas de distinto tamaño y un dibujo de línea estilo boceto a lápiz, pintado con el color de cada tarjeta (se guardan para verse sin señal):
-  - **Salas** grande y a todo el ancho arriba.
-  - **Individual** y **Cancionero** lado a lado, altas.
-  - **Práctica** (con dibujo) y **Afinador** (solo ícono) abajo, bajitas.
-  - Cada tarjeta muestra el nombre grande arriba a la izquierda y una sola frase abajo; el dibujo va al costado o en el medio, sin taparlos.
+- Cinco accesos principales en forma de tarjetas. En celular, **Individual** ocupa una tarjeta principal de ancho completo. Debajo, Cancionero, Salas, Práctica y Afinador aparecen en dos columnas de tarjetas oscuras con iconos blancos y rótulos breves. El saludo queda alineado a la izquierda y el naranja se usa como acento. Se conserva la campanita de novedades del Cancionero.
+- Solo para el dueño de la aplicación aparece, al final de esos accesos, **Usuarios** para administrar las cuentas.
 
 | Acceso | Qué dice | Qué permite |
 |--------|----------|-------------|
-| **Salas** | "La ronda entera en la misma canción" | Salas compartidas (requiere internet) |
-| **Individual** | "Vos, tu guitarra y tu lista" | Modo personal de canto |
-| **Cancionero** | "Tu cuaderno de canciones" | Ir al hub de canciones |
-| **Práctica** | "Voz, oído y tiempo" | Herramientas de ensayo |
-| **Afinador** | "Dejá la guitarra lista" | Se abre encima, sin salir del inicio |
+| **Salas** | "En grupo" | Salas compartidas (requiere internet) |
+| **Individual** | "Cantar solo" | Modo personal de canto |
+| **Cancionero** | "Explorar" | Ir al hub de canciones |
+| **Práctica** | "Practicar" | Herramientas de ensayo |
+| **Afinador** | "Afinar" | Se abre encima, sin salir del inicio |
 
 Además, en el inicio pueden aparecer:
 
@@ -219,6 +216,8 @@ Si el usuario edita desde el celular una canción que ya tenía descargada, la c
 
 **Volver a la app la deja donde estaba.** Si la app queda en segundo plano y el celular la rearma, vuelve a la misma pantalla (cancionero, editor, sala, etc.), nunca al inicio. Cerrarla a mano y abrirla desde el ícono sí arranca en el inicio.
 
+Al abrir una pantalla con conexión, la app busca la versión actual antes de usar la copia guardada. Si la red no responde en cuatro segundos, abre la copia disponible para seguir funcionando sin conexión.
+
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
 
 **Si la señal se cae al cambiar de pantalla**, a los 6 segundos se abre la copia guardada de esa pantalla en lugar de quedarse esperando (vale para las pantallas que funcionan sin conexión).
@@ -295,6 +294,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Botón **+** para **Agregar canción**: solo lo ven el dueño y los amigos; se usa con conexión.
 - Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
+- Cada tarjeta destaca la foto del artista, el nombre de la canción y el artista. El icono del Cancionero o la estrella de la versión de práctica queda pequeño en la esquina superior derecha. Debajo aparece, en tamaño discreto, el avatar y nombre de quien agregó la canción; las versiones de práctica muestran a su dueño.
 - El marcador de **Favoritas** es una cinta: rellena (verde) en las canciones que la persona guardó allí y vacía en las demás. En computadora la cinta es un botón: un clic suma la canción a Favoritas y otro la quita, sin confirmación.
 
 **Mensajes según situación:**
@@ -419,6 +419,8 @@ Las salas permiten que varias personas **canten juntas en tiempo real**, viendo 
 | Sin salas | *"Todavía no tenés salas"* + *"Creá la primera o pedí que te inviten con el QR desde dentro de una sala."* |
 
 Cada tarjeta de sala permite entrar y ver sus **participantes**.
+
+En celular, el selector de Salas usa el mismo estilo sobrio de Inicio: fondo oscuro, título grande, tarjetas neutras con foto o inicial de la sala y un acceso separado a participantes. Con salas, la acción para crear otra queda arriba; sin salas, aparece dentro de la tarjeta vacía. El listado ya no usa brillos de color ni entrada animada.
 
 ### 11.2 Crear una sala
 
@@ -891,7 +893,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 ### 18.1 A nivel de la aplicación
 
-Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. El dueño tiene un módulo **Usuarios** en Práctica para cambiar las demás cuentas entre amigos y público. Solo el dueño ve y puede abrir el **Compositor**. Los demás beneficios concretos para cada grupo se definirán por separado.
+Las cuentas se clasifican como **dueño**, **amigos** o **público**. Las nuevas cuentas entran como público. Solo puede haber una cuenta dueña. En el celular, el dueño tiene un módulo **Usuarios** en Inicio para cambiar las demás cuentas entre amigos y público. Solo el dueño ve y puede abrir el **Compositor**. Los demás beneficios concretos para cada grupo se definirán por separado.
 
 Todos los usuarios con cuenta tienen las mismas capacidades generales, con estas excepciones:
 

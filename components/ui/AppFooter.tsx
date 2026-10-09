@@ -32,7 +32,7 @@ const TABS: TabConfig[] = [
     href: "/",
     label: "Inicio",
     icon: Home,
-    isActive: (pathname) => pathname === "/",
+    isActive: (pathname) => pathname === "/" || pathname.startsWith("/inicio/"),
   },
   {
     href: "/practica",

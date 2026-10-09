@@ -120,7 +120,7 @@ export async function fetchCancionesCancionero(
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("canciones_guardadas")
-      .select("id, nombre, artista, artista_id, letra, tiene_cifrado_avanzado, user_id")
+      .select("id, nombre, artista, artista_id, agregado_nombre, agregado_avatar_url, letra, tiene_cifrado_avanzado, user_id")
       .is("sala_id", null)
       .not("letra", "is", null)
       .order("nombre", { ascending: true })
@@ -137,6 +137,9 @@ export async function fetchCancionesCancionero(
         id: row.id,
         nombre: row.nombre,
         artista: row.artista,
+        artista_id: row.artista_id,
+        agregado_nombre: row.agregado_nombre,
+        agregado_avatar_url: row.agregado_avatar_url,
         letra: row.letra,
         tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
         user_id: row.user_id ?? null,

@@ -4,7 +4,6 @@ import { defaultCache, PAGES_CACHE_NAME } from "@serwist/turbopack/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { OFFLINE_SHELL_CACHE, OFFLINE_SHELL_URLS } from "../lib/offline/shell-urls";
 import {
-  CacheFirst,
   ExpirationPlugin,
   NetworkFirst,
   NetworkOnly,
@@ -26,12 +25,15 @@ declare const self: ServiceWorkerGlobalScope;
  * propia abre el inicio aunque haya señal: la app «se iba al inicio» al volver de segundo plano
  * (2026-09-28, editor de canciones). Por eso quedan afuera las salas abiertas, el link de
  * invitación y las direcciones viejas del cancionero: van a internet y, sin señal, a su copia.
- * Pantalla nueva que deba abrir sin señal → a `SHELL_URLS`, no solo acá.
+ * Pantalla nueva que deba abrir sin señal → a `OFFLINE_SHELL_URLS`, no solo acá.
  */
 const APP_SHELL_PATHS =
   /^\/($|salas|canciones(\/.*)?|herramientas(\/.*)?|practica(\/.*)?|individual|auth\/login|~offline|pwa-boot\.html)$/;
 
 const SHELL_CACHE = OFFLINE_SHELL_CACHE;
+const SHELL_NETWORK_TIMEOUT_MS = process.env.NODE_ENV === "development" ? 15_000 : 4_000;
+const IS_LOCAL_DEV = process.env.NODE_ENV === "development" &&
+  (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1");
 const LEGACY_SHELL_CACHE = "app-shell-offline-v1";
 const LEGACY_AUDIO_CACHE = "static-audio-assets";
 /** Lista única de pantallas sin internet: `lib/offline/shell-urls.ts`. */
@@ -50,19 +52,18 @@ async function matchShellInCaches(
       ]
     : [...SHELL_FALLBACK_ORDER];
 
+  const cache = await caches.open(SHELL_CACHE);
+
   for (const path of paths) {
     const absolute = new URL(path, requestUrl).href;
 
-    for (const cacheName of await caches.keys()) {
-      const cache = await caches.open(cacheName);
-      const match =
-        (await cache.match(path)) ||
-        (await cache.match(absolute)) ||
-        (await cache.match(new Request(absolute)));
+    const match =
+      (await cache.match(path)) ||
+      (await cache.match(absolute)) ||
+      (await cache.match(new Request(absolute)));
 
-      if (match) {
-        return match;
-      }
+    if (match) {
+      return match;
     }
   }
 
@@ -87,8 +88,21 @@ async function populateShellCache(): Promise<void> {
   );
 }
 
+async function fetchShellWithTimeout(request: Request): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SHELL_NETWORK_TIMEOUT_MS);
+
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(populateShellCache());
+  if (!IS_LOCAL_DEV) {
+    event.waitUntil(populateShellCache());
+  }
 });
 
 self.addEventListener("activate", (event) => {
@@ -101,6 +115,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (IS_LOCAL_DEV) {
+    return;
+  }
+
   if (event.request.method !== "GET") {
     return;
   }
@@ -124,23 +142,22 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       const preferredPath = url.pathname;
-      const cached = await matchShellInCaches(event.request.url, preferredPath);
-
-      if (cached) {
-        return cached;
-      }
 
       try {
-        const response = await fetch(event.request);
+        const response = await fetchShellWithTimeout(event.request);
 
         if (response.ok) {
-          const cache = await caches.open(SHELL_CACHE);
-          await cache.put(preferredPath, response.clone());
+          const copy = response.clone();
+          event.waitUntil(
+            caches.open(SHELL_CACHE)
+              .then((cache) => cache.put(preferredPath, copy))
+              .catch(() => {}),
+          );
         }
 
         return response;
       } catch {
-        const fallback = await matchShellInCaches(event.request.url);
+        const fallback = await matchShellInCaches(event.request.url, preferredPath);
 
         if (fallback) {
           return fallback;
@@ -159,8 +176,9 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-const shellCacheFirst = new CacheFirst({
+const shellNetworkFirst = new NetworkFirst({
   cacheName: SHELL_CACHE,
+  networkTimeoutSeconds: SHELL_NETWORK_TIMEOUT_MS / 1_000,
   plugins: [
     new ExpirationPlugin({
       maxEntries: 32,
@@ -170,17 +188,19 @@ const shellCacheFirst = new CacheFirst({
   ],
 });
 
+const precacheEntries = self.__SW_MANIFEST ?? [];
+
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  precacheEntries,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: false,
-  precacheOptions: {
+  precacheOptions: precacheEntries.length > 0 ? {
     navigateFallback: "/",
     navigateFallbackAllowlist: [APP_SHELL_PATHS],
     navigateFallbackDenylist: [/^\/api\//, /^\/serwist\//],
-  },
-  runtimeCaching: [
+  } : undefined,
+  runtimeCaching: IS_LOCAL_DEV ? defaultCache : [
     {
       /**
        * Prueba de señal (`lib/conexion.ts`): **NetworkOnly**, siempre, y primera. Sin esta regla caía
@@ -211,7 +231,7 @@ const serwist = new Serwist({
           pathname.startsWith("/herramientas/") ||
           pathname === "/practica" ||
           pathname.startsWith("/practica/")),
-      handler: shellCacheFirst,
+      handler: shellNetworkFirst,
     },
     {
       matcher: ({ request, url: { pathname }, sameOrigin }) =>
@@ -232,7 +252,7 @@ const serwist = new Serwist({
     },
     ...defaultCache,
   ],
-  fallbacks: {
+  fallbacks: precacheEntries.length > 0 ? {
     entries: [
       {
         url: "/",
@@ -251,7 +271,7 @@ const serwist = new Serwist({
         },
       },
     ],
-  },
+  } : undefined,
 });
 
 serwist.addEventListeners();

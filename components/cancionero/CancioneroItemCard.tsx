@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
+import CancioneroCardVisual from "@/components/cancionero/CancioneroCardVisual";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import { COLA_AVISO_EXIT_MS } from "@/lib/sala-layout";
@@ -23,7 +24,7 @@ const QUITAR_FAB_LABEL = "Quitar de Favoritas";
 const SUMAR_FAB_LABEL_VISIBLE_MS = 2000;
 
 const DESKTOP_ACTION_BTN =
-  "flex size-4 items-center justify-center rounded-sm p-0 text-text-faint/55 transition-colors duration-150";
+  "flex size-5 items-center justify-center rounded-sm p-0 text-text-secondary transition-colors duration-150";
 
 type ActionButton = {
   key: string;
@@ -311,7 +312,7 @@ export default function CancioneroItemCard({
   return (
     <article
       style={isPressed ? { transform: "scale(0.97)" } : undefined}
-      className={`group relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-estandar border bg-bg-card px-3 py-2.5 select-none transition-transform duration-100 ease-out ${
+      className={`group relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-estandar border bg-bg-card p-3 select-none transition-transform duration-100 ease-out hover:border-text-faint/50 ${
         (!isDesktop && actionsOpen) || modoSeleccion
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
@@ -324,27 +325,17 @@ export default function CancioneroItemCard({
       onContextMenu={handleContextMenu}
       onClick={handleClick}
     >
-      <div className="flex items-end gap-2.5">
-        <LetraFuenteIcon
-          tipo="cancionero"
-          premium={cancion.tiene_cifrado_avanzado}
-        />
-        <div className="min-w-0 flex-1 pb-px">
-          <p className="truncate text-[17px] font-semibold leading-tight text-text-primary">
-            {cancion.nombre}
-          </p>
-          {cancion.artista && (
-            <div className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] leading-tight text-text-muted">
-              {artistaAvatarUrl && (
-                <img src={artistaAvatarUrl} alt="" className="size-4 shrink-0 rounded-full object-cover" />
-              )}
-              <span className="truncate">{cancion.artista}</span>
-            </div>
-          )}
-        </div>
-        {showDesktopActions ? (
+      <CancioneroCardVisual
+        nombre={cancion.nombre}
+        artista={cancion.artista}
+        artistaAvatarUrl={artistaAvatarUrl}
+        agregadoNombre={cancion.agregado_nombre}
+        agregadoAvatarUrl={cancion.agregado_avatar_url}
+        insignia={<LetraFuenteIcon tipo="cancionero" premium={cancion.tiene_cifrado_avanzado} compact />}
+      />
+      {showDesktopActions ? (
           <div
-            className="flex shrink-0 items-center gap-px pb-px opacity-60 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+            className="absolute left-4 top-[70px] flex shrink-0 items-center gap-px rounded-md bg-bg-darker/85 px-1 py-0.5 opacity-75 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
             onClick={(event) => event.stopPropagation()}
           >
             {onAlternarFavorita ? (
@@ -385,7 +376,7 @@ export default function CancioneroItemCard({
                   disabled={!mutationsEnabled}
                   className={`${DESKTOP_ACTION_BTN} hover:text-text-secondary disabled:opacity-40 disabled:hover:text-text-faint/55`}
                 >
-                  <Pencil className="size-3" aria-hidden="true" />
+                  <Pencil className="size-3.5" aria-hidden="true" />
                 </TapButton>
                 <TapButton
                   type="button"
@@ -397,19 +388,18 @@ export default function CancioneroItemCard({
                   disabled={!mutationsEnabled}
                   className={`${DESKTOP_ACTION_BTN} hover:text-[#d94a3d]/80 disabled:opacity-40 disabled:hover:text-text-faint/55`}
                 >
-                  <Trash2 className="size-3" aria-hidden="true" />
+                  <Trash2 className="size-3.5" aria-hidden="true" />
                 </TapButton>
               </>
             ) : null}
           </div>
-        ) : isFavorita ? (
+      ) : isFavorita ? (
           <Bookmark
-            className="mb-px size-3 shrink-0 self-end fill-current"
+            className="absolute bottom-3 right-3 size-3 fill-current"
             style={{ color: "var(--tuner-in-tune)" }}
             aria-hidden="true"
           />
-        ) : null}
-      </div>
+      ) : null}
 
       {actionsOpen && actionButtons.length > 0 && !isDesktop && (
         <>

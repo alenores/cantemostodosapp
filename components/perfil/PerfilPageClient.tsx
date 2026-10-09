@@ -185,12 +185,19 @@ export default function PerfilPageClient({
 
     const { error: updateError } = await supabase.auth.updateUser(updatePayload);
 
-    setLoading(false);
-
     if (updateError) {
+      setLoading(false);
       setError(updateError.message);
       return;
     }
+
+    if (trimmedNombre !== usuarioInicial.nombre || nextAvatarUrl !== usuarioInicial.avatar_url) {
+      await supabase.from("canciones_guardadas")
+        .update({ agregado_nombre: trimmedNombre, agregado_avatar_url: nextAvatarUrl })
+        .eq("user_id", usuarioInicial.id)
+        .is("sala_id", null);
+    }
+    setLoading(false);
 
     setAvatarUrl(nextAvatarUrl);
     setAvatarFile(null);

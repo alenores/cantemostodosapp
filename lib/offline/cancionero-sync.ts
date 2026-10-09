@@ -6,12 +6,12 @@ import {
 } from "@/lib/offline/cancionero-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** 3: exige acordes reales en canciones avanzadas (antes null contaba como “completo”). */
-const CONTENT_VERSION = 3;
+/** 4: incluye foto vinculada del artista y firma de quien agregó la canción. */
+const CONTENT_VERSION = 4;
 const PAGE_SIZE = 500;
 const DOWNLOAD_BATCH_SIZE = 100;
 const SONG_COLUMNS =
-  "id, nombre, artista, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default";
+  "id, nombre, artista, artista_id, agregado_nombre, agregado_avatar_url, letra, url_letra, updated_at, tiene_cifrado_avanzado, user_id, cifrado, compas_config, tonalidad_default, modo_tonal_default, bpm_default";
 
 type RemoteSnapshot = { maxUpdatedAt: string | null; count: number };
 type RemoteVersion = { id: number; updated_at: string };
@@ -39,6 +39,7 @@ function needsDownload(remote: RemoteVersion, local?: CancioneroLocalRecord) {
 /** Las copias antiguas pueden tener la fecha correcta pero solo la letra. */
 function hasCompleteContent(local: CancioneroLocalRecord): boolean {
   if (typeof local.tiene_cifrado_avanzado !== "boolean") return false;
+  if (local.artista_id === undefined || local.agregado_nombre === undefined || local.agregado_avatar_url === undefined) return false;
   if (local.cifrado === undefined || local.compas_config === undefined) return false;
   if (!local.tiene_cifrado_avanzado) return true;
   // Edición avanzada: hace falta el objeto de acordes (puede estar vacío, no null).

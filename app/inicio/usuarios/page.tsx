@@ -4,11 +4,11 @@ import { redirect } from "next/navigation";
 
 export const revalidate = 0;
 
-export default async function PracticaUsuariosPage() {
+export default async function InicioUsuariosPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/practica");
+  if (!user) redirect("/");
   const { data } = await supabase.from("usuarios_categorias").select("categoria").eq("user_id", user.id).maybeSingle();
-  if (data?.categoria !== "dueno") redirect("/practica");
+  if (data?.categoria !== "dueno") redirect("/");
   return <UsuariosPageClient />;
 }

@@ -58,7 +58,10 @@ export type CancionGuardada = {
 export type CancionCancionero = Pick<
   CancionGuardada,
   "id" | "nombre" | "artista" | "artista_id" | "letra" | "tiene_cifrado_avanzado" | "user_id"
->;
+> & {
+  agregado_nombre?: string | null;
+  agregado_avatar_url?: string | null;
+};
 
 export type CancionCifradoDetalle = Pick<
   CancionGuardada,

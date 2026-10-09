@@ -18,11 +18,13 @@ const AfinadorLayer = dynamic(() => import("@/components/ui/AfinadorLayer"), {
 type CancioneroHubPageClientProps = {
   usuario: UsuarioActivo;
   avisoInicial?: string | null;
+  isOwner?: boolean;
 };
 
 export default function CancioneroHubPageClient({
   usuario,
   avisoInicial = null,
+  isOwner = false,
 }: CancioneroHubPageClientProps) {
   const online = useOnlineStatus();
   const isDesktop = useIsDesktop();
@@ -37,11 +39,11 @@ export default function CancioneroHubPageClient({
   }, []);
 
   return (
-    <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
+    <div className="relative flex min-h-full flex-1 flex-col bg-[#181818]">
       <AppReadyMarker />
 
       {!isDesktop ? (
-        <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
+        <main className="app-page-main flex flex-col gap-3 bg-[#181818] px-5 py-7 pb-28 lg:px-8 lg:py-8">
           <div className="app-page-container flex flex-col gap-3 lg:gap-4">
             <PwaInstallBanners />
 
@@ -66,6 +68,7 @@ export default function CancioneroHubPageClient({
 
             <HomeHubDestinations
               usuario={usuario}
+              isOwner={isOwner}
               onOpenAfinador={openAfinador}
             />
           </div>

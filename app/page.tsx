@@ -21,12 +21,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const usuario = user
     ? mapUserToUsuarioActivo(user)
     : OFFLINE_GUEST_USUARIO;
+  const { data: categoria } = user
+    ? await supabase.from("usuarios_categorias").select("categoria").eq("user_id", user.id).maybeSingle()
+    : { data: null };
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-bg-app">
       <DesktopHomeRedirect />
       <AppTopHeader usuario={usuario} mostrarQr />
-      <CancioneroHubPageClient usuario={usuario} avisoInicial={aviso} />
+      <CancioneroHubPageClient usuario={usuario} avisoInicial={aviso} isOwner={categoria?.categoria === "dueno"} />
     </div>
   );
 }

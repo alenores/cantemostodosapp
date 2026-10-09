@@ -16,7 +16,10 @@ export default function SerwistProvider({ children }: SerwistProviderProps) {
       return;
     }
 
-    void navigator.serviceWorker.ready.then(() => {
+    void navigator.serviceWorker.ready.then((registration) => {
+      if (process.env.NODE_ENV === "development") {
+        void registration.update().catch(() => {});
+      }
       if (hayConexion()) void warmOfflineCache();
     });
   }, []);

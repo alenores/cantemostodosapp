@@ -72,11 +72,11 @@ export default function CancioneroHubPageClient({
   }, []);
 
   return (
-    <div className="relative flex min-h-full flex-1 flex-col bg-[#181818]">
+    <div className="home-inicio-fondo relative flex min-h-full flex-1 flex-col">
       <AppReadyMarker />
 
       {!isDesktop ? (
-        <main className="app-page-main flex flex-col gap-3 bg-[#181818] px-5 py-7 pb-28 lg:px-8 lg:py-8">
+        <main className="app-page-main flex flex-col gap-3 bg-transparent px-5 py-5 pb-28 lg:px-8 lg:py-8">
           <div className="app-page-container flex flex-col gap-3 lg:gap-4">
             {tapaInicio ? (
               <div className="pwa-install-tema pt-2">

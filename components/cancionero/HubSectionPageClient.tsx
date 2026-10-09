@@ -3,7 +3,9 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
-import { Bell } from "lucide-react";
+import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
+import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
+import { Bell, Plus } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -57,6 +59,8 @@ export default function HubSectionPageClient({
   const pathname = usePathname();
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
+  const categoria = useCategoriaUsuario();
+  const puedeCrear = puedeSumarCanciones(categoria);
   const novedades = useCancioneroNovedades();
   const isDesktop = useIsDesktop();
   const [globalCount, setGlobalCount] = useState(globalCountInicial);
@@ -285,9 +289,27 @@ export default function HubSectionPageClient({
           style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top, 0px))" }}
         >
           <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-            <h2 className="text-xl font-extrabold text-text-primary">
-              {sectionLabel}
-            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-extrabold text-text-primary">
+                {sectionLabel}
+              </h2>
+              {section === "canciones" && puedeCrear ? (
+                <button
+                  type="button"
+                  disabled={!online}
+                  aria-label="Sumar canción"
+                  onClick={() => {
+                    if (!online) return;
+                    navigateWithProgress("/canciones/editor?desde=hub");
+                  }}
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white ${
+                    online ? "" : "cursor-not-allowed opacity-45"
+                  }`}
+                >
+                  <Plus className="size-6" strokeWidth={2.4} aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
 
             <div className="app-hub-grid">
               {visibleModules.map((module) => renderModuleCard(module))}

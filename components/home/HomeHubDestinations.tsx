@@ -68,18 +68,18 @@ export default function HomeHubDestinations({
   }
 
   return (
-    <section className="flex flex-col gap-7 pb-3">
+    <section className="flex flex-col gap-5 pb-3">
       {installSlot}
-      <div className="pt-1 text-left">
-        <p className="text-[clamp(30px,8vw,36px)] font-extrabold leading-[1.12] tracking-tight text-text-primary">
-          {HUB_WELCOME_TITLE},
+      <div className="home-inicio-saludo pt-1 text-left">
+        <p className="text-[22px] font-bold leading-tight tracking-tight text-text-primary">
+          {HUB_WELCOME_TITLE}{showName ? "," : ""}
         </p>
         {showName ? (
-          <p className="mt-1 text-[clamp(30px,8vw,36px)] font-extrabold leading-[1.12] tracking-tight text-text-primary">
+          <p className="mt-0.5 text-[22px] font-bold leading-tight tracking-tight text-text-primary">
             ¡Hola, {displayName}!
           </p>
         ) : null}
-        <h2 className="mt-2 text-[clamp(29px,7.6vw,35px)] font-extrabold leading-[1.12] tracking-tight text-text-primary">
+        <h2 className="mt-1.5 text-[16px] font-semibold leading-tight text-text-secondary">
           {HUB_SECTION_DESTINOS_LABEL}
         </h2>
       </div>

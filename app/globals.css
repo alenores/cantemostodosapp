@@ -41,7 +41,7 @@
   --home-card-title-band: 48px;
 
   /* Acento — naranja escenario */
-  --accent: #f4845f;
+  --accent: #528a9b;
   --cola-badge-bg: #f5a48a;
   --accent-dim: rgba(244, 132, 95, 0.12);
   --preview-frame-bg: #4d4540;
@@ -242,6 +242,25 @@ body[data-tema-lectura] button {
 
 .home-destination-card--compact {
   height: var(--home-card-compact-height);
+}
+
+/* Fondo de partitura solo en el inicio del celular. Las tarjetas siguen sólidas. */
+.home-inicio-fondo {
+  background-color: #101010;
+  background-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0%, rgba(0, 0, 0, 0.05) 220px, rgba(0, 0, 0, 0.12) 100%),
+    url("/fondo-inicio.webp?v=2");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+.home-inicio-saludo {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.92);
+}
+
+.home-inicio-fondo .home-destination-card {
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.55), inset 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .home-destination-card:active {

@@ -35,10 +35,12 @@ export function HomeWelcomeLoadingSkeleton() {
 /** Hub de sección (`/canciones`, `/practica`) — sin AppTopHeader (lo da el layout). */
 export function HubSectionLoadingSkeleton({
   cardCount = 3,
+  showAdd = false,
 }: {
   cardCount?: number;
+  showAdd?: boolean;
 }) {
-  return <HubSectionSkeleton cardCount={cardCount} />;
+  return <HubSectionSkeleton cardCount={cardCount} showAdd={showAdd} />;
 }
 
 /** @deprecated Usar HomeWelcomeLoadingSkeleton */

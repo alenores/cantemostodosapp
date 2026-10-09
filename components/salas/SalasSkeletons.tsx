@@ -2,6 +2,7 @@ import {
   APP_FOOTER_HEIGHT_PX,
   CONTROL_LETRA_HORIZONTAL_INSET,
   CONTROL_LETRA_ORIGEN_GAP_PX,
+  CONTROL_LETRA_SEPARATOR_GAP_PX,
   CONTROL_LETRA_SHELL_CLASS,
   getControlCantarHorizontalPaddingStyle,
   getControlHeaderVerticalPaddingStyle,
@@ -195,10 +196,11 @@ export function SalaLetraLinesSkeleton() {
   );
 }
 
+/** En computadora la fila sigue siendo el botón de la derecha. */
 function ControlFilaButtonSkeleton() {
   return (
     <div
-      className="flex shrink-0 items-center justify-end"
+      className="hidden shrink-0 items-center justify-end lg:flex"
       style={{ paddingTop: CONTROL_LETRA_ORIGEN_GAP_PX }}
       aria-hidden="true"
     >
@@ -211,8 +213,39 @@ function ControlFilaButtonSkeleton() {
 }
 
 /**
- * Shell modo control (Individual / Sala): header con buscar,
- * panel de letra vacío y botón Fila inline — alineado a CancionActivaSection vacío.
+ * Barrita de la fila en el celular: pastilla, próxima canción, lupa y siguiente.
+ * Mismos altos que ColaBarraProxima (pastilla 14px, esquinas 12px).
+ */
+function ControlColaBarraSkeleton() {
+  return (
+    <div
+      className="relative shrink-0 border border-border bg-bg-cola-sheet lg:hidden"
+      style={{
+        marginTop: CONTROL_LETRA_ORIGEN_GAP_PX,
+        borderRadius: 12,
+        paddingTop: 14,
+      }}
+      aria-hidden="true"
+    >
+      <div
+        className="pointer-events-none absolute left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-cola-sheet-pill"
+        style={{ top: 5 }}
+      />
+      <div className="flex items-center gap-2 px-3 pb-2">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <ShimmerBlock className="h-2.5 w-16" delayMs={40} />
+          <ShimmerBlock className="h-3.5 w-[68%]" delayMs={70} />
+        </div>
+        <ShimmerBlock className="size-9 shrink-0 rounded-full" delayMs={50} />
+        <ShimmerBlock className="size-9 shrink-0 rounded-full" delayMs={80} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shell modo control (Individual / Sala): título, panel de letra
+ * y, en el celular, la barrita de la fila — alineado a CancionActivaSection.
  */
 export function ControlModeShellSkeleton() {
   return (
@@ -234,7 +267,6 @@ export function ControlModeShellSkeleton() {
           <ShimmerBlock className="h-5 w-[48%] rounded-md" delayMs={30} />
           <ShimmerBlock className="h-3 w-[28%] rounded-md" delayMs={60} />
         </div>
-        <ShimmerBlock className="size-9 shrink-0 rounded-full" delayMs={40} />
       </header>
 
       <div
@@ -262,7 +294,16 @@ export function ControlModeShellSkeleton() {
             </div>
           </div>
         </div>
+        <ControlColaBarraSkeleton />
         <ControlFilaButtonSkeleton />
+        <div
+          className="shrink-0 border-t border-border/80"
+          style={{
+            marginTop: CONTROL_LETRA_SEPARATOR_GAP_PX,
+            marginBottom: CONTROL_LETRA_SEPARATOR_GAP_PX,
+          }}
+          aria-hidden="true"
+        />
       </div>
     </section>
   );
@@ -283,18 +324,18 @@ export function SalaLetraSkeleton({
 export function HomeWelcomeSkeleton() {
   return (
     <div
-      className="flex min-h-full flex-1 flex-col bg-[#181818]"
+      className="home-inicio-fondo flex min-h-full flex-1 flex-col"
       role="status"
       aria-live="polite"
       aria-label="Cargando inicio"
     >
       <AppTopHeaderSkeleton conQr />
-      <main className="app-page-main flex flex-col gap-3 bg-[#181818] px-5 py-7 pb-28 lg:px-8 lg:py-8">
-        <div className="app-page-container flex flex-col gap-7">
+      <main className="app-page-main flex flex-col gap-3 bg-transparent px-5 py-5 pb-28 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-col gap-5">
           <div className="h-[46px] w-full rounded-xl bg-accent/40" aria-hidden="true" />
-          <div className="flex flex-col items-start gap-2 pt-1">
-            <ShimmerBlock className="h-9 w-[58%] rounded-md" />
-            <ShimmerBlock className="mt-1 h-9 w-[84%] rounded-md" delayMs={50} />
+          <div className="flex flex-col items-start gap-1.5 pt-1">
+            <ShimmerBlock className="h-6 w-[42%] rounded-md" />
+            <ShimmerBlock className="h-4 w-[58%] rounded-md" delayMs={50} />
           </div>
 
           <div className="grid grid-cols-2 gap-3.5">
@@ -314,7 +355,13 @@ export function HomeWelcomeSkeleton() {
  * Sin AppTopHeader: lo aporta el layout de la ruta.
  * Replica HubSectionPageClient: título text-xl + app-hub-grid de HubModuleCard.
  */
-export function HubSectionSkeleton({ cardCount = 3 }: { cardCount?: number }) {
+export function HubSectionSkeleton({
+  cardCount = 3,
+  showAdd = false,
+}: {
+  cardCount?: number;
+  showAdd?: boolean;
+}) {
   return (
     <div
       className="relative flex min-h-full flex-1 flex-col bg-bg-app"
@@ -324,7 +371,10 @@ export function HubSectionSkeleton({ cardCount = 3 }: { cardCount?: number }) {
     >
       <main className="app-page-main flex flex-col gap-3 px-4 py-6 pb-24 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-          <ShimmerBlock className="h-5 w-[7.5rem] rounded-md" />
+          <div className="flex items-center justify-between gap-3">
+            <ShimmerBlock className="h-5 w-[7.5rem] rounded-md" />
+            {showAdd ? <ShimmerBlock className="size-11 shrink-0 rounded-full" delayMs={40} /> : null}
+          </div>
           <div className="app-hub-grid">
             {Array.from({ length: cardCount }, (_, index) => (
               <HubModuleCardSkeleton key={index} delayMs={index * 70} />

@@ -1,5 +1,5 @@
 import { HubSectionLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 
 export default function Loading() {
-  return <HubSectionLoadingSkeleton cardCount={2} />;
+  return <HubSectionLoadingSkeleton cardCount={2} showAdd />;
 }

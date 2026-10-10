@@ -333,9 +333,9 @@ export function HomeWelcomeSkeleton() {
       <main className="app-page-main flex flex-col gap-3 bg-transparent px-5 py-5 pb-28 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-col gap-5">
           <div className="h-[46px] w-full rounded-xl bg-accent/40" aria-hidden="true" />
-          <div className="flex flex-col items-start gap-1.5 pt-1">
-            <ShimmerBlock className="h-6 w-[42%] rounded-md" />
-            <ShimmerBlock className="h-4 w-[58%] rounded-md" delayMs={50} />
+          <div className="home-inicio-saludo flex flex-col items-center gap-2">
+            <ShimmerBlock className="h-7 w-40 rounded-lg" />
+            <ShimmerBlock className="h-6 w-44 rounded-lg" delayMs={50} />
           </div>
 
           <div className="grid grid-cols-2 gap-3.5">

@@ -19,7 +19,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const categoria = user ? await categoriaDeEstaEntrada(supabase, user.id) : null;
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-bg-app">
+    <div className="home-inicio-fondo flex h-dvh max-h-dvh min-h-0 flex-1 flex-col overflow-hidden">
       <RecordarEntrada userId={user?.id ?? null} categoria={categoria} />
       <DesktopHomeRedirect />
       <AppTopHeader usuario={usuario} mostrarQr />

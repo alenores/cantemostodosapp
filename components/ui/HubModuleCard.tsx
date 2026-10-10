@@ -3,7 +3,7 @@
 import { TapButton } from "@/components/ui/TapFeedback";
 import type { LucideIcon } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 type HubModuleCardProps = {
   moduleId: string;
@@ -15,6 +15,7 @@ type HubModuleCardProps = {
   pending?: boolean;
   badge?: string;
   cta: ReactNode;
+  iconColor?: string;
 };
 
 export default function HubModuleCard({
@@ -27,6 +28,7 @@ export default function HubModuleCard({
   pending = false,
   badge,
   cta,
+  iconColor,
 }: HubModuleCardProps) {
   return (
     <TapButton
@@ -34,6 +36,7 @@ export default function HubModuleCard({
       onClick={onClick}
       disabled={disabled || pending}
       data-hub-accent={moduleId}
+      style={iconColor ? ({ "--hub-icon": iconColor } as CSSProperties) : undefined}
       className="hub-module-card relative flex min-h-full flex-1 flex-col items-center gap-[10px] rounded-[14px] px-3 py-4 transition-[border-color,background-color,box-shadow,transform] duration-200 disabled:opacity-40 lg:gap-3 lg:px-4 lg:py-5"
     >
       {badge ? (

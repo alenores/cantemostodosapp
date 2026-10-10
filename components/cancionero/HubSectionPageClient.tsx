@@ -232,6 +232,13 @@ export default function HubSectionPageClient({
     }
   }
 
+  function iconoCancionero(moduleId: string) {
+    if (section !== "canciones") return undefined;
+    if (moduleId === "cancionero") return "var(--tuner-cerca)";
+    if (moduleId === "mis-canciones") return "var(--tuner-in-tune)";
+    return undefined;
+  }
+
   function renderModuleCard(
     module: (typeof CANCIONERO_HUB_MODULES)[number],
   ) {
@@ -274,6 +281,7 @@ export default function HubSectionPageClient({
         onClick={() => handleModuleClick(module.id, module.href)}
         pending={pendingModuleId === module.id}
         badge={module.comingSoon ? "Próx." : undefined}
+        iconColor={iconoCancionero(module.id)}
         cta={ctaContent}
       />
     );
@@ -311,12 +319,13 @@ export default function HubSectionPageClient({
               ) : null}
             </div>
 
-            <div className="app-hub-grid">
+            <div className={`app-hub-grid${section === "canciones" ? " cancionero-hub-sobrio" : ""}`}>
               {visibleModules.map((module) => renderModuleCard(module))}
               {section === "canciones" && novedades.count > 0 ? (
                 <HubModuleCard moduleId="cancionero" label="Novedades" icon={Bell}
                   ariaLabel="Ver novedades del Cancionero" onClick={novedades.open}
                   badge={novedades.count ? String(novedades.count) : undefined}
+                  iconColor="var(--accent)"
                   cta={<div className="hub-module-card__cta hub-module-card__cta--soft hub-module-card__cta--text-accent">Ver novedades</div>} />
               ) : null}
             </div>

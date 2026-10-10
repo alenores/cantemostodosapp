@@ -72,7 +72,7 @@ export default function CancioneroHubPageClient({
   }, []);
 
   return (
-    <div className="home-inicio-fondo relative flex min-h-full flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
       <AppReadyMarker />
 
       {!isDesktop ? (

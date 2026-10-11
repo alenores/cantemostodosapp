@@ -112,9 +112,11 @@ export function getPcNavSectionForPath(
 ): HubModuleSection | null {
   for (const section of PC_NAV_SECTIONS) {
     if (
-      section.items.some(
-        (item) => item.href && pathname.startsWith(item.href),
-      )
+      section.items.some((item) => {
+        if (!item.href) return false;
+        const path = item.href.split("?")[0] ?? item.href;
+        return pathname === path || pathname.startsWith(`${path}/`);
+      })
     ) {
       return section.id;
     }
@@ -128,5 +130,6 @@ export function isPcNavItemActive(pathname: string, href?: string): boolean {
     return false;
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const path = href.split("?")[0] ?? href;
+  return pathname === path || pathname.startsWith(`${path}/`);
 }

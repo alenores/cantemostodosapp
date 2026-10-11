@@ -9,7 +9,7 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import { COLA_AVISO_EXIT_MS } from "@/lib/sala-layout";
 import type { CancionCancionero } from "@/types";
-import { Bookmark, Check, Pencil, Trash2 } from "lucide-react";
+import { Bookmark, Check, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -345,7 +345,7 @@ export default function CancioneroItemCard({
     <article
       style={isPressed ? { transform: "scale(0.97)" } : undefined}
       className={`relative w-full min-w-0 max-w-full cursor-pointer touch-pan-y rounded-estandar border bg-bg-card p-3 select-none transition-transform duration-100 ease-out hover:border-text-faint/50 ${
-        (!isDesktop && actionsOpen) || modoSeleccion
+        actionsOpen || modoSeleccion
           ? "z-30 border-accent/60 ring-1 ring-accent/30"
           : "border-border-card"
       }`}
@@ -361,6 +361,7 @@ export default function CancioneroItemCard({
         nombre={cancion.nombre}
         artista={cancion.artista}
         artistaAvatarUrl={artistaAvatarUrl}
+        reservarEsquina={isDesktop && !modoSeleccion && puedeEditarEliminar}
         iconos={
           <>
             {agregadoNombre ? (
@@ -464,39 +465,71 @@ export default function CancioneroItemCard({
                 <ValidacionMarcaIcon className="size-[18px]" silenciosa />
               </TapButton>
             ) : null}
-            {isDesktop && !modoSeleccion && puedeEditarEliminar ? (
-              <>
-                <TapButton
-                  type="button"
-                  aria-label={`Editar ${cancion.nombre}`}
-                  title="Editar"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) =>
-                    runDesktopAction(event, () => onEditar(cancion))
-                  }
-                  disabled={!mutationsEnabled}
-                  className="flex size-6 items-center justify-center rounded-md text-text-secondary hover:text-text-primary disabled:opacity-40"
-                >
-                  <Pencil className="size-[18px]" aria-hidden="true" />
-                </TapButton>
-                <TapButton
-                  type="button"
-                  aria-label={`Eliminar ${cancion.nombre}`}
-                  title="Eliminar"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) =>
-                    runDesktopAction(event, () => onEliminar(cancion))
-                  }
-                  disabled={!mutationsEnabled}
-                  className="flex size-6 items-center justify-center rounded-md text-text-secondary hover:text-[#d94a3d] disabled:opacity-40"
-                >
-                  <Trash2 className="size-[18px]" aria-hidden="true" />
-                </TapButton>
-              </>
-            ) : null}
           </>
         }
       />
+      {isDesktop && !modoSeleccion && puedeEditarEliminar ? (
+        <TapButton
+          type="button"
+          aria-label={`Opciones de ${cancion.nombre}`}
+          aria-expanded={actionsOpen}
+          aria-haspopup="menu"
+          title="Opciones"
+          disabled={!mutationsEnabled}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (actionsOpen) onCloseActions();
+            else onOpenActions();
+          }}
+          className="absolute right-1.5 top-1.5 z-20 flex size-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-text-primary disabled:opacity-40"
+        >
+          <MoreHorizontal className="size-5" aria-hidden="true" />
+        </TapButton>
+      ) : null}
+
+      {actionsOpen && isDesktop && puedeEditarEliminar ? (
+        <>
+          <button
+            type="button"
+            aria-label="Cerrar opciones"
+            data-no-tap-feedback
+            className="fixed inset-0 z-40 cursor-default border-0 bg-transparent outline-none"
+            onClick={(event) => {
+              event.stopPropagation();
+              onCloseActions();
+            }}
+          />
+          <div
+            role="menu"
+            className="absolute right-1.5 top-10 z-50 w-40 overflow-hidden rounded-xl border border-border bg-bg-dark py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!mutationsEnabled}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-text-primary hover:bg-white/[0.06] disabled:opacity-40"
+              onClick={() => runAction(() => onEditar(cancion))}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              Editar
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!mutationsEnabled}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[#d94a3d] hover:bg-white/[0.06] disabled:opacity-40"
+              onClick={() => runAction(() => onEliminar(cancion))}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+              Borrar
+            </button>
+          </div>
+        </>
+      ) : null}
+
       <AgregadoFichaDialog
         open={agregadoAbierto && Boolean(agregadoNombre)}
         nombre={agregadoNombre}

@@ -6,6 +6,8 @@ type CancioneroCardVisualProps = {
   artista: string | null;
   artistaAvatarUrl?: string | null;
   iconos?: ReactNode;
+  /** Deja libre la esquina de arriba a la derecha (menú de opciones). */
+  reservarEsquina?: boolean;
 };
 
 export default function CancioneroCardVisual({
@@ -13,10 +15,15 @@ export default function CancioneroCardVisual({
   artista,
   artistaAvatarUrl,
   iconos,
+  reservarEsquina = false,
 }: CancioneroCardVisualProps) {
   return (
     <div className="min-w-0">
-      <p className="break-words text-[18px] font-bold leading-tight text-text-primary">
+      <p
+        className={`break-words text-[18px] font-bold leading-tight text-text-primary ${
+          reservarEsquina ? "pr-8" : ""
+        }`}
+      >
         {nombre}
       </p>
       <div className="mt-3 flex min-w-0 items-end gap-3">

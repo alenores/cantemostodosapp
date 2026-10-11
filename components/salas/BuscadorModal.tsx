@@ -10,9 +10,7 @@ import {
 } from "@/components/cancionero/CancioneroListSkeleton";
 import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
-import LetraFuenteSitioBadge, {
-  SitioLetraBadge,
-} from "@/components/salas/LetraFuenteSitioBadge";
+import { SitioLetraBadge } from "@/components/salas/LetraFuenteSitioBadge";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer, {
   LetraRevealFullControl,
@@ -1557,9 +1555,7 @@ export default function BuscadorModal({
                   <div className="mx-[10%] flex min-h-0 flex-1 flex-col justify-start gap-1 pt-2">
                     <div className="flex items-center gap-2">
                       <LetraFuenteIcon tipo={previewIconoTipo} compact />
-                      {esCancioneroPreview ? (
-                        <LetraFuenteSitioBadge variant="cancionero" />
-                      ) : (
+                      {esCancioneroPreview ? null : (
                         <SitioLetraBadge
                           sitio={seleccionado.sitio}
                           url={seleccionado.url}

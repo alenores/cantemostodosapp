@@ -61,9 +61,7 @@ export function CancionOrigenBadge({
   return (
     <div className="mt-1 flex min-w-0 items-center gap-1">
       <LetraFuenteIcon tipo={origen.iconoTipo} tiny premium={premium} />
-      {origen.sitio === "cancionero" ? (
-        <LetraFuenteSitioBadge variant="cancionero" small />
-      ) : esCifraClub ? (
+      {origen.sitio === "cancionero" ? null : esCifraClub ? (
         <>
           {/* Cifra Club: la etiqueta es el botón de ayuda («¿por qué se ve como página web?»). */}
           <TapButton

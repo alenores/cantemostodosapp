@@ -5,7 +5,8 @@ import {
   Gauge,
   MicVocal,
   Music2,
-  NotebookPen,
+  Plus,
+  Star,
   Timer,
 } from "lucide-react";
 
@@ -30,6 +31,8 @@ export type HubModuleDef = {
   href?: string;
   requiresAuth?: boolean;
   requiresOwner?: boolean;
+  /** Dueño y amigos: pueden sumar una canción nueva. */
+  requiresCreator?: boolean;
   ctaLabel?: string;
   /** @deprecated Prefer ctaMode; kept for callers that still branch on accent/neutral. */
   ctaVariant?: "neutral" | "accent";
@@ -70,6 +73,23 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     href: "/canciones/favoritas",
     requiresAuth: true,
     ctaLabel: "Ver",
+    ctaVariant: "neutral",
+    ctaMode: "soft",
+    ctaTextTone: "accent",
+  },
+  {
+    id: "sumar-cancion",
+    label: "Sumar canción",
+    icon: Plus,
+    accentVar: "--accent-editor",
+    accentDimVar: "--accent-editor-dim",
+    iconColor: "var(--accent-editor)",
+    kind: "route",
+    section: "canciones",
+    href: "/canciones/editor?desde=hub",
+    requiresAuth: true,
+    requiresCreator: true,
+    ctaLabel: "Crear",
     ctaVariant: "neutral",
     ctaMode: "soft",
     ctaTextTone: "accent",
@@ -138,7 +158,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
   {
     id: "entrenador-canciones",
     label: "Entrenador de canciones",
-    icon: NotebookPen,
+    icon: Star,
     accentVar: "--accent-entrenador-canciones",
     accentDimVar: "--accent-entrenador-canciones-dim",
     iconColor: "var(--accent-entrenador-canciones)",

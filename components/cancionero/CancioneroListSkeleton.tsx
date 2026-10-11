@@ -26,7 +26,6 @@ export function CancioneroCardSkeleton({
   shimmerDelayMs,
   trailing = "bookmark",
 }: CancioneroCardSkeletonProps) {
-  // CancioneroItemCard vs MisCanciones (Favoritas) usan layouts distintos.
   const isFavoritas = trailing === "listPlus";
   const isCancionero = trailing === "bookmark";
 
@@ -252,7 +251,7 @@ export function CancioneroPageSkeleton({
 }
 
 export function FavoritasPageSkeleton() {
-  return <CancioneroPageSkeleton trailing="listPlus" cardCount={5} />;
+  return <CancioneroPageSkeleton trailing="bookmark" cardCount={5} />;
 }
 
 export const CancioneroSubpageSkeleton = CancioneroPageSkeleton;

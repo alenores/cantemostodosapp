@@ -16,6 +16,8 @@ type CancioneroSubpageShellProps = {
   backAriaLabel?: string;
   /** Título a la izquierda y una X a la derecha, en lugar de la flecha. */
   backOnRight?: boolean;
+  /** En celular, menos aire arriba del contenido (el buscador queda pegado al título). */
+  compacto?: boolean;
   /** @deprecated El bloqueo de scroll con modales lo hace cada modal en `document.body`. */
   modalOpen?: boolean;
 };
@@ -28,6 +30,7 @@ export default function CancioneroSubpageShell({
   onBack,
   backAriaLabel = "Volver al cancionero",
   backOnRight = false,
+  compacto = false,
 }: CancioneroSubpageShellProps) {
   const isDesktop = useIsDesktop();
   const backIcon = backOnRight ? (
@@ -71,8 +74,16 @@ export default function CancioneroSubpageShell({
         </header>
       ) : null}
 
-      <main className="app-page-main flex w-full min-w-0 flex-col gap-3 overflow-x-clip px-4 py-4 pb-24 lg:px-8 lg:py-8">
-        <div className="app-page-container flex w-full min-w-0 flex-col gap-4">
+      <main
+        className={`app-page-main flex w-full min-w-0 flex-col gap-3 overflow-x-clip px-4 pb-24 lg:px-8 lg:py-8 ${
+          compacto ? "pt-1" : "py-4"
+        }`}
+      >
+        <div
+          className={`app-page-container flex w-full min-w-0 flex-col ${
+            compacto ? "gap-2.5 lg:gap-4" : "gap-4"
+          }`}
+        >
           {/* Desktop-only floating integrated header */}
           {isDesktop ? (
             <header className="mb-2 flex items-center justify-between gap-3">

@@ -14,7 +14,7 @@ type Props = {
   conteoCanciones: Map<string, number>;
   selectedIds: Set<string>;
   onApply: (ids: Set<string>) => void;
-  onManageArtistas: () => void;
+  onManageArtistas?: () => void;
 };
 
 function textoCanciones(cantidad: number): string {
@@ -75,14 +75,16 @@ export function ArtistasFilterModal({
                 : "Tocá uno o más artistas"}
             </p>
           </div>
-          <TapButton
-            onClick={onManageArtistas}
-            className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent hover:text-text-primary"
-            aria-label="Gestionar artistas"
-          >
-            <Settings className="size-4" />
-            Gestionar
-          </TapButton>
+          {onManageArtistas ? (
+            <TapButton
+              onClick={onManageArtistas}
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent hover:text-text-primary"
+              aria-label="Gestionar artistas"
+            >
+              <Settings className="size-4" />
+              Gestionar
+            </TapButton>
+          ) : null}
           <TapButton
             onClick={onClose}
             className="rounded-full border border-border p-1.5 text-text-secondary hover:border-accent hover:text-text-primary"

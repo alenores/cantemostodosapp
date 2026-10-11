@@ -14,7 +14,7 @@ type HubModuleCardProps = {
   disabled?: boolean;
   pending?: boolean;
   badge?: string;
-  cta: ReactNode;
+  cta?: ReactNode;
   iconColor?: string;
 };
 
@@ -52,12 +52,12 @@ export default function HubModuleCard({
           <Loader2 className="size-6 animate-spin text-accent" />
         </span>
       )}
-      <p className="text-center text-[13px] font-bold text-text-primary">{label}</p>
       <div className="flex flex-1 items-center justify-center">
         <span className="hub-module-card__icon-wrap" aria-hidden="true">
           <Icon className="hub-module-card__icon" />
         </span>
       </div>
+      <p className="hub-module-card__label text-center text-[15px] font-extrabold leading-tight text-text-primary">{label}</p>
       {cta}
     </TapButton>
   );

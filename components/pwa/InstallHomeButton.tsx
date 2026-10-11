@@ -165,7 +165,7 @@ export default function InstallHomeButton() {
       <TapButton
         type="button"
         onClick={onClick}
-        className="w-full rounded-xl bg-accent px-4 py-[13px] text-sm font-bold text-white shadow-lg active:scale-[0.98]"
+        className="home-instalar-app w-full rounded-xl px-4 py-[13px] text-sm font-bold text-white active:scale-[0.98]"
       >
         Instalá la app
       </TapButton>

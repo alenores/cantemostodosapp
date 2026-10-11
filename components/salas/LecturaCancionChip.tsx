@@ -38,12 +38,16 @@ function LecturaCancionChipContent({
       {artista ? (
         <>
           <span
-            className="shrink-0 text-[10px] leading-snug text-accent/60"
+            className="shrink-0 text-[10px] leading-snug"
+            style={{ color: "color-mix(in srgb, var(--accent) 40%, white)" }}
             aria-hidden="true"
           >
             ·
           </span>
-          <span className="min-w-0 shrink truncate text-[10px] leading-snug text-accent">
+          <span
+            className="min-w-0 shrink truncate text-[10px] leading-snug"
+            style={{ color: "color-mix(in srgb, var(--accent) 40%, white)" }}
+          >
             {artista}
           </span>
         </>

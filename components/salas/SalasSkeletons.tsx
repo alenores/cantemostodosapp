@@ -114,24 +114,20 @@ function HomeDestinationCardSkeleton({
   );
 }
 
-/** Replica visual de HubModuleCard (label → icon wrap 52px → CTA). */
+/** Replica visual de HubModuleCard (icono y nombre grande). */
 function HubModuleCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
   return (
     <div
       className="relative flex min-h-full flex-1 flex-col items-center gap-[10px] rounded-[14px] border border-border bg-bg-card px-3 py-4 lg:gap-3 lg:px-4 lg:py-5"
       aria-hidden="true"
     >
-      <ShimmerBlock className="h-[13px] w-[58%]" delayMs={delayMs} />
       <div className="flex flex-1 items-center justify-center">
         <ShimmerBlock
           className="size-[52px] shrink-0 rounded-[13px]"
-          delayMs={delayMs + 40}
+          delayMs={delayMs}
         />
       </div>
-      <ShimmerBlock
-        className="h-[38px] w-full rounded-lg"
-        delayMs={delayMs + 80}
-      />
+      <ShimmerBlock className="h-[15px] w-[70%]" delayMs={delayMs + 40} />
     </div>
   );
 }

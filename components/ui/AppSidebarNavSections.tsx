@@ -4,6 +4,10 @@ import { TapLink } from "@/components/ui/TapFeedback";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { createClient } from "@/lib/supabase/client";
 import {
+  puedeSumarCanciones,
+  type CategoriaUsuario,
+} from "@/lib/usuarios-categorias";
+import {
   getPcNavSectionForPath,
   isPcNavItemActive,
   PC_SIDEBAR_SECTIONS,
@@ -28,7 +32,7 @@ function sectionHeaderClass(active: boolean, disabled = false) {
   }
 
   return active
-    ? "bg-accent-dim text-accent"
+    ? "bg-nav-selected text-text-primary"
     : "text-text-muted hover:bg-bg-card hover:text-text-primary";
 }
 
@@ -123,6 +127,7 @@ function SidebarExpandableSection({
   pathname,
   isLoggedIn,
   isOwner,
+  puedeCrear,
   isExpanded,
   onToggle,
 }: {
@@ -130,11 +135,15 @@ function SidebarExpandableSection({
   pathname: string;
   isLoggedIn: boolean;
   isOwner: boolean;
+  puedeCrear: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }) {
   const visibleItems = section.items.filter(
-    (item) => (!item.requiresAuth || isLoggedIn) && (!item.requiresOwner || isOwner),
+    (item) =>
+      (!item.requiresAuth || isLoggedIn) &&
+      (!item.requiresOwner || isOwner) &&
+      (!item.requiresCreator || puedeCrear),
   );
 
   if (visibleItems.length === 0) {
@@ -192,7 +201,7 @@ function SidebarExpandableSection({
                 ariaLabel={item.label}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors ${
                   active
-                    ? "bg-accent-dim text-accent"
+                    ? "bg-nav-selected text-text-primary"
                     : "text-text-muted hover:bg-bg-card hover:text-text-primary"
                 }`}
               >
@@ -219,17 +228,37 @@ export default function AppSidebarNavSections({
 }: AppSidebarNavSectionsProps) {
   const pathname = usePathname();
   const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
-  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
-  const isOwner = isLoggedIn && ownerUserId === usuario.id;
+  const [categoria, setCategoria] = useState<CategoriaUsuario | null>(null);
+  const isOwner = categoria === "dueno";
+  const puedeCrear = puedeSumarCanciones(categoria);
 
   useEffect(() => {
     let active = true;
-    if (isLoggedIn) {
-      void createClient().from("usuarios_categorias").select("categoria").eq("user_id", usuario.id).maybeSingle().then(({ data }) => {
-        if (active) setOwnerUserId(data?.categoria === "dueno" ? usuario.id : null);
-      });
+    if (!isLoggedIn) {
+      setCategoria(null);
+      return () => {
+        active = false;
+      };
     }
-    return () => { active = false; };
+
+    void createClient()
+      .from("usuarios_categorias")
+      .select("categoria")
+      .eq("user_id", usuario.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        const value = data?.categoria;
+        setCategoria(
+          value === "dueno" || value === "amigos" || value === "publico"
+            ? value
+            : null,
+        );
+      });
+
+    return () => {
+      active = false;
+    };
   }, [isLoggedIn, usuario.id]);
   const activeSection = getPcNavSectionForPath(pathname);
   const [expandedSection, setExpandedSection] = useState<string | null>(
@@ -265,6 +294,7 @@ export default function AppSidebarNavSections({
             pathname={pathname}
             isLoggedIn={isLoggedIn}
             isOwner={isOwner}
+            puedeCrear={puedeCrear}
             isExpanded={expandedSection === section.id}
             onToggle={() =>
               setExpandedSection((current) =>

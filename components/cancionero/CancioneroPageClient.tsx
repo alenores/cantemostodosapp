@@ -75,11 +75,19 @@ import {
   artistasConFotoLocal,
   leerArtistasFotos,
 } from "@/lib/offline/artista-fotos";
-import { Bell, Music, Search, Star, WifiOff, X, Settings, Users } from "lucide-react";
+import { Bell, Bookmark, Music, Search, Star, WifiOff, X, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "h-9 w-full rounded-[10px] border border-border bg-[#323232] pl-9 pr-3 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent lg:h-11 lg:pl-11 lg:pr-4";
+
+function claseFiltro(activo: boolean) {
+  return `flex size-9 shrink-0 items-center justify-center rounded-[10px] border transition-colors lg:size-11 ${
+    activo
+      ? "border-accent bg-accent/10 text-accent"
+      : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
+  }`;
+}
 
 const SNACKBAR_MS = 3000;
 
@@ -138,6 +146,7 @@ export default function CancioneroPageClient({
   const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
   const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
   const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
+  const [soloFavoritas, setSoloFavoritas] = useState(false);
   const aliasBusqueda = useAliasBusqueda();
 
   const revokeFotosRef = useRef<() => void>(() => {});
@@ -216,8 +225,11 @@ export default function CancioneroPageClient({
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
+    if (soloFavoritas) {
+      list = list.filter((cancion) => misCancionesIds.has(cancion.id));
+    }
     return list;
-  }, [canciones, query, selectedArtistaIds, artistas, aliasBusqueda]);
+  }, [canciones, query, selectedArtistaIds, artistas, aliasBusqueda, soloFavoritas, misCancionesIds]);
   const practicaFiltradas = useMemo(() => {
     if (!usuarioLogueado) return [];
     const normalized = query.trim().toLowerCase();
@@ -226,8 +238,9 @@ export default function CancioneroPageClient({
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
+    if (soloFavoritas) return [];
     return list;
-  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas, aliasBusqueda]);
+  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas, aliasBusqueda, soloFavoritas]);
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {
@@ -886,6 +899,7 @@ export default function CancioneroPageClient({
         title="Cancionero"
         backOnRight
         backAriaLabel="Cerrar"
+        compacto
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}
       >
         {isDesktop && novedades.count > 0 ? (
@@ -933,14 +947,14 @@ export default function CancioneroPageClient({
             ) : null}
             <div
               ref={busquedaRef}
-              className={`cancionero-busqueda-fija flex flex-col gap-3${
+              className={`cancionero-busqueda-fija flex flex-col gap-1.5 lg:gap-3${
                 busquedaFija ? " cancionero-busqueda-fija--pin" : ""
               }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 lg:gap-2">
                 <div className="relative flex-1">
                   <Search
-                    className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted lg:left-4"
                     aria-hidden="true"
                   />
                   <input
@@ -961,14 +975,30 @@ export default function CancioneroPageClient({
                   type="button"
                   aria-label="Filtrar por Artista"
                   onClick={() => setArtistasFilterOpen(true)}
-                  className={`flex size-11 shrink-0 items-center justify-center rounded-[10px] border transition-colors ${
-                    selectedArtistaIds.size > 0 
-                      ? "border-accent bg-accent/10 text-accent" 
-                      : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
-                  }`}
+                  className={claseFiltro(selectedArtistaIds.size > 0)}
                 >
-                  <Users className="size-5" />
+                  <Users className="size-4 lg:size-5" />
                 </TapButton>
+                {usuarioLogueado ? (
+                  <TapButton
+                    type="button"
+                    aria-label={
+                      soloFavoritas
+                        ? "Quitar filtro de favoritas"
+                        : "Filtrar por favoritas"
+                    }
+                    aria-pressed={soloFavoritas}
+                    onClick={() => {
+                      setSoloFavoritas((actual) => !actual);
+                      setActiveCardId(null);
+                    }}
+                    className={claseFiltro(soloFavoritas)}
+                  >
+                    <Bookmark
+                      className={`size-4 lg:size-5 ${soloFavoritas ? "fill-current" : ""}`}
+                    />
+                  </TapButton>
+                ) : null}
               </div>
               <VincularNombreArtista texto={query} />
               {selectedArtistaIds.size > 0 && (
@@ -1033,8 +1063,8 @@ export default function CancioneroPageClient({
                   renderItem={(cancion, index) => (
                     <div
                       className={`min-w-0 max-w-full${
-                        cascadeActive ? " cancionero-item-cascade" : ""
-                      }`}
+                        activeCardId === cancion.id ? " relative z-30" : ""
+                      }${cascadeActive ? " cancionero-item-cascade" : ""}`}
                       style={
                         cascadeActive
                           ? {

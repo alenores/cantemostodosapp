@@ -5,7 +5,7 @@ import HubModuleCard from "@/components/ui/HubModuleCard";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
-import { Bell, Plus } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -211,6 +211,7 @@ export default function HubSectionPageClient({
       module.section === section &&
       (!module.requiresAuth || isLoggedIn) &&
       (!module.requiresOwner || canUseOwnerModules) &&
+      (!module.requiresCreator || puedeCrear) &&
       (!module.desktopOnly || isDesktop),
   );
 
@@ -236,6 +237,7 @@ export default function HubSectionPageClient({
     if (section !== "canciones") return undefined;
     if (moduleId === "cancionero") return "var(--tuner-cerca)";
     if (moduleId === "mis-canciones") return "var(--tuner-in-tune)";
+    if (moduleId === "sumar-cancion") return "var(--accent-editor)";
     return undefined;
   }
 
@@ -256,20 +258,15 @@ export default function HubSectionPageClient({
 
     const ctaClassName = `hub-module-card__cta ${ctaModeClass} ${ctaToneClass}`;
 
-    const ctaContent =
-      module.id === "cancionero" ? (
-        <div className={ctaClassName}>
-          <span className="font-bold">{module.ctaLabel} </span>
-          <span className="font-normal opacity-70">({globalCount})</span>
-        </div>
-      ) : module.id === "mis-canciones" ? (
-        <div className={ctaClassName}>
-          <span className="font-bold">{module.ctaLabel} </span>
-          <span className="font-normal opacity-70">({favoritasCount})</span>
-        </div>
-      ) : (
-        <div className={ctaClassName}>{module.ctaLabel}</div>
-      );
+    const muestraVer = module.id === "cancionero" || module.id === "mis-canciones";
+    const ctaContent = muestraVer ? (
+      <div className={ctaClassName}>
+        <span>{module.ctaLabel} </span>
+        <span className="opacity-70">
+          ({module.id === "cancionero" ? globalCount : favoritasCount})
+        </span>
+      </div>
+    ) : undefined;
 
     return (
       <HubModuleCard
@@ -280,15 +277,22 @@ export default function HubSectionPageClient({
         ariaLabel={getModuleAriaLabel(module.kind, module.label)}
         onClick={() => handleModuleClick(module.id, module.href)}
         pending={pendingModuleId === module.id}
+        disabled={module.id === "sumar-cancion" && !online}
         badge={module.comingSoon ? "Próx." : undefined}
-        iconColor={iconoCancionero(module.id)}
+        iconColor={
+          section === "practica"
+            ? module.id === "entrenador-canciones"
+              ? "var(--accent-vocal)"
+              : module.iconColor
+            : iconoCancionero(module.id)
+        }
         cta={ctaContent}
       />
     );
   }
 
   return (
-    <div className="relative flex min-h-full flex-1 flex-col bg-bg-app">
+    <div className={`relative flex min-h-full flex-1 flex-col ${section === "practica" ? "practica-hub" : "bg-bg-app"}`}>
       <AppReadyMarker />
 
       {!isDesktop ? (
@@ -297,36 +301,17 @@ export default function HubSectionPageClient({
           style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top, 0px))" }}
         >
           <div className="app-page-container flex flex-col gap-3 lg:gap-4">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-extrabold text-text-primary">
-                {sectionLabel}
-              </h2>
-              {section === "canciones" && puedeCrear ? (
-                <button
-                  type="button"
-                  disabled={!online}
-                  aria-label="Sumar canción"
-                  onClick={() => {
-                    if (!online) return;
-                    navigateWithProgress("/canciones/editor?desde=hub");
-                  }}
-                  className={`flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-white ${
-                    online ? "" : "cursor-not-allowed opacity-45"
-                  }`}
-                >
-                  <Plus className="size-6" strokeWidth={2.4} aria-hidden="true" />
-                </button>
-              ) : null}
-            </div>
+            <h2 className="text-xl font-extrabold text-text-primary">
+              {sectionLabel}
+            </h2>
 
-            <div className={`app-hub-grid${section === "canciones" ? " cancionero-hub-sobrio" : ""}`}>
+            <div className={`app-hub-grid${section === "canciones" ? " cancionero-hub-sobrio" : ""}${section === "practica" ? " practica-hub-claro" : ""}`}>
               {visibleModules.map((module) => renderModuleCard(module))}
               {section === "canciones" && novedades.count > 0 ? (
                 <HubModuleCard moduleId="cancionero" label="Novedades" icon={Bell}
                   ariaLabel="Ver novedades del Cancionero" onClick={novedades.open}
                   badge={novedades.count ? String(novedades.count) : undefined}
-                  iconColor="var(--accent)"
-                  cta={<div className="hub-module-card__cta hub-module-card__cta--soft hub-module-card__cta--text-accent">Ver novedades</div>} />
+                  iconColor="var(--accent)" />
               ) : null}
             </div>
 

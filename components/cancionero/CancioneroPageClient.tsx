@@ -905,7 +905,7 @@ export default function CancioneroPageClient({
         {isDesktop && novedades.count > 0 ? (
           <button type="button" onClick={novedades.open} aria-label="Ver novedades del Cancionero"
             className="flex min-h-14 items-center gap-3 rounded-xl border border-border bg-bg-card px-4 py-3 text-left">
-            <Bell className="size-5 text-accent" aria-hidden="true" />
+            <Bell className="size-5 text-[#e85d4a]" aria-hidden="true" />
             <span>Novedades{novedades.count ? ` (${novedades.count})` : ""}</span>
           </button>
         ) : null}

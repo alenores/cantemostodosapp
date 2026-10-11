@@ -19,6 +19,12 @@ import { ChevronDown, WifiOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const SECTION_ICON_COLOR: Record<string, string | undefined> = {
+  canciones: "var(--accent-cancionero)",
+  herramientas: "var(--accent-afinador)",
+  practica: "var(--accent-vocal)",
+};
+
 type AppSidebarNavSectionsProps = {
   usuario: UsuarioActivo;
   online: boolean;
@@ -168,7 +174,12 @@ function SidebarExpandableSection({
           />
         ) : null}
 
-        <Icon className="size-5 shrink-0" aria-hidden="true" />
+        <Icon
+          className="size-5 shrink-0"
+          color={SECTION_ICON_COLOR[section.id]}
+          style={{ color: SECTION_ICON_COLOR[section.id] }}
+          aria-hidden="true"
+        />
 
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">
@@ -207,6 +218,7 @@ function SidebarExpandableSection({
               >
                 <ItemIcon
                   className="size-4 shrink-0"
+                  color={item.iconColor}
                   style={{ color: item.iconColor }}
                   aria-hidden="true"
                 />

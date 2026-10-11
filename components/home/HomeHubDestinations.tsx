@@ -97,10 +97,10 @@ export default function HomeHubDestinations({
               type="button"
               onClick={novedades.open}
               aria-label={`Ver novedades del Cancionero${novedades.count ? ` (${novedades.count})` : ""}`}
-              className="absolute right-2 top-2 z-10 flex size-11 items-center justify-center rounded-full text-text-secondary"
+              className="absolute right-2 top-2 z-10 flex size-11 items-center justify-center rounded-full text-[#e85d4a]"
             >
               <Bell className="size-5" aria-hidden="true" />
-              <span className="absolute right-2 top-2 size-2 rounded-full bg-accent" aria-hidden="true" />
+              <span className="absolute right-2 top-2 size-2 rounded-full bg-[#e85d4a]" aria-hidden="true" />
             </button>
           ) : null}
         </div>

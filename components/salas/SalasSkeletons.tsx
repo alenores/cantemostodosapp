@@ -316,6 +316,30 @@ export function SalaLetraSkeleton({
   return <ControlModeShellSkeleton />;
 }
 
+/** Carga en la compu: menú a la izquierda y la pantalla de cantar, no el inicio del celular. */
+export function DesktopAppSkeleton() {
+  return (
+    <div
+      className="flex h-full min-h-0 w-full bg-bg-app"
+      role="status"
+      aria-live="polite"
+      aria-label="Cargando"
+    >
+      <aside className="flex w-[260px] shrink-0 flex-col border-r border-border bg-bg-darker">
+        <div className="h-16 shrink-0 border-b border-accent/40 bg-accent" />
+        <div className="flex flex-col gap-3 p-4">
+          {[0, 1, 2, 3, 4].map((index) => (
+            <ShimmerBlock key={index} className="h-10 w-full rounded-xl" delayMs={index * 40} />
+          ))}
+        </div>
+      </aside>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ControlModeShellSkeleton />
+      </div>
+    </div>
+  );
+}
+
 /** Skeleton del home de bienvenida (`/` + HomeHubDestinations). */
 export function HomeWelcomeSkeleton() {
   return (

@@ -308,10 +308,11 @@ export default function HubSectionPageClient({
             <div className={`app-hub-grid${section === "canciones" ? " cancionero-hub-sobrio" : ""}${section === "practica" ? " practica-hub-claro" : ""}`}>
               {visibleModules.map((module) => renderModuleCard(module))}
               {section === "canciones" && novedades.count > 0 ? (
-                <HubModuleCard moduleId="cancionero" label="Novedades" icon={Bell}
+                <HubModuleCard moduleId="novedades" label="Novedades" icon={Bell}
                   ariaLabel="Ver novedades del Cancionero" onClick={novedades.open}
                   badge={novedades.count ? String(novedades.count) : undefined}
-                  iconColor="var(--accent)" />
+                  badgeOnIcon
+                  iconColor="#e85d4a" />
               ) : null}
             </div>
 

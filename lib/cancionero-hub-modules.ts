@@ -161,7 +161,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     icon: Star,
     accentVar: "--accent-entrenador-canciones",
     accentDimVar: "--accent-entrenador-canciones-dim",
-    iconColor: "var(--accent-entrenador-canciones)",
+    iconColor: "var(--accent-vocal)",
     kind: "route",
     section: "practica",
     href: "/practica/entrenador-canciones",

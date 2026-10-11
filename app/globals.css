@@ -1944,6 +1944,25 @@ html.splash-active body {
   z-index: 1;
 }
 
+.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"] {
+  background:
+    linear-gradient(180deg, #5c3232 0%, #3c2224 58%, #2a181a 100%) padding-box,
+    linear-gradient(180deg, rgba(255, 170, 160, 0.75) 0%, rgba(255, 255, 255, 0.08) 32%, rgba(0, 0, 0, 0.55) 100%) border-box;
+}
+
+.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon {
+  color: #ff8f84;
+}
+
+.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon-wrap {
+  background: rgba(232, 93, 74, 0.28);
+}
+
+.hub-module-card__aviso {
+  background: #e85d4a;
+  box-shadow: 0 0 0 2px #3a2224;
+}
+
 /* Práctica: partitura en negro detrás y tarjetas blancas levantadas. */
 .practica-hub {
   background-color: #101012;

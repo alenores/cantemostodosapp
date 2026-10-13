@@ -33,6 +33,8 @@ type LecturaBottomControlsProps = {
   fixedRightCss?: string;
   onAutoScrollAccelerate: () => void;
   onAutoScrollDecelerate: () => void;
+  /** En el cancionero el tamaño queda en el panel izquierdo. */
+  showDesktopZoom?: boolean;
 };
 
 export default function LecturaBottomControls({
@@ -55,6 +57,7 @@ export default function LecturaBottomControls({
   fixedRightCss,
   onAutoScrollAccelerate,
   onAutoScrollDecelerate,
+  showDesktopZoom = true,
 }: LecturaBottomControlsProps) {
   const showMobileCompasControls = hasCompases && !compasesOcultos;
   const showMobileAutoScroll =
@@ -141,7 +144,7 @@ export default function LecturaBottomControls({
         </div>
       ) : null}
 
-      {showZoom ? (
+      {showZoom && showDesktopZoom ? (
         <div className="hidden lg:block">
           <LetraZoomControl
             level={zoomLevel}

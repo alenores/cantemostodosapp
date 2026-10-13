@@ -58,6 +58,7 @@ export default function EntrenadorCancionesEditorPageClient() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nota, setNota] = useState("");
+  const [notaOpen, setNotaOpen] = useState(false);
   const [notaSaving, setNotaSaving] = useState(false);
   const [anotaciones, setAnotaciones] = useState<Anotacion[]>([]);
 
@@ -223,8 +224,11 @@ export default function EntrenadorCancionesEditorPageClient() {
           onPersist={persistPractica}
           onElegirCancionero={esNueva ? handleElegirCancionero : undefined}
           crearArtistaNuevo={false}
+          avisarCancionRepetida={false}
           onSaved={handleSaved}
           anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
+          onAbrirNota={esNueva ? undefined : () => setNotaOpen(true)}
+          tieneNota={nota.trim().length > 0}
         />
       ) : (
         <CifradoEditorMobile
@@ -236,6 +240,7 @@ export default function EntrenadorCancionesEditorPageClient() {
           onPersist={persistPractica}
           onElegirCancionero={esNueva ? handleElegirCancionero : undefined}
           crearArtistaNuevo={false}
+          avisarCancionRepetida={false}
           onSaved={handleSaved}
           anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
         />
@@ -248,6 +253,9 @@ export default function EntrenadorCancionesEditorPageClient() {
           onSave={handleSaveNota}
           saving={notaSaving}
           side="editor"
+          hideTrigger={isDesktop}
+          open={notaOpen}
+          onOpenChange={setNotaOpen}
         />
       ) : null}
     </div>

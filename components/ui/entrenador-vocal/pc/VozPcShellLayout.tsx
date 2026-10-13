@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 export function VozPcShellLayout({
   config,
@@ -46,27 +47,64 @@ export function VozPcConfigCard({
   className,
   titleClassName,
   accentVar = "var(--voz-config)",
+  collapsible = false,
   children,
 }: {
   title?: string;
   className?: string;
   titleClassName?: string;
   accentVar?: string;
+  /** Arranca cerrada. El título la abre y la cierra. */
+  collapsible?: boolean;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+
+  if (!collapsible) {
+    return (
+      <div
+        className={`min-w-0 overflow-hidden rounded-xl border border-border/80 bg-bg-darker/70 p-4 ${className ?? ""}`}
+      >
+        {title ? (
+          <p
+            className={titleClassName ?? "mb-4 text-[11px] font-bold uppercase tracking-wide"}
+            style={{ color: accentVar }}
+          >
+            {title}
+          </p>
+        ) : null}
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`min-w-0 overflow-hidden rounded-xl border border-border/80 bg-bg-darker/70 p-4 ${className ?? ""}`}
+      className={`min-w-0 overflow-hidden rounded-xl border border-border/80 bg-bg-darker/70 ${className ?? ""}`}
     >
       {title ? (
-        <p
-          className={titleClassName ?? "mb-4 text-[11px] font-bold uppercase tracking-wide"}
-          style={{ color: accentVar }}
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((actual) => !actual)}
+          className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${
+            open ? "border-b border-white/10" : ""
+          }`}
         >
-          {title}
-        </p>
+          <span
+            className={`${titleClassName ?? "text-[11px] font-bold uppercase tracking-wide"} !mb-0`}
+            style={{ color: accentVar }}
+          >
+            {title}
+          </span>
+          <ChevronDown
+            className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            style={{ color: accentVar }}
+            aria-hidden="true"
+          />
+        </button>
       ) : null}
-      {children}
+      {open ? <div className="px-4 pb-4 pt-3">{children}</div> : null}
     </div>
   );
 }

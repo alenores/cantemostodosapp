@@ -2,7 +2,6 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
-import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
@@ -686,6 +685,19 @@ export default function SalaPageShell({
               onTemaLecturaChange={
                 cancionActivaDelCancionero ? cambiarTemaLectura : undefined
               }
+              onCerrarLectura={modoLectura ? salirModoLectura : undefined}
+              lecturaZoom={
+                modoLectura && lecturaZoomEligible
+                  ? {
+                      level: zoom.level,
+                      onDecrease: zoom.decrease,
+                      onIncrease: zoom.increase,
+                    }
+                  : undefined
+              }
+              onAfinadorLectura={
+                modoLectura ? () => setAfinadorOpen(true) : undefined
+              }
               onExpand={
                 !modoLectura && cancionActiva && !disconnected
                   ? handleExpand
@@ -756,12 +768,6 @@ export default function SalaPageShell({
           >
             <Minimize2 className="size-4 text-accent" aria-hidden="true" />
           </TapButton>
-
-          <LecturaPcTopChrome
-            fixedRightCss={lecturaFixedRightCss}
-            onContraer={salirModoLectura}
-            onAfinador={() => setAfinadorOpen(true)}
-          />
 
           <TapButton
             type="button"
@@ -873,6 +879,7 @@ export default function SalaPageShell({
             fixedRightCss={lecturaFixedRightCss}
             onAutoScrollAccelerate={autoScroll.accelerate}
             onAutoScrollDecelerate={autoScroll.decelerate}
+            showDesktopZoom={false}
           />
         </>
       ) : null}

@@ -4,7 +4,7 @@ import CancioneroCardVisual from "@/components/cancionero/CancioneroCardVisual";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { triggerHaptic } from "@/lib/haptic";
 import type { CancionPracticaListItem } from "@/lib/canciones-practica";
-import { Mic, MoreHorizontal, NotebookPen, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, NotebookPen, Pencil, Speech, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 
 const LONG_PRESS_MS = 500;
@@ -165,18 +165,28 @@ export default function PracticaCancionCard({
             {cancion.tiene_compases ? (
               <Marca label="Tiene compases">
                 <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden="true">
+                  <ellipse
+                    cx="5.5"
+                    cy="11.5"
+                    rx="2.7"
+                    ry="1.85"
+                    fill="currentColor"
+                    transform="rotate(-22 5.5 11.5)"
+                  />
                   <path
-                    d="M4.25 2.4v11.2M11.75 2.4v11.2"
+                    d="M7.8 10.5V3.1c1.7.9 3.1.7 4.2-.2"
+                    fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.7"
+                    strokeWidth="1.45"
                     strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
               </Marca>
             ) : null}
             {cancion.tiene_canto ? (
               <Marca label="Tiene anotaciones de canto">
-                <Mic className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
+                <Speech className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
               </Marca>
             ) : null}
             {cancion.tiene_nota ? (

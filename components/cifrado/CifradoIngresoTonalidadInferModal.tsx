@@ -34,6 +34,8 @@ type CifradoIngresoTonalidadInferModalProps = {
   multipleTonalidades: boolean;
   notacion?: NotacionAcordes;
   zIndex?: number;
+  /** En el entrenador no se compara con el cancionero. */
+  avisarCancionRepetida?: boolean;
   /** Lista de artistas para elegir; vacía = sin lista (no se pudo cargar). */
   artistas?: Artista[];
   onArtistaAgregado?: (artista: Artista) => void;
@@ -60,6 +62,7 @@ export function CifradoIngresoTonalidadInferModal({
   multipleTonalidades,
   notacion = "es",
   zIndex = 70,
+  avisarCancionRepetida = true,
   artistas = [],
   onArtistaAgregado,
   onConfirm,
@@ -231,7 +234,9 @@ export function CifradoIngresoTonalidadInferModal({
                     <ArrowLeftRight className="size-3.5" aria-hidden="true" />
                   </button>
                 </div>
-                <CancionRepetidaAviso nombre={nombre} artista={artista} />
+                {avisarCancionRepetida ? (
+                  <CancionRepetidaAviso nombre={nombre} artista={artista} />
+                ) : null}
 
                 <label htmlFor="paste-ingreso-artista">
                   <span className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>

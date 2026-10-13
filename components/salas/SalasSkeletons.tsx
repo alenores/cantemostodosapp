@@ -384,7 +384,7 @@ export function HubSectionSkeleton({
 }) {
   return (
     <div
-      className="relative flex min-h-full flex-1 flex-col bg-bg-app"
+      className="practica-hub relative flex min-h-full flex-1 flex-col"
       role="status"
       aria-live="polite"
       aria-label="Cargando sección"

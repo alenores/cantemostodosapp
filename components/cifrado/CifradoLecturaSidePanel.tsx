@@ -4,8 +4,6 @@ import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
 import { CifradoTonalidadFields } from "@/components/cifrado/CifradoTonalidadFields";
 import {
   CIFRADO_CONTROLS_INPUT_CLASS,
-  CIFRADO_CONTROLS_PANEL_BOX_CLASS,
-  CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS,
   CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
   CIFRADO_NOTACION_LABEL_CLASS,
   CIFRADO_NOTACION_SEGMENTED_CLASS,
@@ -21,8 +19,19 @@ import {
 } from "@/lib/anotaciones-practica";
 import type { NotaIndex } from "@/lib/cifrado";
 import type { ModoTonal } from "@/lib/cifrado-escala";
+import type { LetraZoomLevel } from "@/lib/letra-zoom";
+import { LETRA_ZOOM_MAX_LEVEL, LETRA_ZOOM_MIN_LEVEL } from "@/lib/letra-zoom";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
-import { Eye, EyeOff, NotebookPen, Pause, Pencil, Play } from "lucide-react";
+import { AudioLines, Eye, EyeOff, NotebookPen, Pause, Pencil, Play, SquarePlay, X } from "lucide-react";
+
+const LECTURA_CARD_CLASS =
+  "rounded-xl border border-border/30 bg-bg-card px-3 py-3";
+
+const LECTURA_BUTTON_CLASS =
+  "w-full rounded-[10px] border border-border bg-bg-darker py-2.5 text-sm font-semibold text-text-secondary";
+
+const LECTURA_STEP_BUTTON_CLASS =
+  "flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-darker text-text-primary disabled:opacity-50";
 
 type CifradoLecturaSidePanelProps = {
   hasCompases?: boolean;
@@ -51,7 +60,34 @@ type CifradoLecturaSidePanelProps = {
   onEdit?: () => void;
   temaLectura?: "dia" | "sepia" | "escenario";
   onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
+  encabezado?: {
+    nombre: string;
+    artista?: string | null;
+  };
+  onCerrar?: () => void;
+  zoom?: {
+    level: LetraZoomLevel;
+    onDecrease: () => void;
+    onIncrease: () => void;
+  };
+  onVideo?: () => void;
+  videoAbierto?: boolean;
+  onAfinador?: () => void;
+  /** Sin cifrado no hay tono ni acordes: solo nombre, letra, video y afinador. */
+  controlesCifrado?: boolean;
 };
+
+function etiquetaTamanoLetra(level: LetraZoomLevel): string {
+  if (level < 0) {
+    return "Chica";
+  }
+
+  if (level > 0) {
+    return "Grande";
+  }
+
+  return "Normal";
+}
 
 export function getLecturaPremiumRailWidthCss(): string {
   return APP_SIDEBAR_WIDTH_CSS;
@@ -84,13 +120,20 @@ export default function CifradoLecturaSidePanel({
   onEdit,
   temaLectura,
   onTemaLecturaChange,
+  encabezado,
+  onCerrar,
+  zoom,
+  onVideo,
+  videoAbierto = false,
+  onAfinador,
+  controlesCifrado = true,
 }: CifradoLecturaSidePanelProps) {
   const tiposParaToggle = ANOTACION_TIPOS.filter((tipo) =>
     anotacionTiposPresentes.includes(tipo),
   );
   const anotacionesToggles =
     anotacionesVisibility && onToggleAnotacionTipo && tiposParaToggle.length > 0 ? (
-      <div className="mt-3 space-y-2">
+      <div className="space-y-2">
         {tiposParaToggle.map((tipo) => {
           const oculto = !anotacionesVisibility[tipo];
 
@@ -99,7 +142,7 @@ export default function CifradoLecturaSidePanel({
               key={tipo}
               type="button"
               onClick={() => onToggleAnotacionTipo(tipo)}
-              className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+              className={`${LECTURA_BUTTON_CLASS} flex items-center justify-center gap-2`}
             >
               {oculto ? (
                 <Eye className="size-4 shrink-0" aria-hidden="true" />
@@ -113,36 +156,97 @@ export default function CifradoLecturaSidePanel({
       </div>
     ) : null;
 
-  const accionesLectura =
-    onOpenNotaGeneral || onEdit ? (
-      <div className="mt-3 space-y-2">
-        {onOpenNotaGeneral ? (
+  const notaCard = onOpenNotaGeneral ? (
+    <div className={LECTURA_CARD_CLASS}>
+      <TapButton
+        type="button"
+        onClick={onOpenNotaGeneral}
+        className={`${LECTURA_BUTTON_CLASS} flex items-center justify-center gap-2`}
+      >
+        <NotebookPen
+          className="size-4 shrink-0 text-[var(--accent-entrenador-canciones)]"
+          aria-hidden="true"
+        />
+        Nota de la canción
+        {tieneNotaGeneral ? (
+          <span
+            className="size-1.5 rounded-full bg-[var(--accent-entrenador-canciones)]"
+            aria-hidden="true"
+          />
+        ) : null}
+      </TapButton>
+    </div>
+  ) : null;
+
+  const editarFooter = onEdit ? (
+    <div className="shrink-0 border-t border-border bg-bg-darker p-3">
+      <TapButton
+        type="button"
+        onClick={onEdit}
+        className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--accent-vocal)] py-3 text-sm font-bold text-[var(--text-on-light)]"
+      >
+        <Pencil className="size-4 shrink-0" aria-hidden="true" />
+        Editar
+      </TapButton>
+    </div>
+  ) : null;
+
+  const zoomCard = zoom ? (
+    <div className={LECTURA_CARD_CLASS}>
+      <p className={CIFRADO_NOTACION_LABEL_CLASS}>Tamaño de letra</p>
+      <div className="flex items-center gap-2">
+        <TapButton
+          type="button"
+          aria-label="Achicar letra"
+          disabled={zoom.level <= LETRA_ZOOM_MIN_LEVEL}
+          onClick={zoom.onDecrease}
+          className={LECTURA_STEP_BUTTON_CLASS}
+        >
+          <span className="text-[11px] font-bold leading-none text-accent" aria-hidden="true">
+            −A
+          </span>
+        </TapButton>
+        <span className="min-w-0 flex-1 text-center text-sm font-semibold text-text-primary">
+          {etiquetaTamanoLetra(zoom.level)}
+        </span>
+        <TapButton
+          type="button"
+          aria-label="Agrandar letra"
+          disabled={zoom.level >= LETRA_ZOOM_MAX_LEVEL}
+          onClick={zoom.onIncrease}
+          className={LECTURA_STEP_BUTTON_CLASS}
+        >
+          <span className="text-[11px] font-bold leading-none text-accent" aria-hidden="true">
+            +A
+          </span>
+        </TapButton>
+      </div>
+    </div>
+  ) : null;
+
+  const videoAfinadorCard =
+    onVideo || onAfinador ? (
+      <div className={`${LECTURA_CARD_CLASS} space-y-2`}>
+        {onVideo ? (
           <TapButton
             type="button"
-            onClick={onOpenNotaGeneral}
-            className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+            onClick={onVideo}
+            aria-label={videoAbierto ? "Cerrar video" : "Ver video"}
+            className={`${LECTURA_BUTTON_CLASS} flex items-center justify-center gap-2`}
           >
-            <NotebookPen
-              className="size-4 shrink-0 text-[var(--accent-entrenador-canciones)]"
-              aria-hidden="true"
-            />
-            Nota de la canción
-            {tieneNotaGeneral ? (
-              <span
-                className="size-1.5 rounded-full bg-[var(--accent-entrenador-canciones)]"
-                aria-hidden="true"
-              />
-            ) : null}
+            <SquarePlay className="size-4 shrink-0 text-accent" aria-hidden="true" />
+            {videoAbierto ? "Cerrar video" : "Video"}
           </TapButton>
         ) : null}
-        {onEdit ? (
+        {onAfinador ? (
           <TapButton
             type="button"
-            onClick={onEdit}
-            className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--accent-entrenador-canciones)] py-2.5 text-sm font-semibold text-[var(--text-on-light)]"
+            onClick={onAfinador}
+            aria-label="Afinador"
+            className={`${LECTURA_BUTTON_CLASS} flex items-center justify-center gap-2`}
           >
-            <Pencil className="size-4 shrink-0" aria-hidden="true" />
-            Editar
+            <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
+            Afinador
           </TapButton>
         ) : null}
       </div>
@@ -152,7 +256,7 @@ export default function CifradoLecturaSidePanel({
     <TapButton
       type="button"
       onClick={onToggleAcordesOcultos}
-      className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+      className={`${LECTURA_BUTTON_CLASS} flex items-center justify-center gap-2`}
     >
       {acordesOcultos ? (
         <Eye className="size-4 shrink-0" aria-hidden="true" />
@@ -163,52 +267,49 @@ export default function CifradoLecturaSidePanel({
     </TapButton>
   );
 
-  return (
-    <aside
-      className="hidden min-h-0 shrink-0 flex-col border-r border-border bg-bg-darker lg:flex"
-      style={{ width: getLecturaPremiumRailWidthCss() }}
-      aria-label="Controles de cifrado premium"
-    >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
-        {temaLectura && onTemaLecturaChange ? (
-          <div className="mb-4 rounded-[10px] border border-border/70 bg-bg-dark/60 px-2.5 py-2">
-            <p className={CIFRADO_NOTACION_LABEL_CLASS}>Tema de lectura</p>
-            <div
-              className={CIFRADO_NOTACION_SEGMENTED_CLASS}
-              role="tablist"
-              aria-label="Tema de lectura"
+  const temaCard =
+    temaLectura && onTemaLecturaChange ? (
+      <div className={LECTURA_CARD_CLASS}>
+        <p className={CIFRADO_NOTACION_LABEL_CLASS}>Tema de lectura</p>
+        <div
+          className={CIFRADO_NOTACION_SEGMENTED_CLASS}
+          role="tablist"
+          aria-label="Tema de lectura"
+        >
+          {(["dia", "sepia", "escenario"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={temaLectura === t}
+              onClick={() => onTemaLecturaChange(t)}
+              className={cifradoNotacionButtonClass(temaLectura === t)}
             >
-              {(["dia", "sepia", "escenario"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  role="tab"
-                  aria-selected={temaLectura === t}
-                  onClick={() => onTemaLecturaChange(t)}
-                  className={cifradoNotacionButtonClass(temaLectura === t)}
-                >
-                  {t === "dia" ? "Día" : t === "sepia" ? "Sepia" : "Escenario"}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mb-4">
-          <CifradoTonalidadFields
-            idPrefix="cifrado-lectura"
-            notacion={notacion === "numero" ? "es" : notacion}
-            tonalidadIndex={tonalidadIndex}
-            modoTonal={modoTonal}
-            showModoTonal={false}
-            showTonalidadStepButtons
-            onTonalidadChange={onTonalidadChange}
-            onModoTonalChange={onModoTonalChange}
-          />
+              {t === "dia" ? "Día" : t === "sepia" ? "Sepia" : "Escenario"}
+            </button>
+          ))}
         </div>
+      </div>
+    ) : null;
 
-        {hasCompases ? (
-          <div className={`${CIFRADO_CONTROLS_PANEL_BOX_CLASS} space-y-3`}>
+  const tonoCard = controlesCifrado ? (
+    <div className={LECTURA_CARD_CLASS}>
+      <CifradoTonalidadFields
+        idPrefix="cifrado-lectura"
+        notacion={notacion === "numero" ? "es" : notacion}
+        tonalidadIndex={tonalidadIndex}
+        modoTonal={modoTonal}
+        showModoTonal={false}
+        showTonalidadStepButtons
+        stepButtonClassName={LECTURA_STEP_BUTTON_CLASS}
+        onTonalidadChange={onTonalidadChange}
+        onModoTonalChange={onModoTonalChange}
+      />
+    </div>
+  ) : null;
+
+  const compasesCard = controlesCifrado && hasCompases ? (
+          <div className={`${LECTURA_CARD_CLASS} space-y-3`}>
             {!compasesOcultos ? (
               <TapButton
                 type="button"
@@ -228,7 +329,7 @@ export default function CifradoLecturaSidePanel({
             <TapButton
               type="button"
               onClick={onToggleCompasesOcultos}
-              className={`${CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+              className={`${LECTURA_BUTTON_CLASS} flex items-center justify-center gap-2`}
             >
               {compasesOcultos ? (
                 <Eye className="size-4 shrink-0" aria-hidden="true" />
@@ -261,7 +362,7 @@ export default function CifradoLecturaSidePanel({
                   <TapButton
                     type="button"
                     onClick={onTapTempo}
-                    className="min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-card px-4 text-xs font-semibold text-text-secondary"
+                    className="min-w-[5.25rem] shrink-0 rounded-[10px] border border-border bg-bg-darker px-4 text-xs font-semibold text-text-secondary"
                   >
                     Tap{tapCount > 0 ? ` (${tapCount})` : ""}
                   </TapButton>
@@ -269,21 +370,80 @@ export default function CifradoLecturaSidePanel({
               </div>
             ) : null}
           </div>
+  ) : null;
+
+  const acordesCard = controlesCifrado ? (
+    <div className={`${LECTURA_CARD_CLASS} space-y-3`}>
+      {ocultarAcordesButton}
+      {anotacionesToggles}
+      <CifradoNotacionToggle
+        notacion={notacion}
+        onChange={onNotacionChange}
+        plain
+      />
+    </div>
+  ) : null;
+
+  const controles = encabezado ? (
+    <>
+      {tonoCard}
+      {zoomCard}
+      {videoAfinadorCard}
+      {temaCard}
+      {compasesCard}
+      {acordesCard}
+      {notaCard}
+    </>
+  ) : (
+    <>
+      {temaCard}
+      {tonoCard}
+      {zoomCard}
+      {videoAfinadorCard}
+      {compasesCard}
+      {acordesCard}
+      {notaCard}
+    </>
+  );
+
+  return (
+    <aside
+      className="hidden min-h-0 shrink-0 flex-col border-r border-border bg-bg-cola-list lg:flex"
+      style={{ width: getLecturaPremiumRailWidthCss() }}
+      aria-label="Controles de lectura"
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {encabezado || onCerrar ? (
+          <div className="sticky top-0 z-10 border-b border-border/50 bg-bg-cola-list px-4 py-3">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">
+                {encabezado ? (
+                  <h2 className="break-words text-[15px] font-bold leading-snug text-text-primary">
+                    {encabezado.nombre}
+                  </h2>
+                ) : null}
+                {encabezado?.artista ? (
+                  <p className="mt-0.5 break-words text-[12px] leading-snug text-text-muted">
+                    {encabezado.artista}
+                  </p>
+                ) : null}
+              </div>
+              {onCerrar ? (
+                <TapButton
+                  type="button"
+                  aria-label="Contraer"
+                  onClick={onCerrar}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-text-primary"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </TapButton>
+              ) : null}
+            </div>
+          </div>
         ) : null}
-
-        <div className="mt-3">{ocultarAcordesButton}</div>
-
-        {anotacionesToggles}
-
-        <div className="mt-3">
-          <CifradoNotacionToggle
-            notacion={notacion}
-            onChange={onNotacionChange}
-          />
-        </div>
-
-        {accionesLectura}
+        <div className="flex flex-col gap-2 px-3 py-3">{controles}</div>
       </div>
+      {editarFooter}
     </aside>
   );
 }
@@ -291,7 +451,7 @@ export default function CifradoLecturaSidePanel({
 export function CifradoLecturaSidePanelEmpty() {
   return (
     <aside
-      className="hidden min-h-0 shrink-0 border-r border-border bg-bg-darker lg:block"
+      className="hidden min-h-0 shrink-0 border-r border-border bg-bg-cola-list lg:block"
       style={{ width: getLecturaPremiumRailWidthCss() }}
       aria-hidden="true"
     />

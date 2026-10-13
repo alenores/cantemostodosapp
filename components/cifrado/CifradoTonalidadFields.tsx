@@ -21,6 +21,7 @@ export type CifradoTonalidadFieldsProps = {
   layout?: "stacked" | "inline";
   showModoTonal?: boolean;
   showTonalidadStepButtons?: boolean;
+  stepButtonClassName?: string;
   fieldLabelClassName?: string;
   /** Sin valor elegido, el botón muestra «Elegí…» (siempre activo con la lista propia). */
   requireSelection?: boolean;
@@ -37,6 +38,7 @@ export function CifradoTonalidadFields({
   layout = "stacked",
   showModoTonal = true,
   showTonalidadStepButtons = false,
+  stepButtonClassName = "flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-card text-text-primary disabled:opacity-50",
   fieldLabelClassName = CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
   inputClassName = CIFRADO_CONTROLS_INPUT_CLASS,
   onTonalidadChange,
@@ -50,11 +52,17 @@ export function CifradoTonalidadFields({
   const containerClassName =
     layout === "inline"
       ? "flex flex-wrap items-end gap-3"
-      : "grid grid-cols-1 gap-3 sm:grid-cols-2";
+      : showModoTonal
+        ? "grid grid-cols-1 gap-3 sm:grid-cols-2"
+        : "flex flex-col gap-3";
+
+  const tonalidadSelectClassName = showTonalidadStepButtons
+    ? `${inputClassName} !min-h-10 min-w-0 flex-1 !px-2 !text-center !text-base !font-semibold`
+    : selectClassName;
 
   return (
     <div className={containerClassName}>
-      <div>
+      <div className={showTonalidadStepButtons ? "min-w-0" : undefined}>
         <label htmlFor={`${idPrefix}-tonalidad`}>
           <span className={fieldLabelClassName}>Tono</span>
         </label>
@@ -69,7 +77,7 @@ export function CifradoTonalidadFields({
                   onTonalidadChange(normalizeNotaIndex(tonalidadIndex - 1));
                 }
               }}
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-card text-text-primary disabled:opacity-50"
+              className={stepButtonClassName}
             >
               <ChevronDown className="size-4" aria-hidden="true" />
             </TapButton>
@@ -84,8 +92,13 @@ export function CifradoTonalidadFields({
               label: getNotaLabel(index, notacion),
             }))}
             onChange={onTonalidadChange}
-            className={selectClassName}
-            style={showTonalidadStepButtons ? { width: "auto", minWidth: 0, flex: 1 } : undefined}
+            hideChevron={showTonalidadStepButtons}
+            className={tonalidadSelectClassName}
+            style={
+              showTonalidadStepButtons
+                ? { width: "auto", minWidth: "4.5rem", flex: 1 }
+                : undefined
+            }
           />
           {showTonalidadStepButtons ? (
             <TapButton
@@ -97,7 +110,7 @@ export function CifradoTonalidadFields({
                   onTonalidadChange(normalizeNotaIndex(tonalidadIndex + 1));
                 }
               }}
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-card text-text-primary disabled:opacity-50"
+              className={stepButtonClassName}
             >
               <ChevronUp className="size-4" aria-hidden="true" />
             </TapButton>

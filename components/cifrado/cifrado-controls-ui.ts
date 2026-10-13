@@ -92,13 +92,6 @@ export const CIFRADO_EDITOR_COMPAS_PANEL_CLASS =
 export const CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS =
   "rounded-[10px] border border-border/70 bg-bg-card/90 px-3 py-2.5";
 
-/** Toolbar de escritorio (alineado a Compositor / Práctica). */
-export const CIFRADO_EDITOR_PC_TOOLBAR_SHELL_CLASS =
-  "shrink-0 border-b border-border/80 bg-bg-darker";
-
-export const CIFRADO_EDITOR_PC_COMPAS_STRIP_CLASS =
-  "border-t border-border/60 bg-bg-darker px-4 py-3";
-
 export const CIFRADO_EDITOR_PC_LABEL_CLASS =
   "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-text-secondary";
 

@@ -1,9 +1,9 @@
 "use client";
 
 import CancioneroLecturaListaPanel from "@/components/cancionero/CancioneroLecturaListaPanel";
+import CifradoLecturaSidePanel from "@/components/cifrado/CifradoLecturaSidePanel";
 import LetraCifradoLecturaShell from "@/components/cifrado/LetraCifradoLecturaShell";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
-import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import { buildCancioneroLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
@@ -21,6 +21,7 @@ import { useVideoLectura } from "@/hooks/useVideoLectura";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useModoLecturaCocina } from "@/hooks/useModoLecturaCocina";
+import { DEFAULT_MODO_TONAL } from "@/lib/cifrado-escala";
 import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
   getLecturaFabMenuTopCss,
@@ -121,6 +122,18 @@ export default function CancioneroModoLectura({
   const letraZoomStyle = getLetraZoomStyle(zoom.factor);
   const scrollEndPadding = getLetraTextScrollEndPadding();
   const lecturaZoomEligible = showCifradoAvanzado || Boolean(textoPlano);
+  const lecturaEncabezado = {
+    nombre: cancion.nombre,
+    artista: cancion.artista,
+  };
+  const lecturaZoomPanel = lecturaZoomEligible
+    ? {
+        level: zoom.level,
+        onDecrease: zoom.decrease,
+        onIncrease: zoom.increase,
+      }
+    : undefined;
+  const abrirVideo = video.abierto ? video.cerrar : video.abrir;
 
   useEffect(() => {
     setPortalMounted(true);
@@ -218,9 +231,40 @@ export default function CancioneroModoLectura({
               onTonalidadStateChange={handleLecturaTonalidadStateChange}
               temaLectura={temaLectura}
               onTemaLecturaChange={cambiarTemaLectura}
+              encabezado={lecturaEncabezado}
+              onCerrar={onContraer}
+              zoom={lecturaZoomPanel}
+              onVideo={abrirVideo}
+              videoAbierto={video.abierto}
+              onAfinador={() => setAfinadorOpen(true)}
             />
           ) : (
-            <div className="relative h-full min-h-0 w-full overflow-hidden">
+            <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col lg:flex-row">
+              <CifradoLecturaSidePanel
+                controlesCifrado={false}
+                playing={false}
+                canPlay={false}
+                notacion="es"
+                tonalidadIndex={0}
+                modoTonal={DEFAULT_MODO_TONAL}
+                bpm={120}
+                tapCount={0}
+                onTogglePlayback={() => {}}
+                onNotacionChange={() => {}}
+                onTonalidadChange={() => {}}
+                onModoTonalChange={() => {}}
+                onBpmChange={() => {}}
+                onTapTempo={() => {}}
+                encabezado={lecturaEncabezado}
+                onCerrar={onContraer}
+                zoom={lecturaZoomPanel}
+                onVideo={abrirVideo}
+                videoAbierto={video.abierto}
+                onAfinador={() => setAfinadorOpen(true)}
+                temaLectura={temaLectura}
+                onTemaLecturaChange={cambiarTemaLectura}
+              />
+            <div className="relative h-full min-h-0 min-w-0 w-full flex-1 overflow-hidden">
               <div
                 ref={letraScrollRef}
                 data-cancionero-letra-scroll=""
@@ -251,6 +295,7 @@ export default function CancioneroModoLectura({
                 )}
               </div>
             </div>
+            </div>
           )}
         </div>
 
@@ -260,13 +305,6 @@ export default function CancioneroModoLectura({
           onSelectCancion={onSelectCancion}
         />
       </div>
-
-      <LecturaPcTopChrome
-        fixedRightCss={lecturaFixedRightCss}
-        onContraer={onContraer}
-        onAfinador={() => setAfinadorOpen(true)}
-        onVideo={video.abrir}
-      />
 
       <TapButton
         type="button"
@@ -378,6 +416,7 @@ export default function CancioneroModoLectura({
         fixedRightCss={lecturaFixedRightCss}
         onAutoScrollAccelerate={autoScroll.accelerate}
         onAutoScrollDecelerate={autoScroll.decelerate}
+        showDesktopZoom={false}
       />
 
       <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />

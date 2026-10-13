@@ -326,7 +326,46 @@ type AnotacionPickerHostProps = {
   onClose: () => void;
   onSubmit: (partial: AnotacionSubmit) => void;
   onDelete: () => void;
+  /** En la columna izquierda de PC, sin ventana flotante. */
+  inline?: boolean;
 };
+
+function PickerChrome({
+  inline,
+  title,
+  onClose,
+  children,
+}: {
+  inline?: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (inline) {
+    return (
+      <div className="flex min-h-0 flex-col">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="min-w-0 text-sm font-bold text-text-primary">{title}</p>
+          <TapButton
+            type="button"
+            aria-label="Volver"
+            onClick={onClose}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-dark"
+          >
+            <X className="size-4 text-text-primary" aria-hidden="true" />
+          </TapButton>
+        </div>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <ModalShell title={title} onClose={onClose}>
+      {children}
+    </ModalShell>
+  );
+}
 
 /** Renderiza el picker correcto según el tipo del borrador. */
 export function AnotacionPickerHost({
@@ -334,6 +373,7 @@ export function AnotacionPickerHost({
   onClose,
   onSubmit,
   onDelete,
+  inline = false,
 }: AnotacionPickerHostProps) {
   const [texto, setTexto] = useState(draft.texto ?? "");
   const [color] = useState<ExigenciaColor>(draft.color ?? "amarillo");
@@ -345,8 +385,10 @@ export function AnotacionPickerHost({
     const title = esTexto ? "Texto corto" : "Nota del renglón";
 
     return (
-      <ModalShell title={title} onClose={onClose}>
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
+      <PickerChrome inline={inline} title={title} onClose={onClose}>
+        <div
+          className={`flex min-h-0 flex-1 flex-col gap-3 ${inline ? "" : "px-4 py-4"}`}
+        >
           {esTexto ? (
             <input
               autoFocus
@@ -395,14 +437,16 @@ export function AnotacionPickerHost({
             </TapButton>
           </div>
         </div>
-      </ModalShell>
+      </PickerChrome>
     );
   }
 
   if (draft.tipo === "intensidad") {
     return (
-      <ModalShell title="Intensidad" onClose={onClose}>
-        <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-4">
+      <PickerChrome inline={inline} title="Intensidad" onClose={onClose}>
+        <div
+          className={`flex min-h-0 flex-1 flex-col gap-2 ${inline ? "" : "px-4 py-4"}`}
+        >
           {INTENSIDAD_NIVELES.map((nivel) => (
             <TapButton
               key={nivel}
@@ -430,14 +474,16 @@ export function AnotacionPickerHost({
             </TapButton>
           ) : null}
         </div>
-      </ModalShell>
+      </PickerChrome>
     );
   }
 
   if (draft.tipo === "exigencia") {
     return (
-      <ModalShell title="Exigencia" onClose={onClose}>
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
+      <PickerChrome inline={inline} title="Exigencia" onClose={onClose}>
+        <div
+          className={`flex min-h-0 flex-1 flex-col gap-3 ${inline ? "" : "px-4 py-4"}`}
+        >
           <p className="text-sm text-text-secondary">
             Tocá un color para aplicarlo a este tramo de la letra.
           </p>
@@ -482,14 +528,14 @@ export function AnotacionPickerHost({
             </TapButton>
           ) : null}
         </div>
-      </ModalShell>
+      </PickerChrome>
     );
   }
 
   // respirar (solo edición → quitar)
   return (
-    <ModalShell title="Respiración" onClose={onClose}>
-      <div className="flex flex-col gap-3 px-4 py-4">
+    <PickerChrome inline={inline} title="Respiración" onClose={onClose}>
+      <div className={`flex flex-col gap-3 ${inline ? "" : "px-4 py-4"}`}>
         <p className="text-sm text-text-secondary">
           Marca de respiración en este punto del renglón.
         </p>
@@ -502,7 +548,7 @@ export function AnotacionPickerHost({
           Quitar respiración
         </TapButton>
       </div>
-    </ModalShell>
+    </PickerChrome>
   );
 }
 
@@ -521,6 +567,51 @@ const TIPO_MENU_HINT: Record<AnotacionTipo, string> = {
   respirar: "Marca de respiración",
   exigencia: "Resaltar un tramo",
 };
+
+/** Lista fija de marcas de canto, para la columna izquierda en PC. */
+export function AnotacionTipoChoices({
+  selected,
+  onSelect,
+}: {
+  selected: AnotacionTipo | null;
+  onSelect: (tipo: AnotacionTipo) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1" role="listbox" aria-label="Marcas de canto">
+      {ANOTACION_TIPOS.map((tipo) => {
+        const Icon = TIPO_MENU_ICON[tipo];
+        const activo = selected === tipo;
+
+        return (
+          <TapButton
+            key={tipo}
+            type="button"
+            role="option"
+            aria-selected={activo}
+            onClick={() => onSelect(tipo)}
+            className={`flex w-full items-center gap-2.5 rounded-[10px] px-2 py-2 text-left ${
+              activo
+                ? "bg-[var(--accent-entrenador-canciones-dim)] ring-1 ring-[var(--accent-entrenador-canciones)]"
+                : "hover:bg-bg-card"
+            }`}
+          >
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent-entrenador-canciones-dim)] text-[var(--accent-entrenador-canciones)]">
+              <Icon className="size-4" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold leading-tight text-text-primary">
+                {ANOTACION_TIPO_LABEL[tipo]}
+              </span>
+              <span className="block text-[11px] leading-tight text-text-muted">
+                {TIPO_MENU_HINT[tipo]}
+              </span>
+            </span>
+          </TapButton>
+        );
+      })}
+    </div>
+  );
+}
 
 type AnotacionTipoMenuProps = {
   x: number;

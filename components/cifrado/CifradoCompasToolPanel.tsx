@@ -51,7 +51,7 @@ type CifradoCompasToolPanelProps = {
   placementCycleCount: number;
   onPlacementCycleCountChange: (count: number) => void;
   onApplyCyclesToAllLines: () => void;
-  variant?: "mobile" | "desktop";
+  variant?: "mobile" | "desktop" | "rail";
   showSavedCycles?: boolean;
 };
 
@@ -64,6 +64,7 @@ function ComponerCycleControls({
   onClearIntensidadSelection,
   sectionLabelClass,
   fluidIntensidad = false,
+  stacked = false,
   className = "",
 }: Pick<
   CifradoCompasToolPanelProps,
@@ -73,17 +74,26 @@ function ComponerCycleControls({
   | "onCycleIntensidadSlot"
   | "showClearIntensidadSelection"
   | "onClearIntensidadSelection"
-> & { sectionLabelClass: string; fluidIntensidad?: boolean; className?: string }) {
+> & {
+  sectionLabelClass: string;
+  fluidIntensidad?: boolean;
+  stacked?: boolean;
+  className?: string;
+}) {
   return (
     <div className={`${CIFRADO_EDITOR_CYCLE_TOOL_BOX_CLASS} ${className}`.trim()}>
-      <div className="flex min-w-0 items-end gap-x-5">
+      <div
+        className={
+          stacked ? "flex flex-col gap-3" : "flex min-w-0 items-end gap-x-5"
+        }
+      >
         <CifradoCompasTypeStepper
           cycleGolpes={cycleGolpes}
           onCycleGolpesChange={onCycleGolpesChange}
           labelClass={sectionLabelClass}
         />
 
-        <div className={fluidIntensidad ? "min-w-0 flex-1" : "shrink-0"}>
+        <div className={stacked || fluidIntensidad ? "min-w-0 w-full" : "shrink-0"}>
           <p className={sectionLabelClass}>{RITMO_LABEL_INTENSIDAD}</p>
           <div className="mt-1.5 min-w-0">
             <CifradoIntensidadPatternRow
@@ -91,7 +101,7 @@ function ComponerCycleControls({
               onCycleSlot={onCycleIntensidadSlot}
               showClearSelection={showClearIntensidadSelection}
               onClearSelection={onClearIntensidadSelection}
-              fluid={fluidIntensidad}
+              fluid={Boolean(stacked || fluidIntensidad)}
             />
           </div>
         </div>
@@ -281,6 +291,61 @@ function PlacementCycleControls({
     );
   }
 
+  if (variant === "rail") {
+    return (
+      <div className="space-y-2 border-t border-dashed border-border/90 pt-3">
+        <div>
+          <p className={labelClass}>{CIFRADO_LABEL_APLICAR_NUMERO_CICLOS}</p>
+          <div className="mt-1.5">
+            <ToolNumericStepper
+              value={placementCycleCount}
+              density="compact"
+              decrementDisabled={placementCycleCount <= 1}
+              incrementDisabled={
+                placementCycleCount >= MAX_COMPAS_PLACEMENT_CYCLE_COUNT
+              }
+              decrementAriaLabel="Reducir ciclos"
+              incrementAriaLabel="Aumentar ciclos"
+              inputId="cifrado-placement-cycle-count"
+              min={1}
+              max={MAX_COMPAS_PLACEMENT_CYCLE_COUNT}
+              accentVar="--accent-editor"
+              onDecrement={() =>
+                onPlacementCycleCountChange(Math.max(1, placementCycleCount - 1))
+              }
+              onIncrement={() =>
+                onPlacementCycleCountChange(
+                  Math.min(
+                    MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
+                    placementCycleCount + 1,
+                  ),
+                )
+              }
+              onSetValue={(value) =>
+                onPlacementCycleCountChange(
+                  Math.min(
+                    MAX_COMPAS_PLACEMENT_CYCLE_COUNT,
+                    Math.max(1, value),
+                  ),
+                )
+              }
+            />
+          </div>
+        </div>
+        <p className="text-[11px] leading-snug text-text-muted">
+          {CIFRADO_HELP_APLICAR_NUMERO_CICLOS}
+        </p>
+        <TapButton
+          type="button"
+          onClick={onApplyCyclesToAllLines}
+          className="w-full rounded-[10px] border border-border bg-bg-card px-3 py-2 text-xs font-semibold text-text-secondary hover:bg-bg-dark/60"
+        >
+          {CIFRADO_LABEL_APLICAR_CICLOS_TODOS_RENGLONES}
+        </TapButton>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2 border-t border-dashed border-border/90 pt-2">
       <label className="block" htmlFor="cifrado-placement-cycle-count">
@@ -425,6 +490,8 @@ export function CifradoCompasToolPanel({
           showClearIntensidadSelection={showClearIntensidadSelection}
           onClearIntensidadSelection={onClearIntensidadSelection}
           sectionLabelClass={CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS}
+          stacked={variant === "rail"}
+          fluidIntensidad={variant === "rail"}
         />
       )}
 

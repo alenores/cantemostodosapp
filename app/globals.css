@@ -13,6 +13,8 @@
   --bg-card: #252525;
   /* Fondo claro del panel lateral (editor y entrenador de canciones) */
   --bg-panel-claro: #e6e4e4;
+  /* Barra del título, un paso más oscura para separarla del resto del panel. */
+  --bg-panel-claro-titulo: #d8d6d6;
   --nav-selected: rgba(255, 255, 255, 0.06);
   --bg-card-hover: #2a2018;
   --bg-cola-sheet: #383838;
@@ -1708,6 +1710,10 @@ html.splash-active body {
     max-width: 100%;
   }
 
+  body[data-editor-herramientas="true"] .app-sidebar {
+    visibility: hidden;
+  }
+
   .sala-cantar-main:not(.overflow-hidden) {
     min-height: 0;
   }
@@ -1898,99 +1904,6 @@ html.splash-active body {
   color: var(--hub-accent);
 }
 
-/* Cancionero: tarjeta de papel blanco, con la partitura en negro. */
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent] {
-  --hub-accent: #1c1c1e;
-  --hub-accent-dim: rgba(28, 28, 30, 0.08);
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, #fffdf8 0%, #f4efe4 52%, #e4d9c8 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.12) 28%, rgba(0, 0, 0, 0.5) 100%) border-box;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 0 rgba(0, 0, 0, 0.35),
-    0 10px 16px rgba(0, 0, 0, 0.42);
-  overflow: hidden;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent]::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: url("/fondo-inicio.webp?v=3") center 18% / 145% auto no-repeat;
-  opacity: 0.78;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  border-radius: inherit;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.22);
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent]:not([data-hub-accent="novedades"]) .hub-module-card__label {
-  width: fit-content;
-  border-radius: 8px;
-  background: #6a6a70;
-  padding: 3px 10px;
-  color: #fff;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent] .hub-module-card__cta--soft {
-  background: #6a6a70;
-  color: #fff;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent] .hub-module-card__icon {
-  color: color-mix(in srgb, var(--hub-icon, #1c1c1e) 88%, #3a3a3e);
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent] .hub-module-card__icon-wrap {
-  background: color-mix(in srgb, var(--hub-icon, #1c1c1e) 16%, #fffdf8);
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent]:nth-child(2)::before {
-  background-position: center 45%;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent]:nth-child(3)::before {
-  background-position: center 72%;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent] > * {
-  position: relative;
-  z-index: 2;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"] {
-  --hub-accent: #f5f5f7;
-  background:
-    linear-gradient(180deg, #5c3232 0%, #3c2224 58%, #2a181a 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 170, 160, 0.75) 0%, rgba(255, 255, 255, 0.08) 32%, rgba(0, 0, 0, 0.55) 100%) border-box;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"]::before {
-  filter: invert(1);
-  opacity: 0.08;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon {
-  color: #ff8f84;
-}
-
-.cancionero-hub-sobrio > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon-wrap {
-  background: rgba(232, 93, 74, 0.28);
-}
-
 .hub-module-card__aviso {
   background: #e85d4a;
   box-shadow: 0 0 0 2px #3a2224;
@@ -2053,6 +1966,20 @@ html.splash-active body {
 .practica-hub-claro > .hub-module-card[data-hub-accent="entrenador-canciones"] .hub-module-card__icon {
   color: var(--accent-vocal);
   fill: currentColor;
+}
+
+.practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] {
+  background:
+    linear-gradient(180deg, #5c3232 0%, #3c2224 58%, #2a181a 100%) padding-box,
+    linear-gradient(180deg, rgba(255, 170, 160, 0.75) 0%, rgba(255, 255, 255, 0.08) 32%, rgba(0, 0, 0, 0.55) 100%) border-box;
+}
+
+.practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] p {
+  color: #f5f5f7;
+}
+
+.practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon {
+  color: #ff8f84;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__cta {

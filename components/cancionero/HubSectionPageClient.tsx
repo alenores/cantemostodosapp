@@ -17,8 +17,6 @@ import {
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { getActiveUserId } from "@/lib/auth/offline-user";
 import { createClient } from "@/lib/supabase/client";
-import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
-import { CANCIONERO_SYNC_EVENT } from "@/lib/offline/cancionero-events";
 import type { UsuarioActivo } from "@/types";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
@@ -34,8 +32,6 @@ type HubSection = "practica" | "canciones";
 type HubSectionPageClientProps = {
   usuario: UsuarioActivo;
   section: HubSection;
-  globalCountInicial?: number;
-  favoritasCountInicial?: number;
   isOwner?: boolean;
 };
 
@@ -52,8 +48,6 @@ function scheduleIdle(callback: () => void): () => void {
 export default function HubSectionPageClient({
   usuario,
   section,
-  globalCountInicial = 0,
-  favoritasCountInicial = 0,
   isOwner = false,
 }: HubSectionPageClientProps) {
   const pathname = usePathname();
@@ -63,8 +57,6 @@ export default function HubSectionPageClient({
   const puedeCrear = puedeSumarCanciones(categoria);
   const novedades = useCancioneroNovedades();
   const isDesktop = useIsDesktop();
-  const [globalCount, setGlobalCount] = useState(globalCountInicial);
-  const [favoritasCount, setFavoritasCount] = useState(favoritasCountInicial);
   const [afinadorOpen, setAfinadorOpen] = useState(false);
   const [metronomoOpen, setMetronomoOpen] = useState(false);
   const [vozOpen, setVozOpen] = useState(false);
@@ -91,44 +83,6 @@ export default function HubSectionPageClient({
     section === "practica"
       ? HUB_SECTION_PRACTICA_LABEL
       : HUB_DESTINATION_CANCIONERO_LABEL;
-
-  const refreshGlobalCount = useCallback(async () => {
-    const canciones = await getCancioneroLocalAsCancionero();
-    setGlobalCount(canciones.length);
-  }, []);
-
-  useEffect(() => {
-    if (section !== "canciones") {
-      return;
-    }
-
-    if (online) {
-      setGlobalCount(globalCountInicial);
-      return;
-    }
-
-    void refreshGlobalCount();
-  }, [globalCountInicial, online, refreshGlobalCount, section]);
-
-  useEffect(() => {
-    setFavoritasCount(favoritasCountInicial);
-  }, [favoritasCountInicial]);
-
-  useEffect(() => {
-    if (section !== "canciones") {
-      return;
-    }
-
-    function handleSyncFinished() {
-      void refreshGlobalCount();
-    }
-
-    window.addEventListener(CANCIONERO_SYNC_EVENT, handleSyncFinished);
-
-    return () => {
-      window.removeEventListener(CANCIONERO_SYNC_EVENT, handleSyncFinished);
-    };
-  }, [refreshGlobalCount, section]);
 
   useEffect(() => {
     return scheduleIdle(() => {
@@ -233,41 +187,9 @@ export default function HubSectionPageClient({
     }
   }
 
-  function iconoCancionero(moduleId: string) {
-    if (section !== "canciones") return undefined;
-    if (moduleId === "cancionero") return "var(--tuner-cerca)";
-    if (moduleId === "mis-canciones") return "var(--tuner-in-tune)";
-    if (moduleId === "sumar-cancion") return "var(--accent-editor)";
-    return undefined;
-  }
-
   function renderModuleCard(
     module: (typeof CANCIONERO_HUB_MODULES)[number],
   ) {
-    const ctaToneClass =
-      module.ctaTextTone === "white"
-        ? "hub-module-card__cta--text-white"
-        : module.ctaTextTone === "on-light"
-          ? "hub-module-card__cta--text-on-light"
-          : "hub-module-card__cta--text-accent";
-
-    const ctaModeClass =
-      module.ctaMode === "soft"
-        ? "hub-module-card__cta--soft"
-        : "hub-module-card__cta--solid";
-
-    const ctaClassName = `hub-module-card__cta ${ctaModeClass} ${ctaToneClass}`;
-
-    const muestraVer = module.id === "cancionero" || module.id === "mis-canciones";
-    const ctaContent = muestraVer ? (
-      <div className={ctaClassName}>
-        <span>{module.ctaLabel} </span>
-        <span className="opacity-70">
-          ({module.id === "cancionero" ? globalCount : favoritasCount})
-        </span>
-      </div>
-    ) : undefined;
-
     return (
       <HubModuleCard
         key={module.id}
@@ -280,19 +202,18 @@ export default function HubSectionPageClient({
         disabled={module.id === "sumar-cancion" && !online}
         badge={module.comingSoon ? "Próx." : undefined}
         iconColor={
-          section === "practica"
-            ? module.id === "entrenador-canciones"
-              ? "var(--accent-vocal)"
-              : module.iconColor
-            : iconoCancionero(module.id)
+          section === "practica" && module.id === "entrenador-canciones"
+            ? "var(--accent-vocal)"
+            : section === "practica"
+              ? module.iconColor
+              : undefined
         }
-        cta={ctaContent}
       />
     );
   }
 
   return (
-    <div className={`relative flex min-h-full flex-1 flex-col ${section === "practica" ? "practica-hub" : "bg-bg-app"}`}>
+    <div className={`relative flex min-h-full flex-1 flex-col ${section === "practica" || section === "canciones" ? "practica-hub" : "bg-bg-app"}`}>
       <AppReadyMarker />
 
       {!isDesktop ? (
@@ -305,7 +226,7 @@ export default function HubSectionPageClient({
               {sectionLabel}
             </h2>
 
-            <div className={`app-hub-grid${section === "canciones" ? " cancionero-hub-sobrio" : ""}${section === "practica" ? " practica-hub-claro" : ""}`}>
+            <div className={`app-hub-grid${section === "canciones" || section === "practica" ? " practica-hub-claro" : ""}`}>
               {visibleModules.map((module) => renderModuleCard(module))}
               {section === "canciones" && novedades.count > 0 ? (
                 <HubModuleCard moduleId="novedades" label="Novedades" icon={Bell}

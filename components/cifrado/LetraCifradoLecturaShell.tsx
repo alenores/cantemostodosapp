@@ -9,6 +9,7 @@ import type {
   AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
 import type { NotaIndex } from "@/lib/cifrado";
+import type { LetraZoomLevel } from "@/lib/letra-zoom";
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 import type { CancionCifradoDetalle } from "@/types";
 import { useEffect, type CSSProperties, type RefObject } from "react";
@@ -51,6 +52,19 @@ type LetraCifradoLecturaShellProps = {
   onEdit?: () => void;
   temaLectura?: "dia" | "sepia" | "escenario";
   onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
+  encabezado?: {
+    nombre: string;
+    artista?: string | null;
+  };
+  onCerrar?: () => void;
+  zoom?: {
+    level: LetraZoomLevel;
+    onDecrease: () => void;
+    onIncrease: () => void;
+  };
+  onVideo?: () => void;
+  videoAbierto?: boolean;
+  onAfinador?: () => void;
 };
 
 export default function LetraCifradoLecturaShell({
@@ -75,6 +89,12 @@ export default function LetraCifradoLecturaShell({
   onEdit,
   temaLectura,
   onTemaLecturaChange,
+  encabezado,
+  onCerrar,
+  zoom,
+  onVideo,
+  videoAbierto = false,
+  onAfinador,
 }: LetraCifradoLecturaShellProps) {
   const compasConfig = detalle.compas_config;
   const hasCompases = Boolean(compasConfig?.barras?.length);
@@ -183,6 +203,12 @@ export default function LetraCifradoLecturaShell({
         onEdit={onEdit}
         temaLectura={temaLectura}
         onTemaLecturaChange={onTemaLecturaChange}
+        encabezado={encabezado}
+        onCerrar={onCerrar}
+        zoom={zoom}
+        onVideo={onVideo}
+        videoAbierto={videoAbierto}
+        onAfinador={onAfinador}
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-r-[12px]">

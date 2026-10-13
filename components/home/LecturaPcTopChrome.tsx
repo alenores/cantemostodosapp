@@ -9,7 +9,8 @@ type LecturaPcTopChromeProps = {
   fixedRightCss: string;
   /** Si se omite, no se muestra "Contraer" (p. ej. entrenador usa su flecha). */
   onContraer?: () => void;
-  onAfinador: () => void;
+  /** Si se omite, el afinador vive en otro lado (panel izquierdo). */
+  onAfinador?: () => void;
   /** Solo si la canción tiene video y hay conexión. */
   onVideo?: () => void;
 };
@@ -40,15 +41,17 @@ export default function LecturaPcTopChrome({
           <span className="text-text-primary">Contraer</span>
         </TapButton>
       ) : null}
-      <TapButton
-        type="button"
-        aria-label="Afinador"
-        onClick={onAfinador}
-        className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
-      >
-        <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
-        <span className="text-text-primary">Afinador</span>
-      </TapButton>
+      {onAfinador ? (
+        <TapButton
+          type="button"
+          aria-label="Afinador"
+          onClick={onAfinador}
+          className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${LECTURA_TOP_CHIP}`}
+        >
+          <AudioLines className="size-4 shrink-0 text-accent" aria-hidden="true" />
+          <span className="text-text-primary">Afinador</span>
+        </TapButton>
+      ) : null}
       {onVideo ? (
         <TapButton
           type="button"

@@ -22,6 +22,8 @@ type AppSelectProps<T extends string | number> = {
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  /** Oculta la flecha del botón. Sirve cuando al lado ya hay flechas para subir y bajar. */
+  hideChevron?: boolean;
   "aria-label"?: string;
 };
 
@@ -36,6 +38,7 @@ export default function AppSelect<T extends string | number>({
   disabled = false,
   className = "",
   style,
+  hideChevron = false,
   "aria-label": ariaLabel,
 }: AppSelectProps<T>) {
   const [open, setOpen] = useState(false);
@@ -60,13 +63,21 @@ export default function AppSelect<T extends string | number>({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className={`flex items-center justify-between gap-2 text-left disabled:opacity-50 ${className}`.trim()}
+        className={`flex items-center gap-2 text-left disabled:opacity-50 ${
+          hideChevron ? "justify-center" : "justify-between"
+        } ${className}`.trim()}
         style={style}
       >
-        <span className={`min-w-0 truncate ${selected ? "" : "text-white/85"}`}>
+        <span
+          className={`min-w-0 truncate ${hideChevron ? "text-center" : ""} ${
+            selected ? "" : "text-white/85"
+          }`}
+        >
           {selected ? selected.label : placeholder}
         </span>
-        <ChevronDown className="size-4 shrink-0 text-white/70" aria-hidden="true" />
+        {hideChevron ? null : (
+          <ChevronDown className="size-4 shrink-0 text-white/70" aria-hidden="true" />
+        )}
       </button>
 
       {open

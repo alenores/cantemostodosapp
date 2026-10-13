@@ -148,6 +148,11 @@ type CifradoEditorMobileProps = {
   onPersist?: CifradoEditorPersistFn;
   onSaved?: (result?: CifradoSaveResult) => void;
   anotaciones?: AnotacionesControl | null;
+  /**
+   * Avisa si el nombre ya está en el cancionero.
+   * En el entrenador no aplica: esa lista es otra.
+   */
+  avisarCancionRepetida?: boolean;
 };
 
 /**
@@ -167,6 +172,7 @@ export default function CifradoEditorMobile({
   onPersist,
   onSaved,
   anotaciones,
+  avisarCancionRepetida = true,
 }: CifradoEditorMobileProps = {}) {
   const basicSongsTabVisible = showBasicSongsTab ?? !onPersist;
   const tabCompacta = onElegirCancionero
@@ -1454,11 +1460,13 @@ export default function CifradoEditorMobile({
                     className={CIFRADO_CONTROLS_INPUT_CLASS}
                     placeholder="Nombre de la canción"
                   />
-                  <CancionRepetidaAviso
-                    nombre={nombre}
-                    artista={artista}
-                    excluirId={excluirRepetidaId}
-                  />
+                  {avisarCancionRepetida ? (
+                    <CancionRepetidaAviso
+                      nombre={nombre}
+                      artista={artista}
+                      excluirId={excluirRepetidaId}
+                    />
+                  ) : null}
                   <IntercambiarNombreArtista
                     disabled={!nombre.trim() && !artista.trim()}
                     onIntercambiar={() => {
@@ -1747,6 +1755,7 @@ export default function CifradoEditorMobile({
         candidates={tonalidadInferResult?.candidates ?? []}
         multipleTonalidades={tonalidadInferResult?.multipleTonalidades ?? false}
         notacion="es"
+        avisarCancionRepetida={avisarCancionRepetida}
         zIndex={70}
         onConfirm={handleConfirmPasteIngreso}
         onDismiss={() => setPasteProposeOpen(false)}
@@ -1832,11 +1841,13 @@ export default function CifradoEditorMobile({
                   className={CIFRADO_CONTROLS_INPUT_CLASS}
                   placeholder="Nombre de la canción"
                 />
-                <CancionRepetidaAviso
-                  nombre={nombre}
-                  artista={artista}
-                  excluirId={excluirRepetidaId}
-                />
+                {avisarCancionRepetida ? (
+                  <CancionRepetidaAviso
+                    nombre={nombre}
+                    artista={artista}
+                    excluirId={excluirRepetidaId}
+                  />
+                ) : null}
                 <label
                   className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-3`}
                   htmlFor="cifrado-mobile-cfg-artista"

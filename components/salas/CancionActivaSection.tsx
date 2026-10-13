@@ -1,5 +1,6 @@
 "use client";
 
+import CifradoLecturaSidePanel from "@/components/cifrado/CifradoLecturaSidePanel";
 import LetraCifradoLecturaShell, {
   type LecturaCompasPlaybackState,
   type LecturaTonalidadState,
@@ -45,7 +46,8 @@ import {
   LECTURA_AUTO_SCROLL_BOTTOM_PX,
   LECTURA_TOP_CHROME_SIDE_PX,
 } from "@/lib/sala-layout";
-import { getLetraZoomStyle } from "@/lib/letra-zoom";
+import { DEFAULT_MODO_TONAL } from "@/lib/cifrado-escala";
+import { getLetraZoomStyle, type LetraZoomLevel } from "@/lib/letra-zoom";
 import {
   useEffect,
   useMemo,
@@ -210,6 +212,15 @@ type CancionActivaSectionProps = {
   ) => void;
   temaLectura?: "dia" | "sepia" | "escenario";
   onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
+  onCerrarLectura?: () => void;
+  lecturaZoom?: {
+    level: LetraZoomLevel;
+    onDecrease: () => void;
+    onIncrease: () => void;
+  };
+  onAfinadorLectura?: () => void;
+  onVideoLectura?: () => void;
+  videoLecturaAbierto?: boolean;
 };
 
 function LetraEmptySheet({
@@ -272,6 +283,11 @@ export default function CancionActivaSection({
   onLecturaTonalidadStateChange,
   temaLectura,
   onTemaLecturaChange,
+  onCerrarLectura,
+  lecturaZoom,
+  onAfinadorLectura,
+  onVideoLectura,
+  videoLecturaAbierto = false,
 }: CancionActivaSectionProps) {
   const letraScrollRefLocal = useRef<HTMLDivElement>(null);
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
@@ -433,6 +449,38 @@ export default function CancionActivaSection({
           nombreRevealClass,
         }
       : null;
+  const lecturaEncabezado =
+    modoLectura && cancionNombre
+      ? { nombre: cancionNombre, artista }
+      : undefined;
+  const lecturaPanelSuelto =
+    modoLectura && (lecturaEncabezado || onCerrarLectura) ? (
+      <CifradoLecturaSidePanel
+        controlesCifrado={false}
+        playing={false}
+        canPlay={false}
+        notacion="es"
+        tonalidadIndex={0}
+        modoTonal={DEFAULT_MODO_TONAL}
+        bpm={120}
+        tapCount={0}
+        onTogglePlayback={() => {}}
+        onNotacionChange={() => {}}
+        onTonalidadChange={() => {}}
+        onModoTonalChange={() => {}}
+        onBpmChange={() => {}}
+        onTapTempo={() => {}}
+        encabezado={lecturaEncabezado}
+        onCerrar={onCerrarLectura}
+        zoom={lecturaZoom}
+        onAfinador={onAfinadorLectura}
+        onVideo={onVideoLectura}
+        videoAbierto={videoLecturaAbierto}
+        temaLectura={temaLectura}
+        onTemaLecturaChange={onTemaLecturaChange}
+      />
+    ) : null;
+
   const lecturaChipViewport = lecturaChipProps ? (
     <LecturaCancionChip
       {...lecturaChipProps}
@@ -520,9 +568,17 @@ export default function CancionActivaSection({
                   onTonalidadStateChange={onLecturaTonalidadStateChange}
                   temaLectura={temaLectura}
                   onTemaLecturaChange={onTemaLecturaChange}
+                  encabezado={lecturaEncabezado}
+                  onCerrar={onCerrarLectura}
+                  zoom={lecturaZoom}
+                  onAfinador={onAfinadorLectura}
+                  onVideo={onVideoLectura}
+                  videoAbierto={videoLecturaAbierto}
                 />
               ) : (
-                <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[12px]">
+                <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col lg:flex-row">
+                  {lecturaPanelSuelto}
+                <div className="relative h-full min-h-0 min-w-0 w-full flex-1 overflow-hidden rounded-[12px]">
                   <div
                     ref={letraScrollRef}
                     data-cancionero-letra-scroll=""
@@ -560,6 +616,7 @@ export default function CancionActivaSection({
                       </p>
                     )}
                   </div>
+                </div>
                 </div>
               )}
             </>
@@ -618,7 +675,7 @@ export default function CancionActivaSection({
     <section
       className={`flex h-full min-h-0 flex-1 flex-col bg-bg-sala ${
         modoLectura
-          ? "overflow-hidden px-0 pb-0 pt-0"
+          ? "overflow-hidden px-0 pb-0 pt-0 lg:flex-row"
           : showEmbed
             ? "overflow-hidden pb-0 pt-0"
             : "overflow-y-auto overscroll-y-contain pb-3 pt-0"
@@ -634,6 +691,8 @@ export default function CancionActivaSection({
             }
       }
     >
+      {modoLectura ? lecturaPanelSuelto : null}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {lecturaChipViewport}
       {hasCancion ? (
         <>
@@ -806,6 +865,7 @@ export default function CancionActivaSection({
           />
         </>
       )}
+      </div>
     </section>
   );
 }

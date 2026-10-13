@@ -4,7 +4,6 @@ import LetraCifradoLecturaShell from "@/components/cifrado/LetraCifradoLecturaSh
 import NotaCancionFab from "@/components/herramientas/NotaCancionFab";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
 import { type LecturaFabItem } from "@/components/home/LecturaFabOption";
-import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import LecturaOcultarElementosPanel from "@/components/home/LecturaOcultarElementosPanel";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
@@ -360,16 +359,22 @@ export default function EntrenadorCancionesVerPageClient() {
             onEdit={goToEditor}
             temaLectura={temaLectura}
             onTemaLecturaChange={cambiarTemaLectura}
+            encabezado={{
+              nombre: cancion?.nombre ?? "Canción",
+              artista: cancion?.artista,
+            }}
+            onCerrar={goToList}
+            zoom={{
+              level: zoom.level,
+              onDecrease: zoom.decrease,
+              onIncrease: zoom.increase,
+            }}
+            onVideo={video.abierto ? video.cerrar : video.abrir}
+            videoAbierto={video.abierto}
+            onAfinador={() => setAfinadorOpen(true)}
           />
         </div>
       ) : null}
-
-      <LecturaPcTopChrome
-        fixedRightCss={lecturaFixedRightCss}
-        onContraer={goToList}
-        onAfinador={() => setAfinadorOpen(true)}
-        onVideo={video.abrir}
-      />
 
       <TapButton
         type="button"
@@ -483,6 +488,7 @@ export default function EntrenadorCancionesVerPageClient() {
             fixedRightCss={lecturaFixedRightCss}
             onAutoScrollAccelerate={autoScroll.accelerate}
             onAutoScrollDecelerate={autoScroll.decelerate}
+            showDesktopZoom={false}
           />
 
           <AfinadorLayer open={afinadorOpen} onOpenChange={setAfinadorOpen} />

@@ -2,7 +2,6 @@
 
 import AppReadyMarker from "@/components/AppReadyMarker";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
-import LecturaPcTopChrome from "@/components/home/LecturaPcTopChrome";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
@@ -312,6 +311,31 @@ export default function HomePageShell() {
                 handleLecturaCompasPlaybackStateChange
               }
               onLecturaTonalidadStateChange={handleLecturaTonalidadStateChange}
+              temaLectura={cancionActivaDelCancionero ? temaLectura : undefined}
+              onTemaLecturaChange={
+                cancionActivaDelCancionero ? cambiarTemaLectura : undefined
+              }
+              onCerrarLectura={modoLectura ? salirModoLectura : undefined}
+              lecturaZoom={
+                modoLectura && lecturaZoomEligible
+                  ? {
+                      level: zoom.level,
+                      onDecrease: zoom.decrease,
+                      onIncrease: zoom.increase,
+                    }
+                  : undefined
+              }
+              onAfinadorLectura={
+                modoLectura ? () => setAfinadorOpen(true) : undefined
+              }
+              onVideoLectura={
+                modoLectura
+                  ? video.abierto
+                    ? video.cerrar
+                    : video.abrir
+                  : undefined
+              }
+              videoLecturaAbierto={video.abierto}
               onExpand={
                 !modoLectura && cola.cancionActiva ? handleExpand : undefined
               }
@@ -374,13 +398,6 @@ export default function HomePageShell() {
           >
             <Minimize2 className="size-4 text-accent" aria-hidden="true" />
           </TapButton>
-
-          <LecturaPcTopChrome
-            fixedRightCss={lecturaFixedRightCss}
-            onContraer={salirModoLectura}
-            onAfinador={() => setAfinadorOpen(true)}
-            onVideo={video.abrir}
-          />
 
           <TapButton
             type="button"
@@ -492,6 +509,7 @@ export default function HomePageShell() {
             fixedRightCss={lecturaFixedRightCss}
             onAutoScrollAccelerate={autoScroll.accelerate}
             onAutoScrollDecelerate={autoScroll.decelerate}
+            showDesktopZoom={false}
           />
         </>
       ) : null}

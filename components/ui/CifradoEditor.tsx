@@ -15,7 +15,7 @@ import {
   CifradoCompasToolPanel,
   type CifradoCompasToolTab,
 } from "@/components/cifrado/CifradoCompasToolPanel";
-import { CifradoEditorPcToolbar } from "@/components/cifrado/CifradoEditorPcToolbar";
+import { CifradoEditorPcRail } from "@/components/cifrado/CifradoEditorPcRail";
 import AnotacionesLineLayer, {
   ANOTACIONES_ARRIBA_BANDA_PX,
 } from "@/components/cifrado/AnotacionesLineLayer";
@@ -252,6 +252,14 @@ type CifradoEditorProps = {
   anotaciones?: AnotacionesControl | null;
   /** Muestra la X de cerrar aunque la presentación sea página (p. ej. Entrenador). */
   showPageClose?: boolean;
+  /** En el entrenador, abre la nota desde el panel izquierdo (solo PC). */
+  onAbrirNota?: () => void;
+  tieneNota?: boolean;
+  /**
+   * Avisa si el nombre ya está en el cancionero.
+   * En el entrenador no aplica: esa lista es otra.
+   */
+  avisarCancionRepetida?: boolean;
 };
 
 type EditorPhase = "ingreso" | "cifrado";
@@ -715,6 +723,8 @@ type CifradoLineEditorProps = {
     x: number,
     y: number,
   ) => void;
+  /** En PC, la marca se elige en la columna izquierda. null = todavía no hay marca. */
+  cantoTipoArmado?: AnotacionTipo | null;
 };
 
 type LineEditFabBarProps = {
@@ -942,6 +952,7 @@ function CifradoLineEditor({
   onSelectAnotacion,
   rangoPendiente = null,
   onOpenTipoMenu,
+  cantoTipoArmado,
 }: CifradoLineEditorProps) {
   const lineRef = useRef<HTMLDivElement>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
@@ -1356,7 +1367,15 @@ function CifradoLineEditor({
         return;
       }
 
-      // Punto de referencia elegido → abrir el menú de tipos ahí mismo.
+      // En PC la marca se elige en la columna izquierda y después se toca la letra.
+      if (cantoTipoArmado !== undefined) {
+        if (cantoTipoArmado) {
+          onAnnotate?.(cantoTipoArmado, lineIndex, clamped);
+        }
+        return;
+      }
+
+      // En celular, el menú de tipos se abre en el punto tocado.
       onOpenTipoMenu?.(lineIndex, clamped, event.clientX, event.clientY);
       return;
     }
@@ -2558,7 +2577,7 @@ function EditorSidebarHeader({
   showClose?: boolean;
 }) {
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 bg-[var(--bg-panel-claro-titulo)] px-4 py-3">
       <h1 className={`min-w-0 flex-1 truncate text-left text-base font-extrabold ${CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS}`}>
         Edición de canción
       </h1>
@@ -2589,6 +2608,9 @@ export default function CifradoEditor({
   crearArtistaNuevo = true,
   anotaciones,
   showPageClose = false,
+  avisarCancionRepetida = true,
+  onAbrirNota,
+  tieneNota = false,
 }: CifradoEditorProps) {
   const isPage = isToolPagePresentation(presentation);
   const showCloseButton = !isPage || showPageClose;
@@ -2598,6 +2620,7 @@ export default function CifradoEditor({
     onElegirCancionero ? "cancionero" : "letra",
   );
   const [modoInsercion, setModoInsercion] = useState<ModoInsercion>("acordes");
+  const [cantoTipo, setCantoTipo] = useState<AnotacionTipo | null>(null);
   const [vistaArmado, setVistaArmado] = useState<VistaArmado>("pc");
   const [draftLyrics, setDraftLyrics] = useState("");
   const [draftPasteTraditional, setDraftPasteTraditional] = useState("");
@@ -3815,10 +3838,17 @@ export default function CifradoEditor({
     setError(null);
   }
 
+  function handleElegirCantoTipo(tipo: AnotacionTipo) {
+    setCantoTipo(tipo);
+    anotEditor.close();
+  }
+
   function handleSetModoInsercion(modo: ModoInsercion) {
     setModoInsercion(modo);
     if (modo !== "canto") {
       anotEditor.resetCanto();
+      anotEditor.close();
+      setCantoTipo(null);
     }
     if (modo === "compas") {
       setCompasToolTab("componer");
@@ -4469,15 +4499,68 @@ export default function CifradoEditor({
       ? "mx-auto w-full max-w-[390px]"
       : PC_ARMADO_WIDTH_CLASS;
   const showCelularLimitGuide = isDesktop && vistaArmado === "pc";
+  const showPcRail = isDesktop && phase === "cifrado";
 
   const editorTree = (
     <div
       className={
         isPage
           ? "flex min-h-0 flex-1 flex-col bg-bg-app"
-          : "fixed inset-0 z-50 flex flex-col bg-bg-app"
+          : `fixed inset-0 z-50 flex flex-col bg-bg-app${
+              showPcRail ? " lg:pl-[var(--app-sidebar-width)]" : ""
+            }`
       }
     >
+      {showPcRail ? (
+        <CifradoEditorPcRail
+          modoInsercion={modoInsercion}
+          onSetModoInsercion={handleSetModoInsercion}
+          anotacionesEnabled={anotacionesEnabled}
+          compasToolTab={compasToolTab}
+          onCompasToolTabChange={setCompasToolTab}
+          cycleGolpes={getCompasCycleGolpes(compasConfig)}
+          onCycleGolpesChange={(golpes) =>
+            setCompasConfig((current) =>
+              resizeCompasConfigCycleGolpes(current, golpes),
+            )
+          }
+          intensidadPattern={intensidadEditPattern}
+          onCycleIntensidadSlot={handleCycleIntensidadSlot}
+          showClearIntensidadSelection={Boolean(selectedBarra)}
+          onClearIntensidadSelection={() => setSelectedBarra(null)}
+          activeCycleId={activePlacementCycleId}
+          savedCycles={savedCycles}
+          cyclesLoading={cyclesLoading}
+          cyclesError={cyclesError}
+          onRefreshCycles={refreshCycles}
+          onSelectSavedCycle={handleSelectSavedPlacementCycle}
+          placementCycleCount={placementCycleCount}
+          onPlacementCycleCountChange={setPlacementCycleCount}
+          onApplyCyclesToAllLines={handleApplyCyclesToAllLines}
+          onOpenHelp={() => setEditorHelpOpen(true)}
+          onAbrirNota={onAbrirNota}
+          tieneNota={tieneNota}
+          cantoTipo={cantoTipo}
+          onCantoTipoChange={handleElegirCantoTipo}
+          cantoEsperandoFin={
+            anotEditor.rangoPendiente != null &&
+            anotEditor.rangoPendiente.charEnd == null
+          }
+          portal={isPage}
+          cantoForm={
+            modoInsercion === "canto" && anotEditor.draft ? (
+              <AnotacionPickerHost
+                key={`${anotEditor.draft.mode}-${anotEditor.draft.tipo}-${anotEditor.draft.lineIndex}-${anotEditor.draft.charOffset}-${anotEditor.draft.id ?? "new"}`}
+                inline
+                draft={anotEditor.draft}
+                onClose={anotEditor.close}
+                onSubmit={anotEditor.submit}
+                onDelete={anotEditor.remove}
+              />
+            ) : null
+          }
+        />
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div
@@ -4745,35 +4828,7 @@ export default function CifradoEditor({
                   }`}
                   aria-hidden={previewOpen && isDesktop}
                 >
-                {isDesktop ? (
-                  <CifradoEditorPcToolbar
-                    modoInsercion={modoInsercion}
-                    onSetModoInsercion={handleSetModoInsercion}
-                    anotacionesEnabled={anotacionesEnabled}
-                    compasToolTab={compasToolTab}
-                    onCompasToolTabChange={setCompasToolTab}
-                    cycleGolpes={getCompasCycleGolpes(compasConfig)}
-                    onCycleGolpesChange={(golpes) =>
-                      setCompasConfig((current) =>
-                        resizeCompasConfigCycleGolpes(current, golpes),
-                      )
-                    }
-                    intensidadPattern={intensidadEditPattern}
-                    onCycleIntensidadSlot={handleCycleIntensidadSlot}
-                    showClearIntensidadSelection={Boolean(selectedBarra)}
-                    onClearIntensidadSelection={() => setSelectedBarra(null)}
-                    activeCycleId={activePlacementCycleId}
-                    savedCycles={savedCycles}
-                    cyclesLoading={cyclesLoading}
-                    cyclesError={cyclesError}
-                    onRefreshCycles={refreshCycles}
-                    onSelectSavedCycle={handleSelectSavedPlacementCycle}
-                    placementCycleCount={placementCycleCount}
-                    onPlacementCycleCountChange={setPlacementCycleCount}
-                    onApplyCyclesToAllLines={handleApplyCyclesToAllLines}
-                    onOpenHelp={() => setEditorHelpOpen(true)}
-                  />
-                ) : (
+                {isDesktop ? null : (
                   <div className="mb-2 shrink-0">
                     <div className="flex items-start justify-between gap-x-3 gap-y-2">
                       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
@@ -4868,11 +4923,7 @@ export default function CifradoEditor({
 
                 <div className={`relative flex min-h-0 flex-1 flex-col ${armadoWidthClass}`}>
                 <div
-                  className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${
-                    isDesktop
-                      ? `rounded-b-estandar ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
-                      : `rounded-estandar ${CIFRADO_EDITOR_SHEET_BG_CLASS}`
-                  }`}
+                  className={`relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-estandar ${CIFRADO_EDITOR_SHEET_BG_CLASS}`}
                 >
                 <div
                   data-tool-vertical-scroll=""
@@ -5018,6 +5069,7 @@ export default function CifradoEditor({
                           onSelectAnotacion={anotEditor.selectExisting}
                           rangoPendiente={anotEditor.rangoPendiente}
                           onOpenTipoMenu={anotEditor.openTipoMenu}
+                          cantoTipoArmado={isDesktop ? cantoTipo : undefined}
                         />
 
                         {isEditing && (
@@ -5122,6 +5174,7 @@ export default function CifradoEditor({
                   title="Nombre y artista"
                   titleClassName="mb-3 text-sm font-semibold normal-case text-white"
                   accentVar="var(--accent)"
+                  collapsible
                 >
                   <label
                     className="mb-1.5 block text-xs font-medium normal-case text-white"
@@ -5142,11 +5195,13 @@ export default function CifradoEditor({
                     className={inputClassName}
                     placeholder="Nombre de la canción"
                   />
-                  <CancionRepetidaAviso
-                    nombre={nombre}
-                    artista={artista}
-                    excluirId={excluirRepetidaId}
-                  />
+                  {avisarCancionRepetida ? (
+                    <CancionRepetidaAviso
+                      nombre={nombre}
+                      artista={artista}
+                      excluirId={excluirRepetidaId}
+                    />
+                  ) : null}
                   <IntercambiarNombreArtista
                     disabled={!nombre.trim() && !artista.trim()}
                     onIntercambiar={() => {
@@ -5182,6 +5237,7 @@ export default function CifradoEditor({
                   title="Video"
                   titleClassName="mb-3 text-sm font-semibold normal-case text-white"
                   accentVar="var(--accent)"
+                  collapsible
                 >
                   <CancionYoutubeField
                     id="cifrado-youtube"
@@ -5200,6 +5256,7 @@ export default function CifradoEditor({
                   title="Tono y modo"
                   titleClassName="mb-3 text-sm font-semibold normal-case text-white"
                   accentVar="var(--accent)"
+                  collapsible
                 >
                   <CifradoTonalidadFields
                     idPrefix="cifrado-sidebar"
@@ -5212,7 +5269,7 @@ export default function CifradoEditor({
                   />
                 </VozPcConfigCard>
 
-                <VozPcConfigCard title="Tempo" accentVar="var(--accent)">
+                <VozPcConfigCard title="Tempo" accentVar="var(--accent)" collapsible>
                   <label
                     className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white"
                     htmlFor="cifrado-bpm-sidebar"
@@ -5268,7 +5325,7 @@ export default function CifradoEditor({
               </div>
             </div>
 
-            <div className="border-t border-border p-3">
+            <div className="border-t border-black/10 bg-[var(--bg-panel-claro-titulo)] p-3">
               {saveValidation && (
                 <p
                   className="mb-3 rounded-lg border border-[var(--tuner-lejos)]/40 bg-[var(--tuner-lejos)]/10 px-3 py-2 text-sm text-[var(--tuner-lejos)]"
@@ -5323,11 +5380,13 @@ export default function CifradoEditor({
                       className={inputClassName}
                       placeholder="Nombre de la canción"
                     />
-                    <CancionRepetidaAviso
-                      nombre={nombre}
-                      artista={artista}
-                      excluirId={excluirRepetidaId}
-                    />
+                    {avisarCancionRepetida ? (
+                      <CancionRepetidaAviso
+                        nombre={nombre}
+                        artista={artista}
+                        excluirId={excluirRepetidaId}
+                      />
+                    ) : null}
                     <IntercambiarNombreArtista
                       disabled={!nombre.trim() && !artista.trim()}
                       onIntercambiar={() => {
@@ -5562,8 +5621,9 @@ export default function CifradoEditor({
         />
       )}
 
-      {anotEditor.draft ? (
+      {anotEditor.draft && !showPcRail ? (
         <AnotacionPickerHost
+          key={`${anotEditor.draft.mode}-${anotEditor.draft.tipo}-${anotEditor.draft.lineIndex}-${anotEditor.draft.charOffset}-${anotEditor.draft.id ?? "new"}`}
           draft={anotEditor.draft}
           onClose={anotEditor.close}
           onSubmit={anotEditor.submit}
@@ -5571,7 +5631,7 @@ export default function CifradoEditor({
         />
       ) : null}
 
-      {anotEditor.tipoMenu ? (
+      {anotEditor.tipoMenu && !isDesktop ? (
         <AnotacionTipoMenu
           x={anotEditor.tipoMenu.x}
           y={anotEditor.tipoMenu.y}
@@ -5605,6 +5665,7 @@ export default function CifradoEditor({
         candidates={tonalidadInferResult?.candidates ?? []}
         multipleTonalidades={tonalidadInferResult?.multipleTonalidades ?? false}
         notacion={notacion}
+        avisarCancionRepetida={avisarCancionRepetida}
         zIndex={70}
         onConfirm={handleConfirmPasteIngreso}
         onDismiss={() => setPasteProposeOpen(false)}

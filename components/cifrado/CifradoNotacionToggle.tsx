@@ -16,19 +16,24 @@ type CifradoNotacionToggleProps = {
   onChange: (next: NotacionAcordes) => void;
   /** Dentro de un panel (p. ej. debajo del BPM). */
   embedded?: boolean;
+  /** Sin caja propia: va adentro de otra tarjeta. */
+  plain?: boolean;
 };
 
 export default function CifradoNotacionToggle({
   notacion,
   onChange,
   embedded = false,
+  plain = false,
 }: CifradoNotacionToggleProps) {
   return (
     <div
       className={
-        embedded
-          ? "mt-3 border-t border-compositor-config-border/40 pt-3"
-          : "rounded-[10px] border border-border/70 bg-bg-dark/60 px-2.5 py-2"
+        plain
+          ? ""
+          : embedded
+            ? "mt-3 border-t border-compositor-config-border/40 pt-3"
+            : "rounded-[10px] border border-border/70 bg-bg-dark/60 px-2.5 py-2"
       }
     >
       <p className={CIFRADO_NOTACION_LABEL_CLASS}>Ver acordes como</p>

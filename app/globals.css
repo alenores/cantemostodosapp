@@ -2032,15 +2032,26 @@ html.splash-active body {
   color: #1c1c1e;
 }
 
-.practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__icon {
-  color: color-mix(in srgb, var(--hub-icon, #1c1c1e) 84%, #6a6a70);
+.practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__label {
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__icon-wrap {
-  background: color-mix(in srgb, var(--hub-icon, #1c1c1e) 16%, #d2d2d6);
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+}
+
+.practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__icon {
+  width: 52px;
+  height: 52px;
+  color: #1c1c1e;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="entrenador-canciones"] .hub-module-card__icon {
+  color: var(--accent-vocal);
   fill: currentColor;
 }
 

@@ -237,7 +237,7 @@ export default function EntrenadorCancionesPageClient() {
                 onClick={() =>
                   navigateWithProgress("/practica/entrenador-canciones/editor")
                 }
-                className="flex size-11 items-center justify-center rounded-full bg-[var(--accent-entrenador-canciones)] text-[var(--text-on-light)]"
+                className="flex size-11 items-center justify-center rounded-full bg-[var(--accent-vocal)] text-[var(--text-on-light)]"
               >
                 <Plus className="size-5" aria-hidden="true" />
               </TapButton>

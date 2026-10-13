@@ -268,24 +268,8 @@ function ResultadoItem({
     <button
       type="button"
       onClick={() => onSelect(resultado)}
-      className={`relative w-full overflow-hidden rounded-[12px] border bg-bg-card px-3 py-3 text-left ${
-        esCancionero
-          ? "border-[var(--tuner-in-tune)]/35"
-          : "border-border-card"
-      }`}
+      className="relative w-full overflow-hidden rounded-[12px] border border-border-card bg-bg-card px-3 py-3 text-left"
     >
-      {esCancionero && (
-        <>
-          <span
-            className="absolute inset-y-0 left-0 w-1 bg-[var(--tuner-in-tune)]"
-            aria-hidden="true"
-          />
-          <span
-            className="absolute inset-y-0 right-0 w-1 bg-[var(--tuner-in-tune)]"
-            aria-hidden="true"
-          />
-        </>
-      )}
       <p className="truncate text-[17px] font-bold leading-tight text-text-primary">
         {nombre}
       </p>
@@ -344,6 +328,19 @@ function ResultadoItem({
   );
 }
 
+function BotonTraerWeb({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-accent bg-bg-card px-5 text-sm font-bold text-text-primary"
+    >
+      <Search className="size-4 text-accent" aria-hidden="true" />
+      Traer desde la web
+    </button>
+  );
+}
+
 function SeccionResultados({
   label,
   icon,
@@ -373,12 +370,14 @@ function SeccionResultados({
 
   return (
     <div className="mb-4">
-      <div className="mb-2 flex items-center gap-1.5">
-        {icon}
-        <p className="text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
-          {label}
-        </p>
-      </div>
+      {label ? (
+        <div className="mb-2 flex items-center gap-1.5">
+          {icon}
+          <p className="text-[10px] font-medium uppercase tracking-[1.5px] text-text-faint">
+            {label}
+          </p>
+        </div>
+      ) : null}
       {resultados.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {resultados.map((resultado, index) => (
@@ -1611,25 +1610,30 @@ export default function BuscadorModal({
             {buscadorCargando && <BuscadorSearchSkeleton />}
 
             {!buscadorCargando && listaCancionero.length === 0 && (
-              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
                 <Music
                   className="size-10 text-text-faint"
                   aria-hidden="true"
                 />
                 <p className="text-sm text-text-muted">{mensajeListaVacia}</p>
+                {mostrarBotonWeb ? <BotonTraerWeb onClick={() => void handleBuscarWeb()} /> : null}
+                {!mostrandoMisCanciones &&
+                Boolean(query.trim()) &&
+                !online &&
+                !webActiva ? (
+                  <p className="text-sm text-text-muted">
+                    Para buscar en la web necesitás conexión
+                  </p>
+                ) : null}
+                {webError && mostrarBotonWeb ? (
+                  <p className="text-sm text-text-muted">{webError}</p>
+                ) : null}
               </div>
             )}
 
             {!buscadorCargando && listaCancionero.length > 0 && (
               <SeccionResultados
-                label={mostrandoMisCanciones ? "Favoritas" : "Del cancionero"}
-                icon={
-                  <Bookmark
-                    className="size-3.5 shrink-0"
-                    style={{ color: "var(--tuner-in-tune)" }}
-                    aria-hidden="true"
-                  />
-                }
+                label=""
                 resultados={listaCancionero}
                 onSelect={handleSelectResultado}
                 premiumIds={premiumIds}
@@ -1640,6 +1644,7 @@ export default function BuscadorModal({
             )}
 
             {!buscadorCargando &&
+              listaCancionero.length > 0 &&
               !mostrandoMisCanciones &&
               Boolean(query.trim()) &&
               !online &&
@@ -1649,19 +1654,12 @@ export default function BuscadorModal({
                 </p>
               )}
 
-            {!buscadorCargando && mostrarBotonWeb && (
-              <div className="mt-2 flex flex-col gap-3">
+            {!buscadorCargando && mostrarBotonWeb && listaCancionero.length > 0 && (
+              <div className="mt-3 flex flex-col items-center gap-2">
                 {webError ? (
                   <p className="text-center text-sm text-text-muted">{webError}</p>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => void handleBuscarWeb()}
-                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-bg-card px-4 text-sm font-bold text-text-primary"
-                >
-                  <Search className="size-4" aria-hidden="true" />
-                  Buscar en la web
-                </button>
+                <BotonTraerWeb onClick={() => void handleBuscarWeb()} />
               </div>
             )}
 

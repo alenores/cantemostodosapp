@@ -80,8 +80,8 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       return (
         <div className="pointer-events-none flex items-center gap-3 rounded-xl bg-white px-3 py-3">
           <Play
-            className="pointer-events-none size-4 shrink-0 text-[var(--accent)]"
-            fill="var(--accent)"
+            className="pointer-events-none size-4 shrink-0 text-[#f4845f]"
+            fill="#f4845f"
             aria-hidden="true"
           />
           <div className="pointer-events-none min-w-0 flex-1">

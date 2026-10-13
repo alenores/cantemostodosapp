@@ -11,9 +11,12 @@ export type CancionBusquedaLocal = {
   id: number;
   nombre: string;
   artista: string | null;
+  artista_id?: string | null;
   letra: string | null;
   url_letra: string;
   tiene_cifrado_avanzado?: boolean;
+  /** La letra y los acordes ya fueron revisados. */
+  validada?: boolean;
   user_id?: string | null;
 };
 
@@ -124,7 +127,7 @@ export async function fetchCancioneroBusqueda(
   const { data, error } = await supabase
     .from("canciones_guardadas")
     .select(
-      "id, nombre, artista, letra, url_letra, tiene_cifrado_avanzado, user_id",
+      "id, nombre, artista, artista_id, letra, url_letra, tiene_cifrado_avanzado, validada_por, user_id",
     )
     .is("sala_id", null);
 
@@ -136,9 +139,11 @@ export async function fetchCancioneroBusqueda(
     id: row.id,
     nombre: row.nombre,
     artista: row.artista,
+    artista_id: row.artista_id ?? null,
     letra: row.letra,
     url_letra: row.url_letra ?? "",
     tiene_cifrado_avanzado: row.tiene_cifrado_avanzado ?? false,
+    validada: Boolean(row.validada_por),
     user_id: row.user_id ?? null,
   }));
 }

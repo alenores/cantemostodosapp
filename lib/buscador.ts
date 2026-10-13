@@ -48,6 +48,8 @@ export function mapCancionLocalAResultado(
     fuente,
     letra: cancion.letra,
     tiene_cifrado_avanzado: cancion.tiene_cifrado_avanzado ?? false,
+    artista_id: cancion.artista_id ?? null,
+    validada: cancion.validada ?? false,
   };
 }
 

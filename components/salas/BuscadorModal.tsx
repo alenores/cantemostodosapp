@@ -10,6 +10,7 @@ import {
 } from "@/components/cancionero/CancioneroListSkeleton";
 import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
+import ValidacionMarcaIcon from "@/components/cancionero/ValidacionMarcaIcon";
 import { SitioLetraBadge } from "@/components/salas/LetraFuenteSitioBadge";
 import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer, {
@@ -32,6 +33,7 @@ import {
   shouldApplyEmbedInitialOffset,
 } from "@/lib/letra-display";
 import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
+import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -41,15 +43,23 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { formatDatabaseError } from "@/lib/supabase/errors";
 import { agregarAMisCanciones, getMisCanciones } from "@/lib/mis-canciones";
 import {
+  filterCancionesCancionero,
   getDuplicadoCancioneroNivel,
   guardarLetraEnCancionero,
   guardarLinkEnCancionero,
   type CancioneroFormData,
 } from "@/lib/cancionero";
+import { getArtistas } from "@/lib/artistas";
+import {
+  ARTISTAS_FOTOS_EVENT,
+  artistasConFotoLocal,
+  leerArtistasFotos,
+} from "@/lib/offline/artista-fotos";
 import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
 import {
   buscarEnCancionero,
   loadCancionesParaBusqueda,
+  type CancionBusquedaLocal,
 } from "@/lib/sala-data";
 import {
   addColaLocalItem,
@@ -58,8 +68,13 @@ import {
   verAhoraColaLocal,
 } from "@/lib/offline/cola-local-store";
 import { createClient } from "@/lib/supabase/client";
-import { getCancionPractica, listCancionesPractica } from "@/lib/canciones-practica";
+import {
+  getCancionPractica,
+  listCancionesPractica,
+  type CancionPracticaListItem,
+} from "@/lib/canciones-practica";
 import type {
+  Artista,
   CancionCancionero,
   ResultadoBusquedaBuscador,
   UsuarioCancion,
@@ -72,6 +87,7 @@ import {
   Link2,
   ListPlus,
   Music,
+  Music2,
   Search,
   X,
 } from "lucide-react";
@@ -142,6 +158,7 @@ function filterMisCanciones(
 function mapMisCancionAResultado(
   cancion: UsuarioCancion,
   premiumIds: ReadonlySet<number>,
+  local?: CancionBusquedaLocal,
 ): ResultadoBusquedaBuscador {
   if (cancion.cancion_guardada_id !== null) {
     return {
@@ -151,7 +168,11 @@ function mapMisCancionAResultado(
       sitio: "Favoritas",
       fuente: "cancionero",
       id: cancion.cancion_guardada_id,
-      tiene_cifrado_avanzado: premiumIds.has(cancion.cancion_guardada_id),
+      tiene_cifrado_avanzado:
+        local?.tiene_cifrado_avanzado ??
+        premiumIds.has(cancion.cancion_guardada_id),
+      artista_id: local?.artista_id ?? null,
+      validada: local?.validada ?? false,
     };
   }
 
@@ -217,12 +238,18 @@ function ResultadoItem({
   resultado,
   onSelect,
   premiumIds,
+  favoritaIds,
+  artistaAvatarUrl,
 }: {
   resultado: ResultadoBusquedaBuscador;
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
   premiumIds: ReadonlySet<number>;
+  favoritaIds: ReadonlySet<number>;
+  artistaAvatarUrl?: string | null;
 }) {
-  const esCancionero = resultado.fuente === "cancionero" || resultado.fuente === "practica";
+  const esDelCancionero = resultado.fuente === "cancionero";
+  const esPractica = resultado.fuente === "practica";
+  const esCancionero = esDelCancionero || esPractica;
   const esLinkGuardado = resultado.fuente === "link-guardado";
   const iconoTipo = getResultadoIconoTipo(resultado);
   const premium = isResultadoPremium(resultado, premiumIds);
@@ -230,12 +257,18 @@ function ResultadoItem({
     resultado.titulo,
     resultado.artista,
   );
+  const esFavoritaDelUsuario =
+    resultado.sitio === "Favoritas" ||
+    (esDelCancionero && resultado.id != null && favoritaIds.has(resultado.id));
+  const inicial = artista
+    ? artista.charAt(0).toLocaleUpperCase("es")
+    : "";
 
   return (
     <button
       type="button"
       onClick={() => onSelect(resultado)}
-      className={`relative flex w-full items-center gap-3 overflow-hidden rounded-[12px] border bg-bg-card px-3 py-3 text-left ${
+      className={`relative w-full overflow-hidden rounded-[12px] border bg-bg-card px-3 py-3 text-left ${
         esCancionero
           ? "border-[var(--tuner-in-tune)]/35"
           : "border-border-card"
@@ -253,36 +286,60 @@ function ResultadoItem({
           />
         </>
       )}
-      <LetraFuenteIcon
-        tipo={iconoTipo}
-        premium={premium}
-        favorita={resultado.sitio === "Favoritas"}
-      />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[17px] font-semibold text-text-primary">
-          {nombre}
+      <p className="truncate text-[17px] font-bold leading-tight text-text-primary">
+        {nombre}
+      </p>
+      <div className="mt-1 flex min-w-0 items-center gap-2">
+        <span className="flex size-[22px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#3a3a40] text-[11px] font-semibold text-white/80">
+          {artistaAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={artistaAvatarUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : inicial ? (
+            inicial
+          ) : (
+            <Music2 className="size-3.5" aria-hidden="true" />
+          )}
+        </span>
+        <p className="min-w-0 flex-1 truncate text-[14px] text-text-muted">
+          {artista || "Artista sin indicar"}
         </p>
-        {(artista || !esCancionero) && (
-          <div className="mt-0.5 flex min-w-0 items-center gap-2">
-            {artista ? (
-              <p className="min-w-0 flex-1 truncate text-[14px] text-text-muted">
-                {artista}
-              </p>
-            ) : (
-              <span className="min-w-0 flex-1" aria-hidden="true" />
-            )}
-            {!esCancionero && (
-              <SitioLetraBadge sitio={resultado.sitio} url={resultado.url} />
-            )}
-          </div>
-        )}
+        <span className="flex shrink-0 items-center gap-1.5">
+          {esDelCancionero ? (
+            <LetraFuenteIcon
+              tipo="cancionero"
+              premium={premium}
+              compact
+            />
+          ) : esPractica ? (
+            <LetraFuenteIcon tipo="practica" compact />
+          ) : (
+            <LetraFuenteIcon tipo={iconoTipo} premium={premium} compact />
+          )}
+          {esDelCancionero && resultado.validada ? (
+            <ValidacionMarcaIcon className="size-4" />
+          ) : null}
+          {esFavoritaDelUsuario ? (
+            <Bookmark
+              className="size-4 shrink-0 fill-current"
+              style={{ color: "var(--tuner-in-tune)" }}
+              aria-label="En Favoritas"
+            />
+          ) : null}
+          {esLinkGuardado ? (
+            <Link2
+              className="size-3.5 shrink-0 text-[#8BA4C4]"
+              aria-hidden="true"
+            />
+          ) : null}
+          {!esCancionero && !esLinkGuardado ? (
+            <SitioLetraBadge sitio={resultado.sitio} url={resultado.url} />
+          ) : null}
+        </span>
       </div>
-      {esLinkGuardado && (
-        <Link2
-          className="absolute top-2 right-2 size-3.5 shrink-0 text-[#8BA4C4]"
-          aria-hidden="true"
-        />
-      )}
     </button>
   );
 }
@@ -293,6 +350,8 @@ function SeccionResultados({
   resultados,
   onSelect,
   premiumIds,
+  favoritaIds,
+  fotoArtista,
   cascadeActive = false,
   cascadeStartIndex = 0,
   trailing,
@@ -302,6 +361,8 @@ function SeccionResultados({
   resultados: ResultadoBusquedaBuscador[];
   onSelect: (resultado: ResultadoBusquedaBuscador) => void;
   premiumIds: ReadonlySet<number>;
+  favoritaIds: ReadonlySet<number>;
+  fotoArtista: (resultado: ResultadoBusquedaBuscador) => string | null;
   cascadeActive?: boolean;
   cascadeStartIndex?: number;
   trailing?: ReactNode;
@@ -334,6 +395,8 @@ function SeccionResultados({
                 resultado={resultado}
                 onSelect={onSelect}
                 premiumIds={premiumIds}
+                favoritaIds={favoritaIds}
+                artistaAvatarUrl={fotoArtista(resultado)}
               />
             </li>
           ))}
@@ -359,6 +422,7 @@ export default function BuscadorModal({
 }: BuscadorModalProps) {
   const isHome = variant === "home";
   const online = useOnlineStatus();
+  const aliasBusqueda = useAliasBusqueda();
   const categoria = useCategoriaUsuario();
   /** Solo dueño y amigos suman canciones al Cancionero: al resto no se le muestra «Guardar». */
   const puedeGuardarEnCancionero =
@@ -371,6 +435,8 @@ export default function BuscadorModal({
   );
   const localCascadeTimerRef = useRef<number | undefined>(undefined);
   const internetCascadeTimerRef = useRef<number | undefined>(undefined);
+  const webRequestRef = useRef(0);
+  const cargaGenRef = useRef(0);
 
   const [pantalla, setPantalla] = useState<Pantalla>("busqueda");
   const [query, setQuery] = useState("");
@@ -385,7 +451,9 @@ export default function BuscadorModal({
   const [loadingInternet, setLoadingInternet] = useState(false);
   const [accionLoading, setAccionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busquedaRealizada, setBusquedaRealizada] = useState(false);
+  const [webError, setWebError] = useState<string | null>(null);
+  const [webQuery, setWebQuery] = useState<string | null>(null);
+  const [cancioneroListo, setCancioneroListo] = useState(false);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionGuardado>(null);
   const [fabGuardarAbierto, setFabGuardarAbierto] = useState(false);
   const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
@@ -394,10 +462,18 @@ export default function BuscadorModal({
   const [cancionesCancionero, setCancionesCancionero] = useState<
     CancionCancionero[]
   >([]);
+  const [cancionesLocales, setCancionesLocales] = useState<
+    CancionBusquedaLocal[]
+  >([]);
+  const [practicaItems, setPracticaItems] = useState<CancionPracticaListItem[]>(
+    [],
+  );
   const [localCascadeActive, setLocalCascadeActive] = useState(false);
   const [internetCascadeActive, setInternetCascadeActive] = useState(false);
   const [fuenteHome, setFuenteHome] = useState<FuenteHomeBusqueda>("general");
   const [misCanciones, setMisCanciones] = useState<UsuarioCancion[]>([]);
+  const [artistas, setArtistas] = useState<Artista[]>([]);
+  const revokeFotosRef = useRef<() => void>(() => {});
   const [loadingMisCanciones, setLoadingMisCanciones] = useState(false);
   const [previewEsMisCanciones, setPreviewEsMisCanciones] = useState(false);
   const [promptVerAhoraSala, setPromptVerAhoraSala] = useState(false);
@@ -405,15 +481,102 @@ export default function BuscadorModal({
     null,
   );
 
-  const resultadosEnInternet = useMemo(
-    () => [...resultados.linksGuardados, ...resultados.internet],
-    [resultados.linksGuardados, resultados.internet],
+  const mostrandoMisCanciones =
+    isHome && fuenteHome === "mis_canciones" && usuarioLogueado;
+  const favoritaIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const cancion of misCanciones) {
+      if (cancion.cancion_guardada_id != null) {
+        ids.add(cancion.cancion_guardada_id);
+      }
+    }
+    return ids;
+  }, [misCanciones]);
+  const artistasPorId = useMemo(
+    () => new Map(artistas.map((artista) => [artista.id, artista])),
+    [artistas],
   );
+  const artistasPorNombre = useMemo(
+    () =>
+      new Map(
+        artistas.map((artista) => [
+          artista.nombre.toLocaleLowerCase("es"),
+          artista,
+        ]),
+      ),
+    [artistas],
+  );
+  const fotoArtista = useCallback(
+    (resultado: ResultadoBusquedaBuscador) => {
+      const porId = resultado.artista_id
+        ? artistasPorId.get(resultado.artista_id)
+        : null;
+      const nombre = resultado.artista?.trim();
+      return (
+        porId?.avatar_url ??
+        (nombre
+          ? artistasPorNombre.get(nombre.toLocaleLowerCase("es"))?.avatar_url
+          : null) ??
+        null
+      );
+    },
+    [artistasPorId, artistasPorNombre],
+  );
+  const webActiva = webQuery !== null && webQuery === query.trim();
 
-  const totalResultados =
-    resultados.cancionero.length + resultadosEnInternet.length;
+  const resultadosCancioneroFiltrados = useMemo(() => {
+    const conLetra = cancionesLocales.filter((cancion) =>
+      Boolean(cancion.letra?.trim()),
+    );
+    const ranked = filterCancionesCancionero(conLetra, query, aliasBusqueda);
+    const porId = new Map(conLetra.map((cancion) => [cancion.id, cancion]));
+
+    return ranked.flatMap((cancion) => {
+      const local = porId.get(cancion.id);
+      return local ? [mapCancionLocalAResultado(local, "cancionero")] : [];
+    });
+  }, [aliasBusqueda, cancionesLocales, query]);
+
+  const practicaFiltrados = useMemo(() => {
+    if (!isHome || !usuarioLogueado || fuenteHome === "mis_canciones") {
+      return [];
+    }
+
+    const normalized = query.trim().toLowerCase();
+
+    return practicaItems
+      .filter(
+        (item) =>
+          !normalized ||
+          item.nombre.toLowerCase().includes(normalized) ||
+          artistaCoincideBusqueda(
+            item.artista,
+            normalized,
+            aliasBusqueda,
+            item.nombre,
+          ),
+      )
+      .map(
+        (item): ResultadoBusquedaBuscador => ({
+          id: item.id,
+          titulo: item.nombre,
+          artista: item.artista ?? "",
+          url: `practica://${item.id}`,
+          sitio: "Entrenador de canciones",
+          fuente: "practica",
+          tiene_cifrado_avanzado: false,
+        }),
+      );
+  }, [aliasBusqueda, fuenteHome, isHome, practicaItems, query, usuarioLogueado]);
+
+  const listaCancionero = mostrandoMisCanciones
+    ? resultados.cancionero
+    : [...resultadosCancioneroFiltrados, ...practicaFiltrados];
 
   const resetState = useCallback(() => {
+    webRequestRef.current += 1;
+    cargaGenRef.current += 1;
+
     if (confirmacionTimerRef.current) {
       clearTimeout(confirmacionTimerRef.current);
       confirmacionTimerRef.current = null;
@@ -428,16 +591,21 @@ export default function BuscadorModal({
     setLoadingInternet(false);
     setAccionLoading(false);
     setError(null);
-    setBusquedaRealizada(false);
+    setWebError(null);
+    setWebQuery(null);
+    setCancioneroListo(false);
     setConfirmacion(null);
     setFabGuardarAbierto(false);
     setEmbedFullRevealed(false);
     setGuardarLetraModal(null);
     setCancionesCancionero([]);
+    setCancionesLocales([]);
+    setPracticaItems([]);
     setLocalCascadeActive(false);
     setInternetCascadeActive(false);
     setFuenteHome("general");
     setMisCanciones([]);
+    setArtistas([]);
     setLoadingMisCanciones(false);
     setPreviewEsMisCanciones(false);
     setPromptVerAhoraSala(false);
@@ -455,25 +623,64 @@ export default function BuscadorModal({
   }, []);
 
   const cargarCancionesCancionero = useCallback(async () => {
-    const canciones = await loadCancionesParaBusqueda(
-      online ? createClient() : undefined,
-    );
-    setCancionesCancionero(
-      canciones.map((c) => ({
-        id: c.id,
-        nombre: c.nombre,
-        artista: c.artista,
-        letra: c.letra,
-        tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
-        user_id: c.user_id ?? null,
-      })),
-    );
+    const generacion = ++cargaGenRef.current;
+    setLoadingLocal(true);
+
+    try {
+      const canciones = await loadCancionesParaBusqueda(
+        online ? createClient() : undefined,
+      );
+
+      if (cargaGenRef.current !== generacion) {
+        return;
+      }
+
+      const ordenadas = [...canciones].sort((a, b) =>
+        a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }),
+      );
+
+      setCancionesLocales(ordenadas);
+      setCancionesCancionero(
+        ordenadas.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          artista: c.artista,
+          letra: c.letra,
+          tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
+          user_id: c.user_id ?? null,
+        })),
+      );
+      setError(null);
+    } catch (loadError) {
+      if (cargaGenRef.current !== generacion) {
+        return;
+      }
+
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Error al cargar el cancionero",
+      );
+    } finally {
+      if (cargaGenRef.current === generacion) {
+        setLoadingLocal(false);
+        setCancioneroListo(true);
+      }
+    }
   }, [online]);
 
   const syncMisCancionesResultados = useCallback(
     (searchQuery: string, animate = false) => {
+      const localesPorId = new Map(cancionesLocales.map((cancion) => [cancion.id, cancion]));
       const filtradas = filterMisCanciones(misCanciones, searchQuery).filter(cancion => online || cancionesCancionero.some(local => local.id === cancion.cancion_guardada_id && Boolean(local.letra?.trim()))).map(
-        (cancion) => mapMisCancionAResultado(cancion, premiumIds),
+        (cancion) =>
+          mapMisCancionAResultado(
+            cancion,
+            premiumIds,
+            cancion.cancion_guardada_id != null
+              ? localesPorId.get(cancion.cancion_guardada_id)
+              : undefined,
+          ),
       );
 
       setResultados({
@@ -481,7 +688,6 @@ export default function BuscadorModal({
         linksGuardados: [],
         internet: [],
       });
-      setBusquedaRealizada(true);
       setLoadingLocal(false);
       setLoadingInternet(false);
       setError(null);
@@ -495,7 +701,7 @@ export default function BuscadorModal({
         );
       }
     },
-    [misCanciones, premiumIds, online, cancionesCancionero],
+    [misCanciones, premiumIds, online, cancionesCancionero, cancionesLocales],
   );
 
   const handleClose = useCallback(() => {
@@ -528,15 +734,79 @@ export default function BuscadorModal({
   });
 
   useEffect(() => {
-    if (open && isHome && usuarioLogueado) {
-      setLoadingMisCanciones(true);
-      const supabase = createClient();
-      void getMisCanciones(supabase)
-        .then(setMisCanciones)
-        .catch(() => setMisCanciones([]))
-        .finally(() => setLoadingMisCanciones(false));
+    if (!open || (isHome && !usuarioLogueado)) {
+      return;
     }
+
+    setLoadingMisCanciones(true);
+    const supabase = createClient();
+    void getMisCanciones(supabase)
+      .then(setMisCanciones)
+      .catch(() => setMisCanciones([]))
+      .finally(() => setLoadingMisCanciones(false));
   }, [open, isHome, usuarioLogueado]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelado = false;
+    const supabase = createClient();
+
+    function aplicar(lista: Artista[], revoke: () => void) {
+      if (cancelado) {
+        revoke();
+        return;
+      }
+
+      revokeFotosRef.current();
+      revokeFotosRef.current = revoke;
+      setArtistas(lista);
+    }
+
+    async function cargarArtistas() {
+      const locales = await leerArtistasFotos().catch(() => []);
+
+      if (!online) {
+        const copia = artistasConFotoLocal(locales);
+        aplicar(copia.artistas, copia.revoke);
+        return;
+      }
+
+      const remotos = await getArtistas(supabase);
+      if (remotos.length === 0) {
+        const copia = artistasConFotoLocal(locales);
+        aplicar(copia.artistas, copia.revoke);
+        return;
+      }
+
+      const localPorId = new Map(locales.map((fila) => [fila.id, fila]));
+      const urls: string[] = [];
+      const lista = remotos.map((artista) => {
+        const local = localPorId.get(artista.id);
+        if (!local?.blob || local.avatar_url !== artista.avatar_url) {
+          return artista;
+        }
+
+        const url = URL.createObjectURL(local.blob);
+        urls.push(url);
+        return { ...artista, avatar_url: url };
+      });
+      aplicar(lista, () => {
+        for (const url of urls) URL.revokeObjectURL(url);
+      });
+    }
+
+    void cargarArtistas();
+    window.addEventListener(ARTISTAS_FOTOS_EVENT, cargarArtistas);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(ARTISTAS_FOTOS_EVENT, cargarArtistas);
+      revokeFotosRef.current();
+      revokeFotosRef.current = () => {};
+    };
+  }, [open, online]);
 
   useEffect(() => {
     if (
@@ -559,19 +829,40 @@ export default function BuscadorModal({
     misCanciones,
     loadingMisCanciones,
     syncMisCancionesResultados,
+    aliasBusqueda,
   ]);
 
   useEffect(() => {
-    if (open) {
-      resetState();
-      void cargarCancionesCancionero().catch(() => {
-        // La búsqueda local sigue funcionando aunque falle esta carga.
-      });
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
+    if (!open) {
+      return;
     }
-  }, [open, resetState, cargarCancionesCancionero]);
+
+    let cancelado = false;
+    resetState();
+    void cargarCancionesCancionero();
+
+    if (isHome && usuarioLogueado) {
+      void listCancionesPractica(createClient())
+        .then((items) => {
+          if (!cancelado) {
+            setPracticaItems(items);
+          }
+        })
+        .catch(() => {
+          if (!cancelado) {
+            setPracticaItems([]);
+          }
+        });
+    }
+
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [open, resetState, cargarCancionesCancionero, isHome, usuarioLogueado]);
 
   useEffect(() => {
     return () => {
@@ -614,100 +905,52 @@ export default function BuscadorModal({
     }, CONFIRMACION_MS);
   }
 
-  async function handleSearch(event?: FormEvent) {
-    event?.preventDefault();
+  function handleQueryChange(value: string) {
+    webRequestRef.current += 1;
+    setQuery(value);
+    setWebQuery(null);
+    setWebError(null);
+    setLoadingInternet(false);
+    setInternetCascadeActive(false);
+    setResultados((current) => ({
+      ...current,
+      linksGuardados: [],
+      internet: [],
+    }));
+  }
 
-    if (isHome && fuenteHome === "mis_canciones") {
-      dismissKeyboard();
-      return;
-    }
+  function handleFilterSubmit(event: FormEvent) {
+    event.preventDefault();
+    dismissKeyboard();
+  }
 
+  async function handleBuscarWeb() {
     const trimmed = query.trim();
 
-    if (!trimmed) {
+    if (
+      !trimmed ||
+      !online ||
+      mostrandoMisCanciones ||
+      loadingInternet
+    ) {
       return;
     }
 
+    const requestId = ++webRequestRef.current;
     dismissKeyboard();
-
-    setLoadingLocal(true);
+    setWebError(null);
     setLoadingInternet(true);
-    setError(null);
-    setBusquedaRealizada(true);
-    setResultados({ cancionero: [], linksGuardados: [], internet: [] });
-    setLocalCascadeActive(false);
+    setWebQuery(trimmed);
     setInternetCascadeActive(false);
+    setResultados((current) => ({
+      ...current,
+      linksGuardados: [],
+      internet: [],
+    }));
 
-    try {
-      const canciones = await loadCancionesParaBusqueda(
-        online ? createClient() : undefined,
-      );
-      setCancionesCancionero(
-        canciones.map((c) => ({
-          id: c.id,
-          nombre: c.nombre,
-          artista: c.artista,
-          letra: c.letra,
-          tiene_cifrado_avanzado: c.tiene_cifrado_avanzado ?? false,
-          user_id: c.user_id ?? null,
-        })),
-      );
-
-      const paso1 = buscarEnCancionero(trimmed, canciones, { conLetra: true });
-      const practica = isHome && usuarioLogueado
-        ? await (async () => {
-            const practicaClient = createClient();
-            const items = await listCancionesPractica(practicaClient);
-            const normalized = trimmed.toLowerCase();
-            const matched = items.filter((item) => item.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(item.artista, normalized, getAliasBusqueda(), item.nombre));
-            const details = await Promise.all(matched.map((item) => getCancionPractica(practicaClient, item.id)));
-            return details.filter((item): item is NonNullable<typeof item> => item !== null && Boolean(item.letra?.trim())).map((item): ResultadoBusquedaBuscador => ({
-              id: item.id,
-              titulo: item.nombre,
-              artista: item.artista ?? "",
-              url: `practica://${item.id}`,
-              sitio: "Entrenador de canciones",
-              fuente: "practica",
-              letra: item.letra,
-              tiene_cifrado_avanzado: false,
-            }));
-          })().catch(() => [] as ResultadoBusquedaBuscador[])
-        : [];
-      const paso2 = online
-        ? buscarEnCancionero(trimmed, canciones, { soloLink: true })
-        : [];
-
-      setResultados({
-        cancionero: [
-          ...paso1.map((c) => mapCancionLocalAResultado(c, "cancionero")),
-          ...practica,
-        ],
-        linksGuardados: paso2.map((c) =>
-          mapCancionLocalAResultado(c, "link-guardado"),
-        ),
-        internet: [],
-      });
-      scheduleCascade(
-        paso1.length + practica.length + paso2.length,
-        setLocalCascadeActive,
-        localCascadeTimerRef,
-      );
-    } catch (searchError) {
-      setError(
-        searchError instanceof Error
-          ? searchError.message
-          : online
-            ? "Error al buscar en el cancionero"
-            : "Error al buscar en el cancionero local",
-      );
-    } finally {
-      setLoadingLocal(false);
-    }
-
-    if (!online) {
-      setLoadingInternet(false);
-      return;
-    }
+    const links = buscarEnCancionero(trimmed, cancionesLocales, {
+      soloLink: true,
+    }).map((cancion) => mapCancionLocalAResultado(cancion, "link-guardado"));
 
     try {
       const response = await fetch(
@@ -716,6 +959,10 @@ export default function BuscadorModal({
       const data = (await response.json()) as
         | ResultadoBusquedaBuscador[]
         | { error?: string };
+
+      if (webRequestRef.current !== requestId) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -741,29 +988,57 @@ export default function BuscadorModal({
 
       setResultados((current) => ({
         ...current,
+        linksGuardados: links,
         internet,
       }));
       scheduleCascade(
-        internet.length,
+        links.length + internet.length,
         setInternetCascadeActive,
         internetCascadeTimerRef,
       );
     } catch (searchError) {
-      if (pantallaRef.current === "busqueda") {
-        setError(
-          searchError instanceof Error
-            ? searchError.message
-            : "Error al buscar en internet",
-        );
+      if (webRequestRef.current !== requestId) {
+        return;
       }
+
+      setWebQuery(null);
+      setWebError(
+        searchError instanceof Error
+          ? searchError.message
+          : "Error al buscar en internet",
+      );
+      setResultados((current) => ({
+        ...current,
+        linksGuardados: [],
+        internet: [],
+      }));
     } finally {
-      setLoadingInternet(false);
+      if (webRequestRef.current === requestId) {
+        setLoadingInternet(false);
+      }
     }
   }
 
-  function handleSelectResultado(resultado: ResultadoBusquedaBuscador) {
+  async function handleSelectResultado(resultado: ResultadoBusquedaBuscador) {
     dismissKeyboard();
-    setSeleccionado(resultado);
+    let elegido = resultado;
+
+    if (
+      resultado.fuente === "practica" &&
+      resultado.id != null &&
+      !resultado.letra?.trim()
+    ) {
+      try {
+        const detalle = await getCancionPractica(createClient(), resultado.id);
+        if (detalle?.letra?.trim()) {
+          elegido = { ...resultado, letra: detalle.letra };
+        }
+      } catch {
+        elegido = resultado;
+      }
+    }
+
+    setSeleccionado(elegido);
     setPreviewEsMisCanciones((isHome && fuenteHome === "mis_canciones") || resultado.fuente === "practica");
     setConfirmacion(null);
     setFabGuardarAbierto(false);
@@ -1208,10 +1483,23 @@ export default function BuscadorModal({
     }
   }
 
-  const mostrandoMisCanciones =
-    isHome && fuenteHome === "mis_canciones" && usuarioLogueado;
   const buscadorCargando =
-    loadingLocal || (mostrandoMisCanciones && loadingMisCanciones);
+    !cancioneroListo ||
+    loadingLocal ||
+    (mostrandoMisCanciones && loadingMisCanciones);
+  const mensajeListaVacia = error
+    ? error
+    : mostrandoMisCanciones && misCanciones.length === 0
+      ? "No tenés canciones guardadas en Favoritas"
+      : !query.trim() && !mostrandoMisCanciones
+        ? "No hay canciones en el cancionero"
+        : "No encontramos resultados para tu búsqueda";
+  const mostrarBotonWeb =
+    !mostrandoMisCanciones &&
+    Boolean(query.trim()) &&
+    online &&
+    !webActiva &&
+    !loadingInternet;
 
   if (!open) {
     return null;
@@ -1229,7 +1517,7 @@ export default function BuscadorModal({
           }}
         >
           <header className="shrink-0 border-b border-border px-4 py-3">
-            <form className="flex items-center gap-3" onSubmit={handleSearch}>
+            <form className="flex items-center gap-3" onSubmit={handleFilterSubmit}>
               <button
                 type="button"
                 aria-label="Cerrar buscador"
@@ -1243,13 +1531,13 @@ export default function BuscadorModal({
                 ref={inputRef}
                 type="text"
                 inputMode="search"
-                enterKeyHint="search"
+                enterKeyHint="done"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => handleQueryChange(event.target.value)}
                 placeholder={
                   mostrandoMisCanciones
                     ? "Filtrar favoritas..."
-                    : "Buscar canción..."
+                    : "Buscar por nombre, artista o letra..."
                 }
                 autoFocus
                 autoCorrect="off"
@@ -1257,18 +1545,6 @@ export default function BuscadorModal({
                 spellCheck={false}
                 className="min-h-11 flex-1 rounded-[10px] border border-border bg-bg-card px-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent"
               />
-
-              <button
-                type="submit"
-                aria-label="Buscar"
-                disabled={
-                  buscadorCargando ||
-                  (!mostrandoMisCanciones && !query.trim())
-                }
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent disabled:opacity-60"
-              >
-                <Search className="size-5 text-white" aria-hidden="true" />
-              </button>
             </form>
 
             <VincularNombreArtista texto={query} />
@@ -1284,13 +1560,16 @@ export default function BuscadorModal({
                   role="tab"
                   aria-selected={fuenteHome === "general"}
                   onClick={() => {
+                    webRequestRef.current += 1;
                     setFuenteHome("general");
-                    setBusquedaRealizada(false);
-                    setResultados({
-                      cancionero: [],
+                    setWebQuery(null);
+                    setWebError(null);
+                    setLoadingInternet(false);
+                    setResultados((current) => ({
+                      ...current,
                       linksGuardados: [],
                       internet: [],
-                    });
+                    }));
                   }}
                   className={`flex-1 h-full rounded-full px-4 text-xs font-bold transition-all flex items-center justify-center ${
                     fuenteHome === "general"
@@ -1306,7 +1585,11 @@ export default function BuscadorModal({
                   aria-selected={fuenteHome === "mis_canciones"}
                   disabled={!usuarioLogueado}
                   onClick={() => {
+                    webRequestRef.current += 1;
                     setFuenteHome("mis_canciones");
+                    setWebQuery(null);
+                    setWebError(null);
+                    setLoadingInternet(false);
                     setError(null);
                     if (!loadingMisCanciones && misCanciones.length > 0) {
                       syncMisCancionesResultados(query, true);
@@ -1327,119 +1610,128 @@ export default function BuscadorModal({
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             {buscadorCargando && <BuscadorSearchSkeleton />}
 
-            {!buscadorCargando && error && totalResultados === 0 && (
+            {!buscadorCargando && listaCancionero.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <Music
                   className="size-10 text-text-faint"
                   aria-hidden="true"
                 />
-                <p className="text-sm text-text-muted">{error}</p>
+                <p className="text-sm text-text-muted">{mensajeListaVacia}</p>
               </div>
             )}
 
-            {!buscadorCargando && !error && !busquedaRealizada && (
-              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                <Music
-                  className="size-10 text-text-faint"
-                  aria-hidden="true"
-                />
-                <p className="text-sm text-text-muted">
-                  Escribí el nombre de la canción o el artista
+            {!buscadorCargando && listaCancionero.length > 0 && (
+              <SeccionResultados
+                label={mostrandoMisCanciones ? "Favoritas" : "Del cancionero"}
+                icon={
+                  <Bookmark
+                    className="size-3.5 shrink-0"
+                    style={{ color: "var(--tuner-in-tune)" }}
+                    aria-hidden="true"
+                  />
+                }
+                resultados={listaCancionero}
+                onSelect={handleSelectResultado}
+                premiumIds={premiumIds}
+                favoritaIds={favoritaIds}
+                fotoArtista={fotoArtista}
+                cascadeActive={mostrandoMisCanciones && localCascadeActive}
+              />
+            )}
+
+            {!buscadorCargando &&
+              !mostrandoMisCanciones &&
+              Boolean(query.trim()) &&
+              !online &&
+              !webActiva && (
+                <p className="mt-2 text-center text-sm text-text-muted">
+                  Para buscar en la web necesitás conexión
                 </p>
+              )}
+
+            {!buscadorCargando && mostrarBotonWeb && (
+              <div className="mt-2 flex flex-col gap-3">
+                {webError ? (
+                  <p className="text-center text-sm text-text-muted">{webError}</p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void handleBuscarWeb()}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-bg-card px-4 text-sm font-bold text-text-primary"
+                >
+                  <Search className="size-4" aria-hidden="true" />
+                  Buscar en la web
+                </button>
               </div>
             )}
 
             {!buscadorCargando &&
-              busquedaRealizada &&
-              totalResultados === 0 &&
-              !loadingInternet && (
-                <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                  <Music
-                    className="size-10 text-text-faint"
-                    aria-hidden="true"
-                  />
-                  <p className="text-sm text-text-muted">
-                    {mostrandoMisCanciones && misCanciones.length === 0
-                      ? "No tenés canciones guardadas en Favoritas"
-                      : "No encontramos resultados para tu búsqueda"}
-                  </p>
-                </div>
+              !mostrandoMisCanciones &&
+              webActiva &&
+              (resultados.linksGuardados.length > 0 ||
+                resultados.internet.length > 0 ||
+                loadingInternet) && (
+                <SeccionResultados
+                  label="En internet"
+                  icon={
+                    <Link2
+                      className="size-3.5 shrink-0 text-[#8BA4C4]"
+                      aria-hidden="true"
+                    />
+                  }
+                  resultados={resultados.linksGuardados}
+                  onSelect={handleSelectResultado}
+                  premiumIds={premiumIds}
+                  favoritaIds={favoritaIds}
+                  fotoArtista={fotoArtista}
+                  cascadeActive={internetCascadeActive}
+                  trailing={
+                    <>
+                      {resultados.internet.length > 0 ? (
+                        <ul className="mt-2 flex flex-col gap-2">
+                          {resultados.internet.map((resultado, index) => (
+                            <li
+                              key={resultadoKey(resultado)}
+                              className={
+                                internetCascadeActive
+                                  ? "cancionero-item-cascade"
+                                  : undefined
+                              }
+                              style={
+                                internetCascadeActive
+                                  ? { animationDelay: getCascadeDelay(index) }
+                                  : undefined
+                              }
+                            >
+                              <ResultadoItem
+                                resultado={resultado}
+                                onSelect={handleSelectResultado}
+                                premiumIds={premiumIds}
+                                favoritaIds={favoritaIds}
+                                artistaAvatarUrl={fotoArtista(resultado)}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {loadingInternet ? (
+                        <BuscadorInternetPendingSkeleton />
+                      ) : null}
+                    </>
+                  }
+                />
               )}
 
-            {!buscadorCargando && (totalResultados > 0 || loadingInternet) && (
-              <>
-                {resultados.cancionero.length > 0 ? (
-                  <SeccionResultados
-                    label={
-                      isHome && fuenteHome === "mis_canciones"
-                        ? "Favoritas"
-                        : "Del cancionero"
-                    }
-                    icon={
-                      <Bookmark
-                        className="size-3.5 shrink-0"
-                        style={{ color: "var(--tuner-in-tune)" }}
-                        aria-hidden="true"
-                      />
-                    }
-                    resultados={resultados.cancionero}
-                    onSelect={handleSelectResultado}
-                    premiumIds={premiumIds}
-                    cascadeActive={localCascadeActive}
-                  />
-                ) : null}
-                {(resultados.linksGuardados.length > 0 ||
-                  resultados.internet.length > 0 ||
-                  loadingInternet) && (
-                  <SeccionResultados
-                    label="En internet"
-                    icon={
-                      <Link2
-                        className="size-3.5 shrink-0 text-[#8BA4C4]"
-                        aria-hidden="true"
-                      />
-                    }
-                    resultados={resultados.linksGuardados}
-                    onSelect={handleSelectResultado}
-                    premiumIds={premiumIds}
-                    cascadeActive={localCascadeActive}
-                    cascadeStartIndex={resultados.cancionero.length}
-                    trailing={
-                      <>
-                        {resultados.internet.length > 0 ? (
-                          <ul className="mt-2 flex flex-col gap-2">
-                            {resultados.internet.map((resultado, index) => (
-                              <li
-                                key={resultadoKey(resultado)}
-                                className={
-                                  internetCascadeActive
-                                    ? "cancionero-item-cascade"
-                                    : undefined
-                                }
-                                style={
-                                  internetCascadeActive
-                                    ? { animationDelay: getCascadeDelay(index) }
-                                    : undefined
-                                }
-                              >
-                                <ResultadoItem
-                                  resultado={resultado}
-                                  onSelect={handleSelectResultado}
-                                  premiumIds={premiumIds}
-                                />
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                        {loadingInternet ? (
-                          <BuscadorInternetPendingSkeleton />
-                        ) : null}
-                      </>
-                    }
-                  />
-                )}
-              </>
-            )}
+            {!buscadorCargando &&
+              !mostrandoMisCanciones &&
+              webActiva &&
+              !loadingInternet &&
+              resultados.linksGuardados.length === 0 &&
+              resultados.internet.length === 0 && (
+                <p className="py-6 text-center text-sm text-text-muted">
+                  No encontramos resultados en la web
+                </p>
+              )}
           </div>
         </section>
 

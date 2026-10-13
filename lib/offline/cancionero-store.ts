@@ -328,9 +328,11 @@ export function getCancioneroLocalForBusqueda(
     id: record.id,
     nombre: record.nombre,
     artista: record.artista,
+    artista_id: record.artista_id ?? null,
     letra: record.letra,
     url_letra: record.url_letra,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
+    validada: Boolean(record.validada_por),
     user_id: record.user_id ?? null,
   }));
 }

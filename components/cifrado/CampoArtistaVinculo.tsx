@@ -10,7 +10,7 @@ type CampoArtistaVinculoProps = {
 
 const CHIP_CLASS =
   "rounded-full border border-border bg-bg-dark/60 px-3 py-1 text-xs text-text-primary transition-colors hover:border-accent active:border-accent";
-const LINK_CLASS = "text-xs text-text-muted underline underline-offset-2";
+const LINK_CLASS = "text-xs text-white/90 underline underline-offset-2 hover:text-white";
 
 /**
  * Aviso debajo del campo Artista: muestra con qué artista de la lista
@@ -45,7 +45,7 @@ export default function CampoArtistaVinculo({
   if (resultado.tipo === "nuevo" || nuevoConfirmado) {
     return (
       <>
-        <p className="mt-1.5 text-xs text-text-muted">
+        <p className="mt-1.5 text-xs text-white/90">
           {vinculo.crearSiNuevo
             ? "Artista nuevo: se agrega a la lista al guardar."
             : "Este artista no está en la lista. Queda solo en esta canción."}

@@ -56,9 +56,6 @@ import {
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
-  CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
-  CIFRADO_DETAILS_CARD_TITLE_CLASS,
-  CIFRADO_DETAILS_FIELD_LABEL_CLASS,
   CIFRADO_EDITOR_COMPAS_PANEL_CLASS,
   CIFRADO_EDITOR_PC_SHELL_CLASS,
   CIFRADO_EDITOR_LINE_BG_CLASS,
@@ -2759,6 +2756,11 @@ export default function CifradoEditor({
   }, [draftPasteTraditional]);
   const ingresoTonalidadLista =
     ingresoTonalidadIndex !== null && ingresoModoTonal !== null;
+  /** Tono, nombre y artista recién cuando ya hay canción elegida o letra pegada. */
+  const mostrarDatosIngreso =
+    (ingresoTab === "letra" && draftLyrics.trim().length > 0) ||
+    (ingresoTab === "pegar" && draftPasteTraditional.trim().length > 0) ||
+    (ingresoTab === "web" && pendingWebImport !== null);
   const hasCompas = compasConfig.barras.length > 0;
 
   const lineMergePreview = useMemo(() => {
@@ -5118,11 +5120,11 @@ export default function CifradoEditor({
               <div className="space-y-3 px-3 pb-3">
                 <VozPcConfigCard
                   title="Nombre y artista"
-                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  titleClassName="mb-3 text-sm font-semibold normal-case text-white"
                   accentVar="var(--accent)"
                 >
                   <label
-                    className={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                    className="mb-1.5 block text-xs font-medium normal-case text-white"
                     htmlFor="cifrado-nombre"
                   >
                     Nombre *
@@ -5156,7 +5158,7 @@ export default function CifradoEditor({
                     }}
                   />
                   <label
-                    className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-4`}
+                    className="mb-1.5 mt-4 block text-xs font-medium normal-case text-white"
                     htmlFor="cifrado-artista"
                   >
                     Artista
@@ -5178,7 +5180,7 @@ export default function CifradoEditor({
 
                 <VozPcConfigCard
                   title="Video"
-                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  titleClassName="mb-3 text-sm font-semibold normal-case text-white"
                   accentVar="var(--accent)"
                 >
                   <CancionYoutubeField
@@ -5196,7 +5198,7 @@ export default function CifradoEditor({
 
                 <VozPcConfigCard
                   title="Tono y modo"
-                  titleClassName={CIFRADO_DETAILS_CARD_TITLE_CLASS}
+                  titleClassName="mb-3 text-sm font-semibold normal-case text-white"
                   accentVar="var(--accent)"
                 >
                   <CifradoTonalidadFields
@@ -5204,7 +5206,7 @@ export default function CifradoEditor({
                     notacion={notacion === "numero" ? "es" : notacion}
                     tonalidadIndex={tonalidadIndex}
                     modoTonal={modoTonal}
-                    fieldLabelClassName={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                    fieldLabelClassName="mb-1.5 block text-xs font-medium normal-case text-white"
                     onTonalidadChange={setTonalidadIndex}
                     onModoTonalChange={setModoTonal}
                   />
@@ -5212,7 +5214,7 @@ export default function CifradoEditor({
 
                 <VozPcConfigCard title="Tempo" accentVar="var(--accent)">
                   <label
-                    className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                    className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white"
                     htmlFor="cifrado-bpm-sidebar"
                   >
                     BPM
@@ -5296,15 +5298,14 @@ export default function CifradoEditor({
             />
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-              {ingresoTab !== "cancionero" &&
-              (ingresoTab !== "web" || pendingWebImport) ? (
+              {mostrarDatosIngreso ? (
                 <div className="space-y-4">
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                    <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
+                    <p className="mb-3 text-sm font-semibold normal-case text-white">
                       Nombre y artista
                     </p>
                     <label
-                      className={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                      className="mb-1.5 block text-xs font-medium normal-case text-white"
                       htmlFor="cifrado-nombre-ingreso"
                     >
                       Nombre
@@ -5338,7 +5339,7 @@ export default function CifradoEditor({
                       }}
                     />
                     <label
-                      className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-4`}
+                      className="mb-1.5 mt-4 block text-xs font-medium normal-case text-white"
                       htmlFor="cifrado-artista-ingreso"
                     >
                       Artista
@@ -5358,7 +5359,7 @@ export default function CifradoEditor({
                     <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                    <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
+                    <p className="mb-3 text-sm font-semibold normal-case text-white">
                       Tono y modo
                     </p>
                     <CifradoTonalidadFields
@@ -5366,7 +5367,7 @@ export default function CifradoEditor({
                       notacion={notacion}
                       tonalidadIndex={ingresoTonalidadIndex}
                       modoTonal={ingresoModoTonal}
-                      fieldLabelClassName={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                      fieldLabelClassName="mb-1.5 block text-xs font-medium normal-case text-white"
                       requireSelection
                       onTonalidadChange={setIngresoTonalidadIndex}
                       onModoTonalChange={setIngresoModoTonal}
@@ -5376,15 +5377,15 @@ export default function CifradoEditor({
               ) : null}
 
               <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>
+                <p className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white">
                   Vista previa
                 </p>
                 {ingresoTab === "letra" && draftLyrics.trim() ? (
                   <>
-                    <p className="mt-2 text-sm font-medium text-text-primary">
+                    <p className="mt-2 text-sm font-medium text-white">
                       {draftStats.verses} versos · {draftStats.total} renglones
                     </p>
-                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-white/90">
                       {draftLyrics.trim()}
                     </p>
                   </>
@@ -5392,25 +5393,27 @@ export default function CifradoEditor({
                     (ingresoTab === "web" && pendingWebImport)) &&
                   draftPastePreview.text ? (
                   <>
-                    <p className="mt-2 text-sm font-medium text-text-primary">
+                    <p className="mt-2 text-sm font-medium text-white">
                       {draftPastePreview.stats.verses} versos ·{" "}
                       {draftPastePreview.stats.total} renglones
                     </p>
-                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-muted">
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-white/90">
                       {draftPastePreview.text}
                     </p>
                   </>
                 ) : (
-                  <p className="mt-2 text-sm text-text-muted">
+                  <p className="mt-2 text-sm text-white">
                     {ingresoTab === "cancionero"
                       ? "Elegí una canción de la lista. Se abre en el entrenador."
+                      : ingresoTab === "basicas"
+                        ? "Elegí una canción de la lista. Recién ahí se abre para editar."
                       : ingresoTab === "web"
                       ? pendingWebImport
                         ? "Revisá los datos y confirmá para ir al editor."
                         : "Buscá una canción y previsualizala antes de importarla."
                       : ingresoTab === "pegar"
-                        ? "Pegá la letra con acordes a la izquierda para ver un resumen acá."
-                        : "Pegá la letra a la izquierda para ver un resumen acá."}
+                        ? "Pegá la letra con acordes a la izquierda. Después aparecen los datos."
+                        : "Pegá la letra a la izquierda. Después aparecen tono, nombre y artista."}
                   </p>
                 )}
               </div>
@@ -5419,19 +5422,34 @@ export default function CifradoEditor({
                 <p className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-[var(--text-on-light)]">
                   Consejos
                 </p>
-                <ul className="space-y-2 text-xs leading-relaxed text-[color-mix(in_srgb,var(--text-on-light)_68%,var(--bg-panel-claro))]">
+                <ul className="space-y-2 text-xs font-medium leading-relaxed text-[var(--text-on-light)]">
                   {ingresoTab === "letra" ? (
-                    <>
-                      <li>· Elegí el tono y el modo antes de continuar.</li>
-                      <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
-                      <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
-                      <li>· Podés completar nombre y artista ahora o al guardar.</li>
-                    </>
+                    draftLyrics.trim() ? (
+                      <>
+                        <li>· Elegí el tono y el modo antes de continuar.</li>
+                        <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
+                        <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
+                        <li>· Podés completar nombre y artista ahora o al guardar.</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>· Primero pegá o escribí la letra a la izquierda.</li>
+                        <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
+                        <li>· Solo la letra, sin acordes (los agregás después).</li>
+                        <li>· Recién después aparecen tono, nombre y artista.</li>
+                      </>
+                    )
                   ) : ingresoTab === "cancionero" ? (
                     <>
                       <li>· Tocá la canción y se abre en el entrenador.</li>
                       <li>· Si no está, usá otra pestaña para buscarla, pegarla o escribirla.</li>
                       <li>· La copia queda en tu práctica. El cancionero general no cambia.</li>
+                    </>
+                  ) : ingresoTab === "basicas" ? (
+                    <>
+                      <li>· Buscá la canción en la lista de la izquierda.</li>
+                      <li>· Tocála para abrirla y empezar a editar.</li>
+                      <li>· Si no está, pasá a Buscar en la web, Pegar o Escribir letra.</li>
                     </>
                   ) : ingresoTab === "web" ? (
                     pendingWebImport ? (
@@ -5443,18 +5461,25 @@ export default function CifradoEditor({
                     ) : (
                       <>
                         <li>· Buscá y previsualizá la canción.</li>
-                        <li>· Con «Usar esta canción» se completan los campos.</li>
+                        <li>· Con «Confirmar e importar» aparecen los datos.</li>
                         <li>· Después revisás y confirmás para editar.</li>
                         <li>· Solo se busca en Acordes de Canciones.</li>
                       </>
                     )
-                  ) : (
+                  ) : draftPasteTraditional.trim() ? (
                     <>
                       <li>· Elegí el tono y el modo antes de continuar.</li>
                       <li>· Si el pegado incluye «Tono:» (aunque falte la T), se detecta y no entra en la letra.</li>
                       <li>· Si no, la app puede sugerir el tono según los acordes pegados.</li>
                       <li>· Pegá el formato tradicional: acordes arriba, letra abajo.</li>
                       <li>· La app separa letra y acordes al importar.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>· Primero pegá la letra con acordes a la izquierda.</li>
+                      <li>· El formato es acordes arriba y letra abajo.</li>
+                      <li>· Si el pegado incluye «Tono:», se detecta solo.</li>
+                      <li>· Recién después aparecen tono, nombre y artista.</li>
                     </>
                   )}
                 </ul>
@@ -5470,6 +5495,7 @@ export default function CifradoEditor({
               )}
             </div>
 
+            {mostrarDatosIngreso ? (
             <div className="hidden shrink-0 border-t border-border p-4 lg:block">
               {ingresoTab === "letra" ? (
                 <TapButton
@@ -5480,8 +5506,7 @@ export default function CifradoEditor({
                 >
                   Aplicar y empezar a cifrar
                 </TapButton>
-              ) : ingresoTab === "pegar" ||
-                (ingresoTab === "web" && pendingWebImport) ? (
+              ) : (
                 <TapButton
                   type="button"
                   onClick={
@@ -5496,8 +5521,9 @@ export default function CifradoEditor({
                 >
                   Importar y editar
                 </TapButton>
-              ) : null}
+              )}
             </div>
+            ) : null}
           </aside>
         )}
       </div>

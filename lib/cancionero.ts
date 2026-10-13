@@ -79,11 +79,13 @@ export function getDuplicadoCancioneroNivel(
 /** Menos de esto no se busca en la letra: una letra suelta coincidiría con casi todo. */
 const BUSQUEDA_LETRA_MIN = 3;
 
-export function filterCancionesCancionero(
-  canciones: CancionCancionero[],
+export function filterCancionesCancionero<
+  T extends Pick<CancionCancionero, "nombre" | "artista" | "letra">,
+>(
+  canciones: T[],
   query: string,
   alias: AliasBusqueda = getAliasBusqueda(),
-): CancionCancionero[] {
+): T[] {
   const normalized = query.trim().toLowerCase();
 
   if (!normalized) {
@@ -91,7 +93,7 @@ export function filterCancionesCancionero(
   }
 
   const buscarLetra = normalized.length >= BUSQUEDA_LETRA_MIN;
-  const ranked: { cancion: CancionCancionero; score: number; index: number }[] = [];
+  const ranked: { cancion: T; score: number; index: number }[] = [];
 
   for (let index = 0; index < canciones.length; index += 1) {
     const cancion = canciones[index]!;

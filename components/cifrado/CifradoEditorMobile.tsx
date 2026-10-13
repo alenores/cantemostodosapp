@@ -304,7 +304,7 @@ export default function CifradoEditorMobile({
 
   const tonalidadLista = tonalidadIndex !== null && modoTonal !== null;
   const showDatosIngreso =
-    ingresoTab === "letra" ||
+    (ingresoTab === "letra" && draftLyrics.trim().length > 0) ||
     (ingresoTab === "pegar" && draftPaste.trim().length > 0) ||
     (ingresoTab === "web" && pendingWebImport !== null);
   const pickerExisting = pickerTarget
@@ -1510,7 +1510,7 @@ export default function CifradoEditorMobile({
               </p>
             ) : null}
 
-            {ingresoTab === "letra" ? (
+            {ingresoTab === "letra" && showDatosIngreso ? (
               <TapButton
                 type="button"
                 onClick={handleApplyLyrics}

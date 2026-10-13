@@ -142,6 +142,9 @@ export type ResultadoBusquedaBuscador = ResultadoBusqueda & {
   id?: number;
   letra?: string | null;
   tiene_cifrado_avanzado?: boolean;
+  artista_id?: string | null;
+  /** Letra y acordes revisados. */
+  validada?: boolean;
 };
 
 export type UsuarioActivo = {

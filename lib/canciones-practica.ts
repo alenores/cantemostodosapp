@@ -3,6 +3,7 @@ import {
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
   createEmptyCifrado,
+  tieneBarrasDeCompas,
   type CifradoData,
   type CompasConfig,
   type NotaIndex,
@@ -65,7 +66,28 @@ export type CancionPracticaListItem = Pick<
   | "origen_cancion_id"
   | "dominio"
   | "updated_at"
->;
+> & {
+  tiene_compases: boolean;
+  tiene_canto: boolean;
+  tiene_nota: boolean;
+};
+
+function toPracticaListItem(
+  row: CancionPracticaLocalRecord,
+): CancionPracticaListItem {
+  return {
+    id: row.local_id,
+    nombre: row.nombre,
+    artista: row.artista,
+    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado,
+    origen_cancion_id: row.origen_cancion_id,
+    dominio: row.dominio,
+    updated_at: row.updated_at,
+    tiene_compases: tieneBarrasDeCompas(row.compas_config),
+    tiene_canto: (row.anotaciones?.length ?? 0) > 0,
+    tiene_nota: Boolean(row.nota_general?.trim()),
+  };
+}
 
 export type CancionPracticaSavePayload = {
   nombre: string;
@@ -258,15 +280,7 @@ export async function listCancionesPractica(
       // La copia local sigue disponible; el runner volverá a intentar.
     }
   }
-  return (await getCancionesPracticaLocalRecords(userId)).map((row) => ({
-    id: row.local_id,
-    nombre: row.nombre,
-    artista: row.artista,
-    tiene_cifrado_avanzado: row.tiene_cifrado_avanzado,
-    origen_cancion_id: row.origen_cancion_id,
-    dominio: row.dominio,
-    updated_at: row.updated_at,
-  }));
+  return (await getCancionesPracticaLocalRecords(userId)).map(toPracticaListItem);
 }
 
 export async function getCancionPractica(
@@ -299,17 +313,7 @@ export async function findCancionPracticaByOrigen(
   const row = (await getCancionesPracticaLocalRecords(userId)).find(
     (item) => item.origen_cancion_id === origenCancionId,
   );
-  return row
-    ? {
-        id: row.local_id,
-        nombre: row.nombre,
-        artista: row.artista,
-        tiene_cifrado_avanzado: row.tiene_cifrado_avanzado,
-        origen_cancion_id: row.origen_cancion_id,
-        dominio: row.dominio,
-        updated_at: row.updated_at,
-      }
-    : null;
+  return row ? toPracticaListItem(row) : null;
 }
 
 export async function insertCancionPractica(

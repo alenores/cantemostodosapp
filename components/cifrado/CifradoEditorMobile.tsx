@@ -4,6 +4,7 @@ import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
 import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
+import CifradoEditorCancioneroPracticaTab from "@/components/cifrado/CifradoEditorCancioneroPracticaTab";
 import {
   CifradoIngresoTonalidadInferModal,
   type PasteIngresoConfirmResult,
@@ -115,7 +116,7 @@ import { ArrowLeft, Eye, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type IngresoTab = "letra" | "web" | "pegar" | "basicas";
+type IngresoTab = "letra" | "web" | "pegar" | "basicas" | "cancionero";
 type MobilePhase = "ingreso" | "cifrado";
 type MobileLineDeleteKind = "line" | "acordes" | "compases";
 
@@ -140,6 +141,10 @@ type CifradoEditorMobileProps = {
   /** Icono del botón de salida cuando hay onClose. Por defecto flecha atrás. */
   exitIcon?: "back" | "close";
   showBasicSongsTab?: boolean;
+  /** Pestaña Cancionero del entrenador: copia la canción y abre la práctica. */
+  onElegirCancionero?: (cancion: CancionCancionero) => Promise<void> | void;
+  /** En el entrenador, un artista que no está en la lista no se crea. */
+  crearArtistaNuevo?: boolean;
   onPersist?: CifradoEditorPersistFn;
   onSaved?: (result?: CifradoSaveResult) => void;
   anotaciones?: AnotacionesControl | null;
@@ -157,11 +162,16 @@ export default function CifradoEditorMobile({
   onClose,
   exitIcon = "back",
   showBasicSongsTab,
+  onElegirCancionero,
+  crearArtistaNuevo = true,
   onPersist,
   onSaved,
   anotaciones,
 }: CifradoEditorMobileProps = {}) {
   const basicSongsTabVisible = showBasicSongsTab ?? !onPersist;
+  const tabCompacta = onElegirCancionero
+    ? "min-w-0 whitespace-normal px-1 text-[0.65rem] leading-tight"
+    : "";
   const searchParams = useSearchParams();
   const desdeParam = searchParams.get("desde");
   const desdeCancionero = desdeParam === "cancionero";
@@ -183,11 +193,15 @@ export default function CifradoEditorMobile({
       delete document.body.dataset.hideAppHeader;
     };
   }, [phase]);
-  const [ingresoTab, setIngresoTab] = useState<IngresoTab>("letra");
+  const [ingresoTab, setIngresoTab] = useState<IngresoTab>(
+    onElegirCancionero ? "cancionero" : "letra",
+  );
 
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
-  const artistaVinculo = useArtistaVinculo(artista, setArtista);
+  const artistaVinculo = useArtistaVinculo(artista, setArtista, {
+    crearSiNuevo: crearArtistaNuevo,
+  });
   const [youtubeUrl, setYoutubeUrl] = useState(() => session?.youtube_url ?? "");
   /** Solo se guarda el link si la persona lo tocó: no pisa uno guardado que no se cargó. */
   const [youtubeTocado, setYoutubeTocado] = useState(false);
@@ -1244,6 +1258,22 @@ export default function CifradoEditorMobile({
             role="tablist"
             aria-label="Forma de ingreso"
           >
+            {onElegirCancionero ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={ingresoTab === "cancionero"}
+                onClick={() => {
+                  setIngresoTab("cancionero");
+                  clearError();
+                }}
+                className={`${cifradoEditorToolbarSegmentedButtonClass(
+                  ingresoTab === "cancionero",
+                )} ${tabCompacta}`}
+              >
+                Cancionero
+              </button>
+            ) : null}
             {basicSongsTabVisible ? <button
               type="button"
               role="tab"
@@ -1267,9 +1297,9 @@ export default function CifradoEditorMobile({
                 setIngresoTab("web");
                 clearError();
               }}
-              className={cifradoEditorToolbarSegmentedButtonClass(
+              className={`${cifradoEditorToolbarSegmentedButtonClass(
                 ingresoTab === "web",
-              )}
+              )} ${tabCompacta}`}
             >
               Buscar en la web
             </button>
@@ -1281,9 +1311,9 @@ export default function CifradoEditorMobile({
                 setIngresoTab("pegar");
                 clearError();
               }}
-              className={cifradoEditorToolbarSegmentedButtonClass(
+              className={`${cifradoEditorToolbarSegmentedButtonClass(
                 ingresoTab === "pegar",
-              )}
+              )} ${tabCompacta}`}
             >
               Pegar letra+acordes
             </button>
@@ -1295,9 +1325,9 @@ export default function CifradoEditorMobile({
                 setIngresoTab("letra");
                 clearError();
               }}
-              className={cifradoEditorToolbarSegmentedButtonClass(
+              className={`${cifradoEditorToolbarSegmentedButtonClass(
                 ingresoTab === "letra",
-              )}
+              )} ${tabCompacta}`}
             >
               Escribir letra
             </button>
@@ -1310,11 +1340,16 @@ export default function CifradoEditorMobile({
             <div
               className={
                 ingresoTab === "basicas" ||
+                ingresoTab === "cancionero" ||
                 (ingresoTab === "web" && !pendingWebImport)
                   ? "flex min-h-0 flex-1 flex-col"
                   : "flex shrink-0 flex-col"
               }
             >
+              {ingresoTab === "cancionero" && onElegirCancionero ? (
+                <CifradoEditorCancioneroPracticaTab onSelect={onElegirCancionero} />
+              ) : null}
+
               {ingresoTab === "basicas" && basicSongsTabVisible ? (
                 <CifradoEditorBasicSongsTab onSelect={handleSelectBasicSong} />
               ) : null}

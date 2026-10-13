@@ -46,7 +46,9 @@ export default function CampoArtistaVinculo({
     return (
       <>
         <p className="mt-1.5 text-xs text-text-muted">
-          Artista nuevo: se agrega a la lista al guardar.
+          {vinculo.crearSiNuevo
+            ? "Artista nuevo: se agrega a la lista al guardar."
+            : "Este artista no está en la lista. Queda solo en esta canción."}
           {nuevoConfirmado ? (
             <>
               {" "}

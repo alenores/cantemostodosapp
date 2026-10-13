@@ -6,6 +6,7 @@ import CifradoEditor from "@/components/ui/CifradoEditor";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { getActiveUserId } from "@/lib/auth/offline-user";
@@ -15,12 +16,18 @@ import type {
 } from "@/lib/cifrado-editor-session";
 import {
   cancionPracticaToEditorSession,
+  cloneCancioneroToPractica,
   getCancionPractica,
   insertCancionPractica,
   updateCancionPractica,
   updateCancionPracticaNota,
 } from "@/lib/canciones-practica";
+import { fetchCancionCifradoDetalle } from "@/lib/cancionero";
+import {
+  getCancioneroLocalCifradoDetalle,
+} from "@/lib/offline/cancionero-store";
 import { createClient } from "@/lib/supabase/client";
+import type { CancionCancionero } from "@/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -40,9 +47,11 @@ export default function EntrenadorCancionesEditorPageClient() {
   const searchParams = useSearchParams();
   const navigateWithProgress = useNavigateWithProgress();
   const supabase = useMemo(() => createClient(), []);
+  const online = useOnlineStatus();
   const isDesktop = useIsDesktop();
   const idParam = searchParams.get("id");
   const editingId = idParam ? Number(idParam) : null;
+  const esNueva = editingId == null || Number.isNaN(editingId);
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [session, setSession] = useState<CifradoEditorSession | null>(null);
@@ -149,6 +158,27 @@ export default function EntrenadorCancionesEditorPageClient() {
     [editingId, supabase],
   );
 
+  const handleElegirCancionero = useCallback(
+    async (cancion: CancionCancionero) => {
+      let detalle = null;
+
+      if (cancion.tiene_cifrado_avanzado) {
+        detalle = await getCancioneroLocalCifradoDetalle(cancion.id);
+        if (!detalle && online) {
+          detalle = await fetchCancionCifradoDetalle(supabase, cancion.id);
+        }
+      }
+
+      const practicaId = await cloneCancioneroToPractica(
+        supabase,
+        cancion,
+        detalle,
+      );
+      navigateWithProgress(verHref(practicaId));
+    },
+    [navigateWithProgress, online, supabase],
+  );
+
   const handleSaved = useCallback(
     (result?: CifradoSaveResult) => {
       if (result?.id != null) {
@@ -191,6 +221,8 @@ export default function EntrenadorCancionesEditorPageClient() {
           onClose={goBack}
           showPageClose
           onPersist={persistPractica}
+          onElegirCancionero={esNueva ? handleElegirCancionero : undefined}
+          crearArtistaNuevo={false}
           onSaved={handleSaved}
           anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
         />
@@ -202,6 +234,8 @@ export default function EntrenadorCancionesEditorPageClient() {
           exitIcon="close"
           backAriaLabel="Cerrar editor"
           onPersist={persistPractica}
+          onElegirCancionero={esNueva ? handleElegirCancionero : undefined}
+          crearArtistaNuevo={false}
           onSaved={handleSaved}
           anotaciones={{ items: anotaciones, onChange: setAnotaciones }}
         />

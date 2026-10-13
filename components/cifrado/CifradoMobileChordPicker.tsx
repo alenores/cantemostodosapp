@@ -1,7 +1,10 @@
 "use client";
 
 import { AcordeLabel } from "@/components/cifrado/AcordeLabel";
-import { CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS } from "@/components/cifrado/cifrado-controls-ui";
+import {
+  CIFRADO_ACORDE_TEXT_CLASS,
+  CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS,
+} from "@/components/cifrado/cifrado-controls-ui";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolSwitch } from "@/components/ui/ToolSwitch";
 import {
@@ -324,7 +327,7 @@ export function CifradoMobileChordPicker({
           </>
         ) : null}
 
-        <p className="mb-3 text-center text-lg font-bold text-accent">
+        <p className={`mb-3 text-center text-lg font-bold ${CIFRADO_ACORDE_TEXT_CLASS}`}>
           <AcordeLabel
             noteIndex={noteIndex}
             modifier={modifier}
@@ -335,7 +338,7 @@ export function CifradoMobileChordPicker({
                 : undefined
             }
             notacion={notacion}
-            className="text-accent"
+            className={CIFRADO_ACORDE_TEXT_CLASS}
           />
         </p>
 

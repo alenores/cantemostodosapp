@@ -3,36 +3,32 @@ import { artistaCoincideBusqueda, getAliasBusqueda } from "@/lib/artistas-alias-
 
 import CancioneroListSkeleton from "@/components/cancionero/CancioneroListSkeleton";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
+import PracticaCancionCard from "@/components/herramientas/PracticaCancionCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import { getArtistas } from "@/lib/artistas";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
-  cloneCancioneroToPractica,
   deleteCancionPractica,
   listCancionesPractica,
   type CancionPracticaListItem,
 } from "@/lib/canciones-practica";
-import { fetchCancionCifradoDetalle, filterCancionesCancionero } from "@/lib/cancionero";
 import {
-  getCancioneroLocalAsCancionero,
-  getCancioneroLocalCifradoDetalle,
-} from "@/lib/offline/cancionero-store";
+  ARTISTAS_FOTOS_EVENT,
+  artistasConFotoLocal,
+  leerArtistasFotos,
+} from "@/lib/offline/artista-fotos";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import { createClient } from "@/lib/supabase/client";
-import type { CancionCancionero } from "@/types";
-import { Music, Plus, Search, Trash2 } from "lucide-react";
+import type { Artista } from "@/types";
+import { Music, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type PointerEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
   "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
@@ -55,82 +51,19 @@ function filterPractica(
   });
 }
 
-type PracticaCancionListItemProps = {
-  cancion: CancionPracticaListItem;
-  onOpen: () => void;
-  onDelete: () => void;
-};
-
-function PracticaCancionListItem({
-  cancion,
-  onOpen,
-  onDelete,
-}: PracticaCancionListItemProps) {
-  const [isPressed, setIsPressed] = useState(false);
-
-  function handleOpenPointerDown(event: PointerEvent<HTMLButtonElement>) {
-    if (event.button !== 0) {
-      return;
-    }
-
-    setIsPressed(true);
-  }
-
-  function handleOpenPointerEnd() {
-    setIsPressed(false);
-  }
-
-  return (
-    <div
-      style={isPressed ? { transform: "scale(0.97)" } : undefined}
-      className="flex items-stretch gap-2 rounded-[12px] border border-border bg-bg-card transition-transform duration-100 ease-out"
-    >
-      <button
-        type="button"
-        data-no-tap-feedback
-        aria-label={`Abrir ${cancion.nombre}`}
-        onClick={onOpen}
-        onPointerDown={handleOpenPointerDown}
-        onPointerUp={handleOpenPointerEnd}
-        onPointerLeave={handleOpenPointerEnd}
-        onPointerCancel={handleOpenPointerEnd}
-        className="min-w-0 flex-1 px-4 py-3 text-left"
-      >
-        <p className="truncate text-base font-bold text-text-primary">
-          {cancion.nombre}
-        </p>
-        {cancion.artista ? (
-          <p className="truncate text-sm text-text-muted">{cancion.artista}</p>
-        ) : null}
-      </button>
-      <button
-        type="button"
-        data-no-tap-feedback
-        aria-label={`Eliminar ${cancion.nombre}`}
-        onClick={onDelete}
-        className="flex w-12 shrink-0 items-center justify-center text-text-muted"
-      >
-        <Trash2 className="size-4" aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
 export default function EntrenadorCancionesPageClient() {
   const router = useRouter();
   const navigateWithProgress = useNavigateWithProgress();
   const supabase = useMemo(() => createClient(), []);
   const online = useOnlineStatus();
+  const isDesktop = useIsDesktop();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [artistas, setArtistas] = useState<Artista[]>([]);
+  const [activeCardId, setActiveCardId] = useState<number | null>(null);
   const [canciones, setCanciones] = useState<CancionPracticaListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerQuery, setPickerQuery] = useState("");
-  const [cancionero, setCancionero] = useState<CancionCancionero[]>([]);
-  const [pickerLoading, setPickerLoading] = useState(false);
-  const [cloningId, setCloningId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] =
     useState<CancionPracticaListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -140,10 +73,76 @@ export default function EntrenadorCancionesPageClient() {
     [canciones, query],
   );
 
-  const pickerFiltered = useMemo(
-    () => filterCancionesCancionero(cancionero, pickerQuery),
-    [cancionero, pickerQuery],
+  const artistasPorNombre = useMemo(
+    () =>
+      new Map(
+        artistas.map((artista) => [
+          artista.nombre.toLocaleLowerCase("es"),
+          artista,
+        ]),
+      ),
+    [artistas],
   );
+
+  const fotoArtista = useCallback(
+    (nombre: string | null) =>
+      (nombre
+        ? artistasPorNombre.get(nombre.toLocaleLowerCase("es"))?.avatar_url
+        : null) ?? null,
+    [artistasPorNombre],
+  );
+
+  const revokeFotosRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    let cancelado = false;
+
+    function aplicar(lista: Artista[], revoke: () => void) {
+      if (cancelado) {
+        revoke();
+        return;
+      }
+      revokeFotosRef.current();
+      revokeFotosRef.current = revoke;
+      setArtistas(lista);
+    }
+
+    async function cargarArtistas() {
+      const locales = await leerArtistasFotos().catch(() => []);
+      if (!online) {
+        const copia = artistasConFotoLocal(locales);
+        aplicar(copia.artistas, copia.revoke);
+        return;
+      }
+
+      const remotos = await getArtistas(supabase);
+      if (remotos.length === 0) {
+        const copia = artistasConFotoLocal(locales);
+        aplicar(copia.artistas, copia.revoke);
+        return;
+      }
+
+      const localPorId = new Map(locales.map((fila) => [fila.id, fila]));
+      const urls: string[] = [];
+      const lista = remotos.map((artista) => {
+        const local = localPorId.get(artista.id);
+        if (!local?.blob || local.avatar_url !== artista.avatar_url) return artista;
+        const url = URL.createObjectURL(local.blob);
+        urls.push(url);
+        return { ...artista, avatar_url: url };
+      });
+      aplicar(lista, () => {
+        for (const url of urls) URL.revokeObjectURL(url);
+      });
+    }
+
+    void cargarArtistas();
+    window.addEventListener(ARTISTAS_FOTOS_EVENT, cargarArtistas);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(ARTISTAS_FOTOS_EVENT, cargarArtistas);
+    };
+  }, [online, supabase]);
+  useEffect(() => () => revokeFotosRef.current(), []);
 
   const refresh = useCallback(async (skipSync = false) => {
     setLoading(true);
@@ -189,63 +188,13 @@ export default function EntrenadorCancionesPageClient() {
     void loadSession();
   }, [refresh, router, supabase]);
 
-  useHardwareBack(pickerOpen, () => {
-    setPickerOpen(false);
-  });
-
   useHardwareBack(deleteTarget != null, () => {
     setDeleteTarget(null);
   });
 
-  async function openPicker() {
-    setPickerOpen(true);
-    setPickerQuery("");
-    setPickerLoading(true);
-
-    try {
-      const data = await getCancioneroLocalAsCancionero();
-      setCancionero(data);
-    } catch {
-      setCancionero([]);
-    } finally {
-      setPickerLoading(false);
-    }
-  }
-
-  async function handleClone(cancion: CancionCancionero) {
-    setCloningId(cancion.id);
-    setError(null);
-
-    try {
-      let detalle = null;
-
-      if (cancion.tiene_cifrado_avanzado) {
-        detalle = await getCancioneroLocalCifradoDetalle(cancion.id);
-        if (!detalle && online) {
-          detalle = await fetchCancionCifradoDetalle(supabase, cancion.id);
-        }
-      }
-
-      const practicaId = await cloneCancioneroToPractica(
-        supabase,
-        cancion,
-        detalle,
-      );
-
-      setPickerOpen(false);
-      navigateWithProgress(
-        `/practica/entrenador-canciones/ver?id=${practicaId}`,
-      );
-    } catch (cloneError) {
-      const message =
-        cloneError instanceof Error
-          ? cloneError.message
-          : "No se pudo agregar la canción";
-      setError(message);
-    } finally {
-      setCloningId(null);
-    }
-  }
+  useHardwareBack(activeCardId != null && deleteTarget == null, () => {
+    setActiveCardId(null);
+  });
 
   async function handleDelete() {
     if (!deleteTarget) {
@@ -277,80 +226,14 @@ export default function EntrenadorCancionesPageClient() {
 
   return (
     <>
-      {pickerOpen ? (
-        <CancioneroSubpageShell
-          title="Desde el Cancionero"
-          onBack={() => setPickerOpen(false)}
-          backAriaLabel="Volver al entrenador"
-        >
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-text-muted"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              value={pickerQuery}
-              onChange={(event) => setPickerQuery(event.target.value)}
-              placeholder="Buscar en el cancionero"
-              className={inputClassName}
-              aria-label="Buscar en el cancionero"
-            />
-          </div>
-
-          {!online ? (
-            <p className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm text-text-muted">
-              Sin conexión · los cambios se guardan en este celular y se sincronizan después.
-            </p>
-          ) : null}
-
-          {pickerLoading ? (
-            <CancioneroListSkeleton />
-          ) : pickerFiltered.length === 0 ? (
-            <p className="py-8 text-center text-sm text-text-muted">
-              No hay canciones para mostrar.
-            </p>
-          ) : (
-            <ul className="app-list-grid list-none p-0">
-              {pickerFiltered.map((cancion) => (
-                <li key={cancion.id}>
-                  <TapButton
-                    aria-label={`Agregar ${cancion.nombre}`}
-                    disabled={cloningId !== null}
-                    onClick={() => void handleClone(cancion)}
-                    className="w-full rounded-[12px] border border-border bg-bg-card px-4 py-3 text-left disabled:opacity-50"
-                  >
-                    <p className="truncate text-base font-bold text-text-primary">
-                      {cancion.nombre}
-                      {cloningId === cancion.id ? "…" : ""}
-                    </p>
-                    {cancion.artista ? (
-                      <p className="truncate text-sm text-text-muted">
-                        {cancion.artista}
-                      </p>
-                    ) : null}
-                  </TapButton>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CancioneroSubpageShell>
-      ) : (
-        <CancioneroSubpageShell
+      <CancioneroSubpageShell
           title="Entrenador de canciones"
           backHref="/practica"
           backAriaLabel="Volver a Práctica"
           headerAction={
             <div className="flex shrink-0 items-center gap-2">
               <TapButton
-                aria-label="Agregar desde el cancionero"
-                onClick={() => void openPicker()}
-                className="rounded-[10px] border border-border bg-bg-card px-3 py-2 text-sm font-semibold text-text-primary"
-              >
-                Cancionero
-              </TapButton>
-              <TapButton
-                aria-label="Crear canción nueva"
+                aria-label="Agregar canción"
                 onClick={() =>
                   navigateWithProgress("/practica/entrenador-canciones/editor")
                 }
@@ -400,29 +283,44 @@ export default function EntrenadorCancionesPageClient() {
                 Todavía no tenés canciones de práctica
               </p>
               <p className="max-w-sm text-sm text-text-muted">
-                Traé una del Cancionero o creá una nueva. Quedan solo para vos; no
-                se publican en el Cancionero Global.
+                Tocá + para traer una del Cancionero o crear una nueva. Quedan solo
+                para vos; no se publican en el Cancionero Global.
               </p>
             </div>
           ) : (
             <ul className="app-list-grid list-none p-0">
               {filtered.map((cancion) => (
-                <li key={cancion.id}>
-                  <PracticaCancionListItem
+                <li
+                  key={cancion.id}
+                  className={activeCardId === cancion.id ? "relative z-30" : undefined}
+                >
+                  <PracticaCancionCard
                     cancion={cancion}
+                    artistaAvatarUrl={fotoArtista(cancion.artista)}
+                    isDesktop={isDesktop}
+                    actionsOpen={activeCardId === cancion.id}
+                    onOpenActions={() => setActiveCardId(cancion.id)}
+                    onCloseActions={() => setActiveCardId(null)}
                     onOpen={() =>
                       navigateWithProgress(
                         `/practica/entrenador-canciones/ver?id=${cancion.id}`,
                       )
                     }
-                    onDelete={() => setDeleteTarget(cancion)}
+                    onEditar={() =>
+                      navigateWithProgress(
+                        `/practica/entrenador-canciones/editor?id=${cancion.id}`,
+                      )
+                    }
+                    onEliminar={() => {
+                      setActiveCardId(null);
+                      setDeleteTarget(cancion);
+                    }}
                   />
                 </li>
               ))}
             </ul>
           )}
         </CancioneroSubpageShell>
-      )}
 
       <ConfirmDialog
         open={deleteTarget != null}

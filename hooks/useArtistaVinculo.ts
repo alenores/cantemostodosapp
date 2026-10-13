@@ -31,6 +31,8 @@ export type ArtistaVinculo = {
   elegir: (artista: Artista) => void;
   confirmarNuevo: () => void;
   deshacerNuevo: () => void;
+  /** Si es false, un artista que no está en la lista no se crea: queda solo el nombre. */
+  crearSiNuevo: boolean;
   /** Devuelve nombre + id definitivos; crea el artista si es nuevo. Lanza Error si hay dudas sin resolver. */
   resolverParaGuardar: () => Promise<ArtistaParaGuardar>;
 };
@@ -45,7 +47,9 @@ export const ARTISTA_DUDOSO_MENSAJE =
 export function useArtistaVinculo(
   texto: string,
   setTexto: (value: string) => void,
+  opciones?: { crearSiNuevo?: boolean },
 ): ArtistaVinculo {
+  const crearSiNuevo = opciones?.crearSiNuevo !== false;
   const supabase = useMemo(() => createClient(), []);
   const [artistas, setArtistas] = useState<Artista[]>([]);
   const [alias, setAlias] = useState<ArtistaAlias[]>([]);
@@ -120,18 +124,23 @@ export function useArtistaVinculo(
       throw new Error(ARTISTA_DUDOSO_MENSAJE);
     }
 
+    if (!crearSiNuevo) {
+      return { artista: nombre, artista_id: null };
+    }
+
     const creado = await addArtista(supabase, nombre, null);
     if (!creado) return { artista: nombre, artista_id: undefined };
 
     setArtistas((current) => [...current, creado]);
     setNuevoConfirmadoNorm(null);
     return { artista: creado.nombre, artista_id: creado.id };
-  }, [cargado, nuevoConfirmado, resultado, supabase, texto]);
+  }, [cargado, crearSiNuevo, nuevoConfirmado, resultado, supabase, texto]);
 
   return {
     cargado,
     resultado,
     nuevoConfirmado,
+    crearSiNuevo,
     elegir,
     confirmarNuevo,
     deshacerNuevo,

@@ -1,5 +1,12 @@
 import type { NotacionAcordes } from "@/lib/notacion-acordes";
 
+/** Nombre del acorde, la rayita y el punto. Naranja fijo, no el celeste general. */
+export const CIFRADO_ACORDE_TEXT_CLASS = "text-[var(--acorde)]";
+export const CIFRADO_ACORDE_DOT_CLASS = "bg-[var(--acorde)]";
+export const CIFRADO_ACORDE_STEM_CLASS =
+  "bg-[color-mix(in_srgb,var(--acorde)_50%,transparent)]";
+export const CIFRADO_ACORDE_SELECTED_CLASS = "bg-[var(--acorde)] text-white";
+
 /** Paleta alineada a la app principal. */
 export const CIFRADO_COMPOSITOR_ACTIVE_CLASS = "bg-accent text-white";
 

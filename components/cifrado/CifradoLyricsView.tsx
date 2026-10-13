@@ -18,6 +18,11 @@ import {
   type TipoCompas,
 } from "@/lib/cifrado";
 import { AcordeLabel } from "@/components/cifrado/AcordeLabel";
+import {
+  CIFRADO_ACORDE_DOT_CLASS,
+  CIFRADO_ACORDE_STEM_CLASS,
+  CIFRADO_ACORDE_TEXT_CLASS,
+} from "@/components/cifrado/cifrado-controls-ui";
 import AnotacionesLineLayer, {
   ANOTACIONES_ARRIBA_BANDA_PX,
 } from "@/components/cifrado/AnotacionesLineLayer";
@@ -490,7 +495,7 @@ export function CifradoLyricsLine({
                 style={{ left: position.left }}
               >
                 <span
-                  className={`absolute whitespace-nowrap rounded px-0.5 font-bold leading-none text-accent ${
+                  className={`absolute whitespace-nowrap rounded px-0.5 font-bold leading-none ${CIFRADO_ACORDE_TEXT_CLASS} ${
                     letraSheet
                       ? "text-[length:var(--letra-size)]"
                       : compact
@@ -508,16 +513,16 @@ export function CifradoLyricsLine({
                     bassNoteIndex={acorde.bassNoteIndex}
                     agregada={acorde.agregada}
                     notacion={notacion}
-                    className="text-accent"
+                    className={CIFRADO_ACORDE_TEXT_CLASS}
                   />
                 </span>
                 <span
-                  className="absolute w-px bg-accent/50"
+                  className={`absolute w-px ${CIFRADO_ACORDE_STEM_CLASS}`}
                   style={{ top: stemTop, left: 0, height: stemHeight }}
                   aria-hidden="true"
                 />
                 <span
-                  className="absolute z-10 size-1 rounded-full bg-accent"
+                  className={`absolute z-10 size-1 rounded-full ${CIFRADO_ACORDE_DOT_CLASS}`}
                   style={{ top: dotTop, left: 0 }}
                   aria-hidden="true"
                 />

@@ -707,14 +707,18 @@ La versión privada también aparece en el Cancionero y en los resultados de bú
 
 - Título: **Entrenador de canciones**.
 - Búsqueda: *"Buscar en mi práctica"*.
-- Botones: **Cancionero** (traer copia desde el cancionero global) y **+** (crear nueva).
-- Vacío: *"Todavía no tenés canciones de práctica"* + *"Traé una del Cancionero o creá una nueva. Quedan solo para vos; no se publican en el Cancionero Global."*
+- Botón **+**: abre las cuatro formas de sumar una canción. **Cancionero** viene elegida: se busca, se toca y se abre el entrenador. Las otras son **Buscar en la web**, **Pegar letra y acordes** y **Escribir letra**.
+- Si el artista no está en la lista, el nombre queda solo en esa canción. No se agrega un artista nuevo.
+- Cada canción se ve igual que en el Cancionero: foto del artista, nombre y artista.
+- Para editar o borrar: en el celular se deja apretada la tarjeta; en la computadora se tocan los tres puntitos. No hay tachito en la tarjeta.
+- En la esquina de la tarjeta aparecen marcas solo si ya se agregó algo: **compases**, **anotaciones de canto** y **nota de la canción**.
+- Vacío: *"Todavía no tenés canciones de práctica"* + *"Tocá + para traer una del Cancionero o crear una nueva. Quedan solo para vos; no se publican en el Cancionero Global."*
 
 #### Origen de las canciones de práctica
 
 1. **Desde el Cancionero:** elegir una canción existente; se clona letra, acordes, compases y anotaciones a una copia privada.
    La nueva copia toma el tono personal elegido en lectura. Si ya existe una copia, se abre la existente sin sobrescribir sus cambios. En el Entrenador, cambiar el tono sí queda guardado en esa copia privada, junto con las anotaciones y la nota general; nunca modifica el original.
-2. **Nueva:** editor vacío con la misma herramienta que el editor de canciones, guardado en práctica.
+2. **Nueva:** desde el mismo **+**, con buscar en la web, pegar letra y acordes, o escribir la letra. Se guarda en práctica.
 
 #### Editor de práctica
 

@@ -10,6 +10,7 @@ import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
 import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
+import CifradoEditorCancioneroPracticaTab from "@/components/cifrado/CifradoEditorCancioneroPracticaTab";
 import {
   CifradoCompasToolPanel,
   type CifradoCompasToolTab,
@@ -49,6 +50,9 @@ import {
 } from "@/components/cifrado/AcordeLabel";
 import CifradoNotacionToggle from "@/components/cifrado/CifradoNotacionToggle";
 import {
+  CIFRADO_ACORDE_DOT_CLASS,
+  CIFRADO_ACORDE_STEM_CLASS,
+  CIFRADO_ACORDE_TEXT_CLASS,
   CIFRADO_COMPOSITOR_ACCENT_TEXT_CLASS,
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
@@ -217,8 +221,8 @@ import type { ToolPresentation } from "@/lib/tool-presentation";
 import { isToolPagePresentation } from "@/lib/tool-presentation";
 import { forwardVerticalWheel } from "@/lib/forward-vertical-wheel";
 
-/** Acordes del editor (naranja escenario); el resto del panel sigue celeste. */
-const CIFRADO_EDITOR_ACORDE_TEXT_CLASS = "text-accent";
+/** Nombre del acorde en naranja. Los botones del selector siguen con el celeste. */
+const CIFRADO_EDITOR_ACORDE_TEXT_CLASS = CIFRADO_ACORDE_TEXT_CLASS;
 const CIFRADO_EDITOR_ACORDE_ACTIVE_CLASS = "bg-accent text-white";
 
 type LineDeleteConfirmKind = "line" | "acordes" | "compases";
@@ -243,6 +247,10 @@ type CifradoEditorProps = {
    * Si falta, se usa el guardado histórico del Cancionero. Sin cambios de UI.
    */
   onPersist?: CifradoEditorPersistFn;
+  /** Pestaña Cancionero del entrenador: copia la canción y abre la práctica. */
+  onElegirCancionero?: (cancion: CancionCancionero) => Promise<void> | void;
+  /** En el entrenador, un artista que no está en la lista no se crea. */
+  crearArtistaNuevo?: boolean;
   /** Habilita las pestañas y anclajes de anotaciones (solo Entrenador). */
   anotaciones?: AnotacionesControl | null;
   /** Muestra la X de cerrar aunque la presentación sea página (p. ej. Entrenador). */
@@ -251,7 +259,7 @@ type CifradoEditorProps = {
 
 type EditorPhase = "ingreso" | "cifrado";
 
-type IngresoTab = "letra" | "web" | "pegar" | "basicas";
+type IngresoTab = "letra" | "web" | "pegar" | "basicas" | "cancionero";
 
 type PickerState = {
   lineIndex: number;
@@ -1717,7 +1725,7 @@ function CifradoLineEditor({
               </span>
               <span
                 className={`absolute w-px ${
-                  isDragging ? "bg-accent" : "bg-accent/50"
+                  isDragging ? CIFRADO_ACORDE_DOT_CLASS : CIFRADO_ACORDE_STEM_CLASS
                 }`}
                 style={{
                   top: stemTop,
@@ -1727,7 +1735,7 @@ function CifradoLineEditor({
                 aria-hidden="true"
               />
               <span
-                className="absolute size-1 rounded-full bg-accent"
+                className={`absolute size-1 rounded-full ${CIFRADO_ACORDE_DOT_CLASS}`}
                 style={{ top: dotTop, left: 0 }}
                 aria-hidden="true"
               />
@@ -1778,11 +1786,11 @@ function CifradoLineEditor({
                   aria-hidden="true"
                 >
                   <span
-                    className="absolute w-px bg-accent"
+                    className={`absolute w-px ${CIFRADO_ACORDE_DOT_CLASS}`}
                     style={{ top: stemTop, left: 0, height: Math.max(4, dotTop - stemTop) }}
                   />
                   <span
-                    className="absolute size-1 rounded-full bg-accent"
+                    className={`absolute size-1 rounded-full ${CIFRADO_ACORDE_DOT_CLASS}`}
                     style={{ top: dotTop, left: 0 }}
                   />
                 </div>
@@ -2307,12 +2315,12 @@ function CifradoPreviewLine({
               />
             </span>
             <span
-              className="absolute w-px bg-accent/50"
+              className={`absolute w-px ${CIFRADO_ACORDE_STEM_CLASS}`}
               style={{ top: stemTop, left: 0, height: stemHeight }}
               aria-hidden="true"
             />
             <span
-              className="absolute z-10 size-1 rounded-full bg-accent"
+              className={`absolute z-10 size-1 rounded-full ${CIFRADO_ACORDE_DOT_CLASS}`}
               style={{ top: dotTop, left: 0 }}
               aria-hidden="true"
             />
@@ -2580,6 +2588,8 @@ export default function CifradoEditor({
   onSaved,
   presentation = "modal",
   onPersist,
+  onElegirCancionero,
+  crearArtistaNuevo = true,
   anotaciones,
   showPageClose = false,
 }: CifradoEditorProps) {
@@ -2587,7 +2597,9 @@ export default function CifradoEditor({
   const showCloseButton = !isPage || showPageClose;
   const isDesktop = useIsDesktop();
   const [phase, setPhase] = useState<EditorPhase>("ingreso");
-  const [ingresoTab, setIngresoTab] = useState<IngresoTab>("letra");
+  const [ingresoTab, setIngresoTab] = useState<IngresoTab>(
+    onElegirCancionero ? "cancionero" : "letra",
+  );
   const [modoInsercion, setModoInsercion] = useState<ModoInsercion>("acordes");
   const [vistaArmado, setVistaArmado] = useState<VistaArmado>("pc");
   const [draftLyrics, setDraftLyrics] = useState("");
@@ -2599,7 +2611,9 @@ export default function CifradoEditor({
   );
   const [nombre, setNombre] = useState("");
   const [artista, setArtista] = useState("");
-  const artistaVinculo = useArtistaVinculo(artista, setArtista);
+  const artistaVinculo = useArtistaVinculo(artista, setArtista, {
+    crearSiNuevo: crearArtistaNuevo,
+  });
   const [youtubeUrl, setYoutubeUrl] = useState(() => session?.youtube_url ?? "");
   /** Solo se guarda el link si la persona lo tocó: no pisa uno guardado que no se cargó. */
   const [youtubeTocado, setYoutubeTocado] = useState(false);
@@ -4480,6 +4494,22 @@ export default function CifradoEditor({
                   role="tablist"
                   aria-label="Forma de ingreso"
                 >
+                  {onElegirCancionero ? (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={ingresoTab === "cancionero"}
+                      onClick={() => {
+                        setIngresoTab("cancionero");
+                        setError(null);
+                      }}
+                      className={cifradoEditorToolbarSegmentedButtonClass(
+                        ingresoTab === "cancionero",
+                      )}
+                    >
+                      Cancionero
+                    </button>
+                  ) : null}
                   {!onPersist ? (
                     <button
                       type="button"
@@ -4546,6 +4576,10 @@ export default function CifradoEditor({
                     Escribir letra
                   </button>
                 </div>
+
+                {ingresoTab === "cancionero" && onElegirCancionero ? (
+                  <CifradoEditorCancioneroPracticaTab onSelect={onElegirCancionero} />
+                ) : null}
 
                 {ingresoTab === "basicas" && !onPersist ? (
                   <CifradoEditorBasicSongsTab onSelect={handleSelectBasicSong} />
@@ -5023,7 +5057,7 @@ export default function CifradoEditor({
         </div>
 
         {phase === "cifrado" && (
-          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0 lg:bg-bg-card">
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-[var(--bg-panel-claro)] lg:w-80 lg:border-l lg:border-t-0">
             <EditorSidebarHeader
               onClose={() => {
                 if (!session) {
@@ -5254,7 +5288,7 @@ export default function CifradoEditor({
         )}
 
         {phase === "ingreso" && (
-          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-bg-card lg:w-80 lg:border-l lg:border-t-0">
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-[var(--bg-panel-claro)] lg:w-80 lg:border-l lg:border-t-0">
             <EditorSidebarHeader
               onClose={onClose}
               loading={loading}
@@ -5262,7 +5296,8 @@ export default function CifradoEditor({
             />
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-              {ingresoTab !== "web" || pendingWebImport ? (
+              {ingresoTab !== "cancionero" &&
+              (ingresoTab !== "web" || pendingWebImport) ? (
                 <div className="space-y-4">
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
                     <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
@@ -5367,7 +5402,9 @@ export default function CifradoEditor({
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-text-muted">
-                    {ingresoTab === "web"
+                    {ingresoTab === "cancionero"
+                      ? "Elegí una canción de la lista. Se abre en el entrenador."
+                      : ingresoTab === "web"
                       ? pendingWebImport
                         ? "Revisá los datos y confirmá para ir al editor."
                         : "Buscá una canción y previsualizala antes de importarla."
@@ -5379,14 +5416,22 @@ export default function CifradoEditor({
               </div>
 
               <div>
-                <p className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}>Consejos</p>
-                <ul className="space-y-2 text-xs leading-relaxed text-text-muted">
+                <p className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-[var(--text-on-light)]">
+                  Consejos
+                </p>
+                <ul className="space-y-2 text-xs leading-relaxed text-[color-mix(in_srgb,var(--text-on-light)_68%,var(--bg-panel-claro))]">
                   {ingresoTab === "letra" ? (
                     <>
                       <li>· Elegí el tono y el modo antes de continuar.</li>
                       <li>· Un renglón por verso; líneas vacías entre estrofas.</li>
                       <li>· Pegá solo la letra, sin acordes (los agregás después).</li>
                       <li>· Podés completar nombre y artista ahora o al guardar.</li>
+                    </>
+                  ) : ingresoTab === "cancionero" ? (
+                    <>
+                      <li>· Tocá la canción y se abre en el entrenador.</li>
+                      <li>· Si no está, usá otra pestaña para buscarla, pegarla o escribirla.</li>
+                      <li>· La copia queda en tu práctica. El cancionero general no cambia.</li>
                     </>
                   ) : ingresoTab === "web" ? (
                     pendingWebImport ? (

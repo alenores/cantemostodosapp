@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  CIFRADO_ACORDE_DOT_CLASS,
+  CIFRADO_ACORDE_SELECTED_CLASS,
+  CIFRADO_ACORDE_STEM_CLASS,
+  CIFRADO_ACORDE_TEXT_CLASS,
   CIFRADO_EDITOR_LINE_BG_CLASS,
   CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS,
   CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS,
@@ -730,7 +734,7 @@ function MobileLineRow({
             >
               <span
                 className={`absolute whitespace-nowrap rounded px-0.5 text-xs font-bold leading-none ${
-                  isSelected ? "bg-accent text-white" : "text-accent"
+                  isSelected ? CIFRADO_ACORDE_SELECTED_CLASS : CIFRADO_ACORDE_TEXT_CLASS
                 }`}
                 style={{ top: 4 + arribaOffsetMobile, left: 0 }}
               >
@@ -740,18 +744,18 @@ function MobileLineRow({
                   bassNoteIndex={acorde.bassNoteIndex}
                   agregada={acorde.agregada}
                   notacion={notacion}
-                  className={isSelected ? "text-white" : "text-accent"}
+                  className={isSelected ? "text-white" : CIFRADO_ACORDE_TEXT_CLASS}
                 />
               </span>
               <span
                 className={`absolute w-px ${
-                  isSelected ? "bg-accent" : "bg-accent/50"
+                  isSelected ? CIFRADO_ACORDE_DOT_CLASS : CIFRADO_ACORDE_STEM_CLASS
                 }`}
                 style={{ top: stemTop, left: 0, height: stemHeight }}
                 aria-hidden="true"
               />
               <span
-                className="absolute z-10 size-1 rounded-full bg-accent"
+                className={`absolute z-10 size-1 rounded-full ${CIFRADO_ACORDE_DOT_CLASS}`}
                 style={{ top: dotTop, left: 0 }}
                 aria-hidden="true"
               />
@@ -774,11 +778,11 @@ function MobileLineRow({
                   aria-hidden="true"
                 >
                   <span
-                    className="absolute w-px bg-accent"
+                    className={`absolute w-px ${CIFRADO_ACORDE_DOT_CLASS}`}
                     style={{ top: stemTop, left: 0, height: Math.max(4, dotTop - stemTop) }}
                   />
                   <span
-                    className="absolute z-10 size-1 rounded-full bg-accent"
+                    className={`absolute z-10 size-1 rounded-full ${CIFRADO_ACORDE_DOT_CLASS}`}
                     style={{ top: dotTop, left: 0 }}
                   />
                 </div>

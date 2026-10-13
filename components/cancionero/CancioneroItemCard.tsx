@@ -108,6 +108,9 @@ export default function CancioneroItemCard({
     Boolean(onAlternarFavorita) &&
     mostrarSumarMisCanciones;
 
+  const mostrarMenuEscritorio =
+    isDesktop && !modoSeleccion && (puedeEditarEliminar || puedePonerValidacion);
+
   const longPressEnabled =
     !isDesktop &&
     !modoSeleccion &&
@@ -361,7 +364,7 @@ export default function CancioneroItemCard({
         nombre={cancion.nombre}
         artista={cancion.artista}
         artistaAvatarUrl={artistaAvatarUrl}
-        reservarEsquina={isDesktop && !modoSeleccion && puedeEditarEliminar}
+        reservarEsquina={mostrarMenuEscritorio}
         iconos={
           <>
             {agregadoNombre ? (
@@ -451,24 +454,10 @@ export default function CancioneroItemCard({
                 </span>
               )
             ) : null}
-            {isDesktop && !modoSeleccion && puedePonerValidacion ? (
-              <TapButton
-                type="button"
-                aria-label={`Validar ${cancion.nombre}`}
-                title="Validar"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) =>
-                  runDesktopAction(event, () => onValidar?.(cancion))
-                }
-                className="flex size-6 items-center justify-center rounded-md"
-              >
-                <ValidacionMarcaIcon className="size-[18px]" silenciosa />
-              </TapButton>
-            ) : null}
           </>
         }
       />
-      {isDesktop && !modoSeleccion && puedeEditarEliminar ? (
+      {mostrarMenuEscritorio ? (
         <TapButton
           type="button"
           aria-label={`Opciones de ${cancion.nombre}`}
@@ -488,7 +477,7 @@ export default function CancioneroItemCard({
         </TapButton>
       ) : null}
 
-      {actionsOpen && isDesktop && puedeEditarEliminar ? (
+      {actionsOpen && mostrarMenuEscritorio ? (
         <>
           <button
             type="button"
@@ -506,26 +495,42 @@ export default function CancioneroItemCard({
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!mutationsEnabled}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-text-primary hover:bg-white/[0.06] disabled:opacity-40"
-              onClick={() => runAction(() => onEditar(cancion))}
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-              Editar
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!mutationsEnabled}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[#d94a3d] hover:bg-white/[0.06] disabled:opacity-40"
-              onClick={() => runAction(() => onEliminar(cancion))}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-              Borrar
-            </button>
+            {puedePonerValidacion && onValidar ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!mutationsEnabled}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-text-primary hover:bg-white/[0.06] disabled:opacity-40"
+                onClick={() => runAction(() => onValidar(cancion))}
+              >
+                <ValidacionMarcaIcon className="size-4" silenciosa />
+                Validar
+              </button>
+            ) : null}
+            {puedeEditarEliminar ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!mutationsEnabled}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-text-primary hover:bg-white/[0.06] disabled:opacity-40"
+                onClick={() => runAction(() => onEditar(cancion))}
+              >
+                <Pencil className="size-4" aria-hidden="true" />
+                Editar
+              </button>
+            ) : null}
+            {puedeEditarEliminar ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!mutationsEnabled}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[#d94a3d] hover:bg-white/[0.06] disabled:opacity-40"
+                onClick={() => runAction(() => onEliminar(cancion))}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Borrar
+              </button>
+            ) : null}
           </div>
         </>
       ) : null}

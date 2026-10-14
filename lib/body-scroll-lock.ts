@@ -1,39 +1,38 @@
-type BodyScrollSnapshot = {
-  overflow: string;
-  position: string;
-  top: string;
-  left: string;
-  right: string;
-  width: string;
-};
-
 let lockCount = 0;
-let savedScrollX = 0;
-let savedScrollY = 0;
-let savedBodyStyles: BodyScrollSnapshot | null = null;
 let savedHtmlOverflow = "";
+let savedBodyOverflow = "";
+let escuchando = false;
 
-function captureBodyStyles(): BodyScrollSnapshot {
-  const { style } = document.body;
+function puedeDeslizarAdentro(origen: EventTarget | null): boolean {
+  let nodo = origen instanceof Element ? origen : null;
 
-  return {
-    overflow: style.overflow,
-    position: style.position,
-    top: style.top,
-    left: style.left,
-    right: style.right,
-    width: style.width,
-  };
+  while (nodo && nodo !== document.body && nodo !== document.documentElement) {
+    if (nodo instanceof HTMLElement) {
+      const desborde = getComputedStyle(nodo).overflowY;
+      const admite =
+        desborde === "auto" || desborde === "scroll" || desborde === "overlay";
+      if (admite && nodo.scrollHeight > nodo.clientHeight + 1) {
+        return true;
+      }
+    }
+    nodo = nodo.parentElement;
+  }
+
+  return false;
 }
 
-function applyBodyStyles(styles: BodyScrollSnapshot) {
-  const { style } = document.body;
-  style.overflow = styles.overflow;
-  style.position = styles.position;
-  style.top = styles.top;
-  style.left = styles.left;
-  style.right = styles.right;
-  style.width = styles.width;
+function frenarToqueDeFondo(evento: TouchEvent) {
+  if (lockCount <= 0 || evento.touches.length !== 1) {
+    return;
+  }
+
+  if (puedeDeslizarAdentro(evento.target)) {
+    return;
+  }
+
+  if (evento.cancelable) {
+    evento.preventDefault();
+  }
 }
 
 function lockBodyScroll() {
@@ -42,20 +41,12 @@ function lockBodyScroll() {
     return;
   }
 
-  savedScrollX = window.scrollX;
-  savedScrollY = window.scrollY;
-  savedBodyStyles = captureBodyStyles();
   savedHtmlOverflow = document.documentElement.style.overflow;
-
-  const { style } = document.body;
+  savedBodyOverflow = document.body.style.overflow;
   document.documentElement.style.overflow = "hidden";
-  style.overflow = "hidden";
-  style.position = "fixed";
-  style.top = `-${savedScrollY}px`;
-  style.left = `-${savedScrollX}px`;
-  style.right = "0";
-  style.width = "100%";
-
+  document.body.style.overflow = "hidden";
+  document.addEventListener("touchmove", frenarToqueDeFondo, { passive: false });
+  escuchando = true;
   lockCount = 1;
 }
 
@@ -66,15 +57,19 @@ function unlockBodyScroll() {
 
   lockCount -= 1;
 
-  if (lockCount > 0 || !savedBodyStyles) {
+  if (lockCount > 0) {
     return;
   }
 
-  applyBodyStyles(savedBodyStyles);
   document.documentElement.style.overflow = savedHtmlOverflow;
-  savedBodyStyles = null;
+  document.body.style.overflow = savedBodyOverflow;
   savedHtmlOverflow = "";
-  window.scrollTo(savedScrollX, savedScrollY);
+  savedBodyOverflow = "";
+
+  if (escuchando) {
+    document.removeEventListener("touchmove", frenarToqueDeFondo);
+    escuchando = false;
+  }
 }
 
 /** Bloquea el scroll del documento; devuelve una función para liberarlo. */

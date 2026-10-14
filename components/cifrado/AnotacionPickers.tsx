@@ -2,6 +2,7 @@
 
 import { IntensidadIcon } from "@/components/cifrado/AnotacionesLineLayer";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
   ANOTACION_TEXTO_MAX,
@@ -264,11 +265,9 @@ function ModalShell({
   }, []);
 
   useHardwareBack(true, onClose);
+  useBodyScrollLock(true);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
@@ -278,7 +277,6 @@ function ModalShell({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [onClose]);

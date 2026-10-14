@@ -1,6 +1,7 @@
 "use client";
 
 import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { Gauge, HelpCircle, Clock, Music2, Timer, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -370,13 +371,12 @@ type SostenerHelpModalProps = {
 };
 
 export function SostenerHelpModal({ open, onClose }: SostenerHelpModalProps) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -387,7 +387,6 @@ export function SostenerHelpModal({ open, onClose }: SostenerHelpModalProps) {
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);

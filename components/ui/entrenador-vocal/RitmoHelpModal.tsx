@@ -6,6 +6,7 @@ import {
   RITMO_LABEL_SONIDO,
 } from "@/lib/ritmo-terminologia";
 import { HelpCircle, Timer, VolumeX, X } from "lucide-react";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -244,13 +245,12 @@ type RitmoHelpModalProps = {
 };
 
 export function RitmoHelpModal({ open, onClose }: RitmoHelpModalProps) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -261,7 +261,6 @@ export function RitmoHelpModal({ open, onClose }: RitmoHelpModalProps) {
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);

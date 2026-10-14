@@ -1,6 +1,7 @@
 "use client";
 
 import { HelpInfoCard } from "@/components/ui/HelpInfoCard";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { HelpCircle, Music2, Timer, Volume2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -598,13 +599,12 @@ type RitmoNotaHelpModalProps = {
 };
 
 export function RitmoNotaHelpModal({ open, onClose }: RitmoNotaHelpModalProps) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -615,7 +615,6 @@ export function RitmoNotaHelpModal({ open, onClose }: RitmoNotaHelpModalProps) {
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);

@@ -3,6 +3,7 @@
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import LetraFuenteSitioBadge from "@/components/salas/LetraFuenteSitioBadge";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { Globe2, X } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -16,13 +17,12 @@ export default function CifraClubEmbedHelpModal({
   open,
   onClose,
 }: CifraClubEmbedHelpModalProps) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -33,7 +33,6 @@ export default function CifraClubEmbedHelpModal({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);

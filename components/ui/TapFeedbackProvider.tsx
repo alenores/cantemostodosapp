@@ -45,6 +45,10 @@ export default function TapFeedbackProvider({
         return;
       }
 
+      if (document.body.hasAttribute("data-gesto-panel")) {
+        return;
+      }
+
       const tapTarget = resolveTapTarget(event.target);
 
       if (!tapTarget) {

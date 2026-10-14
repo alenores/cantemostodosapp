@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { resolverNombreArtistaDisplay } from "@/lib/buscador";
 import { extractSitio } from "@/lib/brave-search";
 import type { CancionBusquedaLocal } from "@/lib/sala-data";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 type CifradoEditorSavedLinksModalProps = {
@@ -30,13 +31,12 @@ export function CifradoEditorSavedLinksModal({
   const [query, setQuery] = useState("");
   const aliasBusqueda = useAliasBusqueda();
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -47,7 +47,6 @@ export function CifradoEditorSavedLinksModal({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { NotebookPen, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -59,14 +60,12 @@ export default function NotaCancionFab({
   }, [open, nota]);
 
   useHardwareBack(open, () => setOpen(false));
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) {
       return;
     }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -77,7 +76,6 @@ export default function NotaCancionFab({
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);

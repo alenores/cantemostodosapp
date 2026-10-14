@@ -156,6 +156,7 @@ export function CifradoEditorPcRail({
           className="grid grid-cols-2 gap-1 rounded-2xl border border-border/80 bg-bg-dark p-1"
           role="tablist"
           aria-label="Modo edición"
+          data-ayuda="modos"
         >
           {modos.map((modo, index) => (
             <button
@@ -186,6 +187,7 @@ export function CifradoEditorPcRail({
             </p>
 
             {modoInsercion === "compas" ? (
+              <div data-ayuda="compas">
               <CifradoCompasToolPanel
                 variant="rail"
                 tab={compasToolTab}
@@ -206,6 +208,7 @@ export function CifradoEditorPcRail({
                 onPlacementCycleCountChange={onPlacementCycleCountChange}
                 onApplyCyclesToAllLines={onApplyCyclesToAllLines}
               />
+              </div>
             ) : null}
 
             {modoInsercion === "canto" ? (

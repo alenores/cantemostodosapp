@@ -93,6 +93,9 @@ export type TargetPickerProps = {
   collapsible?: boolean;
   disabled?: boolean;
   density?: TargetPickerDensity;
+  /** Sin el recuadro celeste: el panel de abajo ya es el recuadro. */
+  bare?: boolean;
+  appearance?: "default" | "plain";
 };
 
 export type TargetPickerDensity = "default" | "compact";
@@ -102,6 +105,8 @@ export type TargetPickerBodyProps = {
   onSetTarget: (target: VozTarget) => void;
   disabled?: boolean;
   density?: TargetPickerDensity;
+  /** Encajar usa "plain": la misma grilla, sin el celeste eléctrico. */
+  appearance?: "default" | "plain";
 };
 
 function wrapIndex(index: number): number {
@@ -117,11 +122,13 @@ function NoteGrid({
   onSetTarget,
   disabled = false,
   wide = false,
+  appearance = "default",
 }: {
   target: VozTarget;
   onSetTarget: (target: VozTarget) => void;
   disabled?: boolean;
   wide?: boolean;
+  appearance?: "default" | "plain";
 }) {
   return (
     <div
@@ -141,7 +148,11 @@ function NoteGrid({
             aria-label={noteName}
             aria-pressed={isActive}
             onClick={() => onSetTarget({ ...target, note: noteName })}
-            className={getToolNoteButtonClass(isActive, "voz")}
+            className={
+              appearance === "plain"
+                ? `encajar-nota${isActive ? " encajar-nota--elegida" : ""}`
+                : getToolNoteButtonClass(isActive, "voz")
+            }
           >
             <span className={TOOL_NOTE_LABEL_CLASS}>{noteName}</span>
           </button>
@@ -156,11 +167,13 @@ function NoteCarousel({
   onSetTarget,
   disabled = false,
   density = "default",
+  appearance = "default",
 }: {
   target: VozTarget;
   onSetTarget: (target: VozTarget) => void;
   disabled?: boolean;
   density?: TargetPickerDensity;
+  appearance?: "default" | "plain";
 }) {
   const compact = density === "compact";
   const noteIndex = NOTE_NAMES.indexOf(
@@ -206,7 +219,11 @@ function NoteCarousel({
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute inset-y-0.5 left-1/2 z-[1] w-[3rem] -translate-x-1/2 rounded-[6px] border border-voz-config/15 bg-voz-config/5"
+          className={
+            appearance === "plain"
+              ? "encajar-nota-marco pointer-events-none absolute inset-y-0.5 left-1/2 z-[1] w-[3rem] -translate-x-1/2"
+              : "pointer-events-none absolute inset-y-0.5 left-1/2 z-[1] w-[3rem] -translate-x-1/2 rounded-[6px] border border-voz-config/15 bg-voz-config/5"
+          }
           aria-hidden="true"
         />
 
@@ -227,9 +244,9 @@ function NoteCarousel({
               {prevNote}
             </span>
             <span
-              className={`min-w-[2.75rem] text-center font-extrabold leading-none text-voz-config/65 ${
-                compact ? "text-2xl" : "text-[28px]"
-              }`}
+              className={`min-w-[2.75rem] text-center font-extrabold leading-none ${
+                appearance === "plain" ? "encajar-nota-centro" : "text-voz-config/65"
+              } ${compact ? "text-2xl" : "text-[28px]"}`}
             >
               {displayNote}
             </span>
@@ -309,6 +326,7 @@ export function TargetPickerBody({
   onSetTarget,
   disabled = false,
   density = "default",
+  appearance = "default",
 }: TargetPickerBodyProps) {
   const isDesktop = useIsDesktop();
   const compact = density === "compact";
@@ -352,6 +370,7 @@ export function TargetPickerBody({
       onSetTarget={onSetTarget}
       disabled={disabled}
       wide={compact}
+      appearance={appearance}
     />
   ) : (
     <NoteCarousel
@@ -359,6 +378,7 @@ export function TargetPickerBody({
       onSetTarget={onSetTarget}
       disabled={disabled}
       density={density}
+      appearance={appearance}
     />
   );
 
@@ -383,7 +403,13 @@ export function TargetPickerBody({
               : "flex items-center gap-1"
           }
         >
-          <span className="shrink-0 text-[10px] italic text-text-muted/45">
+          <span
+            className={
+              appearance === "plain"
+                ? "encajar-octava"
+                : "shrink-0 text-[10px] italic text-text-muted/45"
+            }
+          >
             Octava
           </span>
           {octaveControls}
@@ -400,6 +426,8 @@ export function TargetPicker({
   collapsible = true,
   disabled = false,
   density = "default",
+  bare = false,
+  appearance = "default",
 }: TargetPickerProps) {
   const [expanded, setExpanded] = useState(true);
   const collapsedLabel = formatTargetLabel(target);
@@ -416,10 +444,12 @@ export function TargetPicker({
       onSetTarget={onSetTarget}
       disabled={disabled}
       density={density}
+      appearance={appearance}
     />
   );
 
   if (!collapsible) {
+    if (bare) return pickerContent;
     return <TargetPickerPanel>{pickerContent}</TargetPickerPanel>;
   }
 

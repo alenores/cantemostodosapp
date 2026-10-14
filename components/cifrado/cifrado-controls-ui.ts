@@ -31,6 +31,10 @@ export const CIFRADO_DETAILS_CARD_TITLE_CLASS =
 export const CIFRADO_DETAILS_FIELD_LABEL_CLASS =
   "mb-1.5 block text-xs font-medium normal-case text-text-secondary";
 
+/** Etiquetas blancas sobre las tarjetas oscuras del panel de datos (igual en celular y PC). */
+export const CIFRADO_DATOS_FIELD_LABEL_CLASS =
+  "mb-1.5 block text-xs font-medium normal-case text-white";
+
 export const CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS =
   "w-full rounded-[10px] border border-border bg-bg-card py-2.5 text-sm font-semibold text-text-secondary";
 

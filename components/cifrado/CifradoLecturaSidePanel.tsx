@@ -178,17 +178,15 @@ export default function CifradoLecturaSidePanel({
     </div>
   ) : null;
 
-  const editarFooter = onEdit ? (
-    <div className="shrink-0 border-t border-border bg-bg-darker p-3">
-      <TapButton
-        type="button"
-        onClick={onEdit}
-        className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--accent-vocal)] py-3 text-sm font-bold text-[var(--text-on-light)]"
-      >
-        <Pencil className="size-4 shrink-0" aria-hidden="true" />
-        Editar
-      </TapButton>
-    </div>
+  const editarButton = onEdit ? (
+    <TapButton
+      type="button"
+      onClick={onEdit}
+      className="mt-3 inline-flex w-auto self-start items-center gap-1 rounded-md bg-[var(--accent-vocal)] px-2 py-1 text-[11px] font-semibold leading-none text-[var(--text-on-light)]"
+    >
+      <Pencil className="size-3 shrink-0" aria-hidden="true" />
+      Editar
+    </TapButton>
   ) : null;
 
   const zoomCard = zoom ? (
@@ -386,23 +384,25 @@ export default function CifradoLecturaSidePanel({
 
   const controles = encabezado ? (
     <>
+      {notaCard}
       {tonoCard}
       {zoomCard}
       {videoAfinadorCard}
       {temaCard}
       {compasesCard}
       {acordesCard}
-      {notaCard}
+      {editarButton}
     </>
   ) : (
     <>
+      {notaCard}
       {temaCard}
       {tonoCard}
       {zoomCard}
       {videoAfinadorCard}
       {compasesCard}
       {acordesCard}
-      {notaCard}
+      {editarButton}
     </>
   );
 
@@ -441,9 +441,8 @@ export default function CifradoLecturaSidePanel({
             </div>
           </div>
         ) : null}
-        <div className="flex flex-col gap-2 px-3 py-3">{controles}</div>
+        <div className="flex flex-col gap-2 px-3 py-3 pb-4">{controles}</div>
       </div>
-      {editarFooter}
     </aside>
   );
 }

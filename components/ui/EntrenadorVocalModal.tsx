@@ -253,6 +253,12 @@ export default function EntrenadorVocalModal({
   const isPage = isToolPagePresentation(presentation);
   const isDesktop = useIsDesktop();
 
+  useEffect(() => {
+    if (!selectedModeId || isDesktop) return;
+    document.body.setAttribute("data-modo-lectura", "true");
+    return () => document.body.removeAttribute("data-modo-lectura");
+  }, [selectedModeId, isDesktop]);
+
   const handleReturnToGrid = () => {
     onStopRhythm();
     stopOctaveReference();
@@ -387,7 +393,7 @@ export default function EntrenadorVocalModal({
       />
 
       <div
-        className={`flex min-h-0 flex-1 flex-col vocal-ui ${bodyScrollClass} ${bodyPadClass}`}
+        className={`flex min-h-0 flex-1 flex-col vocal-ui ${showPortada ? "home-inicio-fondo overflow-hidden" : `${bodyScrollClass} ${bodyPadClass}`}`}
         style={{
           ["--tool-practice-section-bg" as string]: "var(--bg-app)",
           ["--bg-cola-sheet" as string]: "var(--bg-app)",
@@ -408,7 +414,7 @@ export default function EntrenadorVocalModal({
             onRequestMic={onRequestMic}
           />
         ) : showPortada ? (
-          <div className="px-1">
+          <div className={`min-h-0 flex-1 ${bodyScrollClass} ${bodyPadClass}`}>
             <VozModeSelectionGrid
               onSelectMode={(modeId) => setSelectedModeId(modeId)}
             />

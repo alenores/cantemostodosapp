@@ -107,96 +107,53 @@ type VozModeSelectionGridProps = {
 };
 
 export function VozModeSelectionGrid({ onSelectMode }: VozModeSelectionGridProps) {
-  const tonoCards = VOZ_MODE_CARDS.filter((c) => c.group === "tono");
-  const ritmoCards = VOZ_MODE_CARDS.filter((c) => c.group === "ritmo");
-
   const getBadgeStyle = (badge: VozModeCardDef["badge"]) => {
     switch (badge) {
       case "Básico":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+        return "text-[#8fd0a4]";
       case "Intermedio":
-        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+        return "text-[#e4c56a]";
       case "Avanzado":
       case "Desafío":
-        return "bg-accent-vocal/15 text-accent-vocal border-accent-vocal/30";
+        return "text-[#8ec4e6]";
       default:
-        return "bg-text-muted/10 text-text-muted border-text-muted/20";
+        return "text-text-muted";
     }
   };
 
-  const renderCardGroup = (title: string, cards: VozModeCardDef[], isRitmo = false) => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 px-1">
-        <div
-          className={`size-2.5 rounded-full ${
-            isRitmo ? "bg-accent-vocal" : "bg-sky-400"
-          }`}
-        />
-        <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted">
-          {title}
-        </h3>
+  return (
+    <div className="flex flex-col gap-5 pb-3">
+      <div className="home-inicio-saludo flex flex-col items-center text-center">
+        <h2 className="text-[22px] font-bold leading-[1.5] tracking-tight text-[#1c1c1e]">
+          <span className="home-inicio-saludo__linea">Modos de Práctica Vocal</span>
+        </h2>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {cards.map((card) => {
+      <div className="grid grid-cols-2 gap-3.5">
+        {VOZ_MODE_CARDS.map((card) => {
           const Icon = card.icon;
           return (
             <TapButton
               key={card.id}
               onClick={() => onSelectMode(card.id)}
-              className={`group relative flex flex-col justify-between overflow-hidden rounded-amplio border p-4 text-left transition-all duration-150 active:scale-[0.98] ${
-                isRitmo
-                  ? "border-accent-vocal/20 bg-bg-card hover:border-accent-vocal/40 hover:bg-accent-vocal/5"
-                  : "border-sky-500/20 bg-bg-card hover:border-sky-500/40 hover:bg-sky-500/5"
-              }`}
+              className="home-destination-card relative flex min-h-[190px] w-full flex-col items-center justify-between gap-3 rounded-[28px] px-3 py-6 text-center"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div
-                  className={`flex size-10 shrink-0 items-center justify-center rounded-xl border ${
-                    isRitmo
-                      ? "border-accent-vocal/30 bg-accent-vocal/10 text-accent-vocal"
-                      : "border-sky-500/30 bg-sky-500/10 text-sky-400"
-                  }`}
-                >
-                  <Icon className="size-5" />
-                </div>
-                <span
-                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getBadgeStyle(
-                    card.badge,
-                  )}`}
-                >
-                  {card.badge}
-                </span>
-              </div>
-
-              <div className="mt-3 space-y-1">
-                <h4 className="text-base font-bold text-text-primary group-hover:text-text-primary">
-                  {card.label}
-                </h4>
-                <p className="text-xs leading-relaxed text-text-muted">
-                  {card.description}
-                </p>
-              </div>
+              <span className="flex flex-1 items-center justify-center text-white" aria-hidden="true">
+                <Icon className="size-[52px]" strokeWidth={2.2} />
+              </span>
+              <span className="block min-h-[2.5em] w-full text-[15px] font-extrabold uppercase leading-tight tracking-[0.015em] text-text-primary">
+                {card.label}
+              </span>
+              <span className="block w-full text-[13px] font-normal leading-tight text-text-muted">
+                {card.description}
+              </span>
+              <span className={`block w-full text-[13px] font-semibold leading-tight ${getBadgeStyle(card.badge)}`}>
+                {card.badge}
+              </span>
             </TapButton>
           );
         })}
       </div>
-    </div>
-  );
-
-  return (
-    <div className="space-y-6 pb-8 pt-1">
-      <div className="space-y-1 px-1">
-        <h2 className="text-xl font-extrabold text-text-primary sm:text-2xl">
-          Modos de Práctica Vocal
-        </h2>
-        <p className="text-sm text-text-muted">
-          Elegí un ejercicio para entrenar tu voz a pantalla completa.
-        </p>
-      </div>
-
-      {renderCardGroup("Entrenamiento de Tono", tonoCards, false)}
-      {renderCardGroup("Ritmo y Control Vocal", ritmoCards, true)}
     </div>
   );
 }

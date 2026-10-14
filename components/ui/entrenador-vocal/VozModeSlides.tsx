@@ -183,8 +183,6 @@ import {
 import {
   TargetPicker,
   TargetPickerBody,
-  VozConfigSection,
-  VozPracticeArea,
   type TargetPickerProps,
 } from "./EntrenadorVocalShared";
 import { VolumeSegmentMeter } from "./VolumeSegmentMeter";
@@ -197,6 +195,8 @@ import {
   VozPcConfigCard,
   VozPcShellLayout,
 } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
+import { EncajarEjercicio } from "@/components/ui/entrenador-vocal/EncajarEjercicio";
+import { PanelDesdeAbajo } from "@/components/ui/entrenador-vocal/PanelDesdeAbajo";
 import { VozPcModeNav } from "@/components/ui/entrenador-vocal/pc/VozPcModeNav";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 
@@ -207,6 +207,7 @@ function wrapModeSlide(
   config: ReactNode,
   practice: ReactNode,
   practiceHeaderExtra?: ReactNode,
+  resumen = "",
 ) {
   if (layout === "desktop") {
     return (
@@ -219,12 +220,12 @@ function wrapModeSlide(
   }
 
   return (
-    <div className="space-y-3">
-      {config}
-      <VozPracticeArea>
-        {practiceHeaderExtra}
-        {practice}
-      </VozPracticeArea>
+    <div className="ejercicio-calmo">
+      {practiceHeaderExtra}
+      {practice}
+      <PanelDesdeAbajo titulo="Configurar" resumen={resumen}>
+        {config}
+      </PanelDesdeAbajo>
     </div>
   );
 }
@@ -3801,7 +3802,6 @@ export function VozModeSlides({
     holdCalibre;
   const targetLabel = formatTargetLabel(targetPicker.target);
   const sostenerConfigSummary = `${targetLabel} · ${holdCalibreLabel} · ${holdTargetSeconds} s`;
-  const encajarConfigSummary = targetLabel;
   const octavasConfigSummary =
     octavasPitchMode === "scale"
       ? `${targetLabel} · Escala · ${octavasScaleRepetitions}× · ${octavasNoteDurationSeconds} s`
@@ -3874,43 +3874,22 @@ export function VozModeSlides({
   ) {
     switch (slideId) {
       case "encajar": {
-        const encajarPractice = splitPracticeMic(
-          layout,
-          <VozTonePracticePlayControl
-            variant={layout === "desktop" ? "header" : "center"}
+        return (
+          <EncajarEjercicio
+            layout={layout}
+            target={targetPicker.target}
+            onSetTarget={targetPicker.onSetTarget}
+            disabled={targetPicker.disabled}
             practiceActive={tonePracticeActive}
             onTogglePractice={onToggleTonePractice}
             micStarting={micStarting}
-          />,
-          <>
-            <PitchLadderBar
-              targetNote={targetNote}
-              cents={centsFromTarget}
-              accuracy={accuracy}
-              detectedNote={detection?.note ?? null}
-              voiceRms={voiceRms}
-              layout={layout}
-            />
-            <InstantAttemptsStrip attempts={instantAttempts} />
-          </>,
-        );
-
-        return wrapModeSlide(
-          layout,
-          layout === "desktop" ? (
-            <VozPcConfigCard title="Nota objetivo">
-              {renderDesktopTargetPicker(targetPicker)}
-            </VozPcConfigCard>
-          ) : (
-            <VozConfigSection
-              collapsible
-              collapsedSummary={encajarConfigSummary}
-            >
-              <TargetPicker {...targetPicker} collapsible={false} />
-            </VozConfigSection>
-          ),
-          encajarPractice.practice,
-          encajarPractice.practiceHeaderExtra,
+            targetNote={targetNote}
+            cents={centsFromTarget}
+            accuracy={accuracy}
+            detectedNote={detection?.note ?? null}
+            voiceRms={voiceRms}
+            attempts={instantAttempts}
+          />
         );
       }
       case "sostener": {
@@ -3993,25 +3972,23 @@ export function VozModeSlides({
               </VozPcConfigCard>
             </>
           ) : (
-            <VozConfigSection
-              collapsible
-              collapsedSummary={sostenerConfigSummary}
-            >
-              <TargetPicker {...targetPicker} collapsible={false} />
+            <div className="space-y-3">
+              <TargetPicker {...targetPicker} collapsible={false} bare appearance="plain" />
               <VozCalibrePicker
                 calibre={holdCalibre}
                 onSetCalibre={onSetHoldCalibre}
               />
-              <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
                   Meta tiempo a sostener
                 </p>
                 <div className="mt-2">{holdSecondsControl}</div>
               </div>
-            </VozConfigSection>
+            </div>
           ),
           sostenerPractice.practice,
           sostenerPractice.practiceHeaderExtra,
+          sostenerConfigSummary,
         );
       }
       case "octavas": {
@@ -4086,27 +4063,25 @@ export function VozModeSlides({
               </VozPcConfigCard>
             </>
           ) : (
-            <VozConfigSection
-              collapsible
-              collapsedSummary={octavasConfigSummary}
-            >
-              <TargetPicker {...targetPicker} collapsible={false} />
+            <div className="space-y-3">
+              <TargetPicker {...targetPicker} collapsible={false} bare appearance="plain" />
               <OctavasQueDigaPicker
                 pitchMode={octavasPitchMode}
                 onSetPitchMode={onSetOctavasPitchMode}
                 scaleRepetitions={octavasScaleRepetitions}
                 onSetScaleRepetitions={onSetOctavasScaleRepetitions}
               />
-              <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <div className="rounded-estandar border border-border bg-bg-darker/50 px-3 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-voz-config">
                   Duración de cada nota
                 </p>
                 <div className="mt-2">{octavasDurationControl}</div>
               </div>
-            </VozConfigSection>
+            </div>
           ),
           octavasPractice.practice,
           octavasPractice.practiceHeaderExtra,
+          octavasConfigSummary,
         );
       }
       case "melodia": {
@@ -4161,6 +4136,7 @@ export function VozModeSlides({
             </VozPcConfigCard>
           ) : (
             <MelodiaConfigSection
+              embedded
               collapsedSummary={melodiaConfigSummary}
               patternLength={melodiaPatternLength}
               beatDuration={melodiaBeatDuration}
@@ -4180,6 +4156,7 @@ export function VozModeSlides({
           ),
           melodiaPractice.practice,
           melodiaPractice.practiceHeaderExtra,
+          melodiaConfigSummary,
         );
       }
       case "ritmo": {
@@ -4214,7 +4191,7 @@ export function VozModeSlides({
               accuracy={accuracy}
               historySamples={historySamples}
               voiceRms={voiceRms}
-              hideMic={layout === "desktop"}
+              hideMic
               layout={layout}
             />
             <InstantAttemptsStrip attempts={instantAttempts} />
@@ -4250,6 +4227,7 @@ export function VozModeSlides({
             })
           ) : (
             <RitmoConfigSection
+              embedded
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
               hideCompasHelp
@@ -4271,6 +4249,7 @@ export function VozModeSlides({
           ),
           ritmoPractice.practice,
           ritmoPractice.practiceHeaderExtra,
+          ritmoConfigSummary,
         );
       }
       case "ritmo-intensidad": {
@@ -4296,7 +4275,7 @@ export function VozModeSlides({
               ritmoBeatDurations={ritmoBeatDurations}
               voiceSamples={intensidadVoiceSamples}
               voiceRms={voiceRms}
-              hideMic={layout === "desktop"}
+              hideMic
               layout={layout}
             />
             <InstantAttemptsStrip attempts={instantAttempts} />
@@ -4328,6 +4307,7 @@ export function VozModeSlides({
             })
           ) : (
             <RitmoConfigSection
+              embedded
               compasLayout="flat"
               collapsedSummary={ritmoConfigSummary}
               hideCompasHelp
@@ -4347,6 +4327,7 @@ export function VozModeSlides({
           ),
           intensidadPractice.practice,
           intensidadPractice.practiceHeaderExtra,
+          ritmoConfigSummary,
         );
       }
       case "ritmo-nota": {
@@ -4382,7 +4363,7 @@ export function VozModeSlides({
               historySamples={historySamples}
               holdCalibre={holdCalibre}
               voiceRms={voiceRms}
-              hideMic={layout === "desktop"}
+              hideMic
               layout={layout}
             />
             <InstantAttemptsStrip attempts={instantAttempts} />
@@ -4419,10 +4400,11 @@ export function VozModeSlides({
             </>
           ) : (
             <RitmoConfigSection
+              embedded
               compasLayout="flat"
               collapsedSummary={ritmoNotaConfigSummary}
               hideCompasHelp
-              prefix={<TargetPicker {...targetPicker} collapsible={false} />}
+              prefix={<TargetPicker {...targetPicker} collapsible={false} bare appearance="plain" />}
               beatPattern={ritmoBeatPattern}
               patternLength={ritmoPatternLength}
               beatDurations={ritmoBeatDurations}
@@ -4439,6 +4421,7 @@ export function VozModeSlides({
           ),
           ritmoNotaPractice.practice,
           ritmoNotaPractice.practiceHeaderExtra,
+          ritmoNotaConfigSummary,
         );
       }
       case "combo": {
@@ -4471,7 +4454,7 @@ export function VozModeSlides({
               accuracy={accuracy}
               holdCalibre={holdCalibre}
               voiceRms={voiceRms}
-              hideMic={layout === "desktop"}
+              hideMic
               layout={layout}
             />
             <InstantAttemptsStrip attempts={instantAttempts} />
@@ -4509,6 +4492,7 @@ export function VozModeSlides({
             })
           ) : (
             <RitmoConfigSection
+              embedded
               compasLayout="flat"
               collapsedSummary={comboConfigSummary}
               hideCompasHelp
@@ -4532,6 +4516,7 @@ export function VozModeSlides({
           ),
           comboPractice.practice,
           comboPractice.practiceHeaderExtra,
+          comboConfigSummary,
         );
       }
     }
@@ -4545,7 +4530,11 @@ export function VozModeSlides({
   return (
     <>
       {isDesktop ? (
-        <div className="flex h-full min-h-0 flex-1 overflow-hidden rounded-estandar border border-border bg-bg-card">
+        <div
+          className={`flex h-full min-h-0 flex-1 overflow-hidden rounded-estandar border border-border bg-bg-card ${
+            activeSlideId === "encajar" ? "encajar-marco" : ""
+          }`}
+        >
           <VozPcModeNav
             activeIndex={activeIndex}
             onChangeIndex={onChangeIndex}

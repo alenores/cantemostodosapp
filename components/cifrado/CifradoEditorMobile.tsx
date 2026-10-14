@@ -22,7 +22,7 @@ import {
 import {
   CIFRADO_CONTROLS_INPUT_CLASS,
   CIFRADO_CONTROLS_PANEL_BOX_CLASS,
-  CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
+  CIFRADO_DATOS_FIELD_LABEL_CLASS,
   CIFRADO_DETAILS_CARD_TITLE_CLASS,
   CIFRADO_DETAILS_FIELD_LABEL_CLASS,
   CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS,
@@ -42,6 +42,7 @@ import CancionRepetidaAviso from "@/components/cifrado/CancionRepetidaAviso";
 import CancionYoutubeField from "@/components/cifrado/CancionYoutubeField";
 import { normalizarYoutubeUrl } from "@/lib/youtube";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
+import { VozPcConfigCard } from "@/components/ui/entrenador-vocal/pc/VozPcShellLayout";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { buildIntensidadForGolpes } from "@/lib/cifrado-barra-cycles";
 import {
@@ -1794,20 +1795,20 @@ export default function CifradoEditorMobile({
       ) : null}
 
       {configOpen && phase === "cifrado" ? (
-        <div className="absolute inset-0 z-[60] flex flex-col bg-bg-app">
-          <header className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-darker px-4 py-3">
+        <div className="absolute inset-0 z-[60] flex flex-col bg-[var(--bg-panel-claro)]">
+          <header className="flex shrink-0 items-center gap-3 border-b border-black/10 bg-[var(--bg-panel-claro-titulo)] px-4 py-3">
             <TapButton
               type="button"
               aria-label="Volver a cifrar"
               onClick={() => setConfigOpen(false)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-card"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-dark"
             >
               <ArrowLeft
                 className="size-5 text-text-primary"
                 aria-hidden="true"
               />
             </TapButton>
-            <h2 className="min-w-0 flex-1 text-lg font-extrabold text-text-primary">
+            <h2 className="min-w-0 flex-1 text-lg font-extrabold text-accent">
               Datos y ajustes
             </h2>
             <TapButton
@@ -1821,12 +1822,13 @@ export default function CifradoEditorMobile({
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4">
             <div className="flex flex-col gap-4">
-              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>
-                  Nombre y artista
-                </p>
+              <VozPcConfigCard
+                title="Nombre y artista"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                accentVar="var(--accent)"
+              >
                 <label
-                  className={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                  className={CIFRADO_DATOS_FIELD_LABEL_CLASS}
                   htmlFor="cifrado-mobile-cfg-nombre"
                 >
                   Nombre
@@ -1849,7 +1851,7 @@ export default function CifradoEditorMobile({
                   />
                 ) : null}
                 <label
-                  className={`${CIFRADO_DETAILS_FIELD_LABEL_CLASS} mt-3`}
+                  className={`${CIFRADO_DATOS_FIELD_LABEL_CLASS} mt-3`}
                   htmlFor="cifrado-mobile-cfg-artista"
                 >
                   Artista
@@ -1862,10 +1864,13 @@ export default function CifradoEditorMobile({
                   placeholder="Artista"
                 />
                 <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
-              </div>
+              </VozPcConfigCard>
 
-              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>Video</p>
+              <VozPcConfigCard
+                title="Video"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                accentVar="var(--accent)"
+              >
                 <CancionYoutubeField
                   id="cifrado-mobile-cfg-youtube"
                   value={youtubeUrl}
@@ -1875,16 +1880,19 @@ export default function CifradoEditorMobile({
                     clearError();
                   }}
                 />
-              </div>
+              </VozPcConfigCard>
 
-              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                <p className={CIFRADO_DETAILS_CARD_TITLE_CLASS}>Tono y modo</p>
+              <VozPcConfigCard
+                title="Tono y modo"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                accentVar="var(--accent)"
+              >
                 <CifradoTonalidadFields
                   idPrefix="cifrado-mobile-cfg"
                   notacion="es"
                   tonalidadIndex={tonalidadIndex}
                   modoTonal={modoTonal}
-                  fieldLabelClassName={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
+                  fieldLabelClassName={CIFRADO_DATOS_FIELD_LABEL_CLASS}
                   requireSelection
                   onTonalidadChange={(next) => {
                     setTonalidadIndex(next);
@@ -1895,14 +1903,18 @@ export default function CifradoEditorMobile({
                     clearError();
                   }}
                 />
-              </div>
+              </VozPcConfigCard>
 
-              <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
+              <VozPcConfigCard
+                title="Tempo"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                accentVar="var(--accent)"
+              >
                 <label
-                  className={CIFRADO_CONTROLS_SECTION_LABEL_CLASS}
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white"
                   htmlFor="cifrado-mobile-cfg-bpm"
                 >
-                  Tempo (BPM)
+                  BPM
                 </label>
                 <div className="flex items-stretch gap-2">
                   <ToolNumericStepper
@@ -1929,7 +1941,7 @@ export default function CifradoEditorMobile({
                     Tap{tapCount > 0 ? ` (${tapCount})` : ""}
                   </TapButton>
                 </div>
-              </div>
+              </VozPcConfigCard>
             </div>
           </div>
         </div>

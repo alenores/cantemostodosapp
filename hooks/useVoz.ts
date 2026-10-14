@@ -144,8 +144,6 @@ export function useVoz() {
   const pendingTonePracticeRef = useRef(false);
   const pendingRitmoMicRef = useRef(false);
   const pendingMelodiaMicRef = useRef(false);
-  const prevRitmoPlayingRef = useRef(ritmo.ritmoPlaying);
-  const prevMelodiaPlayingRef = useRef(ritmo.melodiaPlaying);
 
   const practiceMicActive =
     tonePracticeActive || ritmoMicActive || melodiaMicActive;
@@ -214,19 +212,11 @@ export function useVoz() {
       return;
     }
 
-    setRitmoMicActive((previous) => {
-      const next = !previous;
-      if (next && !ritmo.ritmoPlaying) {
-        ritmo.startRitmo();
-      }
-      return next;
-    });
+    setRitmoMicActive((previous) => !previous);
   }, [
     ritmoMicActive,
     afinador.micPermissionGranted,
     afinador.requestPermission,
-    ritmo.ritmoPlaying,
-    ritmo.startRitmo,
   ]);
 
   const toggleMelodiaMic = useCallback(() => {
@@ -236,19 +226,11 @@ export function useVoz() {
       return;
     }
 
-    setMelodiaMicActive((previous) => {
-      const next = !previous;
-      if (next && !ritmo.melodiaPlaying) {
-        ritmo.startMelodia();
-      }
-      return next;
-    });
+    setMelodiaMicActive((previous) => !previous);
   }, [
     melodiaMicActive,
     afinador.micPermissionGranted,
     afinador.requestPermission,
-    ritmo.melodiaPlaying,
-    ritmo.startMelodia,
   ]);
 
   useEffect(() => {
@@ -276,26 +258,16 @@ export function useVoz() {
     if (pendingRitmoMicRef.current) {
       pendingRitmoMicRef.current = false;
       setRitmoMicActive(true);
-      if (!ritmo.ritmoPlaying) {
-        ritmo.startRitmo();
-      }
     }
 
     if (pendingMelodiaMicRef.current) {
       pendingMelodiaMicRef.current = false;
       setMelodiaMicActive(true);
-      if (!ritmo.melodiaPlaying) {
-        ritmo.startMelodia();
-      }
     }
   }, [
     afinador.micPermissionGranted,
     afinador.micStarting,
     afinador.requestPermission,
-    ritmo.melodiaPlaying,
-    ritmo.ritmoPlaying,
-    ritmo.startMelodia,
-    ritmo.startRitmo,
   ]);
 
   const clearRitmoVoiceSamples = useCallback(() => {
@@ -608,22 +580,6 @@ export function useVoz() {
       celebratedHoldRef.current = false;
     }
   }, [holdHistorySamples, holdTargetSeconds, holdCalibre]);
-
-  useEffect(() => {
-    if (prevRitmoPlayingRef.current && !ritmo.ritmoPlaying) {
-      setRitmoMicActive(false);
-    }
-
-    prevRitmoPlayingRef.current = ritmo.ritmoPlaying;
-  }, [ritmo.ritmoPlaying]);
-
-  useEffect(() => {
-    if (prevMelodiaPlayingRef.current && !ritmo.melodiaPlaying) {
-      setMelodiaMicActive(false);
-    }
-
-    prevMelodiaPlayingRef.current = ritmo.melodiaPlaying;
-  }, [ritmo.melodiaPlaying]);
 
   useEffect(() => {
     if (!ritmo.ritmoPlaying && !ritmo.melodiaPlaying) {

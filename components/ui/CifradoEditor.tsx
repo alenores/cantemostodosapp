@@ -32,10 +32,8 @@ import {
   type Anotacion,
   type AnotacionTipo,
 } from "@/lib/anotaciones-practica";
-import {
-  CifradoEditorHelpButton,
-  CifradoEditorHelpModal,
-} from "@/components/cifrado/CifradoEditorHelpModal";
+import { CifradoEditorAyudaTour } from "@/components/cifrado/CifradoEditorAyudaTour";
+import { CifradoEditorHelpButton } from "@/components/cifrado/CifradoEditorHelpModal";
 import { CifradoEditorSavedLinksModal } from "@/components/cifrado/CifradoEditorSavedLinksModal";
 import { CifradoLineMergePicker } from "@/components/cifrado/CifradoLineMergePicker";
 import { CifradoUnlockIcon } from "@/components/cifrado/CifradoUnlockIcon";
@@ -1511,6 +1509,7 @@ function CifradoLineEditor({
   return (
     <div
       ref={lineRef}
+      {...(lineIndex === 0 ? { "data-ayuda": "renglon" } : {})}
       className={`relative mb-1.5 overflow-hidden rounded-md border px-2 pb-5 pt-4 transition-opacity ${
         isDeleting
           ? `cifrado-line-delete-exit border-red-500/70 ${CIFRADO_EDITOR_LINE_BG_CLASS}`
@@ -2692,6 +2691,10 @@ export default function CifradoEditor({
     null,
   );
   const [editorHelpOpen, setEditorHelpOpen] = useState(false);
+  const modoAlAbrirAyudaRef = useRef<ModoInsercion>("acordes");
+  const tabAlAbrirAyudaRef = useRef<CifradoCompasToolTab>("componer");
+  const previewAlAbrirAyudaRef = useRef(false);
+  const cerrarAyudaRef = useRef<() => void>(() => {});
   const [linksModalOpen, setLinksModalOpen] = useState(false);
   const [applyCyclesToAllLinesConfirmOpen, setApplyCyclesToAllLinesConfirmOpen] =
     useState(false);
@@ -2912,6 +2915,11 @@ export default function CifradoEditor({
   }
 
   useHardwareBack(open, () => {
+    if (editorHelpOpen) {
+      cerrarAyudaRef.current();
+      return;
+    }
+
     if (previewOpen) {
       handleClosePreview();
       return;
@@ -3843,6 +3851,42 @@ export default function CifradoEditor({
     anotEditor.close();
   }
 
+  function abrirAyudaEditor() {
+    modoAlAbrirAyudaRef.current = modoInsercion;
+    tabAlAbrirAyudaRef.current = compasToolTab;
+    previewAlAbrirAyudaRef.current = previewOpen;
+    if (previewOpen || playing) {
+      stopPlayback();
+      setPreviewOpen(false);
+    }
+    setPicker(null);
+    setLineDeleteConfirm(null);
+    setApplyCyclesToAllLinesConfirmOpen(false);
+    exitLineEditMode();
+    setEditorHelpOpen(true);
+  }
+
+  function cerrarAyudaEditor() {
+    setModoInsercion(modoAlAbrirAyudaRef.current);
+    setCompasToolTab(tabAlAbrirAyudaRef.current);
+    setEditorHelpOpen(false);
+    if (previewAlAbrirAyudaRef.current) {
+      setPreviewOpen(true);
+    }
+  }
+
+  function alPasoAyuda(ancla: string) {
+    if (ancla === "compas") {
+      setModoInsercion("compas");
+      setCompasToolTab("componer");
+      return;
+    }
+
+    setModoInsercion(modoAlAbrirAyudaRef.current);
+  }
+
+  cerrarAyudaRef.current = cerrarAyudaEditor;
+
   function handleSetModoInsercion(modo: ModoInsercion) {
     setModoInsercion(modo);
     if (modo !== "canto") {
@@ -4537,7 +4581,7 @@ export default function CifradoEditor({
           placementCycleCount={placementCycleCount}
           onPlacementCycleCountChange={setPlacementCycleCount}
           onApplyCyclesToAllLines={handleApplyCyclesToAllLines}
-          onOpenHelp={() => setEditorHelpOpen(true)}
+          onOpenHelp={abrirAyudaEditor}
           onAbrirNota={onAbrirNota}
           tieneNota={tieneNota}
           cantoTipo={cantoTipo}
@@ -4836,6 +4880,7 @@ export default function CifradoEditor({
                           className={CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS}
                           role="tablist"
                           aria-label="Modo edición"
+                          data-ayuda="modos"
                         >
                             <button
                               type="button"
@@ -4886,7 +4931,7 @@ export default function CifradoEditor({
                         </div>
 
                         {modoInsercion === "compas" ? (
-                          <div className={CIFRADO_EDITOR_COMPAS_PANEL_CLASS}>
+                          <div className={CIFRADO_EDITOR_COMPAS_PANEL_CLASS} data-ayuda="compas">
                             <CifradoCompasToolPanel
                               tab={compasToolTab}
                               onTabChange={setCompasToolTab}
@@ -4915,7 +4960,7 @@ export default function CifradoEditor({
                       </div>
 
                       <div className="ml-auto flex shrink-0 items-center gap-2">
-                        <CifradoEditorHelpButton onClick={() => setEditorHelpOpen(true)} />
+                        <CifradoEditorHelpButton onClick={abrirAyudaEditor} />
                       </div>
                     </div>
                   </div>
@@ -4927,6 +4972,7 @@ export default function CifradoEditor({
                 >
                 <div
                   data-tool-vertical-scroll=""
+                  data-ayuda="letra"
                   className="relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-2 touch-pan-y"
                   onWheel={isDesktop ? forwardVerticalWheel : undefined}
                 >
@@ -5152,6 +5198,7 @@ export default function CifradoEditor({
                   </button>
                   <button
                     type="button"
+                    data-ayuda="acciones"
                     onClick={handleTogglePreview}
                     className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors ${
                       previewOpen
@@ -5649,10 +5696,9 @@ export default function CifradoEditor({
         </div>
       )}
 
-      <CifradoEditorHelpModal
-        open={editorHelpOpen}
-        onClose={() => setEditorHelpOpen(false)}
-      />
+      {editorHelpOpen ? (
+        <CifradoEditorAyudaTour onClose={cerrarAyudaEditor} onAncla={alPasoAyuda} />
+      ) : null}
 
       <CifradoEditorSavedLinksModal
         open={linksModalOpen}

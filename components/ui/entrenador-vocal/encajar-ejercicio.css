@@ -1,0 +1,411 @@
+/*
+  Cara de Encajar. Los retoques de esta pantalla van acá:
+  colores, tamaños, bordes y la letra.
+  Las otras prácticas no usan este archivo.
+*/
+
+.encajar-ejercicio {
+  --encajar-panel: #2c2c2e;
+  --encajar-panel-borde: #3a3a3d;
+  --encajar-hueco: #1e1e1e;
+  --encajar-titulo: #f5f5f7;
+  --encajar-suave: #8e8e93;
+  --encajar-micro: #0077b6;
+  --encajar-radio: 18px;
+}
+
+.encajar-ejercicio--pc {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  padding: 12px;
+  background: #232323;
+}
+
+.encajar-ejercicio--cel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.encajar-panel {
+  min-width: 0;
+  border: 1px solid var(--encajar-panel-borde);
+  border-radius: var(--encajar-radio);
+  background: var(--encajar-panel);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06);
+  padding: 16px;
+}
+
+.encajar-ejercicio--pc .encajar-panel--notas {
+  width: 20rem;
+  flex-shrink: 0;
+  overflow: auto;
+}
+
+.encajar-ejercicio--pc .encajar-panel--practica {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.encajar-titulo {
+  margin: 0 0 14px;
+  color: var(--encajar-titulo);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.encajar-practica-cabeza {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.encajar-practica-cabeza .encajar-titulo {
+  margin: 0;
+}
+
+.encajar-nota {
+  border: 1px solid var(--encajar-panel-borde);
+  border-radius: 10px;
+  background: var(--encajar-hueco);
+  color: var(--encajar-titulo);
+  padding: 8px 4px;
+  font-weight: 700;
+  box-shadow: none;
+  transform: none;
+}
+
+.encajar-nota span {
+  color: inherit;
+  font-size: 13px;
+}
+
+.encajar-nota--elegida {
+  border-color: var(--encajar-titulo);
+  background: var(--encajar-titulo);
+  color: #1c1c1e;
+}
+
+.encajar-nota-centro {
+  color: var(--encajar-titulo);
+}
+
+.encajar-nota-marco {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.encajar-octava {
+  flex-shrink: 0;
+  color: var(--encajar-suave);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.encajar-micro {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--encajar-suave);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.encajar-micro:disabled {
+  opacity: 0.4;
+}
+
+.encajar-micro-circulo {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--encajar-panel-borde);
+  border-radius: 999px;
+  background: var(--encajar-hueco);
+  color: #c5c5cb;
+  box-shadow: none;
+}
+
+.encajar-micro--activo .encajar-micro-circulo {
+  border-color: var(--encajar-micro);
+  background: var(--encajar-micro);
+  color: white;
+}
+
+.encajar-barra-pista {
+  position: relative;
+  height: 88px;
+  overflow: hidden;
+  border: 1px solid var(--encajar-panel-borde);
+  border-radius: 14px;
+  background: var(--encajar-hueco);
+}
+
+.encajar-barra-zona,
+.encajar-barra-centro,
+.encajar-barra-nota,
+.encajar-barra-punto {
+  position: absolute;
+  pointer-events: none;
+}
+
+.encajar-barra-zona {
+  top: 8px;
+  bottom: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tuner-in-tune) 18%, transparent);
+}
+
+.encajar-barra-centro {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #3a3a3d;
+}
+
+.encajar-barra-nota {
+  top: 10px;
+  color: var(--encajar-suave);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateX(-50%);
+}
+
+.encajar-barra-nota--objetivo {
+  color: var(--encajar-titulo);
+  font-size: 14px;
+}
+
+.encajar-barra-punto {
+  bottom: 12px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+}
+
+.encajar-barra-leyenda {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--encajar-suave);
+  font-size: 13px;
+}
+
+.encajar-intentos {
+  margin-top: 16px;
+}
+
+.encajar-intentos p {
+  margin: 0 0 8px;
+  color: var(--encajar-suave);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.encajar-intentos-fila {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.encajar-punto {
+  width: 14px;
+  height: 14px;
+  flex: 1;
+  max-width: 18px;
+  border: 1px solid #4a4a4e;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.encajar-punto--bien {
+  border-color: var(--tuner-in-tune);
+  background: var(--tuner-in-tune);
+}
+
+.encajar-punto--cerca {
+  border-color: var(--tuner-cerca);
+  background: var(--tuner-cerca);
+}
+
+.encajar-punto--lejos {
+  border-color: var(--tuner-flat-sharp);
+  background: var(--tuner-flat-sharp);
+}
+
+.encajar-marco nav button[aria-selected="true"] {
+  background: #3a3a3e;
+  color: #f5f5f7;
+  box-shadow: none;
+}
+
+.encajar-marco nav p {
+  color: var(--encajar-suave, #8e8e93);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* El resto de las prácticas, en el celular, usa los mismos colores que Encajar. */
+.ejercicio-calmo {
+  --voz-config: #0077b6;
+  --voz-config-dim: rgba(0, 119, 182, 0.14);
+  --voz-config-border: rgba(0, 119, 182, 0.35);
+}
+
+.ejercicio-calmo .text-voz-config,
+.ejercicio-calmo [class*="text-cyan"] {
+  color: #f5f5f7;
+  filter: none;
+}
+
+.ejercicio-calmo [class*="border-cyan"] {
+  border-color: #3a3a3d;
+}
+
+.ejercicio-calmo [class*="from-cyan"] {
+  background-image: none;
+  background-color: #f5f5f7;
+  color: #1c1c1e;
+  box-shadow: none;
+}
+
+.ejercicio-calmo [class*="drop-shadow"],
+.ejercicio-calmo [class*="shadow-[0_0"] {
+  filter: none;
+  box-shadow: none;
+}
+
+.ejercicio-calmo [class*="mic-ring-pulse"] {
+  display: none;
+}
+
+.panel-desde-abajo-barrita,
+.panel-desde-abajo-cabeza {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  text-align: left;
+}
+
+.panel-desde-abajo-barrita {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-top: 1px solid #3a3a3d;
+  border-radius: 18px 18px 0 0;
+  padding: 18px 16px calc(env(safe-area-inset-bottom, 0px) + 10px) 16px;
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.panel-desde-abajo-manija {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: #5c5c62;
+  transform: translateX(-50%);
+}
+
+.panel-desde-abajo-textos {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.panel-desde-abajo-titulo {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.panel-desde-abajo-resumen {
+  min-width: 0;
+  overflow: hidden;
+  color: #8e8e93;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-desde-abajo-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.panel-desde-abajo-hoja {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 41;
+  display: flex;
+  max-height: calc(100dvh - 4.75rem);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #3a3a3d;
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+  background: #2c2c2e;
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 200ms ease-out;
+}
+
+.panel-desde-abajo-hoja--arrastrando {
+  transition: none;
+}
+
+.panel-desde-abajo-cabeza {
+  position: relative;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #3a3a3d;
+}
+
+.panel-desde-abajo-cuerpo {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+}

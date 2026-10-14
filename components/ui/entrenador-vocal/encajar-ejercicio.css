@@ -275,6 +275,13 @@
   --voz-config-border: rgba(0, 119, 182, 0.35);
 }
 
+/* El metrónomo usa el mismo estilo, con su propio color. */
+.metronomo-ui .ejercicio-calmo {
+  --voz-config: var(--accent-metronomo);
+  --voz-config-dim: var(--accent-metronomo-dim);
+  --voz-config-border: color-mix(in srgb, var(--accent-metronomo) 35%, transparent);
+}
+
 .ejercicio-calmo .text-voz-config,
 .ejercicio-calmo [class*="text-cyan"] {
   color: #f5f5f7;

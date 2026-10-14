@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  TOOL_MODAL_MOBILE_GUTTER_CLASS,
-  ToolModalMobileBleed,
-  ToolPracticeSection,
-} from "@/components/ui/ToolModalSections";
+import { TOOL_MODAL_MOBILE_GUTTER_CLASS } from "@/components/ui/ToolModalSections";
+import { PanelDesdeAbajo } from "@/components/ui/entrenador-vocal/PanelDesdeAbajo";
 import PlayingEqIndicator from "@/components/ui/PlayingEqIndicator";
 import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import { RitmoConfigSection } from "@/components/ui/ToolRitmoConfig";
@@ -198,35 +195,8 @@ export default function MetronomoModal({
             onRequestMic={onRequestMic}
           />
         ) : (
-          <div className="space-y-3">
-            <ToolModalMobileBleed>
-              <RitmoConfigSection
-                compasLayout="flat"
-                collapsedSummary={configSummary}
-                hideCompasHelp
-                configHeaderAction={
-                  <MetronomoConfigHelpButton
-                    onClick={() => setConfigHelpOpen(true)}
-                  />
-                }
-                beatPattern={beatPattern}
-                patternLength={patternLength}
-                beatDurations={beatDurations}
-                bpm={bpm}
-                isPlaying={isPlaying}
-                tapTempoTapCount={tapTempoTapCount}
-                patternLengthInputId="metronomo-pattern-length"
-                accentVar="--accent-metronomo"
-                onSetPatternLength={onSetPatternLength}
-                onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
-                onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
-                onSetBpm={onSetBpm}
-                onTapTempo={onTapTempo}
-              />
-            </ToolModalMobileBleed>
-
-            <ToolModalMobileBleed className="pb-1 pt-3">
-            <ToolPracticeSection>
+          <div className="ejercicio-calmo">
+            <div className="space-y-4 pb-2">
               {isPlaying ? (
                 <div className="flex items-center justify-end">
                   <PlayingEqIndicator
@@ -271,8 +241,29 @@ export default function MetronomoModal({
                 onToggleMic={onToggleMic}
                 onRequestMic={onRequestMic}
               />
-            </ToolPracticeSection>
-            </ToolModalMobileBleed>
+            </div>
+
+            <PanelDesdeAbajo titulo="Configurar" resumen={configSummary}>
+              <RitmoConfigSection
+                embedded
+                compasLayout="flat"
+                collapsedSummary={configSummary}
+                hideCompasHelp
+                beatPattern={beatPattern}
+                patternLength={patternLength}
+                beatDurations={beatDurations}
+                bpm={bpm}
+                isPlaying={isPlaying}
+                tapTempoTapCount={tapTempoTapCount}
+                patternLengthInputId="metronomo-pattern-length"
+                accentVar="--accent-metronomo"
+                onSetPatternLength={onSetPatternLength}
+                onSetBeatDurationAtSlot={onSetBeatDurationAtSlot}
+                onSetBeatLevelAtSlot={onSetBeatLevelAtSlot}
+                onSetBpm={onSetBpm}
+                onTapTempo={onTapTempo}
+              />
+            </PanelDesdeAbajo>
           </div>
         )}
       </div>

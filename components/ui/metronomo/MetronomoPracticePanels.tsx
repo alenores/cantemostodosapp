@@ -450,7 +450,7 @@ export function MetronomoMicConnectingPanel() {
   return (
     <div className="flex w-full flex-col items-center gap-3 py-2 text-center">
       <div className="flex size-12 items-center justify-center rounded-full border border-border bg-bg-card">
-        <Mic className="size-6 text-accent" aria-hidden="true" />
+        <Mic className="size-6 text-[var(--accent-metronomo)]" aria-hidden="true" />
       </div>
       <p className="text-sm text-text-muted">Conectando micrófono...</p>
     </div>
@@ -471,7 +471,7 @@ export function MetronomoMicPermissionPanel({
   return (
     <div className="flex w-full flex-col items-center gap-3 py-2 text-center">
       <div className="flex size-12 items-center justify-center rounded-full border border-border bg-bg-card">
-        <Mic className="size-6 text-accent" aria-hidden="true" />
+        <Mic className="size-6 text-[var(--accent-metronomo)]" aria-hidden="true" />
       </div>
       <div className="space-y-1">
         <p className="text-sm font-semibold text-text-primary">
@@ -483,7 +483,7 @@ export function MetronomoMicPermissionPanel({
         </p>
       </div>
       {micError ? (
-        <p className="text-sm text-accent" role="alert">
+        <p className="text-sm text-[var(--accent-metronomo)]" role="alert">
           {micError}
         </p>
       ) : null}
@@ -491,7 +491,7 @@ export function MetronomoMicPermissionPanel({
         type="button"
         disabled={micStarting}
         onClick={onRequestMic}
-        className={`rounded-[12px] bg-accent px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60 ${
+        className={`rounded-[12px] bg-[var(--accent-metronomo)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60 ${
           fullWidthButton ? "w-full" : "min-w-[12rem]"
         }`}
       >

@@ -60,6 +60,7 @@ export default function EntrenadorVocalPageClient() {
         onSetRitmoToneEvaluation={voz.setRitmoToneEvaluation}
         onSetIntensidadEvaluation={voz.setIntensidadEvaluation}
         ritmoPlaying={voz.ritmoPlaying}
+        ritmoAudible={voz.ritmoAudible}
         onToggleRitmoPlaying={voz.toggleRitmoPlaying}
         ritmoMicActive={voz.ritmoMicActive}
         onToggleRitmoMic={voz.toggleRitmoMic}
@@ -79,6 +80,7 @@ export default function EntrenadorVocalPageClient() {
         intensidadVoiceSamples={voz.intensidadVoiceSamples}
         voiceRms={voz.voiceRms}
         melodiaPlaying={voz.melodiaPlaying}
+        melodiaAudible={voz.melodiaAudible}
         onToggleMelodiaPlaying={voz.toggleMelodiaPlaying}
         melodiaMicActive={voz.melodiaMicActive}
         onToggleMelodiaMic={voz.toggleMelodiaMic}

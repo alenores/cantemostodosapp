@@ -77,6 +77,7 @@ type EntrenadorVocalModalProps = {
   onSetRitmoToneEvaluation: (mode: RitmoToneEvaluation) => void;
   onSetIntensidadEvaluation: (value: boolean) => void;
   ritmoPlaying: boolean;
+  ritmoAudible: boolean;
   onToggleRitmoPlaying: () => void;
   ritmoMicActive: boolean;
   onToggleRitmoMic: () => void;
@@ -102,6 +103,7 @@ type EntrenadorVocalModalProps = {
   intensidadVoiceSamples: VozIntensidadVoiceSample[];
   voiceRms: number;
   melodiaPlaying: boolean;
+  melodiaAudible: boolean;
   onToggleMelodiaPlaying: () => void;
   melodiaMicActive: boolean;
   onToggleMelodiaMic: () => void;
@@ -210,6 +212,7 @@ export default function EntrenadorVocalModal({
   onSetRitmoToneEvaluation,
   onSetIntensidadEvaluation,
   ritmoPlaying,
+  ritmoAudible,
   onToggleRitmoPlaying,
   ritmoMicActive,
   onToggleRitmoMic,
@@ -229,6 +232,7 @@ export default function EntrenadorVocalModal({
   intensidadVoiceSamples,
   voiceRms,
   melodiaPlaying,
+  melodiaAudible,
   onToggleMelodiaPlaying,
   melodiaMicActive,
   onToggleMelodiaMic,
@@ -339,7 +343,10 @@ export default function EntrenadorVocalModal({
     ? VOZ_MODE_CARDS.find((c) => c.id === selectedModeId)
     : null;
   const showPortada =
-    Boolean(micPermissionGranted) && !micError && selectedModeId === null;
+    !isDesktop &&
+    Boolean(micPermissionGranted) &&
+    !micError &&
+    selectedModeId === null;
   const bodyScrollClass =
     !micPermissionGranted || micError || showPortada || !isDesktop
       ? "touch-pan-y overflow-y-auto overscroll-y-contain"
@@ -373,8 +380,18 @@ export default function EntrenadorVocalModal({
         }
         density="default"
         accentVar="--accent-vocal"
-        onBack={selectedModeId ? handleReturnToGrid : isPage ? onClose : undefined}
-        backAriaLabel={selectedModeId ? "Volver a los modos" : "Volver a Herramientas"}
+        onBack={
+          !isDesktop && selectedModeId
+            ? handleReturnToGrid
+            : isPage
+              ? onClose
+              : undefined
+        }
+        backAriaLabel={
+          !isDesktop && selectedModeId
+            ? "Volver a los modos"
+            : "Volver a Herramientas"
+        }
         headerContent={
           <div className="flex min-w-0 items-center gap-2">
             <h2
@@ -460,6 +477,7 @@ export default function EntrenadorVocalModal({
               onToggleTonePractice={onToggleTonePractice}
               micStarting={micStarting}
               ritmoPlaying={ritmoPlaying}
+              ritmoAudible={ritmoAudible}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoMicActive={ritmoMicActive}
               onToggleRitmoMic={onToggleRitmoMic}
@@ -478,6 +496,7 @@ export default function EntrenadorVocalModal({
               intensidadVoiceSamples={intensidadVoiceSamples}
               voiceRms={voiceRms}
               melodiaPlaying={melodiaPlaying}
+              melodiaAudible={melodiaAudible}
               onToggleMelodiaPlaying={onToggleMelodiaPlaying}
               melodiaMicActive={melodiaMicActive}
               onToggleMelodiaMic={onToggleMelodiaMic}

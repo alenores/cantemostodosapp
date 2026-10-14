@@ -197,13 +197,91 @@ export function useVoz() {
     setTonePracticeActive((previous) => !previous);
   }, [afinador.micPermissionGranted, afinador.requestPermission, tonePracticeActive]);
 
+  const ritmoMicActiveRef = useRef(ritmoMicActive);
+  const melodiaMicActiveRef = useRef(melodiaMicActive);
+  const ritmoGuideRef = useRef({
+    playing: ritmo.ritmoPlaying,
+    audible: ritmo.ritmoAudible,
+  });
+  const melodiaGuideRef = useRef({
+    playing: ritmo.melodiaPlaying,
+    audible: ritmo.melodiaAudible,
+  });
+
+  ritmoMicActiveRef.current = ritmoMicActive;
+  melodiaMicActiveRef.current = melodiaMicActive;
+  ritmoGuideRef.current = {
+    playing: ritmo.ritmoPlaying,
+    audible: ritmo.ritmoAudible,
+  };
+  melodiaGuideRef.current = {
+    playing: ritmo.melodiaPlaying,
+    audible: ritmo.melodiaAudible,
+  };
+
   const toggleRitmoPlaying = useCallback(() => {
-    ritmo.toggleRitmoPlaying();
-  }, [ritmo.toggleRitmoPlaying]);
+    if (ritmo.ritmoAudible) {
+      if (ritmoMicActiveRef.current) {
+        ritmo.setRitmoAudible(false);
+        return;
+      }
+
+      ritmo.stopRitmo();
+      return;
+    }
+
+    ritmo.startRitmo({ audible: true });
+  }, [
+    ritmo.ritmoAudible,
+    ritmo.setRitmoAudible,
+    ritmo.startRitmo,
+    ritmo.stopRitmo,
+  ]);
 
   const toggleMelodiaPlaying = useCallback(() => {
-    ritmo.toggleMelodiaPlaying();
-  }, [ritmo.toggleMelodiaPlaying]);
+    if (ritmo.melodiaAudible) {
+      if (melodiaMicActiveRef.current) {
+        ritmo.setMelodiaAudible(false);
+        return;
+      }
+
+      ritmo.stopMelodia();
+      return;
+    }
+
+    ritmo.startMelodia({ audible: true });
+  }, [
+    ritmo.melodiaAudible,
+    ritmo.setMelodiaAudible,
+    ritmo.startMelodia,
+    ritmo.stopMelodia,
+  ]);
+
+  useEffect(() => {
+    if (ritmoMicActive) {
+      if (!ritmoGuideRef.current.playing) {
+        ritmo.startRitmo({ audible: false });
+      }
+      return;
+    }
+
+    if (ritmoGuideRef.current.playing && !ritmoGuideRef.current.audible) {
+      ritmo.stopRitmo();
+    }
+  }, [ritmoMicActive, ritmo.startRitmo, ritmo.stopRitmo]);
+
+  useEffect(() => {
+    if (melodiaMicActive) {
+      if (!melodiaGuideRef.current.playing) {
+        ritmo.startMelodia({ audible: false });
+      }
+      return;
+    }
+
+    if (melodiaGuideRef.current.playing && !melodiaGuideRef.current.audible) {
+      ritmo.stopMelodia();
+    }
+  }, [melodiaMicActive, ritmo.startMelodia, ritmo.stopMelodia]);
 
   const toggleRitmoMic = useCallback(() => {
     if (!ritmoMicActive && !afinador.micPermissionGranted) {

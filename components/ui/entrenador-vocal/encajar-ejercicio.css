@@ -411,5 +411,6 @@
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  background: #3d3d40;
   padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
 }

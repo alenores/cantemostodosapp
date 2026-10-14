@@ -135,6 +135,8 @@ function scheduleSustainedBeat(
 export type VozRitmoPracticeStartOptions = {
   /** Combo: el volumen lo marca solo suave/medio/fuerte, no la altura de la nota. */
   intensidadOnlyLoudness?: boolean;
+  /** false: el dibujo avanza, pero no suena. */
+  audible?: boolean;
 };
 
 export type VozRitmoPracticeEngine = {
@@ -147,6 +149,7 @@ export type VozRitmoPracticeEngine = {
     notes?: VozTarget[],
     options?: VozRitmoPracticeStartOptions,
   ): void;
+  setAudible(audible: boolean): void;
   stop(): void;
 };
 
@@ -168,6 +171,7 @@ export function createVozRitmoPracticeEngine(
     null;
   let playbackNotes: VozTarget[] | null = null;
   let intensidadOnlyLoudness = false;
+  let audible = true;
   const beatTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
   function clearBeatTimeouts(): void {
@@ -233,7 +237,7 @@ export function createVozRitmoPracticeEngine(
       const frequency =
         note !== undefined ? targetToFrequency(note) : VOZ_RITMO_PRACTICE_FREQUENCY;
 
-      if (level !== "silencio") {
+      if (audible && level !== "silencio") {
         if (playbackNotes) {
           scheduleVozPracticeNote(
             audioContext,
@@ -284,6 +288,7 @@ export function createVozRitmoPracticeEngine(
       playbackNotes =
         nextNotes !== undefined && nextNotes.length > 0 ? nextNotes : null;
       intensidadOnlyLoudness = nextOptions?.intensidadOnlyLoudness === true;
+      audible = nextOptions?.audible !== false;
       running = true;
       currentBeatIndex = 0;
       const beatZeroTime = audioContext.currentTime;
@@ -297,6 +302,13 @@ export function createVozRitmoPracticeEngine(
 
       scheduler();
       schedulerTimer = setInterval(scheduler, SCHEDULE_INTERVAL_MS);
+    },
+    setAudible(nextAudible: boolean) {
+      audible = nextAudible;
+
+      if (!nextAudible) {
+        playbackBus.cut();
+      }
     },
     stop() {
       running = false;
@@ -314,6 +326,11 @@ export function createVozRitmoPracticeEngine(
 }
 
 
+export type VozMelodiaPracticeStartOptions = {
+  /** false: el dibujo avanza, pero no suena. */
+  audible?: boolean;
+};
+
 export type VozMelodiaPracticeEngine = {
   start(
     bpm: number,
@@ -321,7 +338,9 @@ export type VozMelodiaPracticeEngine = {
     patternLength: number,
     beatDurations: MetronomeBeatDurationPattern,
     onBeat: (beatIndex: number, expectedTimeMs: number) => void,
+    options?: VozMelodiaPracticeStartOptions,
   ): void;
+  setAudible(audible: boolean): void;
   stop(): void;
 };
 
@@ -341,6 +360,7 @@ export function createVozMelodiaPracticeEngine(
   let schedulerTimer: ReturnType<typeof setInterval> | null = null;
   let onBeat: ((beatIndex: number, expectedTimeMs: number) => void) | null =
     null;
+  let audible = true;
   const beatTimeouts = new Set<ReturnType<typeof setTimeout>>();
 
   function clearBeatTimeouts(): void {
@@ -398,7 +418,7 @@ export function createVozMelodiaPracticeEngine(
         bpm,
         activeDurations[beatIndex] ?? METRONOME_BEAT_DURATION_DEFAULT,
       );
-      if (notes.length > 0) {
+      if (audible && notes.length > 0) {
         const note = notes[beatIndex % notes.length]!;
         scheduleVozPracticeNote(
           audioContext,
@@ -424,6 +444,7 @@ export function createVozMelodiaPracticeEngine(
       nextPatternLength: number,
       nextBeatDurations: MetronomeBeatDurationPattern,
       nextOnBeat: (beatIndex: number, expectedTimeMs: number) => void,
+      nextOptions?: VozMelodiaPracticeStartOptions,
     ) {
       if (running) {
         clearBeatTimeouts();
@@ -434,6 +455,7 @@ export function createVozMelodiaPracticeEngine(
       patternLength = getActivePatternLength(nextPatternLength);
       beatDurations = normalizeBeatDurationPattern(nextBeatDurations);
       onBeat = nextOnBeat;
+      audible = nextOptions?.audible !== false;
       running = true;
       currentBeatIndex = 0;
       const beatZeroTime =
@@ -448,6 +470,13 @@ export function createVozMelodiaPracticeEngine(
 
       scheduler();
       schedulerTimer = setInterval(scheduler, SCHEDULE_INTERVAL_MS);
+    },
+    setAudible(nextAudible: boolean) {
+      audible = nextAudible;
+
+      if (!nextAudible) {
+        playbackBus.cut();
+      }
     },
     stop() {
       running = false;

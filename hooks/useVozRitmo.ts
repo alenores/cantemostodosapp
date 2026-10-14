@@ -55,9 +55,15 @@ const TAP_RESET_MS = 3000;
 
 type PlaybackMode = "ritmo" | "melodia";
 
+type PlaybackOptions = {
+  audible?: boolean;
+};
+
 type UseVozRitmoResult = {
   ritmoPlaying: boolean;
   melodiaPlaying: boolean;
+  ritmoAudible: boolean;
+  melodiaAudible: boolean;
   ritmoBpm: number;
   ritmoBeatPattern: MetronomeBeatPattern;
   ritmoPatternLength: number;
@@ -91,17 +97,21 @@ type UseVozRitmoResult = {
   setRitmoPlaybackIntensidadOnly: (value: boolean) => void;
   tapRitmoTempo: () => void;
   tapMelodiaTempo: () => void;
-  startRitmo: () => void;
+  startRitmo: (options?: PlaybackOptions) => void;
   stopRitmo: () => void;
+  setRitmoAudible: (audible: boolean) => void;
   toggleRitmoPlaying: () => void;
-  startMelodia: () => void;
+  startMelodia: (options?: PlaybackOptions) => void;
   stopMelodia: () => void;
+  setMelodiaAudible: (audible: boolean) => void;
   toggleMelodiaPlaying: () => void;
 };
 
 export function useVozRitmo(): UseVozRitmoResult {
   const [ritmoPlaying, setRitmoPlaying] = useState(false);
   const [melodiaPlaying, setMelodiaPlaying] = useState(false);
+  const [ritmoAudible, setRitmoAudibleState] = useState(false);
+  const [melodiaAudible, setMelodiaAudibleState] = useState(false);
   const [ritmoBpm, setRitmoBpmState] = useState(VOZ_RITMO_BPM_DEFAULT);
   const [ritmoBeatPattern, setRitmoBeatPatternState] =
     useState<MetronomeBeatPattern>([...VOZ_RITMO_BEAT_PATTERN_DEFAULT]);
@@ -140,6 +150,8 @@ export function useVozRitmo(): UseVozRitmoResult {
   const ritmoPlaybackIntensidadOnlyRef = useRef(false);
   const ritmoPlayingRef = useRef(false);
   const melodiaPlayingRef = useRef(false);
+  const ritmoAudibleRef = useRef(false);
+  const melodiaAudibleRef = useRef(false);
   const playbackModeRef = useRef<PlaybackMode>("ritmo");
   const ritmoTapTimestampsRef = useRef<number[]>([]);
   const melodiaTapTimestampsRef = useRef<number[]>([]);
@@ -164,6 +176,8 @@ export function useVozRitmo(): UseVozRitmoResult {
   melodiaNotePatternRef.current = melodiaNotePattern;
   ritmoPlayingRef.current = ritmoPlaying;
   melodiaPlayingRef.current = melodiaPlaying;
+  ritmoAudibleRef.current = ritmoAudible;
+  melodiaAudibleRef.current = melodiaAudible;
 
   const closeAudioContext = useCallback(() => {
     ritmoEngineRef.current = null;
@@ -171,17 +185,25 @@ export function useVozRitmo(): UseVozRitmoResult {
     audioContextRef.current = null;
   }, []);
 
-  const stopEngine = useCallback(() => {
+  const haltEngines = useCallback(() => {
     ritmoEngineRef.current?.stop();
     melodiaEngineRef.current?.stop();
     clearPlaybackClock();
+  }, []);
+
+  const stopEngine = useCallback(() => {
+    haltEngines();
     setRitmoPlaying(false);
     setMelodiaPlaying(false);
+    setRitmoAudibleState(false);
+    setMelodiaAudibleState(false);
     ritmoPlayingRef.current = false;
     melodiaPlayingRef.current = false;
+    ritmoAudibleRef.current = false;
+    melodiaAudibleRef.current = false;
     setCurrentPhase(null);
     setBeatMarkers([]);
-  }, []);
+  }, [haltEngines]);
 
   const cancelPendingPlayback = useCallback(() => {
     playbackRequestRef.current += 1;
@@ -211,18 +233,45 @@ export function useVozRitmo(): UseVozRitmoResult {
     return audioContext;
   }, []);
 
+  const markPlayback = useCallback((mode: PlaybackMode, audible: boolean) => {
+    playbackModeRef.current = mode;
+    setBeatMarkers([]);
+    setCurrentPhase(null);
+
+    if (mode === "ritmo") {
+      setRitmoPlaying(true);
+      setMelodiaPlaying(false);
+      setRitmoAudibleState(audible);
+      setMelodiaAudibleState(false);
+      ritmoPlayingRef.current = true;
+      melodiaPlayingRef.current = false;
+      ritmoAudibleRef.current = audible;
+      melodiaAudibleRef.current = false;
+      return;
+    }
+
+    setMelodiaPlaying(true);
+    setRitmoPlaying(false);
+    setMelodiaAudibleState(audible);
+    setRitmoAudibleState(false);
+    melodiaPlayingRef.current = true;
+    ritmoPlayingRef.current = false;
+    melodiaAudibleRef.current = audible;
+    ritmoAudibleRef.current = false;
+  }, []);
+
   const startPlayback = useCallback(
-    (mode: PlaybackMode) => {
+    (mode: PlaybackMode, options?: PlaybackOptions) => {
       primePracticeAudioOnGesture();
+      const audible = options?.audible !== false;
       const requestId = playbackRequestRef.current + 1;
       playbackRequestRef.current = requestId;
 
+      haltEngines();
+      markPlayback(mode, audible);
+
       void (async () => {
         try {
-          stopEngine();
-          playbackModeRef.current = mode;
-          setBeatMarkers([]);
-
           let audioContext = await ensureAudioContext();
 
           if (requestId !== playbackRequestRef.current) {
@@ -252,9 +301,6 @@ export function useVozRitmo(): UseVozRitmoResult {
               return;
             }
 
-            setRitmoPlaying(true);
-            ritmoPlayingRef.current = true;
-
             engine.start(
               ritmoBpmRef.current,
               ritmoBeatPatternRef.current,
@@ -277,9 +323,10 @@ export function useVozRitmo(): UseVozRitmoResult {
                 });
               },
               ritmoPlaybackNotesRef.current ?? undefined,
-              ritmoPlaybackIntensidadOnlyRef.current
-                ? { intensidadOnlyLoudness: true }
-                : undefined,
+              {
+                audible: ritmoAudibleRef.current,
+                intensidadOnlyLoudness: ritmoPlaybackIntensidadOnlyRef.current,
+              },
             );
             return;
           }
@@ -305,9 +352,6 @@ export function useVozRitmo(): UseVozRitmoResult {
             return;
           }
 
-          setMelodiaPlaying(true);
-          melodiaPlayingRef.current = true;
-
           engine.start(
             melodiaBpmRef.current,
             melodiaNotes,
@@ -329,23 +373,52 @@ export function useVozRitmo(): UseVozRitmoResult {
                   : next;
               });
             },
+            { audible: melodiaAudibleRef.current },
           );
         } catch {
+          if (requestId !== playbackRequestRef.current) {
+            return;
+          }
+
           stopEngine();
           closeAudioContext();
         }
       })();
     },
-    [closeAudioContext, ensureAudioContext, stopEngine],
+    [
+      closeAudioContext,
+      ensureAudioContext,
+      haltEngines,
+      markPlayback,
+      stopEngine,
+    ],
   );
 
-  const startRitmo = useCallback(() => {
-    startPlayback("ritmo");
-  }, [startPlayback]);
+  const startRitmo = useCallback(
+    (options?: PlaybackOptions) => {
+      startPlayback("ritmo", options);
+    },
+    [startPlayback],
+  );
 
-  const startMelodia = useCallback(() => {
-    startPlayback("melodia");
-  }, [startPlayback]);
+  const startMelodia = useCallback(
+    (options?: PlaybackOptions) => {
+      startPlayback("melodia", options);
+    },
+    [startPlayback],
+  );
+
+  const setRitmoAudible = useCallback((audible: boolean) => {
+    ritmoAudibleRef.current = audible;
+    setRitmoAudibleState(audible);
+    ritmoEngineRef.current?.setAudible(audible);
+  }, []);
+
+  const setMelodiaAudible = useCallback((audible: boolean) => {
+    melodiaAudibleRef.current = audible;
+    setMelodiaAudibleState(audible);
+    melodiaEngineRef.current?.setAudible(audible);
+  }, []);
 
   const toggleRitmoPlaying = useCallback(() => {
     if (ritmoPlayingRef.current) {
@@ -637,6 +710,8 @@ export function useVozRitmo(): UseVozRitmoResult {
   return {
     ritmoPlaying,
     melodiaPlaying,
+    ritmoAudible,
+    melodiaAudible,
     ritmoBpm,
     ritmoBeatPattern,
     ritmoPatternLength,
@@ -666,9 +741,11 @@ export function useVozRitmo(): UseVozRitmoResult {
     tapMelodiaTempo,
     startRitmo,
     stopRitmo,
+    setRitmoAudible,
     toggleRitmoPlaying,
     startMelodia,
     stopMelodia,
+    setMelodiaAudible,
     toggleMelodiaPlaying,
   };
 }

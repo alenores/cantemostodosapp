@@ -3,7 +3,6 @@
 import { TapButton } from "@/components/ui/TapFeedback";
 import { ToolNumericStepper } from "@/components/ui/ToolNumericStepper";
 import { MicToggleButton } from "@/components/ui/MicToggleButton";
-import { PlayCircleButton } from "@/components/ui/PlayCircleButton";
 import {
   BeatPatternEditor,
   RitmoConfigSection,
@@ -170,7 +169,7 @@ import {
   RITMO_TIMELINE_PATTERN_ROW_PX,
   RITMO_TIMELINE_VOLUME_BAR_SCALE,
 } from "@/lib/ritmo-compas-ui";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Volume2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -2345,6 +2344,7 @@ function VozRitmoTimeline({
 
 function VozComboPractice({
   ritmoPlaying,
+  referenceAudible,
   onToggleRitmoPlaying,
   ritmoMicActive,
   onToggleRitmoMic,
@@ -2367,6 +2367,7 @@ function VozComboPractice({
   layout = "mobile",
 }: {
   ritmoPlaying: boolean;
+  referenceAudible: boolean;
   onToggleRitmoPlaying: () => void;
   ritmoMicActive: boolean;
   onToggleRitmoMic: () => void;
@@ -2421,7 +2422,7 @@ function VozComboPractice({
       />
 
       <VozRitmoPlayControl
-        isPlaying={ritmoPlaying}
+        soundOn={referenceAudible}
         onToggle={onToggleRitmoPlaying}
       />
     </>
@@ -2461,14 +2462,12 @@ function VozPracticeMicRow({
 
 function VozChartPlayControl({
   onClick,
-  isPlaying = false,
-  playOnly = false,
+  soundOn = false,
   playAriaLabel = "Escuchar la referencia",
-  stopAriaLabel = "Detener",
+  stopAriaLabel = "Silenciar la referencia",
 }: {
   onClick: () => void;
-  isPlaying?: boolean;
-  playOnly?: boolean;
+  soundOn?: boolean;
   playAriaLabel?: string;
   stopAriaLabel?: string;
 }) {
@@ -2477,51 +2476,41 @@ function VozChartPlayControl({
       <span className="text-[10px] font-semibold text-text-secondary">
         Escuchar la referencia
       </span>
-      <PlayCircleButton
-        size="xs"
-        playOnly={playOnly}
-        isPlaying={isPlaying}
+      <TapButton
+        type="button"
+        aria-pressed={soundOn}
+        aria-label={soundOn ? stopAriaLabel : playAriaLabel}
         onClick={onClick}
-        playAriaLabel={playAriaLabel}
-        stopAriaLabel={stopAriaLabel}
-        className="text-[var(--accent-vocal)] border-[var(--accent-vocal)] bg-bg-card shadow-[0_0_12px_color-mix(in_srgb,var(--accent-vocal)_25%,transparent)]"
-      />
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full border shadow-[0_0_12px_color-mix(in_srgb,var(--accent-vocal)_25%,transparent)] ${
+          soundOn
+            ? "border-[var(--accent-vocal)] bg-[var(--accent-vocal)] text-white"
+            : "border-[var(--accent-vocal)] bg-bg-card text-[var(--accent-vocal)]"
+        }`}
+      >
+        <Volume2 className="size-4" aria-hidden="true" />
+      </TapButton>
     </div>
   );
 }
 
 function VozRitmoPlayControl({
-  isPlaying,
+  soundOn,
   onToggle,
 }: {
-  isPlaying: boolean;
+  soundOn: boolean;
   onToggle: () => void;
 }) {
-  return (
-    <VozChartPlayControl
-      isPlaying={isPlaying}
-      onClick={onToggle}
-      playAriaLabel="Iniciar ritmo"
-      stopAriaLabel="Detener ritmo"
-    />
-  );
+  return <VozChartPlayControl soundOn={soundOn} onClick={onToggle} />;
 }
 
 function VozMelodiaPlayControl({
-  isPlaying,
+  soundOn,
   onToggle,
 }: {
-  isPlaying: boolean;
+  soundOn: boolean;
   onToggle: () => void;
 }) {
-  return (
-    <VozChartPlayControl
-      isPlaying={isPlaying}
-      onClick={onToggle}
-      playAriaLabel="Iniciar melodía"
-      stopAriaLabel="Detener melodía"
-    />
-  );
+  return <VozChartPlayControl soundOn={soundOn} onClick={onToggle} />;
 }
 
 function VozTonePracticePlayControl({
@@ -2547,6 +2536,7 @@ function VozTonePracticePlayControl({
 
 function VozRitmoPractice({
   ritmoPlaying,
+  referenceAudible,
   onToggleRitmoPlaying,
   ritmoMicActive,
   onToggleRitmoMic,
@@ -2572,6 +2562,7 @@ function VozRitmoPractice({
   layout = "mobile",
 }: {
   ritmoPlaying: boolean;
+  referenceAudible: boolean;
   onToggleRitmoPlaying: () => void;
   ritmoMicActive: boolean;
   onToggleRitmoMic: () => void;
@@ -2618,7 +2609,7 @@ function VozRitmoPractice({
       />
 
       <VozRitmoPlayControl
-        isPlaying={ritmoPlaying}
+        soundOn={referenceAudible}
         onToggle={onToggleRitmoPlaying}
       />
 
@@ -2664,6 +2655,7 @@ function VozRitmoPractice({
 
 function VozMelodiaPractice({
   melodiaPlaying,
+  referenceAudible,
   onToggleMelodiaPlaying,
   melodiaMicActive,
   onToggleMelodiaMic,
@@ -2681,6 +2673,7 @@ function VozMelodiaPractice({
   layout = "mobile",
 }: {
   melodiaPlaying: boolean;
+  referenceAudible: boolean;
   onToggleMelodiaPlaying: () => void;
   melodiaMicActive: boolean;
   onToggleMelodiaMic: () => void;
@@ -2732,11 +2725,12 @@ function VozMelodiaPractice({
         beatDurations={melodiaBeatDurations}
         patternLength={melodiaPatternLength}
         notePattern={melodiaNotePattern}
+        playbackSynced={melodiaPlaying}
         layout={layout}
       />
 
       <VozMelodiaPlayControl
-        isPlaying={melodiaPlaying}
+        soundOn={referenceAudible}
         onToggle={handleToggleMelodiaPlaying}
       />
     </>
@@ -3337,10 +3331,10 @@ function VozOctavasPractice({
       />
 
       <VozChartPlayControl
-        isPlaying={isReferencePlaying}
+        soundOn={isReferencePlaying}
         onClick={handleToggleReference}
         playAriaLabel="Escuchar nota y octava"
-        stopAriaLabel="Detener referencia"
+        stopAriaLabel="Silenciar la referencia"
       />
     </>
   );
@@ -3552,6 +3546,7 @@ function VozIntensidadTimeline({
 
 function VozIntensidadPractice({
   ritmoPlaying,
+  referenceAudible,
   onToggleRitmoPlaying,
   ritmoMicActive,
   onToggleRitmoMic,
@@ -3567,6 +3562,7 @@ function VozIntensidadPractice({
   layout = "mobile",
 }: {
   ritmoPlaying: boolean;
+  referenceAudible: boolean;
   onToggleRitmoPlaying: () => void;
   ritmoMicActive: boolean;
   onToggleRitmoMic: () => void;
@@ -3611,7 +3607,7 @@ function VozIntensidadPractice({
       />
 
       <VozRitmoPlayControl
-        isPlaying={ritmoPlaying}
+        soundOn={referenceAudible}
         onToggle={onToggleRitmoPlaying}
       />
     </>
@@ -3650,6 +3646,7 @@ export type VozModeSlidesProps = {
   onToggleTonePractice: () => void;
   micStarting: boolean;
   ritmoPlaying: boolean;
+  ritmoAudible: boolean;
   onToggleRitmoPlaying: () => void;
   ritmoMicActive: boolean;
   onToggleRitmoMic: () => void;
@@ -3674,6 +3671,7 @@ export type VozModeSlidesProps = {
   intensidadVoiceSamples: VozIntensidadVoiceSample[];
   voiceRms: number;
   melodiaPlaying: boolean;
+  melodiaAudible: boolean;
   onToggleMelodiaPlaying: () => void;
   melodiaMicActive: boolean;
   onToggleMelodiaMic: () => void;
@@ -3726,6 +3724,7 @@ export function VozModeSlides({
   onToggleTonePractice,
   micStarting,
   ritmoPlaying,
+  ritmoAudible,
   onToggleRitmoPlaying,
   ritmoMicActive,
   onToggleRitmoMic,
@@ -3744,6 +3743,7 @@ export function VozModeSlides({
   intensidadVoiceSamples,
   voiceRms,
   melodiaPlaying,
+  melodiaAudible,
   onToggleMelodiaPlaying,
   melodiaMicActive,
   onToggleMelodiaMic,
@@ -4096,6 +4096,7 @@ export function VozModeSlides({
           <>
             <VozMelodiaPractice
               melodiaPlaying={melodiaPlaying}
+              referenceAudible={melodiaAudible}
               onToggleMelodiaPlaying={onToggleMelodiaPlaying}
               melodiaMicActive={melodiaMicActive}
               onToggleMelodiaMic={onToggleMelodiaMic}
@@ -4171,6 +4172,7 @@ export function VozModeSlides({
           <>
             <VozRitmoPractice
               ritmoPlaying={ritmoPlaying}
+              referenceAudible={ritmoAudible}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoMicActive={ritmoMicActive}
               onToggleRitmoMic={onToggleRitmoMic}
@@ -4264,6 +4266,7 @@ export function VozModeSlides({
           <>
             <VozIntensidadPractice
               ritmoPlaying={ritmoPlaying}
+              referenceAudible={ritmoAudible}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoMicActive={ritmoMicActive}
               onToggleRitmoMic={onToggleRitmoMic}
@@ -4342,6 +4345,7 @@ export function VozModeSlides({
           <>
             <VozRitmoPractice
               ritmoPlaying={ritmoPlaying}
+              referenceAudible={ritmoAudible}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoMicActive={ritmoMicActive}
               onToggleRitmoMic={onToggleRitmoMic}
@@ -4436,6 +4440,7 @@ export function VozModeSlides({
           <>
             <VozComboPractice
               ritmoPlaying={ritmoPlaying}
+              referenceAudible={ritmoAudible}
               onToggleRitmoPlaying={onToggleRitmoPlaying}
               ritmoMicActive={ritmoMicActive}
               onToggleRitmoMic={onToggleRitmoMic}
@@ -4531,7 +4536,7 @@ export function VozModeSlides({
     <>
       {isDesktop ? (
         <div
-          className={`flex h-full min-h-0 flex-1 overflow-hidden rounded-estandar border border-border bg-bg-card ${
+          className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-estandar border border-border bg-bg-card ${
             activeSlideId === "encajar" ? "encajar-marco" : ""
           }`}
         >

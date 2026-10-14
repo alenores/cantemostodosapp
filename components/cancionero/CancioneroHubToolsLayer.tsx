@@ -95,6 +95,7 @@ export default function CancioneroHubToolsLayer({
     setOctavasScaleRepetitions: setVozOctavasScaleRepetitions,
     celebrationKey: vozCelebrationKey,
     ritmoPlaying: vozRitmoPlaying,
+    ritmoAudible: vozRitmoAudible,
     toggleRitmoPlaying: toggleVozRitmoPlaying,
     ritmoMicActive: vozRitmoMicActive,
     toggleRitmoMic: toggleVozRitmoMic,
@@ -117,6 +118,7 @@ export default function CancioneroHubToolsLayer({
     setRitmoToneEvaluation: setVozRitmoToneEvaluation,
     setIntensidadEvaluation: setVozIntensidadEvaluation,
     melodiaPlaying: vozMelodiaPlaying,
+    melodiaAudible: vozMelodiaAudible,
     toggleMelodiaPlaying: toggleVozMelodiaPlaying,
     melodiaMicActive: vozMelodiaMicActive,
     toggleMelodiaMic: toggleVozMelodiaMic,
@@ -204,6 +206,7 @@ export default function CancioneroHubToolsLayer({
         onSetRitmoToneEvaluation={setVozRitmoToneEvaluation}
         onSetIntensidadEvaluation={setVozIntensidadEvaluation}
         ritmoPlaying={vozRitmoPlaying}
+        ritmoAudible={vozRitmoAudible}
         onToggleRitmoPlaying={toggleVozRitmoPlaying}
         ritmoMicActive={vozRitmoMicActive}
         onToggleRitmoMic={toggleVozRitmoMic}
@@ -223,6 +226,7 @@ export default function CancioneroHubToolsLayer({
         intensidadVoiceSamples={vozIntensidadVoiceSamples}
         voiceRms={vozVoiceRms}
         melodiaPlaying={vozMelodiaPlaying}
+        melodiaAudible={vozMelodiaAudible}
         onToggleMelodiaPlaying={toggleVozMelodiaPlaying}
         melodiaMicActive={vozMelodiaMicActive}
         onToggleMelodiaMic={toggleVozMelodiaMic}

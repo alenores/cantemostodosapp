@@ -125,22 +125,27 @@ export default function HomeHubDestinations({
           trailing={!online ? <WifiOff className="size-4 text-text-secondary" /> : null}
         />
 
-        <HomeDestinationCard
-          label={HUB_DESTINATION_PRACTICA_LABEL}
-          subtitle="Practicar"
-          icon={MicVocal}
-          ariaLabel={`Ir a Práctica: ${HUB_DESTINATION_PRACTICA_DESCRIPTION}`}
-          onClick={() => goTo("/practica")}
-          pending={pendingHref === "/practica"}
-        />
+        {isLoggedIn ? (
+          <HomeDestinationCard
+            label={HUB_DESTINATION_PRACTICA_LABEL}
+            subtitle="Practicar"
+            icon={MicVocal}
+            ariaLabel={`Ir a Práctica: ${HUB_DESTINATION_PRACTICA_DESCRIPTION}`}
+            onClick={() => goTo("/practica")}
+            pending={pendingHref === "/practica"}
+          />
+        ) : null}
 
-        <HomeDestinationCard
-          label={HUB_DESTINATION_AFINADOR_LABEL}
-          subtitle="Afinar"
-          icon={Gauge}
-          ariaLabel={`Abrir Afinador: ${HUB_DESTINATION_AFINADOR_DESCRIPTION}`}
-          onClick={onOpenAfinador}
-        />
+        {/* Sin Práctica (invitado), el Afinador ocupa la fila entera. */}
+        <div className={isLoggedIn ? "contents" : "col-span-2 min-w-0"}>
+          <HomeDestinationCard
+            label={HUB_DESTINATION_AFINADOR_LABEL}
+            subtitle="Afinar"
+            icon={Gauge}
+            ariaLabel={`Abrir Afinador: ${HUB_DESTINATION_AFINADOR_DESCRIPTION}`}
+            onClick={onOpenAfinador}
+          />
+        </div>
 
         {showUsuarios ? (
           <div className="col-span-2 min-w-0">

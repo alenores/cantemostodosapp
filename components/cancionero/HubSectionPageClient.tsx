@@ -4,7 +4,7 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
-import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
+import { esDuenoOAmigos, puedeSumarCanciones } from "@/lib/usuarios-categorias";
 import { Bell } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -55,6 +55,7 @@ export default function HubSectionPageClient({
   const online = useOnlineStatus();
   const categoria = useCategoriaUsuario();
   const puedeCrear = puedeSumarCanciones(categoria);
+  const esAmigo = esDuenoOAmigos(categoria);
   const novedades = useCancioneroNovedades();
   const isDesktop = useIsDesktop();
   const [afinadorOpen, setAfinadorOpen] = useState(false);
@@ -109,6 +110,9 @@ export default function HubSectionPageClient({
       return;
     }
     if (moduleDef.requiresOwner && !canUseOwnerModules) {
+      return;
+    }
+    if (moduleDef.requiresAmigos && !esAmigo) {
       return;
     }
 
@@ -166,6 +170,7 @@ export default function HubSectionPageClient({
       (!module.requiresAuth || isLoggedIn) &&
       (!module.requiresOwner || canUseOwnerModules) &&
       (!module.requiresCreator || puedeCrear) &&
+      (!module.requiresAmigos || esAmigo) &&
       (!module.desktopOnly || isDesktop),
   );
 

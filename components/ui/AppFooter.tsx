@@ -1,5 +1,6 @@
 "use client";
 
+import { useHaySesion } from "@/hooks/useHaySesion";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { Home, Library, MicVocal, Music2, Users, WifiOff } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -67,6 +68,11 @@ function readSalaFooterState() {
 export default function AppFooter() {
   const pathname = usePathname();
   const online = useOnlineStatus();
+  // Práctica es solo para cuentas: el invitado no ve la pestaña.
+  const haySesion = useHaySesion();
+  const tabs = haySesion
+    ? TABS
+    : TABS.filter((tab) => tab.href !== "/practica");
   const [modoLecturaHidden, setModoLecturaHidden] = useState(false);
   const [abrirDesdeIcono, setAbrirDesdeIcono] = useState(false);
   const [salaNombre, setSalaNombre] = useState<string | null>(null);
@@ -111,7 +117,7 @@ export default function AppFooter() {
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <nav className="flex h-[56px] w-full flex-row items-center">
-        {TABS.map(({ href, label, icon: Icon, isActive }) => {
+        {tabs.map(({ href, label, icon: Icon, isActive }) => {
           const active = isActive(pathname);
           const isSalasTab = href === "/salas";
           const salasUnavailable = isSalasTab && !online;

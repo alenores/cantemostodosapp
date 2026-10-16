@@ -155,11 +155,14 @@ Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que 
 
 El editor de canciones no tiene tarjeta propia: se entra con el botón **+** dentro del Cancionero (canción nueva) o con **Editar** en una canción que la cuenta puede editar (ver sección 18).
 
-**Práctica:**
-- Metrónomo
-- Entrenador Vocal
-- Compositor
-- Entrenador de canciones (requiere cuenta)
+**Práctica** (solo con cuenta: el invitado no ve la pestaña, la tarjeta del inicio ni la sección del menú de PC; si entra por dirección vuelve al inicio):
+
+| Submódulo | Público | Amigos | Dueño |
+|-----------|---------|--------|-------|
+| Metrónomo | Sí | Sí | Sí |
+| Entrenador de canciones | Sí | Sí | Sí |
+| Entrenador Vocal | No | Sí | Sí |
+| Compositor | No | No | Sí |
 
 ---
 
@@ -786,8 +789,8 @@ Solo disponible **con cuenta iniciada**.
 ### 14.4 Modo invitado (sin cuenta)
 
 - Nombre mostrado: **"Invitado"**.
-- Puede: usar el Cancionero descargado, Individual offline, afinador, metrónomo y entrenador vocal.
-- No puede: Favoritas, editor, entrenador de canciones, salas, guardar canciones, comunidad del compositor.
+- Puede: usar el Cancionero descargado, Individual offline y afinador.
+- No puede: Práctica (metrónomo, entrenador vocal, compositor, entrenador de canciones), Favoritas, editor, salas, guardar canciones.
 
 ---
 

@@ -4,6 +4,7 @@ import { TapLink } from "@/components/ui/TapFeedback";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { createClient } from "@/lib/supabase/client";
 import {
+  esDuenoOAmigos,
   puedeSumarCanciones,
   type CategoriaUsuario,
 } from "@/lib/usuarios-categorias";
@@ -134,6 +135,7 @@ function SidebarExpandableSection({
   isLoggedIn,
   isOwner,
   puedeCrear,
+  esAmigo,
   isExpanded,
   onToggle,
 }: {
@@ -142,6 +144,7 @@ function SidebarExpandableSection({
   isLoggedIn: boolean;
   isOwner: boolean;
   puedeCrear: boolean;
+  esAmigo: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }) {
@@ -149,7 +152,8 @@ function SidebarExpandableSection({
     (item) =>
       (!item.requiresAuth || isLoggedIn) &&
       (!item.requiresOwner || isOwner) &&
-      (!item.requiresCreator || puedeCrear),
+      (!item.requiresCreator || puedeCrear) &&
+      (!item.requiresAmigos || esAmigo),
   );
 
   if (visibleItems.length === 0) {
@@ -243,6 +247,7 @@ export default function AppSidebarNavSections({
   const [categoria, setCategoria] = useState<CategoriaUsuario | null>(null);
   const isOwner = categoria === "dueno";
   const puedeCrear = puedeSumarCanciones(categoria);
+  const esAmigo = esDuenoOAmigos(categoria);
 
   useEffect(() => {
     let active = true;
@@ -307,6 +312,7 @@ export default function AppSidebarNavSections({
             isLoggedIn={isLoggedIn}
             isOwner={isOwner}
             puedeCrear={puedeCrear}
+            esAmigo={esAmigo}
             isExpanded={expandedSection === section.id}
             onToggle={() =>
               setExpandedSection((current) =>

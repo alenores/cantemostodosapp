@@ -33,6 +33,8 @@ export type HubModuleDef = {
   requiresOwner?: boolean;
   /** Dueño y amigos: pueden sumar una canción nueva. */
   requiresCreator?: boolean;
+  /** Dueño y amigos (el público no lo ve). */
+  requiresAmigos?: boolean;
   ctaLabel?: string;
   /** @deprecated Prefer ctaMode; kept for callers that still branch on accent/neutral. */
   ctaVariant?: "neutral" | "accent";
@@ -119,6 +121,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     kind: "metronomo",
     section: "practica",
     href: "/practica/metronomo",
+    requiresAuth: true,
     ctaLabel: "Abrir",
     ctaVariant: "accent",
     ctaMode: "solid",
@@ -134,6 +137,8 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     kind: "voz",
     section: "practica",
     href: "/practica/entrenador-vocal",
+    requiresAuth: true,
+    requiresAmigos: true,
     ctaLabel: "Abrir",
     ctaVariant: "accent",
     ctaMode: "solid",

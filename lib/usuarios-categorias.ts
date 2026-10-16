@@ -14,6 +14,11 @@ function normalizeCategoriaUsuario(value: unknown): CategoriaUsuario | null {
     : null;
 }
 
+/** Dueño o amigos (todo menos el público). */
+export function esDuenoOAmigos(categoria: CategoriaUsuario | null): boolean {
+  return categoria === "dueno" || categoria === "amigos";
+}
+
 /** Dueño y amigos suman canciones al Cancionero; el público no. */
 export function puedeSumarCanciones(categoria: CategoriaUsuario | null): boolean {
   return categoria === "dueno" || categoria === "amigos";

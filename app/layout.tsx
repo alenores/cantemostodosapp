@@ -11,6 +11,7 @@ import OfflinePrefetchRunner from "@/components/offline/OfflinePrefetchRunner";
 import OfflineWarmRunner from "@/components/offline/OfflineWarmRunner";
 import SerwistProvider from "@/components/offline/SerwistProvider";
 import NavigationProgressProvider from "@/components/ui/NavigationProgress";
+import CerrarConEscape from "@/components/ui/CerrarConEscape";
 import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
 import { APP_SHELL_BG } from "@/lib/splash-theme";
 import type { Metadata, Viewport } from "next";
@@ -76,6 +77,7 @@ export default function RootLayout({
         <ConexionRunner />
         <SerwistProvider>
           <TapFeedbackProvider>
+            <CerrarConEscape />
             <Suspense fallback={null}>
               <NavigationProgressProvider>
                 <CancioneroSyncRunner>

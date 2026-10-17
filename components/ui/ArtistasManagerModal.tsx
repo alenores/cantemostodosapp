@@ -202,7 +202,12 @@ export function ArtistasManagerModal({ isOpen, onClose }: Props) {
       <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/50 p-4">
           <h2 className="text-xl font-bold text-text-primary">Gestión de Artistas</h2>
-          <TapButton onClick={onClose} className="rounded-full p-2 hover:bg-bg-card-hover">
+          <TapButton
+            type="button"
+            aria-label="Cerrar"
+            onClick={onClose}
+            className="rounded-full p-2 hover:bg-bg-card-hover"
+          >
             <X className="size-5 text-text-secondary" />
           </TapButton>
         </div>

@@ -92,6 +92,43 @@ function similitudPalabra(a: string, b: string): number {
   return similitud >= PALABRA_SIMILITUD_MIN ? similitud : 0;
 }
 
+/**
+ * El texto escrito es el comienzo del nombre oficial («indio» → «Indio Solari…»).
+ * La última palabra puede estar a medio tipear («indi» → «indio»).
+ */
+function nombreOficialEmpiezaCon(entrada: string, nombre: string): boolean {
+  const escritas = palabrasClave(entrada);
+  const delNombre = palabrasClave(nombre);
+  if (escritas.length === 0 || delNombre.length === 0 || escritas.length > delNombre.length) {
+    return false;
+  }
+  if (escritas.length === 1 && escritas[0]!.length < 3) return false;
+
+  return escritas.every((palabra, index) => {
+    const otra = delNombre[index]!;
+    if (palabra === otra) return true;
+    return index === escritas.length - 1 && palabra.length >= 3 && otra.startsWith(palabra);
+  });
+}
+
+/**
+ * Coincidir con el inicio del nombre oficial pesa más que un alias.
+ * Si falta parte del nombre, se sugiere pero no se da por seguro.
+ */
+function puntajeInicioOficial(entrada: string, nombre: string): number {
+  if (!nombreOficialEmpiezaCon(entrada, nombre)) return 0;
+
+  const escritas = palabrasClave(entrada);
+  const delNombre = palabrasClave(nombre);
+  const completo =
+    escritas.length >= delNombre.length &&
+    escritas.every((palabra, index) => palabra === delNombre[index]);
+  if (completo) return 1;
+
+  const cobertura = escritas.length / delNombre.length;
+  return Math.min(0.88, 0.76 + cobertura * 0.12);
+}
+
 /** Puntaje 0–1 entre dos nombres ya normalizados (coeficiente de Dice por palabras). */
 function puntajeNombres(entrada: string, candidato: string): number {
   if (!entrada || !candidato) return 0;
@@ -159,31 +196,56 @@ export function buscarArtistaCandidatos(
     nombresPorArtista.get(item.artista_id)?.push(item.alias);
   }
 
-  const candidatos: ArtistaCandidato[] = [];
+  const candidatos: Array<ArtistaCandidato & { oficialAlInicio: boolean }> = [];
 
   for (const artista of artistas) {
-    let mejor = 0;
-    let coincideCon = artista.nombre;
+    const oficial = normalizarNombreArtista(artista.nombre);
+    let puntajeOficial = 0;
+    let empiezaOficial = false;
 
+    for (const entrada of entradas) {
+      const puntaje = Math.max(
+        puntajeNombres(entrada, oficial),
+        puntajeInicioOficial(entrada, oficial),
+      );
+      if (puntaje > puntajeOficial) {
+        puntajeOficial = puntaje;
+        empiezaOficial = nombreOficialEmpiezaCon(entrada, oficial);
+      }
+    }
+
+    let puntajeAlias = 0;
+    let aliasCoincide = artista.nombre;
     for (const nombre of nombresPorArtista.get(artista.id) ?? []) {
+      if (nombre === artista.nombre) continue;
       const normalizado = normalizarNombreArtista(nombre);
       for (const entrada of entradas) {
         const puntaje = puntajeNombres(entrada, normalizado);
-        if (puntaje > mejor) {
-          mejor = puntaje;
-          coincideCon = nombre;
+        if (puntaje > puntajeAlias) {
+          puntajeAlias = puntaje;
+          aliasCoincide = nombre;
         }
       }
     }
 
+    // El nombre oficial, escrito tal cual, queda por encima de cualquier alias.
+    const oficialAlInicio = empiezaOficial && puntajeOficial >= ARTISTA_MATCH_DUDOSO;
+    const mejor = oficialAlInicio ? puntajeOficial : Math.max(puntajeOficial, puntajeAlias);
+    const coincideCon =
+      !oficialAlInicio && puntajeAlias > puntajeOficial ? aliasCoincide : artista.nombre;
+
     if (mejor >= ARTISTA_MATCH_DUDOSO) {
-      candidatos.push({ artista, puntaje: mejor, coincideCon });
+      candidatos.push({ artista, puntaje: mejor, coincideCon, oficialAlInicio });
     }
   }
 
   return candidatos
-    .sort((a, b) => b.puntaje - a.puntaje || a.artista.nombre.localeCompare(b.artista.nombre))
-    .slice(0, MAX_CANDIDATOS);
+    .sort((a, b) => {
+      if (a.oficialAlInicio !== b.oficialAlInicio) return a.oficialAlInicio ? -1 : 1;
+      return b.puntaje - a.puntaje || a.artista.nombre.localeCompare(b.artista.nombre, "es");
+    })
+    .slice(0, MAX_CANDIDATOS)
+    .map(({ artista, puntaje, coincideCon }) => ({ artista, puntaje, coincideCon }));
 }
 
 export function resolverArtista(

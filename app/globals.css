@@ -1930,6 +1930,17 @@ html.splash-active body {
   z-index: 1;
 }
 
+/* En la computadora ese fondo es de celular: la barra ya muestra las secciones. */
+@media (min-width: 1024px) {
+  .practica-hub {
+    background-color: var(--bg-app);
+  }
+
+  .practica-hub::before {
+    display: none;
+  }
+}
+
 .practica-hub-claro > .hub-module-card[data-hub-accent] {
   border: 1px solid transparent;
   background:

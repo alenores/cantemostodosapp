@@ -19,7 +19,7 @@ import { getActiveUserId } from "@/lib/auth/offline-user";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const CancioneroHubToolsLayer = dynamic(
@@ -51,6 +51,7 @@ export default function HubSectionPageClient({
   isOwner = false,
 }: HubSectionPageClientProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
   const categoria = useCategoriaUsuario();
@@ -94,6 +95,11 @@ export default function HubSectionPageClient({
   useEffect(() => {
     setPendingModuleId(null);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isDesktop || section !== "canciones") return;
+    router.replace("/canciones/cancionero");
+  }, [isDesktop, router, section]);
 
   const mountToolsLayer = useCallback(() => {
     setToolsLayerMounted(true);
@@ -217,11 +223,14 @@ export default function HubSectionPageClient({
     );
   }
 
+  const fondoDeCelular = !isDesktop && (section === "practica" || section === "canciones");
+  const mostrarTarjetas = !isDesktop || section === "practica";
+
   return (
-    <div className={`relative flex min-h-full flex-1 flex-col ${section === "practica" || section === "canciones" ? "practica-hub" : "bg-bg-app"}`}>
+    <div className={`relative flex min-h-full flex-1 flex-col ${fondoDeCelular ? "practica-hub" : "bg-bg-app"}`}>
       <AppReadyMarker />
 
-      {!isDesktop ? (
+      {mostrarTarjetas ? (
         <main
           className="app-page-main flex flex-col gap-3 px-4 pb-24 lg:px-8 lg:py-8"
           style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top, 0px))" }}
@@ -231,7 +240,7 @@ export default function HubSectionPageClient({
               {sectionLabel}
             </h2>
 
-            <div className={`app-hub-grid${section === "canciones" || section === "practica" ? " practica-hub-claro" : ""}`}>
+            <div className={`app-hub-grid${fondoDeCelular ? " practica-hub-claro" : ""}`}>
               {visibleModules.map((module) => renderModuleCard(module))}
               {section === "canciones" && novedades.count > 0 ? (
                 <HubModuleCard moduleId="novedades" label="Novedades" icon={Bell}

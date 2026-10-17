@@ -271,6 +271,8 @@ export default function CifradoEditorMobile({
   }, [draftPaste, pendingWebImport]);
 
   const lastPasteProposeSignatureRef = useRef<string | null>(null);
+  /** Ya se mostró la sugerencia de tono: editar la letra no la vuelve a abrir. */
+  const pasteProposeDecidedRef = useRef(false);
   const pasteProposeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ignoreNextPositionSelectRef = useRef(false);
   const dragTargetRef = useRef<PickerTarget | null>(null);
@@ -708,6 +710,7 @@ export default function CifradoEditorMobile({
     }
 
     if (pasteProposeOpen) {
+      pasteProposeDecidedRef.current = true;
       setPasteProposeOpen(false);
       return;
     }
@@ -1028,6 +1031,12 @@ export default function CifradoEditorMobile({
       setPasteProposeOpen(false);
       setPasteAnalysis(null);
       setTonalidadInferResult(null);
+      lastPasteProposeSignatureRef.current = null;
+      pasteProposeDecidedRef.current = false;
+      return;
+    }
+
+    if (pasteProposeDecidedRef.current) {
       return;
     }
 
@@ -1073,7 +1082,14 @@ export default function CifradoEditorMobile({
     schedulePasteIngresoAnalysis(value);
   }
 
+  function cerrarSugerenciaPegado() {
+    pasteProposeDecidedRef.current = true;
+    setPasteProposeOpen(false);
+  }
+
   function handleConfirmPasteIngreso(result: PasteIngresoConfirmResult) {
+    pasteProposeDecidedRef.current = true;
+
     if (result.tonalidad) {
       setTonalidadIndex(result.tonalidad.tonalidadIndex);
       setModoTonal(result.tonalidad.modoTonal);
@@ -1161,6 +1177,7 @@ export default function CifradoEditorMobile({
     if (suggested) {
       setTonalidadIndex(suggested.tonalidadIndex);
       setModoTonal(suggested.modoTonal);
+      pasteProposeDecidedRef.current = true;
     }
 
     setPendingWebImport({
@@ -1212,6 +1229,8 @@ export default function CifradoEditorMobile({
   function handleClearWebImport() {
     setPendingWebImport(null);
     setDraftPaste("");
+    lastPasteProposeSignatureRef.current = null;
+    pasteProposeDecidedRef.current = false;
     setWebSearchResetKey((current) => current + 1);
     clearError();
   }
@@ -1759,7 +1778,7 @@ export default function CifradoEditorMobile({
         avisarCancionRepetida={avisarCancionRepetida}
         zIndex={70}
         onConfirm={handleConfirmPasteIngreso}
-        onDismiss={() => setPasteProposeOpen(false)}
+        onDismiss={cerrarSugerenciaPegado}
       />
 
       {tonalidadLista ? (

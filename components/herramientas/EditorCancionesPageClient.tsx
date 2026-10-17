@@ -261,7 +261,7 @@ export default function EditorCancionesPageClient() {
           isLoggedIn
           session={session}
           onClose={() => {
-            router.push(backHref);
+            router.push(desde === "hub" ? "/canciones/cancionero" : backHref);
           }}
           showPageClose
           onSaved={(result) => void handleSavedDesktop(result)}

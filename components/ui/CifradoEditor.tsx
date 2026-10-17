@@ -2653,6 +2653,8 @@ export default function CifradoEditor({
     useState<CifradoEditorWebImportData | null>(null);
   const [webSearchResetKey, setWebSearchResetKey] = useState(0);
   const lastPasteProposeSignatureRef = useRef<string | null>(null);
+  /** Ya se mostró la sugerencia de tono: editar la letra no la vuelve a abrir. */
+  const pasteProposeDecidedRef = useRef(false);
   const pasteProposeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [notacion, setNotacion] = useState<NotacionAcordes>("es");
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -2958,6 +2960,7 @@ export default function CifradoEditor({
       setPasteAnalysis(null);
       setTonalidadInferResult(null);
       lastPasteProposeSignatureRef.current = null;
+      pasteProposeDecidedRef.current = false;
 
       if (pasteProposeTimerRef.current) {
         clearTimeout(pasteProposeTimerRef.current);
@@ -3024,6 +3027,7 @@ export default function CifradoEditor({
       setPasteAnalysis(null);
       setTonalidadInferResult(null);
       lastPasteProposeSignatureRef.current = null;
+      pasteProposeDecidedRef.current = false;
       setPendingWebImport(null);
 
       if (pasteProposeTimerRef.current) {
@@ -3065,6 +3069,7 @@ export default function CifradoEditor({
     setPasteAnalysis(null);
     setTonalidadInferResult(null);
     lastPasteProposeSignatureRef.current = null;
+    pasteProposeDecidedRef.current = false;
     setPendingWebImport(null);
     setDraftPasteTraditional("");
     setPreviewOpen(false);
@@ -3271,6 +3276,12 @@ export default function CifradoEditor({
       setPasteProposeOpen(false);
       setPasteAnalysis(null);
       setTonalidadInferResult(null);
+      lastPasteProposeSignatureRef.current = null;
+      pasteProposeDecidedRef.current = false;
+      return;
+    }
+
+    if (pasteProposeDecidedRef.current) {
       return;
     }
 
@@ -3304,7 +3315,14 @@ export default function CifradoEditor({
     }, 450);
   }
 
+  function cerrarSugerenciaPegado() {
+    pasteProposeDecidedRef.current = true;
+    setPasteProposeOpen(false);
+  }
+
   function handleConfirmPasteIngreso(result: PasteIngresoConfirmResult) {
+    pasteProposeDecidedRef.current = true;
+
     if (result.tonalidad) {
       setIngresoTonalidadIndex(result.tonalidad.tonalidadIndex);
       setIngresoModoTonal(result.tonalidad.modoTonal);
@@ -3437,6 +3455,7 @@ export default function CifradoEditor({
     if (suggested) {
       setIngresoTonalidadIndex(suggested.tonalidadIndex);
       setIngresoModoTonal(suggested.modoTonal);
+      pasteProposeDecidedRef.current = true;
     }
 
     setPendingWebImport({
@@ -5714,7 +5733,7 @@ export default function CifradoEditor({
         avisarCancionRepetida={avisarCancionRepetida}
         zIndex={70}
         onConfirm={handleConfirmPasteIngreso}
-        onDismiss={() => setPasteProposeOpen(false)}
+        onDismiss={cerrarSugerenciaPegado}
       />
 
       <ConfirmDialog

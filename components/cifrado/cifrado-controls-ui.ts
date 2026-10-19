@@ -82,8 +82,13 @@ export const CIFRADO_EDITOR_TOOLBAR_LABEL_CLASS =
 export const CIFRADO_EDITOR_TOOLBAR_SEGMENTED_CLASS =
   "h-[44px] flex w-full gap-1 rounded-full border border-border bg-bg-darker p-1";
 
-export function cifradoEditorToolbarSegmentedButtonClass(active: boolean): string {
-  return `flex-1 h-full rounded-full px-3 text-xs font-bold transition-all flex items-center justify-center ${
+export function cifradoEditorToolbarSegmentedButtonClass(
+  active: boolean,
+  compact = false,
+): string {
+  return `flex-1 h-full min-w-0 rounded-full ${
+    compact ? "px-1 text-[11px]" : "px-3 text-xs"
+  } font-bold transition-all flex items-center justify-center ${
     active
       ? CIFRADO_COMPOSITOR_ACTIVE_CLASS
       : "text-text-muted hover:text-text-primary"

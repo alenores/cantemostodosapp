@@ -20,9 +20,15 @@ import {
   DEFAULT_ANOTACION_VISIBILITY,
   anotacionVaAbajo,
   anotacionVaArriba,
+  esAnotacionCuerda,
   type Anotacion,
   type AnotacionTipo,
 } from "@/lib/anotaciones-practica";
+import {
+  PunteoMarcasLinea,
+  RasgueoMarcasLinea,
+} from "@/components/cifrado/CuerdasPanel";
+import { colorTramoPorLinea } from "@/lib/cuerdas-practica";
 import { CifradoMobileCompasMarkers } from "@/components/cifrado/CifradoMobileCompasMarkers";
 import { CifradoMobileCompasPanel } from "@/components/cifrado/CifradoMobileCompasPanel";
 import { splitLyricsLines } from "@/components/cifrado/CifradoLyricsView";
@@ -52,7 +58,12 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
-export type MobileModoInsercion = "acordes" | "compas" | "letra" | "canto";
+export type MobileModoInsercion =
+  | "acordes"
+  | "compas"
+  | "letra"
+  | "canto"
+  | "cuerdas";
 
 type CharPosition = {
   left: number;
@@ -119,6 +130,8 @@ type CifradoMobileEditableLinesProps = {
     x: number,
     y: number,
   ) => void;
+  onCuerdaEnPunto?: (lineIndex: number, charOffset: number) => void;
+  onOpenCuerda?: (anotacion: Anotacion) => void;
   /** Muestra la X para cerrar el renglón activo (celular). */
   showCloseActiveLine?: boolean;
   onCloseActiveLine?: () => void;
@@ -155,6 +168,8 @@ type MobileLineRowProps = {
   lineAnotaciones?: Anotacion[];
   rangoPendienteOffset?: number | null;
   rangoPendienteEndOffset?: number | null;
+  tramoColor?: string | null;
+  onOpenCuerda?: (anotacion: Anotacion) => void;
 };
 
 /**
@@ -187,6 +202,8 @@ function MobileLineRow({
   lineAnotaciones = [],
   rangoPendienteOffset = null,
   rangoPendienteEndOffset = null,
+  tramoColor = null,
+  onOpenCuerda,
 }: MobileLineRowProps) {
   const lineRef = useRef<HTMLElement | null>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
@@ -595,7 +612,7 @@ function MobileLineRow({
         ) ?? null
       : null;
 
-  const lineClassName = `block w-full max-w-full overflow-x-hidden pb-5 text-left ${
+  const lineClassName = `relative block w-full max-w-full overflow-x-hidden pb-5 text-left ${
     isDragMode ? "touch-none select-none" : "touch-pan-y cursor-pointer"
   } ${
     isActive || isDragMode
@@ -603,8 +620,16 @@ function MobileLineRow({
       : `rounded-[8px] border border-border/80 px-3 pt-1 ${CIFRADO_EDITOR_LINE_BG_CLASS}`
   } ${isDimmed ? (isDragMode ? "opacity-30" : "opacity-45") : ""}`;
 
+  const lineStyle = tramoColor
+    ? { boxShadow: `inset 3px 0 0 ${tramoColor}` }
+    : undefined;
+
   const lineBody = (
     <>
+      <RasgueoMarcasLinea
+        anotaciones={lineAnotaciones}
+        onOpen={onOpenCuerda}
+      />
       <div
         ref={textLaneRef}
         className="relative isolate min-w-0 w-full font-mono text-sm text-letra-text"
@@ -828,6 +853,11 @@ function MobileLineRow({
             mode="display"
           />
         ) : null}
+        <PunteoMarcasLinea
+          anotaciones={lineAnotaciones}
+          charPositions={charPositions}
+          onOpen={onOpenCuerda}
+        />
 
         {compasMarkers.length > 0 ? (
           <div className="relative">
@@ -912,6 +942,7 @@ function MobileLineRow({
         role="presentation"
         onClick={handleDragLineTap}
         className={`${lineClassName} select-none`}
+        style={lineStyle}
       >
         {lineBody}
       </div>
@@ -925,6 +956,7 @@ function MobileLineRow({
           lineRef.current = element;
         }}
         className={lineClassName}
+        style={lineStyle}
       >
         <label className="sr-only" htmlFor={`mobile-letra-line-${lineIndex}`}>
           Letra del renglón
@@ -984,6 +1016,7 @@ function MobileLineRow({
         }
       }}
       className={lineClassName}
+      style={lineStyle}
     >
       {lineBody}
     </div>
@@ -1039,10 +1072,13 @@ export function CifradoMobileEditableLines({
   onSelectAnotacion,
   rangoPendiente = null,
   onOpenTipoMenu,
+  onCuerdaEnPunto,
+  onOpenCuerda,
   showCloseActiveLine = false,
   onCloseActiveLine,
 }: CifradoMobileEditableLinesProps) {
   const lines = splitLyricsLines(letra);
+  const tramosCuerda = colorTramoPorLinea(anotaciones, lines.length);
   const hasActiveLine = activeLineIndex !== null;
   const isChordDragMode = dragTarget !== null;
   const isBarDragMode = barDragTarget !== null;
@@ -1098,10 +1134,28 @@ export function CifradoMobileEditableLines({
       return;
     }
 
+    if (modoInsercion === "cuerdas") {
+      const charOffset = resolveCharOffset(event);
+      const existente = anotaciones.find(
+        (anotacion) =>
+          anotacion.lineIndex === lineIndex &&
+          esAnotacionCuerda(anotacion.tipo) &&
+          anotacion.charOffset === charOffset,
+      );
+
+      if (existente) {
+        onOpenCuerda?.(existente);
+        return;
+      }
+
+      onCuerdaEnPunto?.(lineIndex, charOffset);
+      return;
+    }
+
     if (modoInsercion === "canto") {
       const charOffset = resolveCharOffset(event);
       const existente = anotaciones.find((anotacion) =>
-        anotacion.lineIndex !== lineIndex
+        anotacion.lineIndex !== lineIndex || esAnotacionCuerda(anotacion.tipo)
           ? false
           : anotacion.tipo === "exigencia" && anotacion.charEnd != null
             ? charOffset >= anotacion.charOffset &&
@@ -1206,6 +1260,8 @@ export function CifradoMobileEditableLines({
               lineAnotaciones={anotaciones.filter(
                 (anotacion) => anotacion.lineIndex === lineIndex,
               )}
+              tramoColor={tramosCuerda[lineIndex] ?? null}
+              onOpenCuerda={onOpenCuerda}
               rangoPendienteOffset={
                 rangoPendiente && rangoPendiente.lineIndex === lineIndex
                   ? rangoPendiente.charOffset
@@ -1290,6 +1346,7 @@ export function CifradoMobileEditableLines({
                       onClick={() => onModoInsercionChange("acordes")}
                       className={cifradoEditorToolbarSegmentedButtonClass(
                         modoInsercion === "acordes",
+                        anotacionesEnabled,
                       )}
                     >
                       Acordes
@@ -1301,6 +1358,7 @@ export function CifradoMobileEditableLines({
                       onClick={() => onModoInsercionChange("compas")}
                       className={cifradoEditorToolbarSegmentedButtonClass(
                         modoInsercion === "compas",
+                        anotacionesEnabled,
                       )}
                     >
                       Compás
@@ -1312,6 +1370,7 @@ export function CifradoMobileEditableLines({
                       onClick={() => onModoInsercionChange("letra")}
                       className={cifradoEditorToolbarSegmentedButtonClass(
                         modoInsercion === "letra",
+                        anotacionesEnabled,
                       )}
                     >
                       Letra
@@ -1324,9 +1383,24 @@ export function CifradoMobileEditableLines({
                         onClick={() => onModoInsercionChange("canto")}
                         className={cifradoEditorToolbarSegmentedButtonClass(
                           modoInsercion === "canto",
+                          true,
                         )}
                       >
                         Canto
+                      </button>
+                    ) : null}
+                    {anotacionesEnabled ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={modoInsercion === "cuerdas"}
+                        onClick={() => onModoInsercionChange("cuerdas")}
+                        className={cifradoEditorToolbarSegmentedButtonClass(
+                          modoInsercion === "cuerdas",
+                          true,
+                        )}
+                      >
+                        Cuerdas
                       </button>
                     ) : null}
                   </div>
@@ -1389,6 +1463,12 @@ export function CifradoMobileEditableLines({
                 rangoPendiente.charEnd == null
                   ? "Ahora tocá el final del tramo para elegir el color."
                   : "Tocá la letra donde quieras una marca y elegí el tipo. Tocá una marca existente para editarla."}
+              </p>
+            ) : null}
+
+            {!isDragMode && isActive && modoInsercion === "cuerdas" ? (
+              <p className="px-1 text-xs text-text-muted">
+                Elegí un rasgueo o un punteo ya creado y tocalo en la palabra.
               </p>
             ) : null}
           </div>

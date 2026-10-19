@@ -14,7 +14,7 @@ import { NotebookPen } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-type ModoInsercion = "acordes" | "compas" | "letra" | "canto";
+type ModoInsercion = "acordes" | "compas" | "letra" | "canto" | "cuerdas";
 
 type CifradoEditorPcRailProps = {
   modoInsercion: ModoInsercion;
@@ -42,6 +42,7 @@ type CifradoEditorPcRailProps = {
   onCantoTipoChange: (tipo: AnotacionTipo) => void;
   cantoEsperandoFin: boolean;
   cantoForm: ReactNode;
+  cuerdasForm?: ReactNode;
   onAbrirNota?: () => void;
   tieneNota?: boolean;
   /** En la página, se dibuja encima del menú. En el editor a pantalla completa, queda adentro. */
@@ -53,6 +54,7 @@ const MODOS: { id: ModoInsercion; label: string }[] = [
   { id: "compas", label: "Compás" },
   { id: "letra", label: "Letra" },
   { id: "canto", label: "Canto" },
+  { id: "cuerdas", label: "Cuerdas" },
 ];
 
 function modeButtonClass(active: boolean): string {
@@ -88,6 +90,10 @@ function ayudaDeModo(
     return "Tocá la letra en el lugar de la marca.";
   }
 
+  if (modo === "cuerdas") {
+    return "En Rasgueo o Punteo, armá el dibujo con Nuevo. Después elegilo y tocalo en la palabra.";
+  }
+
   return "Elegí una marca y después tocala sobre la letra.";
 }
 
@@ -117,6 +123,7 @@ export function CifradoEditorPcRail({
   onCantoTipoChange,
   cantoEsperandoFin,
   cantoForm,
+  cuerdasForm,
   onAbrirNota,
   tieneNota = false,
   portal = true,
@@ -139,7 +146,10 @@ export function CifradoEditorPcRail({
     return null;
   }
 
-  const modos = MODOS.filter((modo) => modo.id !== "canto" || anotacionesEnabled);
+  const modos = MODOS.filter(
+    (modo) =>
+      (modo.id !== "canto" && modo.id !== "cuerdas") || anotacionesEnabled,
+  );
 
   const rail = (
     <aside
@@ -180,6 +190,8 @@ export function CifradoEditorPcRail({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {modoInsercion === "canto" && cantoForm ? (
           cantoForm
+        ) : modoInsercion === "cuerdas" && cuerdasForm ? (
+          cuerdasForm
         ) : (
           <div className="space-y-3">
             <p className="text-xs leading-relaxed text-text-muted">

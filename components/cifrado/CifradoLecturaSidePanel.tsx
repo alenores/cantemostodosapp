@@ -14,6 +14,7 @@ import { APP_SIDEBAR_WIDTH_CSS } from "@/lib/app-layout";
 import {
   ANOTACION_TIPO_LABEL,
   ANOTACION_TIPOS,
+  CUERDAS_TIPOS,
   type AnotacionTipo,
   type AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
@@ -57,6 +58,8 @@ type CifradoLecturaSidePanelProps = {
   onTapTempo: () => void;
   onOpenNotaGeneral?: () => void;
   tieneNotaGeneral?: boolean;
+  onVerRasgueos?: () => void;
+  hayRasgueos?: boolean;
   onEdit?: () => void;
   temaLectura?: "dia" | "sepia" | "escenario";
   onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
@@ -117,6 +120,8 @@ export default function CifradoLecturaSidePanel({
   onTapTempo,
   onOpenNotaGeneral,
   tieneNotaGeneral = false,
+  onVerRasgueos,
+  hayRasgueos = false,
   onEdit,
   temaLectura,
   onTemaLecturaChange,
@@ -128,7 +133,7 @@ export default function CifradoLecturaSidePanel({
   onAfinador,
   controlesCifrado = true,
 }: CifradoLecturaSidePanelProps) {
-  const tiposParaToggle = ANOTACION_TIPOS.filter((tipo) =>
+  const tiposParaToggle = [...ANOTACION_TIPOS, ...CUERDAS_TIPOS].filter((tipo) =>
     anotacionTiposPresentes.includes(tipo),
   );
   const anotacionesToggles =
@@ -177,6 +182,19 @@ export default function CifradoLecturaSidePanel({
       </TapButton>
     </div>
   ) : null;
+
+  const rasgueosCard =
+    onVerRasgueos && hayRasgueos ? (
+      <div className={LECTURA_CARD_CLASS}>
+        <TapButton
+          type="button"
+          onClick={onVerRasgueos}
+          className={LECTURA_BUTTON_CLASS}
+        >
+          Ver rasgueos
+        </TapButton>
+      </div>
+    ) : null;
 
   const editarButton = onEdit ? (
     <TapButton
@@ -385,6 +403,7 @@ export default function CifradoLecturaSidePanel({
   const controles = encabezado ? (
     <>
       {notaCard}
+      {rasgueosCard}
       {tonoCard}
       {zoomCard}
       {videoAfinadorCard}
@@ -396,6 +415,7 @@ export default function CifradoLecturaSidePanel({
   ) : (
     <>
       {notaCard}
+      {rasgueosCard}
       {temaCard}
       {tonoCard}
       {zoomCard}

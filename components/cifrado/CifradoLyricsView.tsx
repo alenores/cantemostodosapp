@@ -27,6 +27,11 @@ import AnotacionesLineLayer, {
   ANOTACIONES_ARRIBA_BANDA_PX,
 } from "@/components/cifrado/AnotacionesLineLayer";
 import {
+  PunteoMarcasLinea,
+  RasgueoMarcasLinea,
+} from "@/components/cifrado/CuerdasPanel";
+import { colorTramoPorLinea } from "@/lib/cuerdas-practica";
+import {
   anotacionVaArriba,
   type Anotacion,
   type AnotacionVisibility,
@@ -186,6 +191,7 @@ export type CifradoLyricsLineProps = {
   anotaciones?: Anotacion[];
   anotacionesVisibility?: AnotacionVisibility;
   onOpenNota?: (anotacion: Anotacion) => void;
+  tramoColor?: string | null;
 };
 
 export function CifradoLyricsLine({
@@ -209,6 +215,7 @@ export function CifradoLyricsLine({
   anotaciones = [],
   anotacionesVisibility,
   onOpenNota,
+  tramoColor = null,
 }: CifradoLyricsLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const compasRowRef = useRef<HTMLDivElement>(null);
@@ -400,14 +407,31 @@ export function CifradoLyricsLine({
 
   return (
     <div
-      ref={textLaneRef}
-      className={`relative isolate overflow-hidden text-letra-text ${
+      className={
         letraSheet
           ? "mb-3"
           : `font-mono ${compact ? "mb-2 text-xs" : "mb-4 text-sm"}`
-      }`}
-      style={letraSheetStyle}
+      }
     >
+      <RasgueoMarcasLinea
+        anotaciones={anotaciones}
+        visibility={anotacionesVisibility}
+        colapsado
+        tipoCompas={tipoCompas}
+      />
+      <div
+        ref={textLaneRef}
+        className="relative isolate overflow-hidden text-letra-text"
+        style={
+          tramoColor
+            ? {
+                ...letraSheetStyle,
+                boxShadow: `inset 3px 0 0 ${tramoColor}`,
+                paddingLeft: 8,
+              }
+            : letraSheetStyle
+        }
+      >
       {isPlaybackActiveLine && (
         <span
           className="pointer-events-none absolute bottom-1 left-0 top-1 w-0.5 rounded-full bg-blue-500/55"
@@ -541,6 +565,13 @@ export function CifradoLyricsLine({
           onOpenNota={onOpenNota}
         />
       ) : null}
+      <PunteoMarcasLinea
+        anotaciones={anotaciones}
+        charPositions={charPositions}
+        visibility={anotacionesVisibility}
+        colapsado
+        tipoCompas={tipoCompas}
+      />
 
       {compasMarkers.length > 0 && (
         <div ref={compasRowRef} className="mt-1.5">
@@ -554,6 +585,7 @@ export function CifradoLyricsLine({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -579,6 +611,7 @@ export type CifradoLyricsBlockProps = {
   anotaciones?: Anotacion[];
   anotacionesVisibility?: AnotacionVisibility;
   onOpenNota?: (anotacion: Anotacion) => void;
+  onOpenCuerda?: (anotacion: Anotacion) => void;
 };
 
 export function CifradoLyricsBlock({
@@ -604,6 +637,13 @@ export function CifradoLyricsBlock({
   onOpenNota,
 }: CifradoLyricsBlockProps) {
   const lines = useMemo(() => splitLyricsLines(letra), [letra]);
+  const tramos = useMemo(() => {
+    if (anotacionesVisibility && anotacionesVisibility.rasgueo === false) {
+      return [];
+    }
+
+    return colorTramoPorLinea(anotaciones ?? [], lines.length);
+  }, [anotaciones, anotacionesVisibility, lines.length]);
 
   return (
     <div className={className}>
@@ -644,6 +684,7 @@ export function CifradoLyricsBlock({
             }
             anotacionesVisibility={anotacionesVisibility}
             onOpenNota={onOpenNota}
+            tramoColor={tramos[lineIndex] ?? null}
           />
         </div>
       ))}

@@ -35,6 +35,7 @@ type LetraCifradoPanelProps = {
   anotaciones?: Anotacion[];
   anotacionesVisibility?: AnotacionVisibility;
   onOpenNota?: (anotacion: Anotacion) => void;
+  onOpenCuerda?: (anotacion: Anotacion) => void;
 };
 
 export default function LetraCifradoPanel({
@@ -52,6 +53,7 @@ export default function LetraCifradoPanel({
   anotaciones,
   anotacionesVisibility,
   onOpenNota,
+  onOpenCuerda,
 }: LetraCifradoPanelProps) {
   const acordes = cifradoAcordes ?? detalle.cifrado.acordes;
   const letra = ajustarLetraAAcordes(detalle.letra ?? "", acordes);
@@ -102,6 +104,7 @@ export default function LetraCifradoPanel({
           anotaciones={anotaciones}
           anotacionesVisibility={anotacionesVisibility}
           onOpenNota={onOpenNota}
+          onOpenCuerda={onOpenCuerda}
         />
       </div>
     </div>

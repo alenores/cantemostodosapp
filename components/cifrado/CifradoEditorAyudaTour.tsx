@@ -19,7 +19,7 @@ const PASOS: PasoAyuda[] = [
     ancla: "modos",
     titulo: "Los modos",
     cuerpo:
-      "Acá elegís con qué trabajar: acordes, compás, letra y, si aparece, canto.",
+      "Acá elegís con qué trabajar: acordes, compás, letra y, si aparecen, canto y cuerdas.",
   },
   {
     ancla: "letra",

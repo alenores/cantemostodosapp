@@ -5,6 +5,7 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import {
   ANOTACION_TIPO_LABEL,
   ANOTACION_TIPOS,
+  CUERDAS_TIPOS,
   type AnotacionTipo,
   type AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
@@ -53,7 +54,7 @@ export default function LecturaOcultarElementosPanel({
     },
   ];
 
-  for (const tipo of ANOTACION_TIPOS) {
+  for (const tipo of [...ANOTACION_TIPOS, ...CUERDAS_TIPOS]) {
     if (!anotacionTiposPresentes.includes(tipo)) {
       continue;
     }

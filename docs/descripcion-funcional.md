@@ -720,7 +720,7 @@ La versión privada también aparece en el Cancionero y en los resultados de bú
 #### Origen de las canciones de práctica
 
 1. **Desde el Cancionero:** elegir una canción existente; se clona letra, acordes, compases y anotaciones a una copia privada.
-   La nueva copia toma el tono personal elegido en lectura. Si ya existe una copia, se abre la existente sin sobrescribir sus cambios. En el Entrenador, cambiar el tono sí queda guardado en esa copia privada, junto con las anotaciones y la nota general; nunca modifica el original.
+   La nueva copia nace en el tono original de la canción. En el Cancionero, un cambio de tono dura solo mientras esa pantalla está abierta. Si ya existe una copia, se abre la existente sin sobrescribir sus cambios. En el Entrenador, cambiar el tono sí queda guardado en esa copia privada, junto con las anotaciones y la nota general; nunca modifica el original.
 2. **Nueva:** desde el mismo **+**, con buscar en la web, pegar letra y acordes, o escribir la letra. Se guarda en práctica.
 
 #### Editor de práctica

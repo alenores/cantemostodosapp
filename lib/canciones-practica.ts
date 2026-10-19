@@ -32,7 +32,6 @@ import type { CancionPracticaLocalRecord } from "@/lib/offline/offline-db";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getActiveUserId } from "@/lib/auth/offline-user";
-import { readTonoLectura } from "@/lib/tono-lectura-local";
 
 export type DominioPractica = "no_visto" | "practicando" | "dominado";
 
@@ -542,10 +541,8 @@ export async function cloneCancioneroDetalleToPractica(
     return existing.id;
   }
 
-  const userId = await requireUserId(supabase);
   const tonoOriginal = detalle.tonalidad_default ?? DEFAULT_TONALIDAD;
-  const tono = readTonoLectura(userId, origenCancionId) ?? tonoOriginal;
-  const cifrado = transponerCifrado(detalle.cifrado ?? createEmptyCifrado(), tono - tonoOriginal);
+  const cifrado = detalle.cifrado ?? createEmptyCifrado();
   const bpm = detalle.bpm_default ?? DEFAULT_BPM;
   const compasConfig = detalle.compas_config
     ? normalizeCompasConfig({
@@ -560,7 +557,7 @@ export async function cloneCancioneroDetalleToPractica(
     letra: detalle.letra ?? "",
     cifrado,
     compas_config: compasConfig,
-    tonalidad_default: tono,
+    tonalidad_default: tonoOriginal,
     modo_tonal_default: detalle.modo_tonal_default ?? DEFAULT_MODO_TONAL,
     bpm_default: bpm,
     youtube_url: detalle.youtube_url ?? null,

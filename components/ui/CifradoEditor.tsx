@@ -20,6 +20,12 @@ import AnotacionesLineLayer, {
   ANOTACIONES_ARRIBA_BANDA_PX,
 } from "@/components/cifrado/AnotacionesLineLayer";
 import {
+  CuerdasEditorPanel,
+  PunteoMarcasLinea,
+  RasgueoMarcasLinea,
+} from "@/components/cifrado/CuerdasPanel";
+import { useCuerdasEditor } from "@/components/cifrado/useCuerdasEditor";
+import {
   AnotacionPickerHost,
   AnotacionTipoMenu,
   useAnotacionesEditor,
@@ -29,9 +35,11 @@ import {
 import {
   DEFAULT_ANOTACION_VISIBILITY,
   anotacionVaArriba,
+  esAnotacionCuerda,
   type Anotacion,
   type AnotacionTipo,
 } from "@/lib/anotaciones-practica";
+import { colorTramoPorLinea } from "@/lib/cuerdas-practica";
 import { CifradoEditorAyudaTour } from "@/components/cifrado/CifradoEditorAyudaTour";
 import { CifradoEditorHelpButton } from "@/components/cifrado/CifradoEditorHelpModal";
 import { CifradoEditorSavedLinksModal } from "@/components/cifrado/CifradoEditorSavedLinksModal";
@@ -271,7 +279,7 @@ type PickerState = {
   y: number;
 };
 
-type ModoInsercion = "acordes" | "compas" | "letra" | "canto";
+type ModoInsercion = "acordes" | "compas" | "letra" | "canto" | "cuerdas";
 
 type VistaArmado = "pc" | "celular";
 
@@ -723,6 +731,9 @@ type CifradoLineEditorProps = {
   ) => void;
   /** En PC, la marca se elige en la columna izquierda. null = todavía no hay marca. */
   cantoTipoArmado?: AnotacionTipo | null;
+  onCuerdaEnPunto?: (lineIndex: number, charOffset: number) => void;
+  onOpenCuerda?: (anotacion: Anotacion) => void;
+  tramoColor?: string | null;
 };
 
 type LineEditFabBarProps = {
@@ -951,6 +962,9 @@ function CifradoLineEditor({
   rangoPendiente = null,
   onOpenTipoMenu,
   cantoTipoArmado,
+  onCuerdaEnPunto,
+  onOpenCuerda,
+  tramoColor = null,
 }: CifradoLineEditorProps) {
   const lineRef = useRef<HTMLDivElement>(null);
   const textLaneRef = useRef<HTMLDivElement>(null);
@@ -1345,9 +1359,11 @@ function CifradoLineEditor({
         laneSlotCount,
       );
       const existente = anotaciones.find((anotacion) =>
-        anotacion.tipo === "exigencia" && anotacion.charEnd != null
-          ? clamped >= anotacion.charOffset && clamped <= anotacion.charEnd
-          : anotacion.charOffset === clamped,
+        esAnotacionCuerda(anotacion.tipo)
+          ? false
+          : anotacion.tipo === "exigencia" && anotacion.charEnd != null
+            ? clamped >= anotacion.charOffset && clamped <= anotacion.charEnd
+            : anotacion.charOffset === clamped,
       );
 
       if (existente) {
@@ -1378,6 +1394,27 @@ function CifradoLineEditor({
       return;
     }
 
+    if (modoInsercion === "cuerdas") {
+      const clamped = clampCompasCharOffsetToLane(
+        charOffset,
+        characters.length,
+        laneSlotCount,
+      );
+      const existente = anotaciones.find(
+        (anotacion) =>
+          esAnotacionCuerda(anotacion.tipo) &&
+          anotacion.charOffset === clamped,
+      );
+
+      if (existente) {
+        onOpenCuerda?.(existente);
+        return;
+      }
+
+      onCuerdaEnPunto?.(lineIndex, clamped);
+      return;
+    }
+
     onInsertBarra(
       lineIndex,
       clampCompasCharOffsetToLane(charOffset, characters.length, laneSlotCount),
@@ -1386,7 +1423,8 @@ function CifradoLineEditor({
 
   const characters = [...(mergePreview?.mergedText ?? text)];
   const laneStart = getLineLaneStart(characters.length);
-  const esModoAnotacion = modoInsercion === "canto";
+  const esModoAnotacion =
+    modoInsercion === "canto" || modoInsercion === "cuerdas";
   const laneClickable =
     (modoInsercion === "compas" || esModoAnotacion) &&
     !isLineEditing &&
@@ -1523,6 +1561,9 @@ function CifradoLineEditor({
               ? "border-border/60 bg-letra-bg/70"
               : `border-border/80 ${CIFRADO_EDITOR_LINE_BG_CLASS}`
       } ${isDimmed && !isMergeDestination && !isMergeHighlight && !isDeleting ? "opacity-40" : ""}`}
+      style={
+        tramoColor ? { boxShadow: `inset 3px 0 0 ${tramoColor}` } : undefined
+      }
     >
       {isMergeDestination ? (
         <div
@@ -1599,6 +1640,10 @@ function CifradoLineEditor({
           textEditable || isLineLocked || isDimmed ? undefined : handleLineClick
         }
       >
+        <RasgueoMarcasLinea
+          anotaciones={anotaciones}
+          onOpen={onOpenCuerda}
+        />
         <div ref={textRowRef} className="relative isolate">
         <AnotacionesLineLayer
           banda="fondo"
@@ -1823,6 +1868,12 @@ function CifradoLineEditor({
             onSelect={onSelectAnotacion}
           />
         ) : null}
+        <PunteoMarcasLinea
+          anotaciones={anotaciones}
+          charPositions={charPositions}
+          onOpen={onOpenCuerda}
+          tipoCompas={tipoCompas}
+        />
 
         {(compasMarkers.length > 0 ||
           (modoInsercion === "compas" && barras.length > 0)) && (
@@ -2052,6 +2103,7 @@ type CifradoPreviewLineProps = {
   notacion?: NotacionAcordes;
   cyclePiecesById?: ReadonlyMap<string, import("@/lib/compositor").CompositorPiece>;
   anotaciones?: Anotacion[];
+  tramoColor?: string | null;
 };
 
 function CifradoPreviewLine({
@@ -2070,6 +2122,7 @@ function CifradoPreviewLine({
   notacion = "es",
   cyclePiecesById,
   anotaciones = [],
+  tramoColor = null,
 }: CifradoPreviewLineProps) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const compasRowRef = useRef<HTMLDivElement>(null);
@@ -2232,10 +2285,17 @@ function CifradoPreviewLine({
     : 0;
 
   return (
-    <div
-      ref={textLaneRef}
-      className="relative isolate mb-4 overflow-hidden font-mono text-sm text-letra-text"
-    >
+    <div className="mb-4">
+      <RasgueoMarcasLinea anotaciones={anotaciones} colapsado tipoCompas={tipoCompas} />
+      <div
+        ref={textLaneRef}
+        className="relative isolate overflow-hidden font-mono text-sm text-letra-text"
+        style={
+          tramoColor
+            ? { boxShadow: `inset 3px 0 0 ${tramoColor}`, paddingLeft: 8 }
+            : undefined
+        }
+      >
       <AnotacionesLineLayer
         banda="fondo"
         anotaciones={anotaciones}
@@ -2352,6 +2412,12 @@ function CifradoPreviewLine({
           mode="display"
         />
       ) : null}
+      <PunteoMarcasLinea
+        anotaciones={anotaciones}
+        charPositions={charPositions}
+        colapsado
+        tipoCompas={tipoCompas}
+      />
 
       {compasMarkers.length > 0 && (
         <div ref={compasRowRef} className="mt-1.5">
@@ -2365,6 +2431,7 @@ function CifradoPreviewLine({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -2416,6 +2483,7 @@ function CifradoPreviewOverlay({
   const previewScrollClass = `min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y ${
     isContained ? "px-2 py-2" : "px-4 py-5"
   }`;
+  const tramosCuerda = colorTramoPorLinea(anotaciones, lines.length);
   const previewLines = lines.map((line, lineIndex) => {
     const lineBarras = barras.filter((barra) => barra.lineIndex === lineIndex);
     const lineAcordes = cifrado.acordes.filter(
@@ -2461,6 +2529,7 @@ function CifradoPreviewOverlay({
           anotaciones={anotaciones.filter(
             (anotacion) => anotacion.lineIndex === lineIndex,
           )}
+          tramoColor={tramosCuerda[lineIndex] ?? null}
         />
       </div>
     );
@@ -2661,6 +2730,7 @@ export default function CifradoEditor({
   const [picker, setPicker] = useState<PickerState | null>(null);
   const anotacionesEnabled = Boolean(anotaciones);
   const anotEditor = useAnotacionesEditor(anotaciones ?? null);
+  const cuerdasEditor = useCuerdasEditor(anotaciones ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveValidation, setSaveValidation] = useState<string | null>(null);
@@ -2755,6 +2825,10 @@ export default function CifradoEditor({
   }, [compasConfig, selectedBarra]);
 
   const lines = useMemo(() => splitLyricsLines(lyricsText), [lyricsText]);
+  const tramosCuerda = useMemo(
+    () => colorTramoPorLinea(anotaciones?.items ?? [], lines.length),
+    [anotaciones?.items, lines.length],
+  );
   const draftStats = useMemo(() => {
     const draftLines = splitLyricsLines(draftLyrics);
 
@@ -3870,6 +3944,15 @@ export default function CifradoEditor({
     anotEditor.close();
   }
 
+  function handleCuerdaEnPunto(lineIndex: number, charOffset: number) {
+    cuerdasEditor.colocar(lineIndex, charOffset);
+  }
+
+  function handleOpenCuerda(anotacion: Anotacion) {
+    cuerdasEditor.elegirMarca(anotacion);
+    setModoInsercion("cuerdas");
+  }
+
   function abrirAyudaEditor() {
     modoAlAbrirAyudaRef.current = modoInsercion;
     tabAlAbrirAyudaRef.current = compasToolTab;
@@ -4610,6 +4693,14 @@ export default function CifradoEditor({
             anotEditor.rangoPendiente.charEnd == null
           }
           portal={isPage}
+          cuerdasForm={
+            modoInsercion === "cuerdas" ? (
+              <CuerdasEditorPanel
+                api={cuerdasEditor}
+                tipoCompas={compasConfig.tipoCompas}
+              />
+            ) : null
+          }
           cantoForm={
             modoInsercion === "canto" && anotEditor.draft ? (
               <AnotacionPickerHost
@@ -4942,9 +5033,24 @@ export default function CifradoEditor({
                               onClick={() => handleSetModoInsercion("canto")}
                               className={cifradoEditorToolbarSegmentedButtonClass(
                                 modoInsercion === "canto",
+                                true,
                               )}
                             >
                               Canto
+                            </button>
+                          ) : null}
+                          {anotacionesEnabled ? (
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={modoInsercion === "cuerdas"}
+                              onClick={() => handleSetModoInsercion("cuerdas")}
+                              className={cifradoEditorToolbarSegmentedButtonClass(
+                                modoInsercion === "cuerdas",
+                                true,
+                              )}
+                            >
+                              Cuerdas
                             </button>
                           ) : null}
                         </div>
@@ -4982,6 +5088,11 @@ export default function CifradoEditor({
                         <CifradoEditorHelpButton onClick={abrirAyudaEditor} />
                       </div>
                     </div>
+                    {modoInsercion === "cuerdas" ? (
+                      <div className="mt-2 max-h-[42vh] overflow-y-auto rounded-[12px] border border-border bg-bg-card px-3 py-2">
+                        <CuerdasEditorPanel api={cuerdasEditor} tipoCompas={compasConfig.tipoCompas} />
+                      </div>
+                    ) : null}
                   </div>
                 )}
 
@@ -5135,6 +5246,9 @@ export default function CifradoEditor({
                           rangoPendiente={anotEditor.rangoPendiente}
                           onOpenTipoMenu={anotEditor.openTipoMenu}
                           cantoTipoArmado={isDesktop ? cantoTipo : undefined}
+                          onCuerdaEnPunto={handleCuerdaEnPunto}
+                          onOpenCuerda={handleOpenCuerda}
+                          tramoColor={tramosCuerda[lineIndex] ?? null}
                         />
 
                         {isEditing && (

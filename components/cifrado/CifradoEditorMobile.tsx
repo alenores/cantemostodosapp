@@ -106,6 +106,8 @@ import {
   useAnotacionesEditor,
   type AnotacionesControl,
 } from "@/components/cifrado/AnotacionPickers";
+import { CuerdasEditorPanel } from "@/components/cifrado/CuerdasPanel";
+import { useCuerdasEditor } from "@/components/cifrado/useCuerdasEditor";
 import { DEFAULT_ANOTACION_VISIBILITY } from "@/lib/anotaciones-practica";
 import {
   CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE,
@@ -242,6 +244,7 @@ export default function CifradoEditorMobile({
     useState<MobileModoInsercion>("acordes");
   const anotacionesEnabled = Boolean(anotaciones);
   const anotEditor = useAnotacionesEditor(anotaciones ?? null);
+  const cuerdasEditor = useCuerdasEditor(anotaciones ?? null);
   const [pasteProposeOpen, setPasteProposeOpen] = useState(false);
   const [pasteAnalysis, setPasteAnalysis] = useState<PasteIngresoAnalysis | null>(
     null,
@@ -1696,6 +1699,11 @@ export default function CifradoEditorMobile({
                   Tocá un renglón para editarlo; mantenelo presionado para ver sus acciones.
                 </p>
               ) : null}
+              {modoInsercion === "cuerdas" && !dragTarget && !barDragTarget ? (
+                <div className="mb-3 max-h-[42vh] overflow-y-auto rounded-[12px] border border-border bg-bg-card px-3 py-2">
+                  <CuerdasEditorPanel api={cuerdasEditor} tipoCompas={compasConfig.tipoCompas} />
+                </div>
+              ) : null}
               <CifradoMobileEditableLines
                 letra={lyricsText}
                 acordes={cifrado.acordes}
@@ -1761,6 +1769,8 @@ export default function CifradoEditorMobile({
                 onSelectAnotacion={anotEditor.selectExisting}
                 rangoPendiente={anotEditor.rangoPendiente}
                 onOpenTipoMenu={anotEditor.openTipoMenu}
+                onCuerdaEnPunto={cuerdasEditor.colocar}
+                onOpenCuerda={cuerdasEditor.elegirMarca}
                 showCloseActiveLine={showCloseActiveLine}
                 onCloseActiveLine={requestDeactivateActiveLine}
               />

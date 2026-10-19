@@ -23,6 +23,8 @@ import {
   type IntensidadNivel,
 } from "@/lib/anotaciones-practica";
 import {
+  Guitar,
+  Hand,
   Highlighter,
   Speech,
   StickyNote,
@@ -556,6 +558,8 @@ const TIPO_MENU_ICON: Record<AnotacionTipo, LucideIcon> = {
   texto: Type,
   respirar: Wind,
   exigencia: Highlighter,
+  rasgueo: Guitar,
+  punteo: Hand,
 };
 
 const TIPO_MENU_HINT: Record<AnotacionTipo, string> = {
@@ -564,6 +568,8 @@ const TIPO_MENU_HINT: Record<AnotacionTipo, string> = {
   texto: "Texto corto bajo la letra",
   respirar: "Marca de respiración",
   exigencia: "Resaltar un tramo",
+  rasgueo: "Dónde empieza un rasgueo",
+  punteo: "Dibujo en la palabra",
 };
 
 /** Lista fija de marcas de canto, para la columna izquierda en PC. */

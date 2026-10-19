@@ -162,9 +162,9 @@ try {
   const tonoDialog = page.getByRole("dialog", { name: "Cambiar de tono" });
   await tonoDialog.locator("select").first().selectOption("2");
   await tonoDialog.getByRole("button", { name: "Confirmar", exact: true }).click();
-  await page.waitForFunction(() => localStorage.getItem("tono-lectura-v1:offline-test-user:800001") === "2");
   const transposed = await page.locator("[data-cancionero-letra-scroll]").last().innerText();
   assert.match(transposed, /Re/);
+  assert.equal(await page.evaluate(() => localStorage.getItem("tono-lectura-v1:offline-test-user:800001")), null);
   await page.addScriptTag({ content: practicaBundle.outputFiles[0].text });
   const practice = await page.evaluate(async (song) => {
     const client = { auth: { getSession: async () => ({ data: { session: null } }) }, from: () => { throw new Error("Escritura remota prohibida offline"); } };
@@ -180,8 +180,8 @@ try {
     db.close();
     return { id, copy, edited, reopened, original };
   }, songs[0]);
-  assert.equal(practice.copy.tonalidad_default, 2);
-  assert.equal(practice.copy.cifrado.acordes[0].noteIndex, 2);
+  assert.equal(practice.copy.tonalidad_default, 0);
+  assert.equal(practice.copy.cifrado.acordes[0].noteIndex, 0);
   assert.equal(practice.edited.tonalidad_default, 4);
   assert.equal(practice.edited.cifrado.acordes[0].noteIndex, 4);
   assert.equal(practice.edited.nota_general, "Mi nota privada");
@@ -246,7 +246,7 @@ try {
   await page.getByRole("menuitem", { name: "Cambiar de tono", exact: true }).click();
   assert.equal(await page.getByRole("dialog", { name: "Cambiar de tono" }).locator("select").first().inputValue(), "5");
   assert.deepEqual(errors, []);
-  console.log("OK: navegación offline, salto de enlaces externos, altas y sincronización sin duplicados, tono personal, copia privada y persistencia de tono y anotaciones.");
+  console.log("OK: navegación offline, salto de enlaces externos, altas y sincronización sin duplicados, tono de lectura temporal, copia privada en el tono original y persistencia de tono y anotaciones en el entrenador.");
 } catch (error) {
   console.log("Estado al fallar:", page.url(), await page.locator("body").innerText(), errors, navigations);
   await page.screenshot({ path: "test-offline-error.png" });

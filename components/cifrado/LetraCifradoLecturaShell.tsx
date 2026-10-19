@@ -32,7 +32,6 @@ export type LecturaTonalidadState = {
 
 type LetraCifradoLecturaShellProps = {
   detalle: CancionCifradoDetalle;
-  tonoPersonal?: boolean;
   onGuardarTono?: (tono: NotaIndex) => void;
   scrollRef: RefObject<HTMLDivElement | null>;
   scrollEndPadding: string;
@@ -47,6 +46,9 @@ type LetraCifradoLecturaShellProps = {
   anotacionesVisibility?: AnotacionVisibility;
   onToggleAnotacionTipo?: (tipo: AnotacionTipo) => void;
   onOpenNota?: (anotacion: Anotacion) => void;
+  onOpenCuerda?: (anotacion: Anotacion) => void;
+  onVerRasgueos?: () => void;
+  hayRasgueos?: boolean;
   onOpenNotaGeneral?: () => void;
   tieneNotaGeneral?: boolean;
   onEdit?: () => void;
@@ -69,7 +71,6 @@ type LetraCifradoLecturaShellProps = {
 
 export default function LetraCifradoLecturaShell({
   detalle,
-  tonoPersonal = true,
   onGuardarTono,
   scrollRef,
   scrollEndPadding,
@@ -84,6 +85,9 @@ export default function LetraCifradoLecturaShell({
   anotacionesVisibility,
   onToggleAnotacionTipo,
   onOpenNota,
+  onOpenCuerda,
+  onVerRasgueos,
+  hayRasgueos = false,
   onOpenNotaGeneral,
   tieneNotaGeneral = false,
   onEdit,
@@ -105,7 +109,6 @@ export default function LetraCifradoLecturaShell({
     detalle,
     scrollRef,
     enabled: hasCompases,
-    tonoPersonal,
     onGuardarTono,
   });
 
@@ -199,6 +202,8 @@ export default function LetraCifradoLecturaShell({
         onBpmChange={playback.handleBpmChange}
         onTapTempo={playback.handleTapTempo}
         onOpenNotaGeneral={onOpenNotaGeneral}
+        onVerRasgueos={onVerRasgueos}
+        hayRasgueos={hayRasgueos}
         tieneNotaGeneral={tieneNotaGeneral}
         onEdit={onEdit}
         temaLectura={temaLectura}
@@ -233,6 +238,7 @@ export default function LetraCifradoLecturaShell({
           anotaciones={anotaciones}
           anotacionesVisibility={anotacionesVisibility}
           onOpenNota={onOpenNota}
+          onOpenCuerda={onOpenCuerda}
         />
         </div>
       </div>

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  CuerdasConsulta,
+  type CuerdasConsultaFoco,
+} from "@/components/cifrado/CuerdasPanel";
 import LetraCifradoLecturaShell from "@/components/cifrado/LetraCifradoLecturaShell";
 import NotaCancionFab from "@/components/herramientas/NotaCancionFab";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
@@ -31,6 +35,7 @@ import {
   type AnotacionTipo,
   type AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
+import { patronesRasgueo } from "@/lib/cuerdas-practica";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
@@ -43,6 +48,7 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { getLetraTextScrollEndPadding } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import {
+  Guitar,
   Minimize2,
   NotebookPen,
   Pencil,
@@ -78,6 +84,9 @@ export default function EntrenadorCancionesVerPageClient() {
   const [anotacionesVisibility, setAnotacionesVisibility] =
     useState<AnotacionVisibility>(DEFAULT_ANOTACION_VISIBILITY);
   const [notaLectura, setNotaLectura] = useState<Anotacion | null>(null);
+  const [cuerdasFoco, setCuerdasFoco] = useState<CuerdasConsultaFoco | null>(
+    null,
+  );
   const [notaGeneralOpen, setNotaGeneralOpen] = useState(false);
   const [ocultarPanelAbierto, setOcultarPanelAbierto] = useState(false);
   // El video se declara más abajo (depende de la canción cargada); el botón atrás lo cierra primero.
@@ -200,11 +209,15 @@ export default function EntrenadorCancionesVerPageClient() {
     const timer = window.setTimeout(() => {
       setAnotacionesVisibility(DEFAULT_ANOTACION_VISIBILITY);
       setOcultarPanelAbierto(false);
+      setCuerdasFoco(null);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [id]);
 
-  useHardwareBack(!notaGeneralOpen && !afinadorOpen, handleLecturaBack);
+  useHardwareBack(
+    !notaGeneralOpen && !afinadorOpen && cuerdasFoco === null,
+    handleLecturaBack,
+  );
   useBodyScrollLock(true);
 
   useEffect(() => {
@@ -268,6 +281,27 @@ export default function EntrenadorCancionesVerPageClient() {
   const notaGeneral = cancion?.nota_general ?? "";
   const tieneNotaGeneral = notaGeneral.trim().length > 0;
   const anotaciones = useMemo(() => cancion?.anotaciones ?? [], [cancion]);
+  const hayRasgueos = useMemo(
+    () => patronesRasgueo(anotaciones).length > 0,
+    [anotaciones],
+  );
+  const abrirCuerda = useCallback((anotacion: Anotacion) => {
+    if (anotacion.tipo === "punteo") {
+      setCuerdasFoco({ tipo: "punteo", id: anotacion.id });
+      return;
+    }
+
+    if (anotacion.tipo !== "rasgueo") {
+      return;
+    }
+
+    if (anotacion.corte || !anotacion.patronId) {
+      setCuerdasFoco({ tipo: "corte" });
+      return;
+    }
+
+    setCuerdasFoco({ tipo: "rasgueo", patronId: anotacion.patronId });
+  }, []);
   const anotacionTiposPresentes = useMemo(
     () => Array.from(new Set(anotaciones.map((anotacion) => anotacion.tipo))),
     [anotaciones],
@@ -298,6 +332,16 @@ export default function EntrenadorCancionesVerPageClient() {
         label: "Nota de la canción",
         onClick: openNotaGeneral,
       },
+      ...(hayRasgueos
+        ? [
+            {
+              key: "rasgueos",
+              icon: Guitar,
+              label: "Rasgueos",
+              onClick: () => setCuerdasFoco({ tipo: "lista" }),
+            },
+          ]
+        : []),
       {
         key: "editar",
         icon: Pencil,
@@ -305,7 +349,7 @@ export default function EntrenadorCancionesVerPageClient() {
         onClick: goToEditor,
       },
     ],
-    [goToEditor, openNotaGeneral, video.fabItem],
+    [goToEditor, hayRasgueos, openNotaGeneral, video.fabItem],
   );
 
   if (isLoggedIn !== true || !ready) {
@@ -338,7 +382,6 @@ export default function EntrenadorCancionesVerPageClient() {
             nombreRevealClass=""
           />
           <LetraCifradoLecturaShell
-            tonoPersonal={false}
             onGuardarTono={guardarTono}
             detalle={detalle}
             scrollRef={scrollRef}
@@ -354,6 +397,9 @@ export default function EntrenadorCancionesVerPageClient() {
             anotacionesVisibility={anotacionesVisibility}
             onToggleAnotacionTipo={toggleAnotacionTipo}
             onOpenNota={(anotacion) => setNotaLectura(anotacion)}
+            onOpenCuerda={abrirCuerda}
+            onVerRasgueos={() => setCuerdasFoco({ tipo: "lista" })}
+            hayRasgueos={hayRasgueos}
             onOpenNotaGeneral={openNotaGeneral}
             tieneNotaGeneral={tieneNotaGeneral}
             onEdit={goToEditor}
@@ -500,6 +546,15 @@ export default function EntrenadorCancionesVerPageClient() {
           videoId={video.videoId}
           titulo={cancion.nombre}
           onCerrar={video.cerrar}
+        />
+      ) : null}
+
+      {cuerdasFoco ? (
+        <CuerdasConsulta
+          anotaciones={anotaciones}
+          foco={cuerdasFoco}
+          onFoco={setCuerdasFoco}
+          onClose={() => setCuerdasFoco(null)}
         />
       ) : null}
 

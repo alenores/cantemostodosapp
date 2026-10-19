@@ -5,6 +5,7 @@ import { useHardwareBack } from "@/hooks/useHardwareBack";
 import {
   ANOTACION_TIPO_LABEL,
   ANOTACION_TIPOS,
+  CUERDAS_TIPOS,
   type AnotacionTipo,
   type AnotacionVisibility,
 } from "@/lib/anotaciones-practica";
@@ -76,7 +77,7 @@ export default function LecturaTogglesFab({
   });
 
   if (anotacionesVisibility && onToggleAnotacionTipo) {
-    for (const tipo of ANOTACION_TIPOS) {
+    for (const tipo of [...ANOTACION_TIPOS, ...CUERDAS_TIPOS]) {
       if (!anotacionTiposPresentes.includes(tipo)) {
         continue;
       }

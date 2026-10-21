@@ -27,7 +27,7 @@ import {
 } from "@/lib/pwa-on-device";
 import { linkWhatsappSoporte } from "@/lib/soporte";
 
-type Panel = "ios" | "ios-inapp" | "android-inapp" | "android-ayuda" | null;
+type Panel = "ios" | "ios-inapp" | "android-inapp" | null;
 
 function IconoWhatsApp({ className }: { className?: string }) {
   return (
@@ -89,18 +89,20 @@ export default function InstallHomeButton() {
   const [otroNavegador, setOtroNavegador] = useState<"samsung" | "otro" | null>(null);
   const [iphone, setIphone] = useState(false);
   const [inApp, setInApp] = useState(false);
+  const [detectado, setDetectado] = useState(false);
 
   useEffect(() => {
     setIphone(isIphoneForPwaInstall());
     setInApp(isLikelyInAppBrowser());
     setOtroNavegador(navegadorAndroidQueNoEsChrome());
+    setDetectado(true);
   }, []);
 
+  const caminoChrome = detectado && !iphone && !inApp && !otroNavegador;
+  const sinOfertaDeChrome = caminoChrome && !installPrompt;
+
   const instalarEnChrome = async () => {
-    if (!installPrompt) {
-      setPanel("android-ayuda");
-      return;
-    }
+    if (!installPrompt) return;
 
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice;
@@ -160,15 +162,36 @@ export default function InstallHomeButton() {
 
   const whatsappAndroid = linkWhatsappSoporte("Hola !!\nNo logro instalar la app en mi Android");
 
+  const botonInstalar = (
+    <TapButton
+      type="button"
+      onClick={onClick}
+      disabled={sinOfertaDeChrome}
+      className="home-instalar-app w-full rounded-xl px-4 py-[13px] text-sm font-bold text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      Instalá la app
+    </TapButton>
+  );
+
   return (
     <>
-      <TapButton
-        type="button"
-        onClick={onClick}
-        className="home-instalar-app w-full rounded-xl px-4 py-[13px] text-sm font-bold text-white active:scale-[0.98]"
-      >
-        Instalá la app
-      </TapButton>
+      {caminoChrome ? (
+        <div className="flex w-full flex-col gap-2">
+          {/* El anillo que titila encuadra solo el botón; el WhatsApp va afuera. */}
+          <div className="preinstall-install-cta-ring">{botonInstalar}</div>
+          <a
+            href={whatsappAndroid}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 py-1 text-xs font-medium text-text-muted underline-offset-2 hover:underline"
+          >
+            <IconoWhatsApp className="h-3.5 w-3.5 shrink-0 fill-current text-[#25D366]" />
+            ¿No podés instalarla? Escribime por WhatsApp
+          </a>
+        </div>
+      ) : (
+        botonInstalar
+      )}
 
       <IosInstallCta abierta={panel === "ios"} onClose={() => setPanel(null)} />
 
@@ -181,23 +204,6 @@ export default function InstallHomeButton() {
       {panel === "android-inapp" ? (
         <PanelInstalacion etiqueta="Abrí la app en Chrome" onClose={() => setPanel(null)}>
           <AndroidInAppBrowserInstallHelp otroNavegador={inApp ? null : otroNavegador} />
-        </PanelInstalacion>
-      ) : null}
-
-      {panel === "android-ayuda" ? (
-        <PanelInstalacion etiqueta="No se puede instalar todavía" onClose={() => setPanel(null)}>
-          <div className="rounded-2xl border border-[var(--chalk-dark)] bg-[var(--chalk-mid)] px-4 py-5 text-center">
-            <p className="m-0 text-[15px] font-semibold text-[var(--rock)]">Instalá la app</p>
-            <a
-              href={whatsappAndroid}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex items-center justify-center gap-1.5 py-1 text-xs font-medium text-[var(--rock-mid)] underline-offset-2"
-            >
-              <IconoWhatsApp className="h-3.5 w-3.5 shrink-0 fill-current text-[#25D366]" />
-              ¿No podés instalarla? Escribime por WhatsApp
-            </a>
-          </div>
         </PanelInstalacion>
       ) : null}
     </>

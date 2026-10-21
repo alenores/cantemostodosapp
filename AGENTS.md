@@ -10,6 +10,20 @@ Antes de tocar código, leer `docs/descripcion-funcional.md`: inventario complet
 flujos de usuario, permisos, diferencias móvil/PC y estado del producto (sin detalle técnico).
 Actualizar ese documento cuando se agregue o cambie funcionalidad visible para el usuario.
 
+## Borradores (PR): sin vigilancia (NO NEGOCIABLE)
+
+Ale trabaja sola con el agente: lo que se hace queda unos minutos como borrador y después va a
+producción. A nadie le interesan los avisos de un borrador y cada uno gasta uso sin dar nada.
+
+- **Nunca** quedarse suscripto a la actividad de un borrador. El entorno suscribe solo apenas se
+  crea: **inmediatamente después de crear el borrador, desuscribirlo**
+  (`unsubscribe_pr_activity`), sin esperar a que Ale lo pida.
+- **Nunca** programar recordatorios, check-ins, loops ni tareas diferidas para revisar un borrador
+  (`send_later`, triggers, rutinas).
+- Si llega un aviso automático de un borrador (CI, comentarios de Vercel, etc.): no hacer nada y
+  no responder. Solo se trabaja cuando Ale escribe.
+- Crear el borrador y listo: no se vigila. Publicar (fusionar a `main`) solo cuando Ale lo pide.
+
 ## Nomenclatura oficial del proyecto (v2)
 
 Esta es la terminología canónica de CantemosTodosApp. Usarla siempre en código,

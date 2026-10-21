@@ -258,8 +258,7 @@ nombre y la foto de quien la cargó, y actualizarlos les cambiaba la fecha.
   (`lib/offline/autores.ts`, almacén `autores`) para verla sin señal.
 - **Nunca** volver a copiar nombre o foto dentro de una canción ni de la fila.
 - Las columnas viejas (`agregado_nombre`, `agregado_avatar_url`, `validada_nombre`,
-  `validada_avatar_url`) quedan en la base sin uso hasta que se borren, para no romper versiones
-  viejas de la app que siguen instaladas.
+  `validada_avatar_url`) se borraron (`supabase/perfiles-publicos-limpieza.sql`).
 
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida

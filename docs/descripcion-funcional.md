@@ -850,6 +850,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 - Banner **"Instalá la app"** con pasos para iPhone (Safari: compartir → agregar a inicio) y Android.
 - Mensaje: usar siempre el **ícono de inicio** de Cantemos Todos, no el navegador.
 - Ayuda si se abrió desde un link externo: buscar el ícono en la pantalla de inicio.
+- Android en Chrome: el botón **"Instalá la app"** queda apagado cuando el navegador no ofrece instalar (por ejemplo, si ya está instalada), con el enlace de WhatsApp debajo en la misma pantalla. Cuando sí ofrece instalar, el botón titila.
 
 ### 15.5 Preparación offline completa
 

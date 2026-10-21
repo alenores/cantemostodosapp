@@ -5,15 +5,13 @@ import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 7;
+export const OFFLINE_DB_VERSION = 8;
 
 export type CancioneroLocalRecord = {
   id: number;
   nombre: string;
   artista: string | null;
   artista_id?: string | null;
-  agregado_nombre?: string | null;
-  agregado_avatar_url?: string | null;
   created_at?: string | null;
   letra: string | null;
   url_letra: string;
@@ -22,8 +20,6 @@ export type CancioneroLocalRecord = {
   user_id?: string | null;
   validada_por?: string | null;
   validada_en?: string | null;
-  validada_nombre?: string | null;
-  validada_avatar_url?: string | null;
   cifrado?: CifradoData | null;
   compas_config?: CompasConfig | null;
   tonalidad_default?: NotaIndex | null;
@@ -100,6 +96,14 @@ export type ArtistaFotoLocalRecord = {
   incompleta?: boolean;
 };
 
+/** Nombre y foto de un usuario (`perfiles_publicos`). Las canciones solo guardan su id. */
+export type AutorLocalRecord = {
+  id: string;
+  nombre: string;
+  avatar_url: string | null;
+  updated_at: string;
+};
+
 export interface OfflineDB extends DBSchema {
   cola_individual_snapshot: {
     key: string;
@@ -140,6 +144,10 @@ export interface OfflineDB extends DBSchema {
   artistas_fotos: {
     key: string;
     value: ArtistaFotoLocalRecord;
+  };
+  autores: {
+    key: string;
+    value: AutorLocalRecord;
   };
 }
 
@@ -192,6 +200,9 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
         }
         if (oldVersion < 7 && !db.objectStoreNames.contains("artistas_fotos")) {
           db.createObjectStore("artistas_fotos", { keyPath: "id" });
+        }
+        if (oldVersion < 8 && !db.objectStoreNames.contains("autores")) {
+          db.createObjectStore("autores", { keyPath: "id" });
         }
       },
     });

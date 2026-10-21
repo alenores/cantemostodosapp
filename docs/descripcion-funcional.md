@@ -297,7 +297,7 @@ Al pie de la previsualización: **"¿Confirmás la canción?"**
 - Botón **+** para **Agregar canción**: solo lo ven el dueño y los amigos; se usa con conexión.
 - Botón de **artistas** junto al buscador: abre **Filtrar por artista**. Cada artista muestra cuántas canciones tiene en el cancionero (las de cero quedan atenuadas). Se tocan uno o más; abajo, **Limpiar** y **Ver N canciones**. Desde ahí se abre **Gestionar** artistas. Los elegidos quedan como etiquetas debajo del buscador.
 - Las canciones del Entrenador de canciones también aparecen como una segunda versión privada, identificada con una estrella. Solo su dueño las ve y abre desde aquí. La canción original conserva su icono habitual.
-- Cada tarjeta destaca la foto del artista, el nombre de la canción y el artista. El icono del Cancionero o la estrella de la versión de práctica queda pequeño en la esquina superior derecha. Debajo aparece, en tamaño discreto, el avatar y nombre de quien agregó la canción; las versiones de práctica muestran a su dueño.
+- Cada tarjeta destaca la foto del artista, el nombre de la canción y el artista. El icono del Cancionero o la estrella de la versión de práctica queda pequeño en la esquina superior derecha. Debajo aparece, en tamaño discreto, el avatar y nombre de quien agregó la canción; las versiones de práctica muestran a su dueño. El nombre y la foto son siempre los actuales del perfil: cambiar la foto o el nombre se ve en las tarjetas sin volver a descargar el Cancionero.
 - El marcador de **Favoritas** es una cinta: rellena (verde) en las canciones que la persona guardó allí y vacía en las demás. En computadora la cinta es un botón: un clic suma la canción a Favoritas y otro la quita, sin confirmación.
 
 **Mensajes según situación:**

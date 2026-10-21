@@ -19,6 +19,7 @@ import ValidacionFichaDialog from "@/components/cancionero/ValidacionFichaDialog
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useAutor } from "@/hooks/useAutor";
 import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -131,6 +132,7 @@ export default function CancioneroPageClient({
     null,
   );
   const [cancionValidacion, setCancionValidacion] = useState<CancionCancionero | null>(null);
+  const validador = useAutor(cancionValidacion?.validada_por);
   const [validacionPaso, setValidacionPaso] = useState<null | "confirmar" | "ficha" | "quitar">(
     null,
   );
@@ -326,8 +328,6 @@ export default function CancioneroPageClient({
       marca: {
         validada_por: string | null;
         validada_en: string | null;
-        validada_nombre: string | null;
-        validada_avatar_url: string | null;
       },
     ) => {
       validacionEpoch.current += 1;
@@ -376,8 +376,6 @@ export default function CancioneroPageClient({
                 ...cancion,
                 validada_por: marca.validada_por,
                 validada_en: marca.validada_en,
-                validada_nombre: marca.validada_nombre,
-                validada_avatar_url: marca.validada_avatar_url,
               };
             }
             if (!cancion.validada_por) return cancion;
@@ -385,8 +383,6 @@ export default function CancioneroPageClient({
               ...cancion,
               validada_por: null,
               validada_en: null,
-              validada_nombre: null,
-              validada_avatar_url: null,
             };
           }),
         );
@@ -1227,8 +1223,8 @@ export default function CancioneroPageClient({
 
       <ValidacionFichaDialog
         open={validacionPaso === "ficha" && cancionValidacion !== null}
-        nombre={cancionValidacion?.validada_nombre?.trim() || "Usuario"}
-        avatarUrl={online ? (cancionValidacion?.validada_avatar_url ?? null) : null}
+        nombre={validador?.nombre.trim() || "Usuario"}
+        avatarUrl={online ? (validador?.avatar_url ?? null) : null}
         fecha={cancionValidacion?.validada_en ?? null}
         puedeQuitar={
           online &&

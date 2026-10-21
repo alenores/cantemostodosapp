@@ -4,14 +4,10 @@ import type { CancionCancionero, EstadoCola } from "@/types";
 export const COLA_ALEATORIO_PENDIENTES_MIN = 4;
 export const COLA_ALEATORIO_CARGA_INICIAL = 4;
 
-/** Marca en agregado_avatar_url: canción sumada por modo aleatorio (sin columna nueva). */
-export const COLA_AGREGADO_ALEATORIO_AVATAR = "aleatorio://";
-export const COLA_AGREGADO_ALEATORIO_NOMBRE = "Aleatorio";
-
 export function isColaAgregadoAleatorio(item: {
-  agregado_avatar_url?: string | null;
+  agregado_aleatorio?: boolean | null;
 }): boolean {
-  return item.agregado_avatar_url === COLA_AGREGADO_ALEATORIO_AVATAR;
+  return item.agregado_aleatorio === true;
 }
 
 export type ColaAleatorioItem = {

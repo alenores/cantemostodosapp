@@ -55,8 +55,6 @@ export type CancionGuardada = {
   tiene_compases?: boolean;
   validada_por?: string | null;
   validada_en?: string | null;
-  validada_nombre?: string | null;
-  validada_avatar_url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -73,11 +71,7 @@ export type CancionCancionero = Pick<
   | "user_id"
   | "validada_por"
   | "validada_en"
-  | "validada_nombre"
-  | "validada_avatar_url"
 > & {
-  agregado_nombre?: string | null;
-  agregado_avatar_url?: string | null;
   /** Día en que se sumó al cancionero. Puede faltar en copias viejas. */
   created_at?: string | null;
 };
@@ -117,8 +111,8 @@ export type ColaItem = {
   orden: number;
   created_at: string;
   agregado_por?: string | null;
-  agregado_nombre?: string | null;
-  agregado_avatar_url?: string | null;
+  /** Sumada por el modo aleatorio, no por una persona. */
+  agregado_aleatorio?: boolean | null;
 };
 
 export type SesionSala = {

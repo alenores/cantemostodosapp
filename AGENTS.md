@@ -246,6 +246,20 @@ volvía al inicio y se perdía lo que no estaba guardado.
   `OFFLINE_SHELL_URLS`. Una pantalla ahí sin copia propia abre el inicio **aunque haya señal**.
 - Cerrar la app a mano y abrirla desde el ícono sí arranca en el inicio: eso lo decide el teléfono.
 
+### Nombre y foto de usuarios: en un solo lugar (2026-10-21)
+
+Cambiar la foto de perfil hacía bajar de nuevo las ~3.000 canciones: cada canción tenía copiados el
+nombre y la foto de quien la cargó, y actualizarlos les cambiaba la fecha.
+
+- Nombre y foto viven **solo** en `perfiles_publicos` (se llena sola desde la cuenta, con un disparador
+  en `auth.users`). Canciones y fila de la juntada guardan **solo el id** (`user_id`, `validada_por`,
+  `agregado_por`, con clave foránea).
+- En pantalla se leen con `useAutor(id)` (`hooks/useAutor.ts`); el celular guarda la lista aparte
+  (`lib/offline/autores.ts`, almacén `autores`) para verla sin señal.
+- **Nunca** volver a copiar nombre o foto dentro de una canción ni de la fila.
+- Las columnas viejas (`agregado_nombre`, `agregado_avatar_url`, `validada_nombre`,
+  `validada_avatar_url`) se borraron (`supabase/perfiles-publicos-limpieza.sql`).
+
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida
   en Supabase si hay sesión; en memoria (efímera) para invitados.

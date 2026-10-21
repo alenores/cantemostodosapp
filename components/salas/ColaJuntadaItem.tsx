@@ -1,6 +1,7 @@
 "use client";
 
 import UserAvatar from "@/components/perfil/UserAvatar";
+import { useAutor } from "@/hooks/useAutor";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import { getColaItemIconoTipo } from "@/lib/buscador";
 import { isColaAgregadoAleatorio } from "@/lib/cola-aleatorio";
@@ -21,8 +22,8 @@ type ColaDisplayItem = Pick<
   | "id"
   | "nombre"
   | "artista"
-  | "agregado_nombre"
-  | "agregado_avatar_url"
+  | "agregado_por"
+  | "agregado_aleatorio"
   | "letra_texto"
 > & {
   url_letra?: string | null;
@@ -55,6 +56,11 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
     },
     ref,
   ) {
+    const agregadoPor = useAutor(
+      showAgregadoAvatar && variant !== "tocada" && variant !== "activa" ? item.agregado_por : null,
+    );
+    const agregadoNombre = agregadoPor?.nombre ?? null;
+
     if (variant === "tocada") {
       return (
         <div className="pointer-events-none flex items-center gap-2 px-3 py-2 opacity-40">
@@ -127,9 +133,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
     const esAgregadoAleatorio = isColaAgregadoAleatorio(item);
     const showAvatar =
       showAgregadoAvatar &&
-      (esAgregadoAleatorio ||
-        Boolean(item.agregado_avatar_url) ||
-        Boolean(item.agregado_nombre));
+      (esAgregadoAleatorio || Boolean(item.agregado_por));
 
     return (
       <div
@@ -148,14 +152,14 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
             aria-label={
               esAgregadoAleatorio
                 ? "Agregada por aleatorio"
-                : item.agregado_nombre
-                  ? `Agregada por ${item.agregado_nombre}`
+                : agregadoNombre
+                  ? `Agregada por ${agregadoNombre}`
                   : "Agregada por usuario desconocido"
             }
             title={
               esAgregadoAleatorio
                 ? "Aleatorio"
-                : (item.agregado_nombre ?? undefined)
+                : (agregadoNombre ?? undefined)
             }
           >
             {esAgregadoAleatorio ? (
@@ -164,9 +168,9 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
               </span>
             ) : (
               <UserAvatar
-                nombre={item.agregado_nombre ?? ""}
+                nombre={agregadoNombre ?? ""}
                 email=""
-                avatarUrl={item.agregado_avatar_url ?? null}
+                avatarUrl={agregadoPor?.avatar_url ?? null}
                 size={22}
               />
             )}

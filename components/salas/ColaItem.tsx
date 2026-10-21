@@ -1,6 +1,7 @@
 "use client";
 
 import UserAvatar from "@/components/perfil/UserAvatar";
+import { useAutor } from "@/hooks/useAutor";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import {
   getColaItemIconoTipo,
@@ -105,6 +106,8 @@ export default function ColaItemCard({
   const isActiva = variant === "activa";
   const isProxima = variant === "proxima";
   const showAvatar = isPendiente;
+  const agregadoPor = useAutor(showAvatar ? item.agregado_por : null);
+  const agregadoNombre = agregadoPor?.nombre ?? null;
   const showTocadaChip = shouldShowTocadaChip(items, index);
   const resolvedCenterDistance =
     centerDistance ?? estimateColaCenterDistance(items, index);
@@ -180,16 +183,16 @@ export default function ColaItemCard({
     <div
       className="pointer-events-none flex size-8 shrink-0 items-center justify-center px-1"
       aria-label={
-        item.agregado_nombre
-          ? `Agregada por ${item.agregado_nombre}`
+        agregadoNombre
+          ? `Agregada por ${agregadoNombre}`
           : "Agregada por usuario desconocido"
       }
-      title={item.agregado_nombre ?? undefined}
+      title={agregadoNombre ?? undefined}
     >
       <UserAvatar
-        nombre={item.agregado_nombre ?? ""}
+        nombre={agregadoNombre ?? ""}
         email=""
-        avatarUrl={item.agregado_avatar_url ?? null}
+        avatarUrl={agregadoPor?.avatar_url ?? null}
         size={28}
       />
     </div>

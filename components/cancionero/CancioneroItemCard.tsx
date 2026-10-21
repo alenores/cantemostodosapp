@@ -6,6 +6,7 @@ import ValidacionMarcaIcon from "@/components/cancionero/ValidacionMarcaIcon";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import CancioneroCardVisual from "@/components/cancionero/CancioneroCardVisual";
 import { TapButton } from "@/components/ui/TapFeedback";
+import { useAutor } from "@/hooks/useAutor";
 import { triggerHaptic } from "@/lib/haptic";
 import { COLA_AVISO_EXIT_MS } from "@/lib/sala-layout";
 import type { CancionCancionero } from "@/types";
@@ -81,7 +82,8 @@ export default function CancioneroItemCard({
   onVerValidacion,
   mostrarAvatarUsuario = true,
 }: CancioneroItemCardProps) {
-  const avatarUsuario = mostrarAvatarUsuario ? (cancion.agregado_avatar_url ?? null) : null;
+  const autor = useAutor(cancion.user_id);
+  const avatarUsuario = mostrarAvatarUsuario ? (autor?.avatar_url ?? null) : null;
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sumarLabelShowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -99,7 +101,7 @@ export default function CancioneroItemCard({
   const [isPressed, setIsPressed] = useState(false);
   const [agregadoAbierto, setAgregadoAbierto] = useState(false);
 
-  const agregadoNombre = cancion.agregado_nombre?.trim() ?? "";
+  const agregadoNombre = autor?.nombre.trim() ?? "";
   const mostrarMarcaFavorita = isFavorita;
   const puedeTocarFavorita =
     mostrarMarcaFavorita &&

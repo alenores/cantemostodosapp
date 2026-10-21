@@ -5,6 +5,7 @@ import UserAvatar from "@/components/perfil/UserAvatar";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { prepararFotoLiviana } from "@/lib/imagen-liviana";
+import { refrescarAutor } from "@/lib/offline/autores";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import { ArrowLeft, Camera } from "lucide-react";
@@ -174,11 +175,9 @@ export default function PerfilPageClient({
       return;
     }
 
+    // Las canciones no se tocan: la base pasa el nombre y la foto a `perfiles_publicos` sola.
     if (trimmedNombre !== usuarioInicial.nombre || nextAvatarUrl !== usuarioInicial.avatar_url) {
-      await supabase.from("canciones_guardadas")
-        .update({ agregado_nombre: trimmedNombre, agregado_avatar_url: nextAvatarUrl })
-        .eq("user_id", usuarioInicial.id)
-        .is("sala_id", null);
+      await refrescarAutor(usuarioInicial.id);
     }
     setLoading(false);
 

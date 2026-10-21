@@ -2,10 +2,10 @@ import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UsuarioActivo } from "@/types";
 
+/** Quién sumó la canción a la fila. El nombre y la foto se miran en `perfiles_publicos`. */
 export type ColaAgregadoSnapshot = {
   agregado_por: string | null;
-  agregado_nombre: string;
-  agregado_avatar_url: string | null;
+  agregado_aleatorio?: boolean;
 };
 
 export function mapUserToUsuarioActivo(user: User): UsuarioActivo {
@@ -34,8 +34,6 @@ export function usuarioActivoToColaAgregado(
 ): ColaAgregadoSnapshot {
   return {
     agregado_por: usuario.id,
-    agregado_nombre: usuario.nombre.trim() || usuario.email,
-    agregado_avatar_url: usuario.avatar_url,
   };
 }
 

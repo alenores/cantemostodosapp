@@ -11,7 +11,11 @@ import {
   type CancioneroUpdatePlan,
 } from "@/lib/offline/cancionero-sync";
 import { syncArtistaFotos } from "@/lib/offline/artista-fotos";
-import { getCancioneroLocalMeta } from "@/lib/offline/cancionero-store";
+import { asegurarAutores } from "@/lib/offline/autores";
+import {
+  getCancioneroLocalAll,
+  getCancioneroLocalMeta,
+} from "@/lib/offline/cancionero-store";
 import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -43,6 +47,10 @@ export function useCancioneroSync() {
       } while (checkRequested.current && hayConexion());
       setError(null);
       void syncArtistaFotos(createClient()).catch(() => {});
+      // Nombre y foto de quien cargó y validó, para verlos sin señal. Es una lista chica y aparte.
+      void getCancioneroLocalAll().then((canciones) => {
+        asegurarAutores(canciones.flatMap((cancion) => [cancion.user_id, cancion.validada_por]));
+      }).catch(() => {});
     } catch {
       setError("No se pudieron comprobar las novedades. Tu Cancionero sigue disponible.");
     } finally {

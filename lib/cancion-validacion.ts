@@ -1,17 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** Quién validó y cuándo. El nombre y la foto se miran en `perfiles_publicos` (useAutor). */
 export type ValidacionCancion = {
   validada_por: string | null;
   validada_en: string | null;
-  validada_nombre: string | null;
-  validada_avatar_url: string | null;
 };
 
 const VACIA: ValidacionCancion = {
   validada_por: null,
   validada_en: null,
-  validada_nombre: null,
-  validada_avatar_url: null,
 };
 
 export function validacionVacia(): ValidacionCancion {
@@ -43,7 +40,7 @@ export async function fetchValidacionesCancionero(
 ): Promise<Array<ValidacionCancion & { id: number }>> {
   const { data, error } = await supabase
     .from("canciones_guardadas")
-    .select("id, validada_por, validada_en, validada_nombre, validada_avatar_url")
+    .select("id, validada_por, validada_en")
     .is("sala_id", null)
     .not("validada_por", "is", null);
 
@@ -53,8 +50,6 @@ export async function fetchValidacionesCancionero(
     id: row.id,
     validada_por: row.validada_por,
     validada_en: row.validada_en,
-    validada_nombre: row.validada_nombre,
-    validada_avatar_url: row.validada_avatar_url,
   }));
 }
 
@@ -78,8 +73,6 @@ export async function validarCancionCancionero(
   return {
     validada_por: row.validada_por ?? null,
     validada_en: row.validada_en ?? null,
-    validada_nombre: row.validada_nombre ?? null,
-    validada_avatar_url: row.validada_avatar_url ?? null,
   };
 }
 

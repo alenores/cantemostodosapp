@@ -34,8 +34,6 @@ export function toCancionCancionero(
     nombre: record.nombre,
     artista: record.artista,
     artista_id: record.artista_id ?? null,
-    agregado_nombre: record.agregado_nombre ?? null,
-    agregado_avatar_url: record.agregado_avatar_url ?? null,
     created_at: record.created_at ?? null,
     letra: record.letra,
     tiene_cifrado_avanzado: record.tiene_cifrado_avanzado ?? false,
@@ -43,8 +41,6 @@ export function toCancionCancionero(
     user_id: record.user_id ?? null,
     validada_por: record.validada_por ?? null,
     validada_en: record.validada_en ?? null,
-    validada_nombre: record.validada_nombre ?? null,
-    validada_avatar_url: record.validada_avatar_url ?? null,
   };
 }
 
@@ -176,8 +172,6 @@ export async function mergeCancioneroLocalUpdates(
           ? {
               validada_por: existing.validada_por,
               validada_en: existing.validada_en,
-              validada_nombre: existing.validada_nombre,
-              validada_avatar_url: existing.validada_avatar_url,
             }
           : null;
       const siguiente = conservarValidacion
@@ -249,8 +243,6 @@ export async function patchValidacionLocal(
   validacion: {
     validada_por: string | null;
     validada_en: string | null;
-    validada_nombre: string | null;
-    validada_avatar_url: string | null;
   },
 ): Promise<void> {
   if (!isOfflineBrowser()) return;
@@ -267,8 +259,6 @@ export async function aplicarValidacionesLocales(
     id: number;
     validada_por: string | null;
     validada_en: string | null;
-    validada_nombre: string | null;
-    validada_avatar_url: string | null;
   }>,
 ): Promise<void> {
   if (!isOfflineBrowser()) return;
@@ -284,24 +274,18 @@ export async function aplicarValidacionesLocales(
       ? {
           validada_por: marca.validada_por,
           validada_en: marca.validada_en,
-          validada_nombre: marca.validada_nombre,
-          validada_avatar_url: marca.validada_avatar_url,
         }
       : row.validada_por
         ? {
             validada_por: null,
             validada_en: null,
-            validada_nombre: null,
-            validada_avatar_url: null,
           }
         : null;
 
     if (!siguiente) continue;
     if (
       row.validada_por === siguiente.validada_por &&
-      row.validada_en === siguiente.validada_en &&
-      row.validada_nombre === siguiente.validada_nombre &&
-      row.validada_avatar_url === siguiente.validada_avatar_url
+      row.validada_en === siguiente.validada_en
     ) {
       continue;
     }

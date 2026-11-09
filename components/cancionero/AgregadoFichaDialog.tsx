@@ -96,7 +96,7 @@ export default function AgregadoFichaDialog({
             className="size-14 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#57515b] text-xl font-semibold text-text-primary">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-full tono-inicial text-xl font-semibold text-text-primary">
             {inicial}
           </span>
         )}

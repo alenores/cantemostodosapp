@@ -161,7 +161,7 @@ export default function HomeHubDestinations({
                   <Loader2 className="size-6 animate-spin text-text-primary" />
                 </span>
               ) : null}
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white" aria-hidden="true">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-bg-darker text-text-primary" aria-hidden="true">
                 <Users className="size-7" strokeWidth={2.2} />
               </span>
               <span className="min-w-0">

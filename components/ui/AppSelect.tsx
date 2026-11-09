@@ -70,13 +70,13 @@ export default function AppSelect<T extends string | number>({
       >
         <span
           className={`min-w-0 truncate ${hideChevron ? "text-center" : ""} ${
-            selected ? "" : "text-white/85"
+            selected ? "" : "text-text-secondary"
           }`}
         >
           {selected ? selected.label : placeholder}
         </span>
         {hideChevron ? null : (
-          <ChevronDown className="size-4 shrink-0 text-white/70" aria-hidden="true" />
+          <ChevronDown className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
         )}
       </button>
 

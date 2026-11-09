@@ -58,7 +58,7 @@ export default function ValidacionFichaDialog({
               className="size-12 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#57515b] text-lg font-semibold text-text-primary">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-full tono-inicial text-lg font-semibold text-text-primary">
               {inicial}
             </span>
           )}
@@ -84,7 +84,7 @@ export default function ValidacionFichaDialog({
             <button
               type="button"
               onClick={onQuitar}
-              className="min-h-11 flex-1 rounded-[10px] bg-[#323232] text-sm font-semibold text-text-primary"
+              className="min-h-11 flex-1 rounded-[10px] tono-campo text-sm font-semibold text-text-primary"
             >
               Quitar validación
             </button>

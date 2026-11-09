@@ -5,6 +5,7 @@
 }
 
 :root {
+  color-scheme: dark;
   /* Base */
   --bg-app: #232323;
   --bg-sala: #2a2a2a;
@@ -1909,9 +1910,13 @@ html.splash-active body {
   box-shadow: 0 0 0 2px #3a2224;
 }
 
-/* Práctica: partitura en negro detrás y tarjetas blancas levantadas. */
+/* Práctica y Cancionero en el celular: misma partitura clara del inicio. */
 .practica-hub {
-  background-color: #101012;
+  background-color: #f7f4ee;
+  background-image: url("/fondo-inicio.webp?v=3");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 
 .practica-hub::before {
@@ -1920,9 +1925,7 @@ html.splash-active body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: url("/fondo-inicio.webp?v=3") center top / cover no-repeat;
-  filter: invert(1) brightness(0.8);
-  opacity: 0.34;
+  display: none;
 }
 
 .practica-hub > * {
@@ -1934,6 +1937,7 @@ html.splash-active body {
 @media (min-width: 1024px) {
   .practica-hub {
     background-color: var(--bg-app);
+    background-image: none;
   }
 
   .practica-hub::before {
@@ -1942,14 +1946,9 @@ html.splash-active body {
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, #d2d2d6 0%, #c6c6ca 58%, #bcbcc0 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.12) 36%, rgba(0, 0, 0, 0.28) 100%) border-box;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 1px 0 rgba(0, 0, 0, 0.2),
-    0 8px 14px rgba(0, 0, 0, 0.38);
+  border: 1px solid #e4ddd3;
+  background: #fffdf9;
+  box-shadow: 0 8px 18px rgba(60, 40, 20, 0.08);
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] p {
@@ -1980,21 +1979,20 @@ html.splash-active body {
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] {
-  background:
-    linear-gradient(180deg, #5c3232 0%, #3c2224 58%, #2a181a 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 170, 160, 0.75) 0%, rgba(255, 255, 255, 0.08) 32%, rgba(0, 0, 0, 0.55) 100%) border-box;
+  background: #fffdf9;
+  border-color: #e7b2aa;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] p {
-  color: #f5f5f7;
+  color: #1c1c1e;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon {
-  color: #ff8f84;
+  color: #e85d4a;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__cta {
-  background: #b0b0b4;
+  background: #efeae2;
   color: #1c1c1e;
 }
 
@@ -2772,6 +2770,154 @@ html.splash-active body {
 
   .open-from-home-icon-focus.is-active {
     transform: none;
+  }
+}
+
+/* Grises escritos a mano. En la computadora quedan igual. En el celular siguen el claro. */
+.tono-pagina {
+  background-color: #181818;
+}
+
+.tono-campo {
+  background-color: #323232;
+}
+
+.tono-pozo {
+  background-color: #3a3a3d;
+}
+
+.tono-inicial {
+  background-color: #57515b;
+}
+
+.tono-borde {
+  border-color: #3a3a3d;
+}
+
+.badge-basico {
+  color: #8fd0a4;
+}
+
+.badge-intermedio {
+  color: #e4c56a;
+}
+
+.badge-avanzado {
+  color: #8ec4e6;
+}
+
+/* Celular: una sola apariencia clara. La computadora (1024px o más) no entra acá. */
+@media (max-width: 1023px) {
+  :root {
+    color-scheme: light;
+    --bg-app: #f7f4ee;
+    --bg-sala: #fffdf9;
+    --bg-dark: #ffffff;
+    --bg-darker: #efeae2;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f3ece3;
+    --nav-selected: rgba(28, 28, 30, 0.06);
+    --bg-cola-sheet: #fffdf9;
+    --bg-cola-list: #f3efe8;
+    --bg-cola-aviso: #e7e1d8;
+    --cola-sheet-pill: #e4ddd3;
+    --bg-panel-claro: #f7f4ee;
+    --bg-panel-claro-titulo: #efeae2;
+
+    --text-primary: #1c1c1e;
+    --text-secondary: #3f3f46;
+    --text-muted: #6e6e76;
+    --text-faint: #8e8e93;
+
+    --border: #e4ddd3;
+    --border-subtle: #efeae2;
+    --border-card: #e7e0d6;
+    --border-glass: rgba(28, 28, 30, 0.08);
+
+    --cola-proxima-bg: #f8efe8;
+    --preview-frame-bg: #e7e0d6;
+    --skeleton-base: #e6e1d8;
+    --skeleton-mid: #f3efe8;
+    --skeleton-shine: #faf8f5;
+    --tool-practice-section-bg: #f3efe8;
+  }
+
+  .tono-pagina {
+    background-color: var(--bg-app);
+  }
+
+  .tono-campo {
+    background-color: var(--bg-dark);
+  }
+
+  .tono-pozo,
+  .tono-inicial {
+    background-color: var(--bg-darker);
+  }
+
+  .tono-borde {
+    border-color: var(--border);
+  }
+
+  .badge-basico {
+    color: #1f7a45;
+  }
+
+  .badge-intermedio {
+    color: #8a6a12;
+  }
+
+  .badge-avanzado {
+    color: #1d6f99;
+  }
+
+  .home-destination-card,
+  .home-inicio-fondo .home-destination-card {
+    background: #fffdf9;
+    border: 1px solid #e4ddd3;
+    box-shadow: 0 8px 18px rgba(60, 40, 20, 0.08);
+  }
+
+  html.splash-active,
+  html.splash-active body,
+  .splash-screen {
+    background-color: #f7f4ee;
+  }
+
+  button:not(:disabled).is-tap-pressed,
+  a[href].is-tap-pressed,
+  [role="button"]:not([aria-disabled="true"]).is-tap-pressed {
+    filter: brightness(0.97) saturate(1.02);
+  }
+
+  .pwa-install-tema {
+    --chalk: #f7f4ee;
+    --chalk-mid: #fffdf9;
+    --chalk-dark: #e4ddd3;
+    --rock: #1c1c1e;
+    --rock-mid: #3f3f46;
+    --rock-light: #6e6e76;
+  }
+
+  .pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-active,
+  .pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-settled {
+    color: #1c1c1e;
+  }
+
+  .pwa-install-tema .open-from-home-phrase-title.open-from-home-phrase-idle {
+    color: #6e6e76;
+  }
+
+  .pwa-install-tema .open-from-home-phrase-body.open-from-home-phrase-active {
+    color: #047857;
+  }
+
+  .pwa-install-tema .open-from-home-phrase-body.open-from-home-phrase-idle {
+    color: rgba(4, 120, 87, 0.55);
+  }
+
+  .pwa-install-tema .open-from-home-phrase-body.open-from-home-phrase-settled {
+    color: #3f3f46;
   }
 }
 

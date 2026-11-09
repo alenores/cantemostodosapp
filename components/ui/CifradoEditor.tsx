@@ -5352,12 +5352,12 @@ export default function CifradoEditor({
               <div className="space-y-3 px-3 pb-3">
                 <VozPcConfigCard
                   title="Nombre y artista"
-                  titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                  titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                   accentVar="var(--accent)"
                   collapsible
                 >
                   <label
-                    className="mb-1.5 block text-xs font-medium normal-case text-white"
+                    className="mb-1.5 block text-xs font-medium normal-case text-text-primary"
                     htmlFor="cifrado-nombre"
                   >
                     Nombre *
@@ -5393,7 +5393,7 @@ export default function CifradoEditor({
                     }}
                   />
                   <label
-                    className="mb-1.5 mt-4 block text-xs font-medium normal-case text-white"
+                    className="mb-1.5 mt-4 block text-xs font-medium normal-case text-text-primary"
                     htmlFor="cifrado-artista"
                   >
                     Artista
@@ -5415,7 +5415,7 @@ export default function CifradoEditor({
 
                 <VozPcConfigCard
                   title="Video"
-                  titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                  titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                   accentVar="var(--accent)"
                   collapsible
                 >
@@ -5434,7 +5434,7 @@ export default function CifradoEditor({
 
                 <VozPcConfigCard
                   title="Tono y modo"
-                  titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                  titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                   accentVar="var(--accent)"
                   collapsible
                 >
@@ -5443,7 +5443,7 @@ export default function CifradoEditor({
                     notacion={notacion === "numero" ? "es" : notacion}
                     tonalidadIndex={tonalidadIndex}
                     modoTonal={modoTonal}
-                    fieldLabelClassName="mb-1.5 block text-xs font-medium normal-case text-white"
+                    fieldLabelClassName="mb-1.5 block text-xs font-medium normal-case text-text-primary"
                     onTonalidadChange={setTonalidadIndex}
                     onModoTonalChange={setModoTonal}
                   />
@@ -5451,7 +5451,7 @@ export default function CifradoEditor({
 
                 <VozPcConfigCard title="Tempo" accentVar="var(--accent)" collapsible>
                   <label
-                    className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white"
+                    className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-primary"
                     htmlFor="cifrado-bpm-sidebar"
                   >
                     BPM
@@ -5538,11 +5538,11 @@ export default function CifradoEditor({
               {mostrarDatosIngreso ? (
                 <div className="space-y-4">
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                    <p className="mb-3 text-sm font-semibold normal-case text-white">
+                    <p className="mb-3 text-sm font-semibold normal-case text-text-primary">
                       Nombre y artista
                     </p>
                     <label
-                      className="mb-1.5 block text-xs font-medium normal-case text-white"
+                      className="mb-1.5 block text-xs font-medium normal-case text-text-primary"
                       htmlFor="cifrado-nombre-ingreso"
                     >
                       Nombre
@@ -5578,7 +5578,7 @@ export default function CifradoEditor({
                       }}
                     />
                     <label
-                      className="mb-1.5 mt-4 block text-xs font-medium normal-case text-white"
+                      className="mb-1.5 mt-4 block text-xs font-medium normal-case text-text-primary"
                       htmlFor="cifrado-artista-ingreso"
                     >
                       Artista
@@ -5598,7 +5598,7 @@ export default function CifradoEditor({
                     <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
                   </div>
                   <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                    <p className="mb-3 text-sm font-semibold normal-case text-white">
+                    <p className="mb-3 text-sm font-semibold normal-case text-text-primary">
                       Tono y modo
                     </p>
                     <CifradoTonalidadFields
@@ -5606,7 +5606,7 @@ export default function CifradoEditor({
                       notacion={notacion}
                       tonalidadIndex={ingresoTonalidadIndex}
                       modoTonal={ingresoModoTonal}
-                      fieldLabelClassName="mb-1.5 block text-xs font-medium normal-case text-white"
+                      fieldLabelClassName="mb-1.5 block text-xs font-medium normal-case text-text-primary"
                       requireSelection
                       onTonalidadChange={setIngresoTonalidadIndex}
                       onModoTonalChange={setIngresoModoTonal}
@@ -5616,15 +5616,15 @@ export default function CifradoEditor({
               ) : null}
 
               <div className={CIFRADO_CONTROLS_PANEL_BOX_CLASS}>
-                <p className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white">
+                <p className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-primary">
                   Vista previa
                 </p>
                 {ingresoTab === "letra" && draftLyrics.trim() ? (
                   <>
-                    <p className="mt-2 text-sm font-medium text-white">
+                    <p className="mt-2 text-sm font-medium text-text-primary">
                       {draftStats.verses} versos · {draftStats.total} renglones
                     </p>
-                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-white/90">
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary/90">
                       {draftLyrics.trim()}
                     </p>
                   </>
@@ -5632,16 +5632,16 @@ export default function CifradoEditor({
                     (ingresoTab === "web" && pendingWebImport)) &&
                   draftPastePreview.text ? (
                   <>
-                    <p className="mt-2 text-sm font-medium text-white">
+                    <p className="mt-2 text-sm font-medium text-text-primary">
                       {draftPastePreview.stats.verses} versos ·{" "}
                       {draftPastePreview.stats.total} renglones
                     </p>
-                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-white/90">
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary/90">
                       {draftPastePreview.text}
                     </p>
                   </>
                 ) : (
-                  <p className="mt-2 text-sm text-white">
+                  <p className="mt-2 text-sm text-text-primary">
                     {ingresoTab === "cancionero"
                       ? "Elegí una canción de la lista. Se abre en el entrenador."
                       : ingresoTab === "basicas"

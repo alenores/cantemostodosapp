@@ -146,7 +146,7 @@ export function CifradoEditorSavedLinksModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar link..."
-              className="w-full rounded-[10px] border border-border bg-[#323232] pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent"
+              className="w-full rounded-[10px] border border-border tono-campo pl-9 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none focus:border-accent"
             />
           </div>
         </header>

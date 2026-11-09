@@ -164,7 +164,7 @@ self.addEventListener("fetch", (event) => {
         }
 
         return new Response(
-          `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CantemosTodos</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#232323;color:#e8e8e8;font-family:system-ui,sans-serif;text-align:center}</style></head><body><p>Sin conexión. Abrí la app con WiFi al menos una vez para dejarla lista en el celular.</p></body></html>`,
+          `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CantemosTodos</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f7f4ee;color:#1c1c1e;font-family:system-ui,sans-serif;text-align:center}@media(min-width:1024px){body{background:#232323;color:#e8e8e8}}</style></head><body><p>Sin conexión. Abrí la app con WiFi al menos una vez para dejarla lista en el celular.</p></body></html>`,
           {
             headers: {
               "Content-Type": "text/html; charset=utf-8",

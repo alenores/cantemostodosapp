@@ -65,7 +65,7 @@ export default function ConfirmDialog({
               type="button"
               onClick={onCancel}
               className={`min-h-11 flex-1 rounded-[10px] border border-border text-sm font-semibold text-text-primary ${
-                deleteConfirm ? "bg-[#323232]" : "bg-bg-card"
+                deleteConfirm ? "tono-campo" : "bg-bg-card"
               }`}
             >
               {cancelLabel}

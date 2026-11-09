@@ -110,12 +110,12 @@ export function VozModeSelectionGrid({ onSelectMode }: VozModeSelectionGridProps
   const getBadgeStyle = (badge: VozModeCardDef["badge"]) => {
     switch (badge) {
       case "Básico":
-        return "text-[#8fd0a4]";
+        return "badge-basico";
       case "Intermedio":
-        return "text-[#e4c56a]";
+        return "badge-intermedio";
       case "Avanzado":
       case "Desafío":
-        return "text-[#8ec4e6]";
+        return "badge-avanzado";
       default:
         return "text-text-muted";
     }
@@ -138,7 +138,7 @@ export function VozModeSelectionGrid({ onSelectMode }: VozModeSelectionGridProps
               onClick={() => onSelectMode(card.id)}
               className="home-destination-card relative flex min-h-[190px] w-full flex-col items-center justify-between gap-3 rounded-[28px] px-3 py-6 text-center"
             >
-              <span className="flex flex-1 items-center justify-center text-white" aria-hidden="true">
+              <span className="flex flex-1 items-center justify-center text-text-primary" aria-hidden="true">
                 <Icon className="size-[52px]" strokeWidth={2.2} />
               </span>
               <span className="block min-h-[2.5em] w-full text-[15px] font-extrabold uppercase leading-tight tracking-[0.015em] text-text-primary">

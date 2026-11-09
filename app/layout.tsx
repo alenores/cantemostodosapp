@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "CanToApp",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
 };
 
@@ -44,7 +44,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: APP_SHELL_BG,
+  themeColor: [
+    { media: "(max-width: 1023px)", color: "#f7f4ee" },
+    { media: "(min-width: 1024px)", color: APP_SHELL_BG },
+  ],
 };
 
 export default function RootLayout({
@@ -56,12 +59,11 @@ export default function RootLayout({
     <html
       lang="es"
       className={`${font.variable} splash-active h-full antialiased`}
-      style={{ backgroundColor: APP_SHELL_BG }}
     >
       <head>
         <meta
           name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
+          content="default"
         />
         <script
           dangerouslySetInnerHTML={{
@@ -71,7 +73,6 @@ export default function RootLayout({
       </head>
       <body
         className="flex min-h-full flex-col"
-        style={{ backgroundColor: APP_SHELL_BG }}
       >
         <div id="inline-splash"><AppLoadingSkeleton /></div>
         <ConexionRunner />

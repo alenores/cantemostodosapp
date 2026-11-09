@@ -49,7 +49,7 @@ export function HerramientasLoadingSkeleton() {
 }
 
 export function CancioneroLoadingSkeleton() {
-  return <CancioneroSubpageSkeleton />;
+  return <CancioneroSubpageSkeleton ocultarBarraMovil />;
 }
 
 export function FavoritasLoadingSkeleton() {

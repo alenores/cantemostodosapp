@@ -163,10 +163,10 @@ export default function SalaCard({
           />
         ) : (
           <span
-            className="absolute inset-0 flex items-center justify-center bg-[#3a3a3d]"
+            className="tono-pozo absolute inset-0 flex items-center justify-center"
             aria-hidden="true"
           >
-            <span className="text-[72px] font-extrabold leading-none text-white/20">
+            <span className="text-[72px] font-extrabold leading-none text-text-primary/25">
               {inicial}
             </span>
           </span>
@@ -213,7 +213,7 @@ export default function SalaCard({
         title="Ver miembros"
         onClick={handleOpenMiembros}
         disabled={disabled}
-        className="flex min-h-11 w-full items-center justify-between gap-2 border-t border-white/10 px-4 py-3 text-left text-[12px] text-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="flex min-h-11 w-full items-center justify-between gap-2 border-t border-border px-4 py-3 text-left text-[12px] text-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span className="font-medium">Participantes</span>
         {avatares.length > 0 ? (
@@ -222,7 +222,7 @@ export default function SalaCard({
               usuarios={avatares}
               maxVisible={3}
               sizeClassName="size-7"
-              borderClassName="border-[#2d2d2f]"
+              borderClassName="border-bg-card"
             />
             <span className="font-semibold text-text-secondary">
               {avatares.length}

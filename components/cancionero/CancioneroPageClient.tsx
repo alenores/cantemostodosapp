@@ -65,6 +65,10 @@ import {
   puedeQuitarValidacion,
   puedeValidarCancion,
 } from "@/lib/usuarios-categorias";
+import {
+  leerCancionesRecientes,
+  recordarCancionReciente,
+} from "@/lib/cancionero-recientes";
 import { listCancionesPractica, type CancionPracticaListItem } from "@/lib/canciones-practica";
 import { CANCIONES_PRACTICA_LOCAL_EVENT } from "@/lib/offline/canciones-practica-events";
 import type { CancionCancionero, CancionCifradoDetalle, Artista } from "@/types";
@@ -76,17 +80,25 @@ import {
   artistasConFotoLocal,
   leerArtistasFotos,
 } from "@/lib/offline/artista-fotos";
-import { Bell, Bookmark, Music, Search, Star, WifiOff, X, Users } from "lucide-react";
+import { Bell, Bookmark, Clock, Music, Search, Star, WifiOff, X, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
-  "h-9 w-full rounded-[10px] border border-border bg-[#323232] pl-9 pr-3 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent lg:h-11 lg:pl-11 lg:pr-4";
+  "h-12 w-full rounded-[10px] border border-border tono-campo pl-11 pr-4 text-lg text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
 function claseFiltro(activo: boolean) {
-  return `flex size-9 shrink-0 items-center justify-center rounded-[10px] border transition-colors lg:size-11 ${
+  return `flex size-12 shrink-0 items-center justify-center rounded-[10px] border transition-colors ${
     activo
       ? "border-accent bg-accent/10 text-accent"
       : "border-border bg-bg-card text-text-secondary hover:text-text-primary"
+  }`;
+}
+
+function claseFiltroMovil(activo: boolean) {
+  return `flex min-h-[4.5rem] flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border px-1 py-2 ${
+    activo
+      ? "border-accent bg-accent/10 text-accent"
+      : "border-border bg-bg-card text-text-primary"
   }`;
 }
 
@@ -148,8 +160,20 @@ export default function CancioneroPageClient({
   const [selectedArtistaIds, setSelectedArtistaIds] = useState<Set<string>>(new Set());
   const [artistasManagerOpen, setArtistasManagerOpen] = useState(false);
   const [artistasFilterOpen, setArtistasFilterOpen] = useState(false);
-  const [soloFavoritas, setSoloFavoritas] = useState(false);
+  const [vistaLista, setVistaLista] = useState<"recientes" | "favoritas" | null>(null);
+  const [recientesIds, setRecientesIds] = useState<number[]>([]);
   const aliasBusqueda = useAliasBusqueda();
+
+  useEffect(() => {
+    setRecientesIds(leerCancionesRecientes(usuarioId));
+  }, [usuarioId]);
+
+  const anotarReciente = useCallback(
+    (cancionId: number) => {
+      setRecientesIds(recordarCancionReciente(usuarioId, cancionId));
+    },
+    [usuarioId],
+  );
 
   const revokeFotosRef = useRef<() => void>(() => {});
   useEffect(() => {
@@ -222,27 +246,32 @@ export default function CancioneroPageClient({
   }, [canciones]);
 
   const cancionesFiltradas = useMemo(() => {
+    if (vistaLista === "recientes") {
+      const orden = new Map(recientesIds.map((id, index) => [id, index]));
+      return canciones
+        .filter((cancion) => orden.has(cancion.id))
+        .sort((a, b) => (orden.get(a.id) ?? 0) - (orden.get(b.id) ?? 0));
+    }
+    if (vistaLista === "favoritas") {
+      return canciones.filter((cancion) => misCancionesIds.has(cancion.id));
+    }
     let list = filterCancionesCancionero(canciones, query, aliasBusqueda);
     if (selectedArtistaIds.size > 0) {
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
-    if (soloFavoritas) {
-      list = list.filter((cancion) => misCancionesIds.has(cancion.id));
-    }
     return list;
-  }, [canciones, query, selectedArtistaIds, artistas, aliasBusqueda, soloFavoritas, misCancionesIds]);
+  }, [canciones, query, selectedArtistaIds, artistas, aliasBusqueda, vistaLista, recientesIds, misCancionesIds]);
   const practicaFiltradas = useMemo(() => {
-    if (!usuarioLogueado) return [];
+    if (!usuarioLogueado || vistaLista !== null) return [];
     const normalized = query.trim().toLowerCase();
     let list = cancionesPractica.filter((cancion) => !normalized || cancion.nombre.toLowerCase().includes(normalized) || artistaCoincideBusqueda(cancion.artista, normalized, aliasBusqueda, cancion.nombre));
     if (selectedArtistaIds.size > 0) {
       const selectedNames = new Set(artistas.filter(a => selectedArtistaIds.has(a.id)).map(a => a.nombre));
       list = list.filter(c => c.artista && selectedNames.has(c.artista));
     }
-    if (soloFavoritas) return [];
     return list;
-  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas, aliasBusqueda, soloFavoritas]);
+  }, [cancionesPractica, query, usuarioLogueado, selectedArtistaIds, artistas, aliasBusqueda, vistaLista]);
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {
@@ -671,6 +700,7 @@ export default function CancioneroPageClient({
 
     setCifradoDetalle(null);
     setCancionViendo(cancion);
+    anotarReciente(cancion.id);
   }
 
   useEffect(() => {
@@ -749,7 +779,9 @@ export default function CancioneroPageClient({
       return;
     }
 
-    setCancionViendo(cancionesFiltradas[nextIndex]!);
+    const siguiente = cancionesFiltradas[nextIndex]!;
+    setCancionViendo(siguiente);
+    anotarReciente(siguiente.id);
   }
 
   function handleEliminar(cancion: CancionCancionero) {
@@ -896,6 +928,7 @@ export default function CancioneroPageClient({
         backOnRight
         backAriaLabel="Cerrar"
         compacto
+        ocultarBarraMovil
         modalOpen={cancionViendo !== null || editorOpen || modoLectura}
       >
         {isDesktop && novedades.count > 0 ? (
@@ -950,13 +983,14 @@ export default function CancioneroPageClient({
               <div className="flex items-center gap-1.5 lg:gap-2">
                 <div className="relative flex-1">
                   <Search
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted lg:left-4"
+                    className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-text-muted"
                     aria-hidden="true"
                   />
                   <input
                     type="search"
                     value={query}
                     onChange={(event) => {
+                      setVistaLista(null);
                       setQuery(event.target.value);
                       setActiveCardId(null);
                     }}
@@ -967,32 +1001,77 @@ export default function CancioneroPageClient({
                     className={inputClassName}
                   />
                 </div>
+                <div className="hidden shrink-0 items-center gap-2 lg:flex">
+                  <TapButton
+                    type="button"
+                    aria-label="Filtrar por Artista"
+                    onClick={() => {
+                      setVistaLista(null);
+                      setArtistasFilterOpen(true);
+                    }}
+                    className={claseFiltro(selectedArtistaIds.size > 0)}
+                  >
+                    <Users className="size-4 lg:size-5" />
+                  </TapButton>
+                  {usuarioLogueado ? (
+                    <TapButton
+                      type="button"
+                      aria-label="Favoritas"
+                      onClick={() => {
+                        setQuery("");
+                        setSelectedArtistaIds(new Set());
+                        setVistaLista("favoritas");
+                        setActiveCardId(null);
+                      }}
+                      className={claseFiltro(false)}
+                    >
+                      <Bookmark className="size-4 lg:size-5" />
+                    </TapButton>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex gap-2 lg:hidden">
                 <TapButton
                   type="button"
-                  aria-label="Filtrar por Artista"
-                  onClick={() => setArtistasFilterOpen(true)}
-                  className={claseFiltro(selectedArtistaIds.size > 0)}
+                  aria-label="Artista"
+                  aria-pressed={selectedArtistaIds.size > 0}
+                  onClick={() => {
+                    setVistaLista(null);
+                    setArtistasFilterOpen(true);
+                  }}
+                  className={claseFiltroMovil(selectedArtistaIds.size > 0)}
                 >
-                  <Users className="size-4 lg:size-5" />
+                  <Users className="size-7" aria-hidden="true" />
+                  <span className="text-xs font-semibold">Artista</span>
+                </TapButton>
+                <TapButton
+                  type="button"
+                  aria-label="Recientes"
+                  onClick={() => {
+                    setQuery("");
+                    setSelectedArtistaIds(new Set());
+                    setVistaLista("recientes");
+                    setActiveCardId(null);
+                  }}
+                  className={claseFiltroMovil(false)}
+                >
+                  <Clock className="size-7" aria-hidden="true" />
+                  <span className="text-xs font-semibold">Recientes</span>
                 </TapButton>
                 {usuarioLogueado ? (
                   <TapButton
                     type="button"
-                    aria-label={
-                      soloFavoritas
-                        ? "Quitar filtro de favoritas"
-                        : "Filtrar por favoritas"
-                    }
-                    aria-pressed={soloFavoritas}
+                    aria-label="Favoritas"
                     onClick={() => {
-                      setSoloFavoritas((actual) => !actual);
+                      setQuery("");
+                      setSelectedArtistaIds(new Set());
+                      setVistaLista("favoritas");
                       setActiveCardId(null);
                     }}
-                    className={claseFiltro(soloFavoritas)}
+                    className={claseFiltroMovil(false)}
                   >
-                    <Bookmark
-                      className={`size-4 lg:size-5 ${soloFavoritas ? "fill-current" : ""}`}
-                    />
+                    <Bookmark className="size-7" aria-hidden="true" />
+                    <span className="text-xs font-semibold">Favoritas</span>
                   </TapButton>
                 ) : null}
               </div>
@@ -1049,7 +1128,11 @@ export default function CancioneroPageClient({
               </div>
             ) : cancionesFiltradas.length === 0 && practicaFiltradas.length === 0 ? (
               <p className="py-8 text-center text-sm text-text-muted">
-                No hay canciones que coincidan con tu búsqueda.
+                {vistaLista === "recientes"
+                  ? "Todavía no abriste canciones en este celular."
+                  : vistaLista === "favoritas"
+                    ? "Todavía no tenés canciones en Favoritas."
+                    : "No hay canciones que coincidan con tu búsqueda."}
               </p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -1187,7 +1270,10 @@ export default function CancioneroPageClient({
           cifradoDetalle={cifradoDetalle}
           cifradoLoading={cifradoLoading}
           items={cancionesFiltradas}
-          onSelectCancion={setCancionViendo}
+          onSelectCancion={(cancion) => {
+            setCancionViendo(cancion);
+            anotarReciente(cancion.id);
+          }}
           onAnterior={() => handleNavigateCancion(-1)}
           onSiguiente={() => handleNavigateCancion(1)}
           tieneAnterior={cancionViendoIndex > 0}

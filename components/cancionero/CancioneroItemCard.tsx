@@ -389,7 +389,7 @@ export default function CancioneroItemCard({
                     className="size-full object-cover"
                   />
                 ) : (
-                  <span className="flex size-full items-center justify-center bg-[#57515b] text-[10px] font-semibold text-text-primary">
+                  <span className="flex size-full items-center justify-center tono-inicial text-[10px] font-semibold text-text-primary">
                     {agregadoNombre.charAt(0).toLocaleUpperCase("es")}
                   </span>
                 )}

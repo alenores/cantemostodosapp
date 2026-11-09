@@ -87,8 +87,8 @@ export function VozPcConfigCard({
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((actual) => !actual)}
-          className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 ${
-            open ? "border-b border-white/10" : ""
+          className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-text-primary/10 ${
+            open ? "border-b border-text-primary/15" : ""
           }`}
         >
           <span

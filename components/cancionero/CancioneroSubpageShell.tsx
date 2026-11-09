@@ -18,6 +18,8 @@ type CancioneroSubpageShellProps = {
   backOnRight?: boolean;
   /** En celular, menos aire arriba del contenido (el buscador queda pegado al título). */
   compacto?: boolean;
+  /** En celular no muestra el título ni la cruz. En PC el encabezado queda igual. */
+  ocultarBarraMovil?: boolean;
   /** @deprecated El bloqueo de scroll con modales lo hace cada modal en `document.body`. */
   modalOpen?: boolean;
 };
@@ -31,6 +33,7 @@ export default function CancioneroSubpageShell({
   backAriaLabel = "Volver al cancionero",
   backOnRight = false,
   compacto = false,
+  ocultarBarraMovil = false,
 }: CancioneroSubpageShellProps) {
   const isDesktop = useIsDesktop();
   const backIcon = backOnRight ? (
@@ -61,7 +64,7 @@ export default function CancioneroSubpageShell({
   return (
     <div className="relative flex min-h-full w-full min-w-0 flex-1 flex-col overflow-x-clip bg-bg-app">
       {/* Mobile-only integrated header (bajo AppTopHeader del layout) */}
-      {!isDesktop ? (
+      {!isDesktop && !ocultarBarraMovil ? (
         <header className="shrink-0 border-b border-border/80 bg-bg-dark px-4 py-2.5">
           <div className="app-page-container flex min-h-11 items-center gap-3">
             {backOnRight ? null : backControl}

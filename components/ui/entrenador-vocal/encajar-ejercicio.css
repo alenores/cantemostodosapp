@@ -421,3 +421,72 @@
   background: #3d3d40;
   padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
+
+@media (max-width: 1023px) {
+  .encajar-ejercicio {
+    --encajar-panel: #fffdf9;
+    --encajar-panel-borde: #e4ddd3;
+    --encajar-hueco: #f3efe8;
+    --encajar-titulo: #1c1c1e;
+    --encajar-suave: #6e6e76;
+  }
+
+  .encajar-ejercicio--pc {
+    background: #f7f4ee;
+  }
+
+  .encajar-marco nav button[aria-selected="true"] {
+    background: #fffdf9;
+    color: #1c1c1e;
+  }
+
+  .encajar-punto {
+    border-color: #d9d3c8;
+  }
+
+  .encajar-barra-centro {
+    background: #d9d3c8;
+  }
+
+  .ejercicio-calmo .text-voz-config,
+  .ejercicio-calmo [class*="text-cyan"] {
+    color: #1c1c1e;
+  }
+
+  .ejercicio-calmo [class*="border-cyan"] {
+    border-color: #e4ddd3;
+  }
+
+  .ejercicio-calmo [class*="from-cyan"] {
+    background-color: #1c1c1e;
+    color: #fffdf9;
+  }
+
+  .panel-desde-abajo-cabeza {
+    border-bottom-color: #e4ddd3;
+    background: #fffdf9;
+    color: #1c1c1e;
+  }
+
+  .panel-desde-abajo-hoja .panel-desde-abajo-cabeza[role="button"].is-tap-pressed {
+    background-color: #f3efe8;
+  }
+
+  .panel-desde-abajo-manija {
+    background: #c8c2b8;
+  }
+
+  .panel-desde-abajo-resumen {
+    color: #6e6e76;
+  }
+
+  .panel-desde-abajo-hoja {
+    border-color: #e4ddd3;
+    background: #fffdf9;
+    box-shadow: 0 -10px 24px rgba(60, 40, 20, 0.12);
+  }
+
+  .panel-desde-abajo-cuerpo {
+    background: #f7f4ee;
+  }
+}

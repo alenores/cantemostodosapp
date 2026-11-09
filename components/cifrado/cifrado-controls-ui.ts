@@ -31,9 +31,9 @@ export const CIFRADO_DETAILS_CARD_TITLE_CLASS =
 export const CIFRADO_DETAILS_FIELD_LABEL_CLASS =
   "mb-1.5 block text-xs font-medium normal-case text-text-secondary";
 
-/** Etiquetas blancas sobre las tarjetas oscuras del panel de datos (igual en celular y PC). */
+/** Etiquetas del panel de datos. Siguen el claro del celular y el oscuro de la computadora. */
 export const CIFRADO_DATOS_FIELD_LABEL_CLASS =
-  "mb-1.5 block text-xs font-medium normal-case text-white";
+  "mb-1.5 block text-xs font-medium normal-case text-text-primary";
 
 export const CIFRADO_CONTROLS_SECONDARY_BUTTON_CLASS =
   "w-full rounded-[10px] border border-border bg-bg-card py-2.5 text-sm font-semibold text-text-secondary";
@@ -146,7 +146,7 @@ export const CIFRADO_EDITOR_LINE_FAB_DELETE_SECONDARY_CLASS =
   "flex items-center gap-1.5 rounded-full border border-red-500/50 bg-transparent px-3 py-1.5 text-xs font-medium text-red-400";
 
 export const CIFRADO_EDITOR_LINE_FAB_DIVIDER_CLASS =
-  "mx-0.5 h-5 w-px shrink-0 self-center bg-white/20";
+  "mx-0.5 h-5 w-px shrink-0 self-center bg-text-primary/20";
 
 /** Casillas de compás a la derecha de la letra: ancho fijo (1ch). Sin flex-1. */
 export const CIFRADO_LINE_LANE_SLOT_CLASS = "inline-block min-w-[1ch]";

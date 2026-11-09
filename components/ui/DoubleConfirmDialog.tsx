@@ -78,7 +78,7 @@ export default function DoubleConfirmDialog({
           <button
             type="button"
             onClick={handleCancel}
-            className={`flex-1 rounded-[10px] border border-border bg-[#323232] font-semibold text-text-primary ${
+            className={`flex-1 rounded-[10px] border border-border tono-campo font-semibold text-text-primary ${
               step === 1 ? "min-h-11 text-sm" : "min-h-12 text-base"
             }`}
           >

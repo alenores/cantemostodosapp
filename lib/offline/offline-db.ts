@@ -5,7 +5,7 @@ import type { ModoTonal } from "@/lib/cifrado-escala";
 import type { Anotacion } from "@/lib/anotaciones-practica";
 
 export const OFFLINE_DB_NAME = "cantemostodos-offline";
-export const OFFLINE_DB_VERSION = 8;
+export const OFFLINE_DB_VERSION = 9;
 
 export type CancioneroLocalRecord = {
   id: number;
@@ -27,11 +27,27 @@ export type CancioneroLocalRecord = {
   bpm_default?: number | null;
 };
 
+/**
+ * Ficha chica para saber si el Cancionero está al día.
+ * No guarda la letra ni los acordes.
+ * `completa` en false: la copia vieja tiene la fecha bien pero le falta el artista vinculado o los acordes.
+ */
+export type CancioneroIndiceRecord = {
+  id: number;
+  updated_at: string;
+  completa: boolean;
+};
+
 export type CancioneroLocalMeta = {
   lastRemoteUpdatedAt: string | null;
   lastRemoteCount: number;
   syncedAt: string | null;
   contentVersion: number;
+  /**
+   * La ficha chica ya se armó y hay una por canción.
+   * No quiere decir que todas estén completas.
+   */
+  indiceListo: boolean;
 };
 
 export type ColaLocalRecord = {
@@ -118,6 +134,10 @@ export interface OfflineDB extends DBSchema {
     value: CancioneroLocalRecord;
     indexes: { "by-nombre": string };
   };
+  canciones_indice: {
+    key: number;
+    value: CancioneroIndiceRecord;
+  };
   meta: {
     key: "sync";
     value: MetaRow;
@@ -203,6 +223,9 @@ export function getOfflineDb(): Promise<IDBPDatabase<OfflineDB>> {
         }
         if (oldVersion < 8 && !db.objectStoreNames.contains("autores")) {
           db.createObjectStore("autores", { keyPath: "id" });
+        }
+        if (oldVersion < 9 && !db.objectStoreNames.contains("canciones_indice")) {
+          db.createObjectStore("canciones_indice", { keyPath: "id" });
         }
       },
     });

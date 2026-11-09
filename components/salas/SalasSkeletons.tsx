@@ -143,7 +143,7 @@ function SalaCardSkeleton({ delayMs = 0 }: { delayMs?: number }) {
         style={delayMs > 0 ? { animationDelay: `${delayMs}ms` } : undefined}
         aria-hidden="true"
       />
-      <div className="flex min-h-11 items-center justify-between gap-2 border-t border-white/10 px-4 py-3">
+      <div className="flex min-h-11 items-center justify-between gap-2 border-t border-border px-4 py-3">
         <ShimmerBlock className="h-3 w-24" delayMs={delayMs + 90} />
         <ShimmerBlock className="h-7 w-16 rounded-full" delayMs={delayMs + 110} />
       </div>

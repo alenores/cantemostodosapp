@@ -1,7 +1,12 @@
 import {
-  getCancioneroLocalAll,
-  getCancioneroLocalMeta,
+  cancionLocalEstaCompleta,
+  claseDeRevision,
+  faltaDescargarCancion,
+  fechaIsoCancionero,
+} from "@/lib/offline/cancionero-indice";
+import {
   mergeCancioneroLocalUpdates,
+  prepararRevisionLocal,
   type CancioneroLocalRecord,
 } from "@/lib/offline/cancionero-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -29,27 +34,6 @@ export type CancioneroUpdatePlan = {
   songs: CancioneroUpdate[];
 };
 
-function timestamp(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const time = new Date(value);
-  return Number.isNaN(time.getTime()) ? null : time.toISOString();
-}
-
-function needsDownload(remote: RemoteVersion, local?: CancioneroLocalRecord) {
-  return !local || timestamp(remote.updated_at) !== timestamp(local.updated_at) ||
-    !hasCompleteContent(local);
-}
-
-/** Las copias antiguas pueden tener la fecha correcta pero solo la letra. */
-function hasCompleteContent(local: CancioneroLocalRecord): boolean {
-  if (typeof local.tiene_cifrado_avanzado !== "boolean") return false;
-  if (local.artista_id === undefined) return false;
-  if (local.cifrado === undefined || local.compas_config === undefined) return false;
-  if (!local.tiene_cifrado_avanzado) return true;
-  // Edición avanzada: hace falta el objeto de acordes (puede estar vacío, no null).
-  return local.cifrado !== null && Array.isArray(local.cifrado.acordes);
-}
-
 async function fetchSnapshot(supabase: SupabaseClient): Promise<RemoteSnapshot> {
   const [count, latest] = await Promise.all([
     supabase.from("canciones_guardadas").select("id", { count: "exact", head: true }).is("sala_id", null),
@@ -59,19 +43,33 @@ async function fetchSnapshot(supabase: SupabaseClient): Promise<RemoteSnapshot> 
   if (count.error) throw count.error;
   if (latest.error) throw latest.error;
   if (count.count === null) throw new Error("No se pudo comprobar el Cancionero.");
-  return { count: count.count, maxUpdatedAt: timestamp(latest.data?.updated_at) };
+  return { count: count.count, maxUpdatedAt: fechaIsoCancionero(latest.data?.updated_at) };
 }
 
-/** Solo consulta versiones y títulos. Nunca descarga letras ni modifica la copia local. */
+/**
+ * Mira si hay novedades sin abrir la letra ni los acordes.
+ * La primera vez arma una ficha chica con lo ya guardado. Si esa ficha no queda
+ * confiable, corta: no ofrece bajar el cancionero entero por las dudas.
+ */
 export async function checkCancioneroUpdates(
   supabase: SupabaseClient,
 ): Promise<CancioneroUpdatePlan> {
-  const [snapshot, meta, local] = await Promise.all([
-    fetchSnapshot(supabase), getCancioneroLocalMeta(), getCancioneroLocalAll(),
+  const [snapshot, local] = await Promise.all([
+    fetchSnapshot(supabase),
+    prepararRevisionLocal(),
   ]);
-  if (meta.syncedAt && meta.contentVersion === CONTENT_VERSION &&
-      meta.lastRemoteCount === snapshot.count && local.length === snapshot.count &&
-      timestamp(meta.lastRemoteUpdatedAt) === snapshot.maxUpdatedAt && local.every(hasCompleteContent)) {
+  const clase = claseDeRevision({
+    indiceListo: local.meta.indiceListo,
+    cancionesCount: local.cancionesCount,
+    indice: local.indice,
+    meta: local.meta,
+    snapshot,
+    contentVersionEsperada: CONTENT_VERSION,
+  });
+  if (clase === "reconstruir") {
+    throw new Error("No se pudo preparar la revisión del Cancionero.");
+  }
+  if (clase === "al-dia") {
     return { snapshot, songs: [] };
   }
 
@@ -87,8 +85,8 @@ export async function checkCancioneroUpdates(
     throw new Error("El Cancionero cambió durante la consulta. Volvé a comprobar las novedades.");
   }
 
-  const localById = new Map(local.map((row) => [row.id, row]));
-  const pending = versions.filter((row) => needsDownload(row, localById.get(row.id)));
+  const localById = new Map(local.indice.map((row) => [row.id, row]));
+  const pending = versions.filter((row) => faltaDescargarCancion(row, localById.get(row.id)));
   const songs: CancioneroUpdate[] = [];
   for (let from = 0; from < pending.length; from += DOWNLOAD_BATCH_SIZE) {
     const ids = pending.slice(from, from + DOWNLOAD_BATCH_SIZE).map((row) => row.id);
@@ -111,9 +109,9 @@ export async function downloadCancioneroUpdates(
   plan: CancioneroUpdatePlan,
   onProgress?: (completed: number, total: number) => void,
 ): Promise<number> {
-  const localById = new Map((await getCancioneroLocalAll()).map((row) => [row.id, row]));
+  const localById = new Map((await prepararRevisionLocal()).indice.map((row) => [row.id, row]));
   // Otra pestaña puede haber descargado estas versiones mientras se mostraba el listado.
-  const pending = plan.songs.filter((row) => needsDownload(row, localById.get(row.id)));
+  const pending = plan.songs.filter((row) => faltaDescargarCancion(row, localById.get(row.id)));
   const records: CancioneroLocalRecord[] = [];
   onProgress?.(0, pending.length);
 
@@ -123,14 +121,14 @@ export async function downloadCancioneroUpdates(
       .select(SONG_COLUMNS).is("sala_id", null).in("id", ids);
     if (error) throw error;
     if (data?.length !== ids.length || new Set(data.map((row) => row.id)).size !== ids.length ||
-        data.some((row) => !ids.includes(row.id) || !timestamp(row.updated_at) || !hasCompleteContent(row))) {
+        data.some((row) => !ids.includes(row.id) || !fechaIsoCancionero(row.updated_at) || !cancionLocalEstaCompleta(row))) {
       throw new Error("La descarga quedó incompleta. Tu Cancionero anterior sigue disponible.");
     }
     records.push(...data.map((row) => ({
       ...row,
       url_letra: row.url_letra ?? "",
-      created_at: timestamp(row.created_at),
-      updated_at: timestamp(row.updated_at)!,
+      created_at: fechaIsoCancionero(row.created_at),
+      updated_at: fechaIsoCancionero(row.updated_at)!,
     })));
     onProgress?.(records.length, pending.length);
   }

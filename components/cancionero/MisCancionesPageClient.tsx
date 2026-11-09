@@ -43,7 +43,7 @@ import {
 } from "react";
 
 const inputClassName =
-  "min-h-11 w-full rounded-[10px] border border-border bg-[#323232] pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
+  "min-h-11 w-full rounded-[10px] border border-border tono-campo pl-11 pr-4 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-accent";
 
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_CANCEL_PX = 10;

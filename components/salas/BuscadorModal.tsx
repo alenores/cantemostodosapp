@@ -274,7 +274,7 @@ function ResultadoItem({
         {nombre}
       </p>
       <div className="mt-1 flex min-w-0 items-center gap-2">
-        <span className="flex size-[22px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#3a3a40] text-[11px] font-semibold text-white/80">
+        <span className="tono-pozo flex size-[22px] shrink-0 items-center justify-center overflow-hidden rounded-full text-[11px] font-semibold text-text-primary">
           {artistaAvatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -1770,7 +1770,7 @@ export default function BuscadorModal({
               </header>
 
               <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame pt-1.5 pb-2">
-                <p className="mb-1 shrink-0 px-[10%] text-xs font-semibold uppercase tracking-wide text-[#f8f8f8]">
+                <p className="mb-1 shrink-0 px-[10%] text-xs font-semibold uppercase tracking-wide text-text-primary">
                   Previsualización
                 </p>
                 <div className="flex min-h-0 flex-1 flex-col">
@@ -1853,7 +1853,7 @@ export default function BuscadorModal({
                       )}
                     </div>
                     {previewOrigenExplicacion ? (
-                      <p className="text-[11px] leading-snug text-[#f8f8f8]/85">
+                      <p className="text-[11px] leading-snug text-text-primary/85">
                         {previewOrigenExplicacion}
                       </p>
                     ) : null}

@@ -38,36 +38,36 @@ export function CancioneroCardSkeleton({
     >
       {isCancionero ? (
         <div>
-          <div
-            className={`cancionero-skeleton-shimmer h-[17px] rounded-md ${titleWidth}`}
-            style={{ animationDelay: `${shimmerDelayMs}ms` }}
-          />
-          <div className="mt-3 flex items-end gap-3">
+          <div className="flex items-end gap-3">
             <div
               className="cancionero-skeleton-shimmer size-[76px] shrink-0 rounded-full"
-              style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
+              style={{ animationDelay: `${shimmerDelayMs}ms` }}
             />
             <div className="min-w-0 flex-1 self-center">
               <div
-                className={`cancionero-skeleton-shimmer h-[15px] rounded-md ${artistWidth}`}
-                style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
+                className={`cancionero-skeleton-shimmer h-[18px] rounded-md ${titleWidth}`}
+                style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
               />
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <div
                 className="cancionero-skeleton-shimmer size-5 rounded-full"
-                style={{ animationDelay: `${shimmerDelayMs + 120}ms` }}
+                style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
               />
               <div
                 className="cancionero-skeleton-shimmer size-4 rounded-sm"
-                style={{ animationDelay: `${shimmerDelayMs + 150}ms` }}
+                style={{ animationDelay: `${shimmerDelayMs + 110}ms` }}
               />
               <div
                 className="cancionero-skeleton-shimmer size-4 rounded-sm"
-                style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
+                style={{ animationDelay: `${shimmerDelayMs + 140}ms` }}
               />
             </div>
           </div>
+          <div
+            className={`cancionero-skeleton-shimmer mt-1.5 h-[15px] rounded-md ${artistWidth}`}
+            style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
+          />
         </div>
       ) : (
         <div
@@ -151,13 +151,11 @@ export function BuscadorInternetPendingSkeleton({ cardCount = 2 }: { cardCount?:
 export function SearchFieldSkeleton() {
   return (
     <div
-      className="relative rounded-[10px] border border-border bg-[#323232] px-4 py-3"
+      className="flex h-12 items-center gap-3 rounded-[10px] border border-border tono-campo px-4"
       aria-hidden="true"
     >
-      <div className="flex items-center gap-3">
-        <div className="cancionero-skeleton-shimmer size-4 shrink-0 rounded-full" />
-        <div className="cancionero-skeleton-shimmer h-4 flex-1 rounded-md" />
-      </div>
+      <div className="cancionero-skeleton-shimmer size-5 shrink-0 rounded-full" />
+      <div className="cancionero-skeleton-shimmer h-[17px] flex-1 rounded-md" />
     </div>
   );
 }
@@ -199,12 +197,15 @@ export default function CancioneroListSkeleton({
 type CancioneroPageSkeletonProps = {
   trailing?: CardTrailing;
   cardCount?: number;
+  /** En celular no muestra la barra del título. En PC sigue. */
+  ocultarBarraMovil?: boolean;
 };
 
 /** Shell de subpágina Cancionero / Favoritas (CancioneroSubpageShell). */
 export function CancioneroPageSkeleton({
   trailing = "bookmark",
   cardCount = 6,
+  ocultarBarraMovil = false,
 }: CancioneroPageSkeletonProps = {}) {
   return (
     <div
@@ -213,7 +214,11 @@ export function CancioneroPageSkeleton({
       aria-live="polite"
       aria-label="Cargando cancionero"
     >
-      <header className="shrink-0 border-b border-border bg-bg-darker px-4 py-3 lg:px-8">
+      <header
+        className={`shrink-0 border-b border-border bg-bg-darker px-4 py-3 lg:px-8${
+          ocultarBarraMovil ? " hidden lg:block" : ""
+        }`}
+      >
         <div className="app-page-container flex items-center gap-3">
           <div
             className="cancionero-skeleton-shimmer size-11 shrink-0 rounded-full"

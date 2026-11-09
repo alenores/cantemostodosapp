@@ -10,9 +10,11 @@ import {
   DEFAULT_MODO_TONAL,
   normalizeModoTonal,
 } from "@/lib/cifrado-escala";
+import { filaIndiceCancion, indiceSirve } from "@/lib/offline/cancionero-indice";
 import {
   getOfflineDb,
   isOfflineBrowser,
+  type CancioneroIndiceRecord,
   type CancioneroLocalMeta,
   type CancioneroLocalRecord,
 } from "@/lib/offline/offline-db";
@@ -24,7 +26,21 @@ const DEFAULT_META: CancioneroLocalMeta = {
   lastRemoteCount: 0,
   syncedAt: null,
   contentVersion: 0,
+  indiceListo: false,
 };
+
+function metaDesdeFila(
+  row: (CancioneroLocalMeta & { id?: "sync" }) | undefined,
+): CancioneroLocalMeta {
+  if (!row) return { ...DEFAULT_META };
+  return {
+    lastRemoteUpdatedAt: row.lastRemoteUpdatedAt,
+    lastRemoteCount: row.lastRemoteCount,
+    syncedAt: row.syncedAt,
+    contentVersion: row.contentVersion ?? 0,
+    indiceListo: row.indiceListo === true,
+  };
+}
 
 export function toCancionCancionero(
   record: CancioneroLocalRecord,
@@ -121,16 +137,7 @@ export async function getCancioneroLocalMeta(): Promise<CancioneroLocalMeta> {
   const db = await getOfflineDb();
   const row = await db.get("meta", "sync");
 
-  if (!row) {
-    return { ...DEFAULT_META };
-  }
-
-  return {
-    lastRemoteUpdatedAt: row.lastRemoteUpdatedAt,
-    lastRemoteCount: row.lastRemoteCount,
-    syncedAt: row.syncedAt,
-    contentVersion: row.contentVersion ?? 0,
-  };
+  return metaDesdeFila(row);
 }
 
 export async function setCancioneroLocalMeta(
@@ -147,6 +154,7 @@ export async function setCancioneroLocalMeta(
     id: "sync",
     ...current,
     ...meta,
+    indiceListo: current.indiceListo,
   });
 }
 
@@ -159,8 +167,9 @@ export async function mergeCancioneroLocalUpdates(
   }
 
   const db = await getOfflineDb();
-  const tx = db.transaction(["canciones", "meta"], "readwrite");
+  const tx = db.transaction(["canciones", "canciones_indice", "meta"], "readwrite");
   const cancionesStore = tx.objectStore("canciones");
+  const indiceStore = tx.objectStore("canciones_indice");
   const metaStore = tx.objectStore("meta");
 
   for (const record of records) {
@@ -177,29 +186,27 @@ export async function mergeCancioneroLocalUpdates(
       const siguiente = conservarValidacion
         ? { ...record, ...conservarValidacion }
         : record;
-      await cancionesStore.put({
+      const guardada: CancioneroLocalRecord = {
         ...siguiente,
         created_at: siguiente.created_at ?? existing?.created_at ?? null,
-      });
+      };
+      // Misma transacción: la ficha chica queda con la fecha y el "completa" de esta canción.
+      await cancionesStore.put(guardada);
+      await indiceStore.put(filaIndiceCancion(guardada));
+    } else {
+      await indiceStore.put(filaIndiceCancion(existing));
     }
   }
 
-  if (meta) {
-    const currentRow = await metaStore.get("sync");
-    const current: CancioneroLocalMeta = currentRow
-      ? {
-          lastRemoteUpdatedAt: currentRow.lastRemoteUpdatedAt,
-          lastRemoteCount: currentRow.lastRemoteCount,
-          syncedAt: currentRow.syncedAt,
-          contentVersion: currentRow.contentVersion ?? 0,
-        }
-      : { ...DEFAULT_META };
-
+  const listo = (await cancionesStore.count()) === (await indiceStore.count());
+  const current = metaDesdeFila(await metaStore.get("sync"));
+  if (meta || current.syncedAt || listo) {
     await metaStore.put({
       id: "sync",
       ...current,
       ...meta,
-      syncedAt: meta.syncedAt ?? new Date().toISOString(),
+      indiceListo: listo,
+      syncedAt: meta ? (meta.syncedAt ?? new Date().toISOString()) : current.syncedAt,
     });
   }
 
@@ -212,9 +219,10 @@ export async function clearCancioneroLocal(): Promise<void> {
   }
 
   const db = await getOfflineDb();
-  const tx = db.transaction(["canciones", "meta"], "readwrite");
+  const tx = db.transaction(["canciones", "canciones_indice", "meta"], "readwrite");
 
   await tx.objectStore("canciones").clear();
+  await tx.objectStore("canciones_indice").clear();
   await tx.objectStore("meta").clear();
   await tx.done;
 }
@@ -302,7 +310,69 @@ export async function deleteCancioneroLocalRecord(id: number): Promise<void> {
   }
 
   const db = await getOfflineDb();
-  await db.delete("canciones", id);
+  const tx = db.transaction(["canciones", "canciones_indice"], "readwrite");
+  await tx.objectStore("canciones").delete(id);
+  await tx.objectStore("canciones_indice").delete(id);
+  await tx.done;
+}
+
+/**
+ * Deja lista la ficha chica. Si todavía no existe, la arma una vez leyendo las canciones
+ * ya guardadas. No borra nada, no cambia la versión ni las fechas, y no pide una descarga.
+ */
+export async function prepararRevisionLocal(): Promise<{
+  indice: CancioneroIndiceRecord[];
+  meta: CancioneroLocalMeta;
+  cancionesCount: number;
+}> {
+  if (!isOfflineBrowser()) {
+    return {
+      indice: [],
+      meta: { ...DEFAULT_META },
+      cancionesCount: 0,
+    };
+  }
+
+  const db = await getOfflineDb();
+  let meta = await getCancioneroLocalMeta();
+  let indice = await db.getAll("canciones_indice");
+  let cancionesCount = await db.count("canciones");
+
+  if (!indiceSirve(meta.indiceListo, indice.length, cancionesCount)) {
+    indice = await reconstruirIndiceCancionero();
+    meta = await getCancioneroLocalMeta();
+    cancionesCount = await db.count("canciones");
+  }
+
+  if (!indiceSirve(meta.indiceListo, indice.length, cancionesCount)) {
+    throw new Error("No se pudo preparar la revisión del Cancionero.");
+  }
+
+  return { indice, meta, cancionesCount };
+}
+
+async function reconstruirIndiceCancionero(): Promise<CancioneroIndiceRecord[]> {
+  const db = await getOfflineDb();
+  const tx = db.transaction(["canciones", "canciones_indice", "meta"], "readwrite");
+  const cancionesStore = tx.objectStore("canciones");
+  const indiceStore = tx.objectStore("canciones_indice");
+  const metaStore = tx.objectStore("meta");
+  const songs = await cancionesStore.getAll();
+
+  await indiceStore.clear();
+  const filas = songs.map(filaIndiceCancion);
+  for (const fila of filas) {
+    await indiceStore.put(fila);
+  }
+
+  const current = metaDesdeFila(await metaStore.get("sync"));
+  await metaStore.put({
+    id: "sync",
+    ...current,
+    indiceListo: true,
+  });
+  await tx.done;
+  return filas;
 }
 
 export function getCancioneroLocalForBusqueda(

@@ -126,7 +126,7 @@ export default function SalasPageClient({
   });
 
   return (
-    <div className="relative flex min-h-full flex-1 flex-col bg-[#181818]">
+    <div className="tono-pagina relative flex min-h-full flex-1 flex-col">
       <AppReadyMarker />
       <AppTopHeader usuario={usuario} />
 
@@ -147,7 +147,7 @@ export default function SalasPageClient({
                 aria-label="Crear sala"
                 onClick={() => setModalOpen(true)}
                 disabled={!online}
-                className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-2xl border border-[#3a3a3d] bg-[#303032] px-3.5 text-[13px] font-semibold text-white shadow-[0_8px_18px_rgba(0,0,0,0.2)] disabled:opacity-40"
+                className="tono-borde tono-campo flex min-h-11 shrink-0 items-center gap-1.5 rounded-2xl border px-3.5 text-[13px] font-semibold text-text-primary shadow-[0_8px_18px_rgba(0,0,0,0.2)] disabled:opacity-40"
               >
                 <Plus className="size-4" strokeWidth={2.4} aria-hidden="true" />
                 <span>Crear</span>
@@ -156,7 +156,7 @@ export default function SalasPageClient({
           </header>
 
           {!online && (
-            <p className="flex items-center gap-2 rounded-2xl border border-[#3a3a3d] bg-[#29292b] px-4 py-3 text-sm text-text-muted" role="status">
+            <p className="tono-borde tono-campo flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm text-text-muted" role="status">
               <WifiOff className="size-4 shrink-0" aria-hidden="true" />
               Sin conexión · las salas necesitan internet. Usá Individual para
               tocar solo.
@@ -189,7 +189,7 @@ export default function SalasPageClient({
             </div>
           ) : (
             <div className="home-destination-card flex flex-1 flex-col items-center justify-center gap-5 rounded-[28px] px-6 py-12 text-center">
-              <span className="flex size-16 items-center justify-center rounded-2xl bg-[#3d3d40] text-white" aria-hidden="true">
+              <span className="tono-pozo flex size-16 items-center justify-center rounded-2xl text-text-primary" aria-hidden="true">
                 <Users className="size-8" />
               </span>
               <div className="max-w-xs space-y-1.5">

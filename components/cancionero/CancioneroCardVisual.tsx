@@ -19,14 +19,7 @@ export default function CancioneroCardVisual({
 }: CancioneroCardVisualProps) {
   return (
     <div className="min-w-0">
-      <p
-        className={`break-words text-[18px] font-bold leading-tight text-text-primary ${
-          reservarEsquina ? "pr-8" : ""
-        }`}
-      >
-        {nombre}
-      </p>
-      <div className="mt-3 flex min-w-0 items-end gap-3">
+      <div className="flex min-w-0 items-end gap-3">
         <div className="relative size-[76px] shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#3b3542] via-[#34343a] to-[#25272c] ring-1 ring-white/10">
           {artistaAvatarUrl ? (
             // Fotos públicas de artistas con dominios variables.
@@ -43,8 +36,12 @@ export default function CancioneroCardVisual({
             </div>
           )}
         </div>
-        <p className="min-w-0 flex-1 self-center break-words text-[15px] leading-tight text-[#b8b8be]">
-          {artista || "Artista sin indicar"}
+        <p
+          className={`min-w-0 flex-1 self-center break-words text-[18px] font-bold leading-tight text-text-primary ${
+            reservarEsquina ? "pr-8" : ""
+          }`}
+        >
+          {nombre}
         </p>
         {iconos ? (
           <div className="flex max-w-[48%] shrink-0 flex-wrap items-center justify-end gap-x-2.5 gap-y-1.5">
@@ -52,6 +49,9 @@ export default function CancioneroCardVisual({
           </div>
         ) : null}
       </div>
+      <p className="mt-1.5 break-words text-left text-[15px] leading-tight text-text-secondary">
+        {artista || "Artista sin indicar"}
+      </p>
     </div>
   );
 }

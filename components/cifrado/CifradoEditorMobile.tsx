@@ -1853,7 +1853,7 @@ export default function CifradoEditorMobile({
             <div className="flex flex-col gap-4">
               <VozPcConfigCard
                 title="Nombre y artista"
-                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                 accentVar="var(--accent)"
               >
                 <label
@@ -1897,7 +1897,7 @@ export default function CifradoEditorMobile({
 
               <VozPcConfigCard
                 title="Video"
-                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                 accentVar="var(--accent)"
               >
                 <CancionYoutubeField
@@ -1913,7 +1913,7 @@ export default function CifradoEditorMobile({
 
               <VozPcConfigCard
                 title="Tono y modo"
-                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                 accentVar="var(--accent)"
               >
                 <CifradoTonalidadFields
@@ -1936,11 +1936,11 @@ export default function CifradoEditorMobile({
 
               <VozPcConfigCard
                 title="Tempo"
-                titleClassName="mb-3 text-sm font-semibold normal-case text-white"
+                titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                 accentVar="var(--accent)"
               >
                 <label
-                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-white"
+                  className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-text-primary"
                   htmlFor="cifrado-mobile-cfg-bpm"
                 >
                   BPM

@@ -68,6 +68,7 @@ import {
   verAhoraColaLocal,
 } from "@/lib/offline/cola-local-store";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import {
   getCancionPractica,
   listCancionesPractica,
@@ -341,6 +342,18 @@ function BotonTraerWeb({ onClick }: { onClick: () => void }) {
   );
 }
 
+function BotonEntrarParaWeb({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center justify-center rounded-full border border-accent bg-bg-card px-5 text-sm font-bold text-text-primary"
+    >
+      Para buscar en la web, iniciá sesión
+    </button>
+  );
+}
+
 function SeccionResultados({
   label,
   icon,
@@ -420,6 +433,7 @@ export default function BuscadorModal({
   hasCancionActiva = false,
 }: BuscadorModalProps) {
   const isHome = variant === "home";
+  const router = useRouter();
   const online = useOnlineStatus();
   const aliasBusqueda = useAliasBusqueda();
   const categoria = useCategoriaUsuario();
@@ -930,7 +944,8 @@ export default function BuscadorModal({
       !trimmed ||
       !online ||
       mostrandoMisCanciones ||
-      loadingInternet
+      loadingInternet ||
+      (isHome && !usuarioLogueado)
     ) {
       return;
     }
@@ -1494,11 +1509,23 @@ export default function BuscadorModal({
         ? "No hay canciones en el cancionero"
         : "No encontramos resultados para tu búsqueda";
   const mostrarBotonWeb =
+    (!isHome || usuarioLogueado) &&
     !mostrandoMisCanciones &&
     Boolean(query.trim()) &&
     online &&
     !webActiva &&
     !loadingInternet;
+  const mostrarEntrarParaWeb =
+    isHome &&
+    !usuarioLogueado &&
+    !mostrandoMisCanciones &&
+    Boolean(query.trim()) &&
+    online &&
+    !webActiva;
+
+  function irAIniciarSesion() {
+    router.push("/auth/login?next=/individual");
+  }
 
   if (!open) {
     return null;
@@ -1617,6 +1644,7 @@ export default function BuscadorModal({
                 />
                 <p className="text-sm text-text-muted">{mensajeListaVacia}</p>
                 {mostrarBotonWeb ? <BotonTraerWeb onClick={() => void handleBuscarWeb()} /> : null}
+                {mostrarEntrarParaWeb ? <BotonEntrarParaWeb onClick={irAIniciarSesion} /> : null}
                 {!mostrandoMisCanciones &&
                 Boolean(query.trim()) &&
                 !online &&
@@ -1660,6 +1688,12 @@ export default function BuscadorModal({
                   <p className="text-center text-sm text-text-muted">{webError}</p>
                 ) : null}
                 <BotonTraerWeb onClick={() => void handleBuscarWeb()} />
+              </div>
+            )}
+
+            {!buscadorCargando && mostrarEntrarParaWeb && listaCancionero.length > 0 && (
+              <div className="mt-3 flex justify-center">
+                <BotonEntrarParaWeb onClick={irAIniciarSesion} />
               </div>
             )}
 

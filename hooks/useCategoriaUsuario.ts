@@ -15,9 +15,11 @@ import { useEffect, useMemo, useState } from "react";
  * Categoría de la cuenta activa (dueño / amigos / público). `null` mientras
  * carga, sin sesión o si todavía no se conoce.
  */
-export function useCategoriaUsuario(): CategoriaUsuario | null {
+export function useCategoriaUsuario(
+  inicial: CategoriaUsuario | null = null,
+): CategoriaUsuario | null {
   const supabase = useMemo(() => createClient(), []);
-  const [categoria, setCategoria] = useState<CategoriaUsuario | null>(null);
+  const [categoria, setCategoria] = useState<CategoriaUsuario | null>(inicial);
 
   useEffect(() => {
     let active = true;
@@ -35,12 +37,14 @@ export function useCategoriaUsuario(): CategoriaUsuario | null {
       const conocida = leerCategoriaGuardada(userId);
       if (conocida && !refrescar) {
         recordarCategoriaEnCookie(userId, conocida);
-        setCategoria(conocida);
+        if (active && current === version) {
+          setCategoria((prev) => prev ?? conocida);
+        }
         return;
       }
 
       const actual = await obtenerCategoriaUsuario(supabase, userId, { refrescar });
-      if (active && current === version) setCategoria(actual);
+      if (active && current === version) setCategoria((prev) => prev ?? actual);
     }
 
     void cargar().catch(() => {});

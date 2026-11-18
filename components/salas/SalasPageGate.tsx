@@ -1,5 +1,6 @@
 "use client";
 
+import AppReadyMarker from "@/components/AppReadyMarker";
 import SalasPageClient from "@/components/salas/SalasPageClient";
 import { SalasLoadingSkeleton } from "@/components/ui/NavLoadingSkeleton";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -10,6 +11,8 @@ import { fetchSalasDelUsuario } from "@/lib/sala-miembros";
 import { createClient } from "@/lib/supabase/client";
 import { mapUserToUsuarioActivo } from "@/lib/usuario";
 import type { Sala, UsuarioActivo } from "@/types";
+import { Users, WifiOff } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -22,6 +25,7 @@ type SalasPageGateProps = {
 
 type GateState =
   | { status: "loading" }
+  | { status: "guest" }
   | {
       status: "ready";
       payload: {
@@ -31,6 +35,61 @@ type GateState =
         avisoInicial: string | null;
       };
     };
+
+function SalasInvitado({ online }: { online: boolean }) {
+  return (
+    <div className="tono-pagina relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto">
+      <AppReadyMarker />
+      <main className="app-page-main flex flex-1 flex-col gap-5 px-5 py-7 pb-28 lg:gap-6 lg:px-8 lg:py-8">
+        <div className="app-page-container flex flex-1 flex-col gap-5 lg:gap-6">
+          <header className="pt-1">
+            <h2 className="text-[clamp(30px,8vw,36px)] font-extrabold leading-[1.12] tracking-tight text-text-primary">
+              Salas
+            </h2>
+            <p className="mt-2 max-w-md text-[14px] text-text-muted">
+              Entrá a tocar con tu gente
+            </p>
+          </header>
+
+          {!online ? (
+            <p
+              className="tono-borde tono-campo flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm text-text-muted"
+              role="status"
+            >
+              <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+              Sin conexión · las salas necesitan internet. Usá Individual para
+              tocar solo.
+            </p>
+          ) : null}
+
+          <div className="home-destination-card flex flex-1 flex-col items-center justify-center gap-5 rounded-[28px] px-6 py-12 text-center">
+            <span
+              className="tono-pozo flex size-16 items-center justify-center rounded-2xl text-text-primary"
+              aria-hidden="true"
+            >
+              <Users className="size-8" />
+            </span>
+            <div className="max-w-xs space-y-1.5">
+              <p className="text-base font-bold text-text-primary">
+                Cantar en grupo
+              </p>
+              <p className="text-sm text-text-muted">
+                Varias personas ven la misma canción al mismo tiempo y
+                comparten una fila. Para usarla, iniciá sesión.
+              </p>
+            </div>
+            <Link
+              href="/auth/login?next=/salas"
+              className="mt-1 flex min-h-11 items-center rounded-2xl bg-accent px-5 text-sm font-semibold text-white"
+            >
+              Iniciá sesión
+            </Link>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 export default function SalasPageGate({
   serverUsuario,
@@ -87,7 +146,7 @@ export default function SalasPageGate({
       }
 
       if (!session) {
-        router.replace("/auth/login");
+        setGate({ status: "guest" });
         return;
       }
 
@@ -153,6 +212,10 @@ export default function SalasPageGate({
 
   if (gate.status === "loading") {
     return <SalasLoadingSkeleton />;
+  }
+
+  if (gate.status === "guest") {
+    return <SalasInvitado online={online} />;
   }
 
   return <SalasPageClient {...gate.payload} />;

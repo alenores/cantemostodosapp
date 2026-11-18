@@ -129,6 +129,28 @@ export async function getCancioneroLocalCifradoDetalle(
   };
 }
 
+/** Deja la letra y los acordes nuevos guardados, sin tocar lo que ya se está viendo. */
+export async function guardarDetalleCifradoLocal(
+  detalle: CancionCifradoDetalle,
+): Promise<void> {
+  if (!isOfflineBrowser()) return;
+
+  const db = await getOfflineDb();
+  const record = await db.get("canciones", detalle.id);
+  if (!record) return;
+
+  await db.put("canciones", {
+    ...record,
+    letra: detalle.letra,
+    cifrado: detalle.cifrado,
+    compas_config: detalle.compas_config,
+    tonalidad_default: detalle.tonalidad_default,
+    modo_tonal_default: detalle.modo_tonal_default,
+    bpm_default: detalle.bpm_default,
+    tiene_cifrado_avanzado: true,
+  });
+}
+
 export async function getCancioneroLocalMeta(): Promise<CancioneroLocalMeta> {
   if (!isOfflineBrowser()) {
     return { ...DEFAULT_META };

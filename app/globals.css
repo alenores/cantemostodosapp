@@ -1810,21 +1810,22 @@ html.splash-active body {
   padding-bottom: var(--app-main-bottom-padding);
 }
 
-/* El buscador del Cancionero se queda arriba cuando el encabezado ya se fue. */
+/* En el celular el buscador viaja con la lista y, al llegar arriba, queda quieto. */
 .cancionero-busqueda-fija {
   background: var(--bg-app);
   padding-bottom: 0.25rem;
 }
 
-.cancionero-busqueda-fija--pin {
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 40;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-inline: 1rem;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.28);
+@media (max-width: 1023px) {
+  .cancionero-busqueda-fija {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 40;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+    box-shadow: 0 calc(-1 * env(safe-area-inset-top, 0px)) 0
+      env(safe-area-inset-top, 0px) var(--bg-app);
+  }
 }
 
 @media (min-width: 1024px) {

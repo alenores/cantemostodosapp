@@ -5,7 +5,10 @@ import AuthBackButton from "@/components/auth/AuthBackButton";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { warmOfflineCache } from "@/lib/offline/warm-offline-cache";
+import {
+  olvidarPantallasGuardadas,
+  warmOfflineCache,
+} from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -94,8 +97,9 @@ export default function LoginPageClient() {
       return;
     }
 
-    router.refresh();
+    await olvidarPantallasGuardadas();
     void warmOfflineCache({ force: true });
+    router.refresh();
     startNavigation();
     router.push(nextPath);
   }

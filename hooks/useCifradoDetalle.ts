@@ -4,7 +4,10 @@ import { fetchCancionCifradoDetalle } from "@/lib/cancionero";
 import { createClient } from "@/lib/supabase/client";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import type { CancionCifradoDetalle } from "@/types";
-import { getCancioneroLocalCifradoDetalle } from "@/lib/offline/cancionero-store";
+import {
+  getCancioneroLocalCifradoDetalle,
+  guardarDetalleCifradoLocal,
+} from "@/lib/offline/cancionero-store";
 import { useEffect, useState } from "react";
 
 export function useCifradoDetalle(cancioneroId: number | null) {
@@ -34,13 +37,23 @@ export function useCifradoDetalle(cancioneroId: number | null) {
         return;
       }
 
-      setDetalle((current) => {
-        if (local) return local;
-        if (!online && current?.id === cancioneroId) return current;
-        return null;
-      });
+      if (local) {
+        setDetalle(local);
+        setLoading(false);
+        if (!online) return;
+
+        void fetchCancionCifradoDetalle(createClient(), cancioneroId)
+          .then((remote) => {
+            if (remote) return guardarDetalleCifradoLocal(remote);
+          })
+          .catch(() => undefined);
+        return;
+      }
 
       if (!online) {
+        setDetalle((current) =>
+          current?.id === cancioneroId ? current : null,
+        );
         setLoading(false);
         return;
       }
@@ -52,12 +65,13 @@ export function useCifradoDetalle(cancioneroId: number | null) {
         );
 
         if (!cancelled) {
-          setDetalle(remote ?? local);
+          setDetalle(remote);
+          if (remote) void guardarDetalleCifradoLocal(remote);
         }
       } catch {
         if (!cancelled) {
           setDetalle((current) =>
-            local ?? (current?.id === cancioneroId ? current : null),
+            current?.id === cancioneroId ? current : null,
           );
         }
       } finally {

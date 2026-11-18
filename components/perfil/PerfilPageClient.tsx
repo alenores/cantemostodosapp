@@ -6,6 +6,7 @@ import { useStartNavigation } from "@/components/ui/NavigationProgress";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import { prepararFotoLiviana } from "@/lib/imagen-liviana";
 import { refrescarAutor } from "@/lib/offline/autores";
+import { olvidarPantallasGuardadas, warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import { ArrowLeft, Camera } from "lucide-react";
@@ -178,6 +179,8 @@ export default function PerfilPageClient({
     // Las canciones no se tocan: la base pasa el nombre y la foto a `perfiles_publicos` sola.
     if (trimmedNombre !== usuarioInicial.nombre || nextAvatarUrl !== usuarioInicial.avatar_url) {
       await refrescarAutor(usuarioInicial.id);
+      await olvidarPantallasGuardadas();
+      void warmOfflineCache({ force: true });
     }
     setLoading(false);
 

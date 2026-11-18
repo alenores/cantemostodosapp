@@ -10,6 +10,13 @@ Antes de tocar código, leer `docs/descripcion-funcional.md`: inventario complet
 flujos de usuario, permisos, diferencias móvil/PC y estado del producto (sin detalle técnico).
 Actualizar ese documento cuando se agregue o cambie funcionalidad visible para el usuario.
 
+## Lo guardado se ve al instante (NO NEGOCIABLE)
+
+Antes de cambiar pantallas, navegación o pedidos a internet, cumplir
+`.cursor/rules/lo-guardado-primero.mdc` y la sección 15.0 de `docs/descripcion-funcional.md`.
+Lo que ya está en el celular se muestra al instante. Una comprobación por internet no frena
+ni cambia la pantalla que la persona está mirando.
+
 ## Borradores (PR): sin vigilancia (NO NEGOCIABLE)
 
 Ale trabaja sola con el agente: lo que se hace queda unos minutos como borrador y después va a

@@ -1,0 +1,31 @@
+---
+description: Mostrar al instante lo guardado en el celular; internet no frena la pantalla
+alwaysApply: true
+---
+
+# Lo guardado se ve al instante
+
+Regla de producto para toda la app. La versión para personas está en la sección 15.0 de `docs/descripcion-funcional.md`. Si el código todavía espera la red antes de mostrar una pantalla, eso es deuda: no la copies y no agregues otra igual.
+
+## Qué tiene que pasar
+
+- Abrir y cambiar de pantalla muestra al instante la copia ya guardada. Vale para Inicio, Práctica, Cancionero, Individual y el resto de lo descargado.
+- Con señal o sin ella, esa navegación se siente igual de rápida.
+- Nombre, tarjetas, cancionero, favoritas, fila y letra ya descargada salen de lo guardado.
+- Una comprobación por internet corre atrás. No muestra espera, no tapa la pantalla y no reacomoda lo que la persona está mirando.
+- Si en este celular cambia la cuenta o el permiso, en ese momento se vuelve a guardar la pantalla.
+- Si el cambio ocurrió en otro aparato, se sigue mostrando la copia de este hasta confirmarlo. La confirmación actualiza la copia para la próxima vez.
+
+## Cuándo sí se espera una respuesta
+
+Solo en la acción que importa, en ese momento: guardar o validar una canción, cambiar la cuenta o el permiso, o estar en una sala con otra gente.
+
+## Qué no hacer
+
+```text
+Mal: tocar Práctica, esperar la pantalla nueva y recién ahí dibujar las tarjetas.
+Bien: dibujar las tarjetas guardadas al toque. Si hay que comprobar el permiso, hacerlo atrás.
+
+Mal: entrar a Individual, dejar el gris hasta que la fila conteste por internet.
+Bien: mostrar la fila y la letra guardadas. Actualizar la copia cuando la respuesta llegue, sin frenar lo que ya se ve.
+```

@@ -3,6 +3,7 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import AuthBackButton from "@/components/auth/AuthBackButton";
 import { useStartNavigation } from "@/components/ui/NavigationProgress";
+import { olvidarPantallasGuardadas, warmOfflineCache } from "@/lib/offline/warm-offline-cache";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,6 +45,8 @@ export default function RegistroPage() {
       return;
     }
 
+    await olvidarPantallasGuardadas();
+    void warmOfflineCache({ force: true });
     router.refresh();
     startNavigation();
     router.push("/");

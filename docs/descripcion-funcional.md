@@ -2,7 +2,7 @@
 
 > Documento orientado a negocio, nuevos integrantes del equipo y presentación comercial.  
 > Describe **qué hace la aplicación** y **qué puede hacer una persona usuaria**, sin detalles técnicos de implementación.  
-> Última revisión: julio 2026.
+> Última revisión: noviembre 2026.
 
 ---
 
@@ -217,11 +217,9 @@ Si el usuario edita desde el celular una canción que ya tenía descargada, la c
 
 **Volver a la app la deja donde estaba.** Si la app queda en segundo plano y el celular la rearma, vuelve a la misma pantalla (cancionero, editor, sala, etc.), nunca al inicio. Cerrarla a mano y abrirla desde el ícono sí arranca en el inicio.
 
-Al abrir una pantalla con conexión, la app busca la versión actual antes de usar la copia guardada. Si la red no responde en cuatro segundos, abre la copia disponible para seguir funcionando sin conexión.
+Abrir y cambiar de pantalla muestra al instante lo guardado en el celular. Vale para toda la app, también Individual. La regla completa está en la sección 15.0.
 
-**Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada.
-
-**Si la señal se cae al cambiar de pantalla**, a los 6 segundos se abre la copia guardada de esa pantalla en lugar de quedarse esperando (vale para las pantallas que funcionan sin conexión).
+**Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada. Esa comprobación no frena ni cambia la pantalla que se está viendo.
 
 En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. La **cruz** para cerrar queda arriba del filtro. El menú de controles comienza justo debajo del filtro. En los controles de tono, la flecha izquierda baja un semitono y la derecha lo sube.
 
@@ -244,7 +242,7 @@ El buscador se abre desde Individual, Salas o el modo lectura.
 Los resultados se agrupan en:
 
 1. **Del cancionero** (o **Favoritas** si estás en esa pestaña): canciones guardadas en la app. Las simples usan una hoja gris y las avanzadas una hoja resaltada. En Favoritas se muestra el marcador de favorito.
-2. **En internet**: links guardados previamente y resultados de sitios web de acordes y letras (por ejemplo Cifra Club, sitios de acordes).
+2. **En internet**: links guardados previamente y resultados de sitios web de acordes y letras (por ejemplo Cifra Club, sitios de acordes). En Individual, sin cuenta, en el lugar de **Traer desde la web** dice **«Para buscar en la web, iniciá sesión»** y abre el inicio de sesión. Al entrar, vuelve a Individual. En Salas el botón sigue, porque ya hay cuenta.
 
 Si no hay resultados: *"No encontramos resultados…"* o *"No tenés canciones guardadas en Favoritas"*.
 
@@ -417,6 +415,7 @@ Las salas permiten que varias personas **canten juntas en tiempo real**, viendo 
 | Situación | Mensaje |
 |-----------|---------|
 | Sin conexión | *"Sin conexión · las salas necesitan internet. Usá Individual para tocar solo."* |
+| Sin cuenta | Se queda en la pantalla de Salas. Dice que varias personas ven la misma canción al mismo tiempo y comparten una fila, y ofrece **Iniciá sesión**. Al entrar, vuelve a Salas. No salta directo al login. |
 | Sin salas | *"Todavía no tenés salas"* + *"Creá la primera o pedí que te inviten con el QR desde dentro de una sala."* |
 
 Cada tarjeta de sala permite entrar y ver sus **participantes**.
@@ -788,11 +787,23 @@ Solo disponible **con cuenta iniciada**.
 
 - Nombre mostrado: **"Invitado"**.
 - Puede: usar el Cancionero descargado, Individual offline y afinador.
-- No puede: Práctica (metrónomo, entrenador vocal, compositor, entrenador de canciones), Favoritas, editor, salas, guardar canciones.
+- No puede: Práctica (metrónomo, entrenador vocal, compositor, entrenador de canciones), Favoritas, editor, entrar a una sala, guardar canciones, ni traer resultados de la web en el buscador de Individual. Sí puede abrir Salas y leer para qué sirve.
 
 ---
 
 ## 15. Uso sin conexión e instalación en el celular
+
+### 15.0 Regla: lo guardado se ve al instante
+
+Esta regla vale para toda la app. Quien cambie pantallas, navegación o pedidos a internet tiene que cumplirla.
+
+Moverse y mirar sale siempre de lo que ya está guardado en el celular: el saludo, las tarjetas, el cancionero, las favoritas, la fila y la letra ya descargada. Con señal o sin ella, abrir y cambiar de pantalla se siente igual de rápido. La persona no tiene que notar si atrás hay una comprobación.
+
+Lo que haya que mirar por internet se hace en segundo plano. No frena la pantalla ni la cambia mientras se está mirando. Si en este celular se cambió de cuenta o de permiso, en ese momento se vuelve a guardar la pantalla. Si el cambio se hizo en otro aparato, se sigue mostrando la copia de este hasta que la comprobación lo confirme. Esa confirmación actualiza la copia para la próxima vez.
+
+La confirmación en el momento, como un pago, queda solo para una acción que importa: guardar o validar una canción, cambiar la cuenta o el permiso, o estar en una sala con otra gente.
+
+Sin señal, caminar por la app se siente igual. Lo que no se puede es lo que depende de otros en ese instante.
 
 ### 15.1 Requisito inicial
 
@@ -855,7 +866,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 - Al aceptar **Descargar todo**, la app guarda las canciones nuevas y actualizadas y luego prepara las pantallas necesarias para navegar sin conexión.
 - La ventana permanece abierta y no se puede cerrar mientras se realiza este proceso.
 - Al terminar ambas tareas se muestra únicamente un check verde y **“Todo listo en tu celular”**, con una X para cerrar. Desde ese momento no hace falta recorrer previamente cada pantalla ni cada canción.
-- La carga inicial y las transiciones que necesitan espera muestran un skeleton de contenido, sin la pantalla de guitarra ni un tiempo mínimo artificial. La navegación online conserva el contenido mientras prepara el destino; la offline abre la copia local.
+- Si ya hay una copia guardada, se muestra al instante. No hay una espera gris mientras se pide la pantalla por internet. Un esqueleto de carga solo aparece cuando todavía no hay nada guardado en el celular. No se usa la pantalla de guitarra ni un tiempo mínimo artificial.
 
 ---
 
@@ -884,7 +895,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 | Guardar en cancionero | No | Solo dueño y amigos |
 | Favoritas | No | Sí |
 | Editor de canciones | No | Solo dueño y amigos |
-| Salas | No | Sí |
+| Salas | Ve de qué se trata; para entrar necesita cuenta | Sí |
 | Entrenador de canciones | No | Sí |
 | Afinador | Sí | Sí |
 | Metrónomo | Sí | Sí |

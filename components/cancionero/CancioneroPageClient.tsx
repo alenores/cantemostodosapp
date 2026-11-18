@@ -123,10 +123,6 @@ export default function CancioneroPageClient({
   const [canciones, setCanciones] = useState<CancionCancionero[]>([]);
   const [cancionesPractica, setCancionesPractica] = useState<CancionPracticaListItem[]>([]);
   const [localReady, setLocalReady] = useState(false);
-  const busquedaRef = useRef<HTMLDivElement>(null);
-  const busquedaSentinelaRef = useRef<HTMLDivElement>(null);
-  const [busquedaFija, setBusquedaFija] = useState(false);
-  const [busquedaAlto, setBusquedaAlto] = useState(0);
   const [query, setQuery] = useState("");
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
@@ -293,31 +289,6 @@ export default function CancioneroPageClient({
     };
   }, []);
 
-  useEffect(() => {
-    if (!localReady) return;
-    const media = window.matchMedia("(max-width: 1023px)");
-    if (!media.matches) return;
-
-    function update() {
-      const sentinela = busquedaSentinelaRef.current;
-      const barra = busquedaRef.current;
-      if (!sentinela || !barra) return;
-      const fija = sentinela.getBoundingClientRect().top <= 0;
-      setBusquedaFija(fija);
-      if (fija) setBusquedaAlto(barra.offsetHeight);
-    }
-
-    update();
-    document.addEventListener("scroll", update, { capture: true, passive: true });
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      document.removeEventListener("scroll", update, { capture: true });
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [localReady]);
-
   const loadMisCancionesRefs = useCallback(async () => {
     if (!usuarioLogueado) {
       setMisCancionesIds(new Set());
@@ -379,7 +350,7 @@ export default function CancioneroPageClient({
 
   useEffect(() => {
     if (!usuarioLogueado) return;
-    void Promise.resolve().then(() => loadPractica());
+    void Promise.resolve().then(() => loadPractica(true));
     const handleChange = () => { void loadPractica(true); };
     window.addEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleChange);
     return () => window.removeEventListener(CANCIONES_PRACTICA_LOCAL_EVENT, handleChange);
@@ -396,25 +367,6 @@ export default function CancioneroPageClient({
         const marcas = await fetchValidacionesCancionero(supabase);
         if (cancelled || epoch !== validacionEpoch.current) return;
 
-        const porId = new Map(marcas.map((marca) => [marca.id, marca]));
-        setCanciones((prev) =>
-          prev.map((cancion) => {
-            const marca = porId.get(cancion.id);
-            if (marca) {
-              return {
-                ...cancion,
-                validada_por: marca.validada_por,
-                validada_en: marca.validada_en,
-              };
-            }
-            if (!cancion.validada_por) return cancion;
-            return {
-              ...cancion,
-              validada_por: null,
-              validada_en: null,
-            };
-          }),
-        );
         await aplicarValidacionesLocales(marcas);
       } catch {
         // El listado sigue usable si esta consulta no responde.
@@ -436,17 +388,6 @@ export default function CancioneroPageClient({
         const fechas = await fetchFechasAltaCancionero(supabase);
         if (cancelled) return;
 
-        const porId = new Map(fechas.map((fecha) => [fecha.id, fecha.created_at]));
-        setCanciones((prev) => {
-          let changed = false;
-          const next = prev.map((cancion) => {
-            const created_at = porId.get(cancion.id);
-            if (!created_at || cancion.created_at === created_at) return cancion;
-            changed = true;
-            return { ...cancion, created_at };
-          });
-          return changed ? next : prev;
-        });
         await aplicarFechasAltaLocales(fechas);
       } catch {
         // El listado sigue usable si esta consulta no responde.
@@ -977,16 +918,7 @@ export default function CancioneroPageClient({
           <CancioneroListSkeleton includeSearch cardCount={6} />
         ) : (
           <>
-            <div ref={busquedaSentinelaRef} className="h-0" />
-            {busquedaFija ? (
-              <div style={{ height: busquedaAlto }} aria-hidden="true" />
-            ) : null}
-            <div
-              ref={busquedaRef}
-              className={`cancionero-busqueda-fija flex flex-col gap-1.5 lg:gap-3${
-                busquedaFija ? " cancionero-busqueda-fija--pin" : ""
-              }`}
-            >
+            <div className="cancionero-busqueda-fija flex flex-col gap-1.5 lg:gap-3">
               <div className="flex items-center gap-1.5 lg:gap-2">
                 <div className="relative flex-1">
                   <Search

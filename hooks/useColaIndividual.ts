@@ -101,6 +101,16 @@ export function useColaIndividual() {
 
       setUsuarioLogueado(true);
 
+      const saved = await readColaIndividual(userId);
+      if (cancelled) return;
+
+      if (saved) {
+        setAuthItems(saved.items);
+        setLoading(false);
+        void getColaIndividual(supabase).catch(() => undefined);
+        return;
+      }
+
       try {
         await loadAuthCola();
       } finally {
@@ -118,9 +128,13 @@ export function useColaIndividual() {
       }
     }
 
+    function handleConexion() {
+      void getColaIndividual(supabase).catch(() => undefined);
+    }
+
     window.addEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
-    window.addEventListener("online", handleColaChanged);
-    window.addEventListener(EVENTO_CONEXION, handleColaChanged);
+    window.addEventListener("online", handleConexion);
+    window.addEventListener(EVENTO_CONEXION, handleConexion);
 
     const {
       data: { subscription },
@@ -142,8 +156,8 @@ export function useColaIndividual() {
     return () => {
       cancelled = true;
       window.removeEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
-      window.removeEventListener("online", handleColaChanged);
-      window.removeEventListener(EVENTO_CONEXION, handleColaChanged);
+      window.removeEventListener("online", handleConexion);
+      window.removeEventListener(EVENTO_CONEXION, handleConexion);
       subscription.unsubscribe();
     };
   }, [loadAuthCola, supabase]);

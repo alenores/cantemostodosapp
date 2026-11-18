@@ -1,6 +1,7 @@
 "use client";
 
 import { olvidarCategoriaRecordada } from "@/lib/usuarios-categorias";
+import { olvidarPantallasGuardadas } from "@/lib/offline/warm-offline-cache";
 import { hayConexion } from "@/lib/conexion";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ export default function AuthSessionListener() {
       }
 
       olvidarCategoriaRecordada();
+      void olvidarPantallasGuardadas();
 
       const path = window.location.pathname;
 

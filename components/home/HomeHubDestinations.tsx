@@ -6,7 +6,6 @@ import { TapButton } from "@/components/ui/TapFeedback";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
   HUB_DESTINATION_AFINADOR_DESCRIPTION,
   HUB_DESTINATION_AFINADOR_LABEL,
@@ -21,9 +20,8 @@ import {
   HUB_WELCOME_TITLE,
 } from "@/lib/herramientas-product";
 import type { UsuarioActivo } from "@/types";
-import { createClient } from "@/lib/supabase/client";
 import { Bell, Gauge, Guitar, Library, Loader2, MicVocal, Users, WifiOff } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 type HomeHubDestinationsProps = {
   usuario: UsuarioActivo;
@@ -42,24 +40,11 @@ export default function HomeHubDestinations({
   const online = useOnlineStatus();
   const novedades = useCancioneroNovedades();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [verifiedOwnerId, setVerifiedOwnerId] = useState<string | null>(null);
 
   const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
   const displayName = usuario.nombre.trim();
   const showName = isLoggedIn && displayName.length > 0;
-  const showUsuarios = isOwner && verifiedOwnerId === usuario.id;
-
-  useEffect(() => {
-    let active = true;
-    if (isOwner) {
-      void getActiveUserId(createClient()).then((currentUserId) => {
-        if (active) setVerifiedOwnerId(currentUserId === usuario.id ? usuario.id : null);
-      }).catch(() => {
-        if (active) setVerifiedOwnerId(null);
-      });
-    }
-    return () => { active = false; };
-  }, [isOwner, usuario.id]);
+  const showUsuarios = isOwner;
 
   function goTo(href: string) {
     setPendingHref(href);

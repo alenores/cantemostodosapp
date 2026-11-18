@@ -69,6 +69,19 @@ function guardarPantallas(): Promise<boolean> {
  * la descarga que pidió la persona, que no se frena por el detector. Los llamados de fondo
  * preguntan `hayConexion()` antes de llamarla.
  */
+const COPIAS_DE_PANTALLA = [
+  OFFLINE_SHELL_CACHE,
+  "pages-rsc-shell",
+  "pages-rsc",
+  "pages-rsc-prefetch",
+] as const;
+
+/** Al cambiar de cuenta en este celular, la copia vieja no se vuelve a mostrar. */
+export async function olvidarPantallasGuardadas(): Promise<void> {
+  if (typeof caches === "undefined") return;
+  await Promise.all(COPIAS_DE_PANTALLA.map((nombre) => caches.delete(nombre)));
+}
+
 export async function warmOfflineCache(
   { force = false }: { force?: boolean } = {},
 ): Promise<boolean> {

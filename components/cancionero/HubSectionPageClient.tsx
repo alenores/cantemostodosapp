@@ -4,7 +4,11 @@ import AppReadyMarker from "@/components/AppReadyMarker";
 import HubModuleCard from "@/components/ui/HubModuleCard";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
-import { esDuenoOAmigos, puedeSumarCanciones } from "@/lib/usuarios-categorias";
+import {
+  esDuenoOAmigos,
+  puedeSumarCanciones,
+  type CategoriaUsuario,
+} from "@/lib/usuarios-categorias";
 import { Bell } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -15,8 +19,6 @@ import {
   HUB_SECTION_PRACTICA_LABEL,
 } from "@/lib/herramientas-product";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
-import { getActiveUserId } from "@/lib/auth/offline-user";
-import { createClient } from "@/lib/supabase/client";
 import type { UsuarioActivo } from "@/types";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
@@ -33,6 +35,7 @@ type HubSectionPageClientProps = {
   usuario: UsuarioActivo;
   section: HubSection;
   isOwner?: boolean;
+  categoriaInicial?: CategoriaUsuario | null;
 };
 
 function scheduleIdle(callback: () => void): () => void {
@@ -49,12 +52,13 @@ export default function HubSectionPageClient({
   usuario,
   section,
   isOwner = false,
+  categoriaInicial = null,
 }: HubSectionPageClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
-  const categoria = useCategoriaUsuario();
+  const categoria = useCategoriaUsuario(categoriaInicial);
   const puedeCrear = puedeSumarCanciones(categoria);
   const esAmigo = esDuenoOAmigos(categoria);
   const novedades = useCancioneroNovedades();
@@ -65,22 +69,9 @@ export default function HubSectionPageClient({
   const [compositorOpen, setCompositorOpen] = useState(false);
   const [toolsLayerMounted, setToolsLayerMounted] = useState(false);
   const [pendingModuleId, setPendingModuleId] = useState<string | null>(null);
-  const [verifiedOwnerId, setVerifiedOwnerId] = useState<string | null>(null);
 
   const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
-  const canUseOwnerModules = isOwner && verifiedOwnerId === usuario.id;
-
-  useEffect(() => {
-    let active = true;
-    if (isOwner) {
-      void getActiveUserId(createClient()).then((currentUserId) => {
-        if (active) setVerifiedOwnerId(currentUserId === usuario.id ? usuario.id : null);
-      }).catch(() => {
-        if (active) setVerifiedOwnerId(null);
-      });
-    }
-    return () => { active = false; };
-  }, [isOwner, usuario.id]);
+  const canUseOwnerModules = isOwner;
   const sectionLabel =
     section === "practica"
       ? HUB_SECTION_PRACTICA_LABEL

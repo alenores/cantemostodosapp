@@ -12,6 +12,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { ArtistasFilterModal } from "@/components/ui/ArtistasFilterModal";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useColaIndividual } from "@/hooks/useColaIndividual";
+import { getActiveUserId } from "@/lib/auth/offline-user";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import type { ResultadoIconoTipo } from "@/lib/buscador";
@@ -26,6 +27,7 @@ import {
   getCancioneroLocalAsCancionero,
   getCancioneroLocalCifradoDetalle,
 } from "@/lib/offline/cancionero-store";
+import { getMisCancionesLocal } from "@/lib/offline/mis-canciones-store";
 import { getArtistas } from "@/lib/artistas";
 import {
   ARTISTAS_FOTOS_EVENT,
@@ -525,47 +527,38 @@ export default function MisCancionesPageClient() {
     };
   }, []);
 
+  const marcarCifradoLocal = useCallback(async (data: UsuarioCancion[]) => {
+    const globalIds = data
+      .map((item) => item.cancion_guardada_id)
+      .filter((id): id is number => id !== null);
+    const local = await getCancioneroLocalAsCancionero();
+    const avanzadoIds = new Set<number>();
+    for (const id of globalIds) {
+      const found = local.find((item) => item.id === id);
+      if (found?.tiene_cifrado_avanzado) avanzadoIds.add(id);
+    }
+    setCifradoAvanzadoIds(avanzadoIds);
+  }, []);
+
   const loadCanciones = useCallback(async () => {
-    setLoading(true);
     setActionError(null);
 
     try {
+      const userId = await getActiveUserId(supabase);
+      const guardadas = userId ? await getMisCancionesLocal(userId) : [];
+
+      if (guardadas.length > 0) {
+        setCanciones(guardadas);
+        await marcarCifradoLocal(guardadas);
+        setLoading(false);
+        void getMisCanciones(supabase).catch(() => undefined);
+        return;
+      }
+
+      setLoading(true);
       const data = await getMisCanciones(supabase);
       setCanciones(data);
-
-      const globalIds = data
-        .map((item) => item.cancion_guardada_id)
-        .filter((id): id is number => id !== null);
-
-      if (globalIds.length === 0) {
-        setCifradoAvanzadoIds(new Set());
-      } else {
-        const avanzadoIds = new Set<number>();
-        const { data: remoteRows, error: remoteError } = await supabase
-          .from("canciones_guardadas")
-          .select("id, tiene_cifrado_avanzado")
-          .in("id", globalIds);
-
-        if (!remoteError && remoteRows) {
-          for (const row of remoteRows) {
-            if (row.tiene_cifrado_avanzado) {
-              avanzadoIds.add(row.id);
-            }
-          }
-        } else {
-          const local = await getCancioneroLocalAsCancionero();
-
-          for (const id of globalIds) {
-            const found = local.find((item) => item.id === id);
-
-            if (found?.tiene_cifrado_avanzado) {
-              avanzadoIds.add(id);
-            }
-          }
-        }
-
-        setCifradoAvanzadoIds(avanzadoIds);
-      }
+      await marcarCifradoLocal(data);
     } catch (error) {
       console.error("[mis-canciones] error al cargar", error);
       setActionError(
@@ -576,7 +569,7 @@ export default function MisCancionesPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [marcarCifradoLocal, supabase]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadCanciones(), 0);

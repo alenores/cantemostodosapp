@@ -16,6 +16,7 @@ import { getActiveUserId } from "@/lib/auth/offline-user";
 import {
   deleteCancionPractica,
   listCancionesPractica,
+  syncCancionesPractica,
   type CancionPracticaListItem,
 } from "@/lib/canciones-practica";
 import {
@@ -145,12 +146,12 @@ export default function EntrenadorCancionesPageClient() {
   useEffect(() => () => revokeFotosRef.current(), []);
 
   const refresh = useCallback(async (skipSync = false) => {
-    setLoading(true);
     setError(null);
 
     try {
-      const data = await listCancionesPractica(supabase, { skipSync });
+      const data = await listCancionesPractica(supabase, { skipSync: true });
       setCanciones(data);
+      if (!skipSync) void syncCancionesPractica(supabase).catch(() => undefined);
     } catch (loadError) {
       const message =
         loadError instanceof Error

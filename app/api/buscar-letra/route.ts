@@ -1,11 +1,32 @@
 import { buscarLetras } from "@/lib/google-search";
+import { createClient } from "@/lib/supabase/server";
+import { tomarCupoBusquedaWeb } from "@/lib/tope-busqueda-web";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json(
+      { error: "Iniciá sesión para buscar en la web." },
+      { status: 401 },
+    );
+  }
+
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
   if (!q) {
     return NextResponse.json([]);
+  }
+
+  if (!tomarCupoBusquedaWeb(user.id).ok) {
+    return NextResponse.json(
+      { error: "Esperá un momento para volver a buscar en la web." },
+      { status: 429 },
+    );
   }
 
   try {

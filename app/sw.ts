@@ -8,6 +8,7 @@ import {
   NetworkFirst,
   NetworkOnly,
   Serwist,
+  StaleWhileRevalidate,
 } from "serwist";
 
 declare global {
@@ -142,43 +143,45 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       const preferredPath = url.pathname;
+      const cache = await caches.open(SHELL_CACHE);
+      const cached =
+        (await cache.match(preferredPath)) ||
+        (await cache.match(event.request));
 
-      try {
-        const response = await fetchShellWithTimeout(event.request);
+      const actualizar = fetchShellWithTimeout(event.request)
+        .then(async (response) => {
+          if (response.ok) {
+            await cache.put(preferredPath, response.clone());
+          }
+          return response;
+        })
+        .catch(() => undefined);
 
-        if (response.ok) {
-          const copy = response.clone();
-          event.waitUntil(
-            caches.open(SHELL_CACHE)
-              .then((cache) => cache.put(preferredPath, copy))
-              .catch(() => {}),
-          );
-        }
-
-        return response;
-      } catch {
-        const fallback = await matchShellInCaches(event.request.url, preferredPath);
-
-        if (fallback) {
-          return fallback;
-        }
-
-        return new Response(
-          `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CantemosTodos</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f7f4ee;color:#1c1c1e;font-family:system-ui,sans-serif;text-align:center}@media(min-width:1024px){body{background:#232323;color:#e8e8e8}}</style></head><body><p>Sin conexión. Abrí la app con WiFi al menos una vez para dejarla lista en el celular.</p></body></html>`,
-          {
-            headers: {
-              "Content-Type": "text/html; charset=utf-8",
-            },
-          },
-        );
+      if (cached) {
+        event.waitUntil(actualizar.then(() => undefined));
+        return cached;
       }
+
+      const response = await actualizar;
+      if (response) return response;
+
+      const fallback = await matchShellInCaches(event.request.url, preferredPath);
+      if (fallback) return fallback;
+
+      return new Response(
+        `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CantemosTodos</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f7f4ee;color:#1c1c1e;font-family:system-ui,sans-serif;text-align:center}@media(min-width:1024px){body{background:#232323;color:#e8e8e8}}</style></head><body><p>Sin conexión. Abrí la app con WiFi al menos una vez para dejarla lista en el celular.</p></body></html>`,
+        {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+          },
+        },
+      );
     })(),
   );
 });
 
-const shellNetworkFirst = new NetworkFirst({
+const shellDesdeLoGuardado = new StaleWhileRevalidate({
   cacheName: SHELL_CACHE,
-  networkTimeoutSeconds: SHELL_NETWORK_TIMEOUT_MS / 1_000,
   plugins: [
     new ExpirationPlugin({
       maxEntries: 32,
@@ -201,6 +204,27 @@ const serwist = new Serwist({
     navigateFallbackDenylist: [/^\/api\//, /^\/serwist\//],
   } : undefined,
   runtimeCaching: IS_LOCAL_DEV ? defaultCache : [
+    {
+      /**
+       * Al pasar de pantalla se muestra la copia guardada. La respuesta nueva
+       * queda para la próxima vez y no cambia lo que ya se está viendo.
+       */
+      matcher: ({ request, url: { pathname }, sameOrigin }) =>
+        sameOrigin &&
+        request.method === "GET" &&
+        request.headers.get("RSC") === "1" &&
+        (OFFLINE_SHELL_URLS as readonly string[]).includes(pathname),
+      handler: new StaleWhileRevalidate({
+        cacheName: "pages-rsc-shell",
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 32,
+            maxAgeSeconds: 365 * 24 * 60 * 60,
+            maxAgeFrom: "last-used",
+          }),
+        ],
+      }),
+    },
     {
       /**
        * Prueba de señal (`lib/conexion.ts`): **NetworkOnly**, siempre, y primera. Sin esta regla caía
@@ -231,7 +255,7 @@ const serwist = new Serwist({
           pathname.startsWith("/herramientas/") ||
           pathname === "/practica" ||
           pathname.startsWith("/practica/")),
-      handler: shellNetworkFirst,
+      handler: shellDesdeLoGuardado,
     },
     {
       matcher: ({ request, url: { pathname }, sameOrigin }) =>

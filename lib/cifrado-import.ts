@@ -10,7 +10,11 @@ import {
   MODOS_TONALES,
   type ModoTonal,
 } from "@/lib/cifrado-escala";
-import { parseAcordeToken } from "@/lib/notacion-acordes";
+import {
+  parseAcordeToken,
+  reconocerAcordeDesdeLaIzquierda,
+  type ParsedAcorde,
+} from "@/lib/notacion-acordes";
 
 export type TonalidadLineDetectResult = {
   tonalidadIndex: NotaIndex;
@@ -83,46 +87,89 @@ const ACOMPANANTE_PATTERN = /^(?:[xX]\d*|\d+[xX]?|[-–—\/|.:*~=>%]+)$/;
  * los acordes de las canciones vienen en mayúscula (DO, LA, Am). Así "Vamos a brillar, mi amor"
  * no se toma como renglón de acordes (2026-10-04).
  */
-function parseAcordeEnLetra(token: string) {
-  if (/^[a-záéíóúüñ]+[#b]?$/.test(token)) {
-    return null;
-  }
-
-  return parseAcordeToken(token);
-}
 
 /** Nota suelta en minúscula ("si do do# re"): bajos o melodía escritos junto a los acordes. */
 const NOTA_SUELTA_PATTERN = /^(?:do|re|mi|fa|sol|la|si)[#b]?[,.]?$/;
 
 type TokenRenglon =
-  | { tipo: "acorde"; start: number; acorde: NonNullable<ReturnType<typeof parseAcordeToken>> }
+  | {
+      tipo: "acorde";
+      start: number;
+      token: string;
+      acorde: ParsedAcorde;
+      /** Inicio del tramo reconocido, dentro de la palabra. */
+      desde: number;
+      /** Fin del tramo reconocido, dentro de la palabra. */
+      hasta: number;
+    }
   | { tipo: "texto"; start: number; token: string }
   | { tipo: "desconocido"; start: number; token: string };
+
+function esPalabraMinuscula(token: string): boolean {
+  return /^[a-záéíóúüñ]+[#b]?$/.test(token);
+}
+
+/**
+ * El tramo más largo que ya es un acorde. `desde`/`hasta` marcan ese tramo
+ * dentro de la palabra original (los corchetes de afuera no entran).
+ */
+function reconocerEnPalabra(
+  token: string,
+): { acorde: ParsedAcorde; desde: number; hasta: number } | null {
+  if (esPalabraMinuscula(token)) {
+    return null;
+  }
+
+  const directo = reconocerAcordeDesdeLaIzquierda(token);
+
+  if (directo) {
+    return { acorde: directo.acorde, desde: 0, hasta: directo.usado };
+  }
+
+  const inicio = /^[[(>]+/.exec(token)?.[0].length ?? 0;
+  const cierre = /[\])]+$/.exec(token.slice(inicio))?.[0].length ?? 0;
+  const interior = token.slice(inicio, token.length - cierre);
+
+  if (!interior || interior === token || esPalabraMinuscula(interior)) {
+    return null;
+  }
+
+  const adentro = reconocerAcordeDesdeLaIzquierda(interior);
+
+  if (!adentro) {
+    return null;
+  }
+
+  return {
+    acorde: adentro.acorde,
+    desde: inicio,
+    hasta: inicio + adentro.usado,
+  };
+}
 
 /**
  * Clasifica cada palabra de un renglón de acordes:
  * - acorde (también entre corchetes o paréntesis: "[Gm", "C]", "(G)");
+ *   si después sobran caracteres, el acorde igual se rescata;
  * - texto que acompaña ("[Intro]", "(x2)", "x4", "-", notas sueltas en minúscula),
  *   que se conserva como texto;
- * - desconocido.
+ * - desconocido: no hay ningún acorde que la app ya use.
  */
 function clasificarTokensRenglon(line: string): TokenRenglon[] {
   return tokenizeChordLine(line).map(({ token, start }) => {
-    const directo = parseAcordeEnLetra(token);
-
-    if (directo) {
-      return { tipo: "acorde", start, acorde: directo };
-    }
-
     const inicio = /^[[(>]+/.exec(token)?.[0].length ?? 0;
     const interior = token.slice(inicio).replace(/[\])]+$/, "");
+    const reconocido = reconocerEnPalabra(token);
 
-    if (interior && interior !== token) {
-      const acorde = parseAcordeEnLetra(interior);
-
-      if (acorde) {
-        return { tipo: "acorde", start: start + inicio, acorde };
-      }
+    if (reconocido) {
+      return {
+        tipo: "acorde",
+        start,
+        token,
+        acorde: reconocido.acorde,
+        desde: reconocido.desde,
+        hasta: reconocido.hasta,
+      };
     }
 
     if (
@@ -160,6 +207,105 @@ export function isChordLine(line: string): boolean {
   const parsedCount = tokens.filter((item) => item.tipo === "acorde").length;
 
   return parsedCount > 0 && parsedCount / tokens.length >= 0.6;
+}
+
+export type FragmentoIngreso =
+  | { tipo: "plano"; texto: string }
+  | { tipo: "rojo"; texto: string }
+  | { tipo: "amarillo"; texto: string };
+
+export type RevisionIngresoAcorde = {
+  fragmentos: FragmentoIngreso[];
+  hayRojo: boolean;
+  hayAmarillo: boolean;
+};
+
+export const AVISO_ACORDE_EN_ROJO =
+  "Corregí los acordes en rojo para poder seguir.";
+
+function fragmentosDeToken(item: TokenRenglon): FragmentoIngreso[] {
+  if (item.tipo === "texto") {
+    return [{ tipo: "plano", texto: item.token }];
+  }
+
+  if (item.tipo === "desconocido") {
+    return [{ tipo: "rojo", texto: item.token }];
+  }
+
+  const partes: FragmentoIngreso[] = [];
+  const antes = item.token.slice(0, item.desde);
+  const acorde = item.token.slice(item.desde, item.hasta);
+  const despues = item.token.slice(item.hasta);
+
+  if (antes) {
+    partes.push({ tipo: "plano", texto: antes });
+  }
+
+  if (acorde) {
+    partes.push({ tipo: "plano", texto: acorde });
+  }
+
+  if (despues) {
+    const cierre = despues.match(/[)\]]+$/)?.[0] ?? "";
+    const sobra = cierre ? despues.slice(0, -cierre.length) : despues;
+
+    if (sobra) {
+      partes.push({ tipo: "amarillo", texto: sobra });
+    }
+
+    if (cierre) {
+      partes.push({ tipo: "plano", texto: cierre });
+    }
+  }
+
+  return partes;
+}
+
+/** Pinta, en el texto pegado, lo que no se entiende y lo que se va a perder. */
+export function revisarIngresoAcorde(text: string): RevisionIngresoAcorde {
+  const lineas = text.split("\n");
+  const fragmentos: FragmentoIngreso[] = [];
+  let hayRojo = false;
+  let hayAmarillo = false;
+
+  lineas.forEach((linea, indice) => {
+    if (indice > 0) {
+      fragmentos.push({ tipo: "plano", texto: "\n" });
+    }
+
+    if (!isChordLine(linea)) {
+      fragmentos.push({ tipo: "plano", texto: linea });
+      return;
+    }
+
+    let cursor = 0;
+
+    for (const item of clasificarTokensRenglon(linea)) {
+      if (item.start > cursor) {
+        fragmentos.push({ tipo: "plano", texto: linea.slice(cursor, item.start) });
+      }
+
+      for (const parte of fragmentosDeToken(item)) {
+        fragmentos.push(parte);
+
+        if (parte.tipo === "rojo") {
+          hayRojo = true;
+        }
+
+        if (parte.tipo === "amarillo") {
+          hayAmarillo = true;
+        }
+      }
+
+      cursor = item.start + item.token.length;
+    }
+
+    if (cursor < linea.length) {
+      fragmentos.push({ tipo: "plano", texto: linea.slice(cursor) });
+    }
+  });
+
+  return { fragmentos, hayRojo, hayAmarillo };
 }
 
 /**
@@ -214,7 +360,7 @@ function parseChordLinePair(
 
     acordes.push({
       lineIndex,
-      charOffset: charOffsetEnColumnaOriginal(item.start),
+      charOffset: charOffsetEnColumnaOriginal(item.start + item.desde),
       noteIndex: parsed.noteIndex,
       modifier: parsed.modifier,
       ...(parsed.bassNoteIndex !== undefined

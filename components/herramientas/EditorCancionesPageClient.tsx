@@ -2,6 +2,7 @@
 
 import { hayConexion } from "@/lib/conexion";
 import CifradoEditorMobile from "@/components/cifrado/CifradoEditorMobile";
+import type { CifradoEditorWebImportData } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
 import CifradoEditor from "@/components/ui/CifradoEditor";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
@@ -15,6 +16,7 @@ import {
   type CifradoEditorPersistPayload,
   type CifradoEditorSession,
 } from "@/lib/cifrado-editor-session";
+import { tomarWebAltaPendiente } from "@/lib/cancionero-web-alta";
 import { clampBpm } from "@/lib/cifrado";
 import { normalizeModoTonal } from "@/lib/cifrado-escala";
 import {
@@ -57,8 +59,19 @@ export default function EditorCancionesPageClient() {
         : "Volver al cancionero";
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [session, setSession] = useState<CifradoEditorSession | null>(null);
+  const [webImport, setWebImport] = useState<CifradoEditorWebImportData | null>(
+    null,
+  );
   const [ready, setReady] = useState(false);
   const online = hayConexion();
+
+  useEffect(() => {
+    if (searchParams.get("web") !== "1") {
+      return;
+    }
+
+    setWebImport(tomarWebAltaPendiente());
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadSession() {
@@ -240,8 +253,12 @@ export default function EditorCancionesPageClient() {
   const handleSavedMobile = useCallback(async (result?: CifradoSaveResult) => {
     await actualizarCopiaLocalEditada(result);
     await syncCancionero();
+    if (searchParams.get("web") === "1" && result?.id != null) {
+      router.push(`/canciones/cancionero?ver=${result.id}`);
+      return;
+    }
     router.push(backHref);
-  }, [actualizarCopiaLocalEditada, backHref, router, syncCancionero]);
+  }, [actualizarCopiaLocalEditada, backHref, router, searchParams, syncCancionero]);
 
   const handleSavedDesktop = useCallback(async (result?: CifradoSaveResult) => {
     await actualizarCopiaLocalEditada(result);
@@ -260,6 +277,7 @@ export default function EditorCancionesPageClient() {
           presentation="page"
           isLoggedIn
           session={session}
+          webImportInicial={webImport}
           onClose={() => {
             router.push(desde === "hub" ? "/canciones/cancionero" : backHref);
           }}
@@ -270,6 +288,7 @@ export default function EditorCancionesPageClient() {
         <CifradoEditorMobile
           session={session}
           isLoggedIn
+          webImportInicial={webImport}
           showBasicSongsTab
           backHref={backHref}
           backAriaLabel={backAriaLabel}

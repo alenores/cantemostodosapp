@@ -317,6 +317,99 @@ function parseAcordeCore(token: string): ParsedAcorde | null {
   };
 }
 
+/**
+ * El texto entero es un acorde que la app ya usa.
+ * No recorta: si sobra algo, no sirve.
+ */
+function parseAcordeCompleto(token: string): ParsedAcorde | null {
+  if (!token || token.length > 24) {
+    return null;
+  }
+
+  const slashIndex = token.indexOf("/");
+
+  if (slashIndex !== -1) {
+    const left = token.slice(0, slashIndex);
+    const right = token.slice(slashIndex + 1);
+
+    if (!left || !right || right.includes("/")) {
+      return null;
+    }
+
+    const chord = parseAcordeSinBarraCompleto(left);
+    const bassNoteIndex = parseNotaSolaCompleta(right);
+
+    if (!chord || bassNoteIndex === null) {
+      return null;
+    }
+
+    return {
+      ...chord,
+      bassNoteIndex,
+    };
+  }
+
+  return parseAcordeSinBarraCompleto(token);
+}
+
+function parseAcordeSinBarraCompleto(token: string): ParsedAcorde | null {
+  const normalized = token.toLowerCase();
+
+  for (const { alias, index } of NOTE_ALIASES) {
+    if (!normalized.startsWith(alias)) {
+      continue;
+    }
+
+    const sufijo = parseSufijoCompleto(token.slice(alias.length));
+
+    if (!sufijo) {
+      continue;
+    }
+
+    return {
+      noteIndex: normalizeNotaIndex(index),
+      modifier: sufijo.modifier,
+      ...(sufijo.agregada !== undefined ? { agregada: sufijo.agregada } : {}),
+    };
+  }
+
+  return null;
+}
+
+/** La palabra entera es una nota, sin nada más (el bajo de un acorde con /). */
+function parseNotaSolaCompleta(token: string): NotaIndex | null {
+  const normalized = token.toLowerCase();
+
+  for (const { alias, index } of NOTE_ALIASES) {
+    if (normalized === alias) {
+      return normalizeNotaIndex(index);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Lee de izquierda a derecha y se queda con el tramo más largo que ya es un
+ * acorde de la app. Lo que sigue no entra en el acorde.
+ */
+export function reconocerAcordeDesdeLaIzquierda(
+  token: string,
+): { acorde: ParsedAcorde; usado: number } | null {
+  const limite = Math.min(token.length, 24);
+  let mejor: { acorde: ParsedAcorde; usado: number } | null = null;
+
+  for (let usado = 1; usado <= limite; usado += 1) {
+    const acorde = parseAcordeCompleto(token.slice(0, usado));
+
+    if (acorde) {
+      mejor = { acorde, usado };
+    }
+  }
+
+  return mejor;
+}
+
 export function parseAcordeToken(token: string): ParsedAcorde | null {
   const trimmed = token.trim();
 

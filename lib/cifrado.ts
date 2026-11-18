@@ -60,6 +60,30 @@ export const NOTAS_AGREGADAS = [2, 4, 6, 9, 11, 13] as const;
 
 export type NotaAgregada = (typeof NOTAS_AGREGADAS)[number];
 
+/** El acorde guardado usa solo nota, tipo y bajo que la app ya contempla. */
+export function acordeEstaContemplado(acorde: {
+  noteIndex: number;
+  modifier: string;
+  bassNoteIndex?: number;
+  agregada?: number;
+}): boolean {
+  const notaOk = Number.isInteger(acorde.noteIndex) && acorde.noteIndex >= 0 && acorde.noteIndex <= 11;
+  const tipoOk = MODIFICADORES.some((item) => item.id === acorde.modifier);
+  const bajoOk =
+    acorde.bassNoteIndex === undefined ||
+    (Number.isInteger(acorde.bassNoteIndex) &&
+      acorde.bassNoteIndex >= 0 &&
+      acorde.bassNoteIndex <= 11);
+  const agregadaOk =
+    acorde.agregada === undefined ||
+    (NOTAS_AGREGADAS as readonly number[]).includes(acorde.agregada);
+
+  return notaOk && tipoOk && bajoOk && agregadaOk;
+}
+
+export const AVISO_ACORDE_NO_CONTEMPLADO =
+  "Hay un acorde que la app no contempla. Corregilo antes de guardar.";
+
 export type TipoCompas = "4-4" | "3-4" | "6-8";
 
 export const COMPAS_LABELS: Record<TipoCompas, string> = {

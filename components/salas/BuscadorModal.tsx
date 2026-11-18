@@ -9,6 +9,7 @@ import {
   CASCADE_STAGGER_MS,
 } from "@/components/cancionero/CancioneroListSkeleton";
 import AcordesEmbedPrimeraVezHint from "@/components/salas/AcordesEmbedPrimeraVezHint";
+import BuscadorListaVirtual from "@/components/salas/BuscadorListaVirtual";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import ValidacionMarcaIcon from "@/components/cancionero/ValidacionMarcaIcon";
 import { SitioLetraBadge } from "@/components/salas/LetraFuenteSitioBadge";
@@ -16,10 +17,7 @@ import LetraTexto from "@/components/salas/LetraTexto";
 import LetraViewer, {
   LetraRevealFullControl,
 } from "@/components/salas/LetraViewer";
-import CancioneroFormModal from "@/components/ui/CancioneroFormModal";
-import { TapButton } from "@/components/ui/TapFeedback";
 import {
-  esAcordesDeCanciones,
   esCifraClub,
   getResultadoIconoTipo,
   isResultadoPremium,
@@ -34,20 +32,15 @@ import {
 } from "@/lib/letra-display";
 import { useAcordesEmbedPrimeraVez } from "@/hooks/useAcordesEmbedPrimeraVez";
 import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
-import { useCategoriaUsuario } from "@/hooks/useCategoriaUsuario";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { usePremiumCancioneroIds } from "@/hooks/usePremiumCancioneroIds";
 import { type CancionInput } from "@/lib/cola-logic";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { formatDatabaseError } from "@/lib/supabase/errors";
-import { agregarAMisCanciones, getMisCanciones } from "@/lib/mis-canciones";
+import { getMisCanciones } from "@/lib/mis-canciones";
 import {
   filterCancionesCancionero,
-  getDuplicadoCancioneroNivel,
-  guardarLetraEnCancionero,
-  guardarLinkEnCancionero,
-  type CancioneroFormData,
 } from "@/lib/cancionero";
 import { getArtistas } from "@/lib/artistas";
 import {
@@ -55,7 +48,6 @@ import {
   artistasConFotoLocal,
   leerArtistasFotos,
 } from "@/lib/offline/artista-fotos";
-import { puedeSumarCanciones } from "@/lib/usuarios-categorias";
 import {
   buscarEnCancionero,
   loadCancionesParaBusqueda,
@@ -84,7 +76,6 @@ import {
   Eye,
   ArrowLeft,
   Bookmark,
-  Check,
   Link2,
   ListPlus,
   Music,
@@ -126,15 +117,6 @@ type ResultadosAgrupados = {
   cancionero: ResultadoBusquedaBuscador[];
   linksGuardados: ResultadoBusquedaBuscador[];
   internet: ResultadoBusquedaBuscador[];
-};
-
-type ConfirmacionGuardado = "letra" | "link" | null;
-
-type GuardarLetraModalState = {
-  nombre: string;
-  artista: string;
-  letra: string;
-  url: string;
 };
 
 type FuenteHomeBusqueda = "general" | "mis_canciones";
@@ -185,8 +167,6 @@ function mapMisCancionAResultado(
     fuente: "link-guardado",
   };
 }
-
-const CONFIRMACION_MS = 1500;
 
 function toCancionInput(resultado: ResultadoBusquedaBuscador): CancionInput {
   const letraTexto = resultado.letra?.trim() || null;
@@ -392,27 +372,30 @@ function SeccionResultados({
         </div>
       ) : null}
       {resultados.length > 0 ? (
-        <ul className="flex flex-col gap-2">
-          {resultados.map((resultado, index) => (
-            <li
-              key={resultadoKey(resultado)}
-              className={cascadeActive ? "cancionero-item-cascade" : undefined}
-              style={
-                cascadeActive
-                  ? { animationDelay: getCascadeDelay(cascadeStartIndex + index) }
-                  : undefined
-              }
-            >
-              <ResultadoItem
-                resultado={resultado}
-                onSelect={onSelect}
-                premiumIds={premiumIds}
-                favoritaIds={favoritaIds}
-                artistaAvatarUrl={fotoArtista(resultado)}
-              />
-            </li>
-          ))}
-        </ul>
+        <BuscadorListaVirtual
+          items={resultados}
+          getKey={resultadoKey}
+          revision={`${resultados.length}:${resultadoKey(resultados[0]!)}:${resultadoKey(resultados[resultados.length - 1]!)}`}
+          getItemClassName={
+            cascadeActive ? () => "cancionero-item-cascade" : undefined
+          }
+          getItemStyle={
+            cascadeActive
+              ? (_resultado, index) => ({
+                  animationDelay: getCascadeDelay(cascadeStartIndex + index),
+                })
+              : undefined
+          }
+          renderItem={(resultado) => (
+            <ResultadoItem
+              resultado={resultado}
+              onSelect={onSelect}
+              premiumIds={premiumIds}
+              favoritaIds={favoritaIds}
+              artistaAvatarUrl={fotoArtista(resultado)}
+            />
+          )}
+        />
       ) : null}
       {trailing}
     </div>
@@ -436,16 +419,9 @@ export default function BuscadorModal({
   const router = useRouter();
   const online = useOnlineStatus();
   const aliasBusqueda = useAliasBusqueda();
-  const categoria = useCategoriaUsuario();
-  /** Solo dueño y amigos suman canciones al Cancionero: al resto no se le muestra «Guardar». */
-  const puedeGuardarEnCancionero =
-    (!isHome || usuarioLogueado) && puedeSumarCanciones(categoria);
   const premiumIds = usePremiumCancioneroIds();
   const inputRef = useRef<HTMLInputElement>(null);
   const pantallaRef = useRef<Pantalla>("busqueda");
-  const confirmacionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
   const localCascadeTimerRef = useRef<number | undefined>(undefined);
   const internetCascadeTimerRef = useRef<number | undefined>(undefined);
   const webRequestRef = useRef(0);
@@ -467,11 +443,7 @@ export default function BuscadorModal({
   const [webError, setWebError] = useState<string | null>(null);
   const [webQuery, setWebQuery] = useState<string | null>(null);
   const [cancioneroListo, setCancioneroListo] = useState(false);
-  const [confirmacion, setConfirmacion] = useState<ConfirmacionGuardado>(null);
-  const [fabGuardarAbierto, setFabGuardarAbierto] = useState(false);
   const [embedFullRevealed, setEmbedFullRevealed] = useState(false);
-  const [guardarLetraModal, setGuardarLetraModal] =
-    useState<GuardarLetraModalState | null>(null);
   const [cancionesCancionero, setCancionesCancionero] = useState<
     CancionCancionero[]
   >([]);
@@ -488,11 +460,7 @@ export default function BuscadorModal({
   const [artistas, setArtistas] = useState<Artista[]>([]);
   const revokeFotosRef = useRef<() => void>(() => {});
   const [loadingMisCanciones, setLoadingMisCanciones] = useState(false);
-  const [previewEsMisCanciones, setPreviewEsMisCanciones] = useState(false);
   const [promptVerAhoraSala, setPromptVerAhoraSala] = useState(false);
-  const [guardadoRecienteId, setGuardadoRecienteId] = useState<number | null>(
-    null,
-  );
 
   const mostrandoMisCanciones =
     isHome && fuenteHome === "mis_canciones" && usuarioLogueado;
@@ -590,11 +558,6 @@ export default function BuscadorModal({
     webRequestRef.current += 1;
     cargaGenRef.current += 1;
 
-    if (confirmacionTimerRef.current) {
-      clearTimeout(confirmacionTimerRef.current);
-      confirmacionTimerRef.current = null;
-    }
-
     pantallaRef.current = "busqueda";
     setPantalla("busqueda");
     setQuery("");
@@ -607,10 +570,7 @@ export default function BuscadorModal({
     setWebError(null);
     setWebQuery(null);
     setCancioneroListo(false);
-    setConfirmacion(null);
-    setFabGuardarAbierto(false);
     setEmbedFullRevealed(false);
-    setGuardarLetraModal(null);
     setCancionesCancionero([]);
     setCancionesLocales([]);
     setPracticaItems([]);
@@ -620,9 +580,7 @@ export default function BuscadorModal({
     setMisCanciones([]);
     setArtistas([]);
     setLoadingMisCanciones(false);
-    setPreviewEsMisCanciones(false);
     setPromptVerAhoraSala(false);
-    setGuardadoRecienteId(null);
 
     if (localCascadeTimerRef.current !== undefined) {
       window.clearTimeout(localCascadeTimerRef.current);
@@ -723,18 +681,8 @@ export default function BuscadorModal({
   }, [onClose, resetState]);
 
   useHardwareBack(open, () => {
-    if (fabGuardarAbierto) {
-      setFabGuardarAbierto(false);
-      return;
-    }
-
     if (promptVerAhoraSala) {
       setPromptVerAhoraSala(false);
-      return;
-    }
-
-    if (confirmacion) {
-      setConfirmacion(null);
       return;
     }
 
@@ -879,10 +827,6 @@ export default function BuscadorModal({
 
   useEffect(() => {
     return () => {
-      if (confirmacionTimerRef.current) {
-        clearTimeout(confirmacionTimerRef.current);
-      }
-
       if (localCascadeTimerRef.current !== undefined) {
         window.clearTimeout(localCascadeTimerRef.current);
       }
@@ -903,19 +847,6 @@ export default function BuscadorModal({
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-  }
-
-  function mostrarConfirmacion(tipo: Exclude<ConfirmacionGuardado, null>) {
-    setConfirmacion(tipo);
-
-    if (confirmacionTimerRef.current) {
-      clearTimeout(confirmacionTimerRef.current);
-    }
-
-    confirmacionTimerRef.current = setTimeout(() => {
-      setConfirmacion(null);
-      confirmacionTimerRef.current = null;
-    }, CONFIRMACION_MS);
   }
 
   function handleQueryChange(value: string) {
@@ -1053,9 +984,6 @@ export default function BuscadorModal({
     }
 
     setSeleccionado(elegido);
-    setPreviewEsMisCanciones((isHome && fuenteHome === "mis_canciones") || resultado.fuente === "practica");
-    setConfirmacion(null);
-    setFabGuardarAbierto(false);
     setEmbedFullRevealed(false);
     setPromptVerAhoraSala(false);
     setError(null);
@@ -1067,8 +995,6 @@ export default function BuscadorModal({
     pantallaRef.current = "busqueda";
     setPantalla("busqueda");
     setSeleccionado(null);
-    setConfirmacion(null);
-    setFabGuardarAbierto(false);
     setEmbedFullRevealed(false);
     setPromptVerAhoraSala(false);
     setError(null);
@@ -1241,123 +1167,9 @@ export default function BuscadorModal({
 
 
 
-  async function handleGuardarLink() {
-    if (!seleccionado || accionLoading) {
-      return;
-    }
-
-    setAccionLoading(true);
-    setError(null);
-
-    const supabase = createClient();
-
-    try {
-      const { nombre, artista } = resolverNombreArtistaDisplay(
-        seleccionado.titulo,
-        seleccionado.artista,
-      );
-
-      await guardarLinkEnCancionero(supabase, {
-        nombre,
-        artista: artista || null,
-        url_letra: seleccionado.url,
-      });
-      await onDataChange?.();
-      setFabGuardarAbierto(false);
-      mostrarConfirmacion("link");
-    } catch (actionError) {
-      setError(
-        actionError instanceof Error
-          ? actionError.message
-          : "Error al guardar el link",
-      );
-    } finally {
-      setAccionLoading(false);
-    }
-  }
-
-  async function handleGuardarLetraDesdeModal(form: CancioneroFormData) {
-    if (!guardarLetraModal) {
-      return;
-    }
-
-    const supabase = createClient();
-
-    await guardarLetraEnCancionero(supabase, {
-      nombre: form.nombre,
-      artista: form.artista,
-      letra: form.letra,
-      url_letra: guardarLetraModal.url,
-    });
-  }
-
-  async function handleGuardarLetraCompleta() {
-    if (!seleccionado || accionLoading) {
-      return;
-    }
-
-    setAccionLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        `/api/obtener-letra?url=${encodeURIComponent(seleccionado.url)}`,
-      );
-      const data = (await response.json()) as {
-        letra?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !data.letra?.trim()) {
-        throw new Error(
-          data.error ?? "No se pudo extraer la letra de esta canción",
-        );
-      }
-
-      const { nombre, artista } = resolverNombreArtistaDisplay(
-        seleccionado.titulo,
-        seleccionado.artista,
-      );
-
-      if (esAcordesDeCanciones(seleccionado.sitio, seleccionado.url)) {
-        const supabase = createClient();
-        await guardarLetraEnCancionero(supabase, {
-          nombre,
-          artista: artista || null,
-          letra: data.letra,
-          url_letra: seleccionado.url,
-        });
-        await onDataChange?.();
-        await cargarCancionesCancionero();
-        setFabGuardarAbierto(false);
-        mostrarConfirmacion("letra");
-        return;
-      }
-
-      setGuardarLetraModal({
-        nombre,
-        artista,
-        letra: data.letra,
-        url: seleccionado.url,
-      });
-      setFabGuardarAbierto(false);
-    } catch (actionError) {
-      setError(
-        actionError instanceof Error
-          ? actionError.message
-          : "Error al guardar la letra",
-      );
-    } finally {
-      setAccionLoading(false);
-    }
-  }
-
   const esCancioneroPreview = seleccionado?.fuente === "cancionero";
   const esLinkGuardadoPreview = seleccionado?.fuente === "link-guardado";
   const esInternetPreview = seleccionado?.fuente === "internet";
-  const esAcordesSitio =
-    seleccionado &&
-    esAcordesDeCanciones(seleccionado.sitio, seleccionado.url);
   const esCifraSitio =
     seleccionado && esCifraClub(seleccionado.sitio, seleccionado.url);
 
@@ -1371,45 +1183,6 @@ export default function BuscadorModal({
       seleccionado.artista,
     );
   }, [seleccionado]);
-
-  const duplicadoCompletoEnPreview = useMemo(() => {
-    if (!seleccionadoDisplay) {
-      return false;
-    }
-
-    return (
-      getDuplicadoCancioneroNivel(
-        cancionesCancionero,
-        seleccionadoDisplay.nombre,
-        seleccionadoDisplay.artista,
-      ) === "nombre-artista"
-    );
-  }, [seleccionadoDisplay, cancionesCancionero]);
-
-  const guardarDeshabilitado =
-    !online ||
-    (isHome && !usuarioLogueado) ||
-    Boolean(
-      esCancioneroPreview ||
-        seleccionado?.fuente === "practica" ||
-        (esLinkGuardadoPreview && esCifraSitio) ||
-        duplicadoCompletoEnPreview,
-    );
-
-  const guardarAccionDirecta = Boolean(
-    esInternetPreview && (esCifraSitio || esAcordesSitio),
-  );
-
-  const guardarAbreFab = Boolean(
-    (esInternetPreview && esAcordesSitio) ||
-      (esLinkGuardadoPreview && esAcordesSitio),
-  );
-
-  const fabMuestraLink = Boolean(esInternetPreview && esAcordesSitio);
-  const fabMuestraCancion = Boolean(
-    (esInternetPreview && esAcordesSitio) ||
-      (esLinkGuardadoPreview && esAcordesSitio),
-  );
 
   const previewConLetraLocal =
     (seleccionado?.fuente === "cancionero" ||
@@ -1466,36 +1239,8 @@ export default function BuscadorModal({
       return "Se muestra como página web de Cifra Club, con menús y elementos del sitio.";
     }
 
-    if (esAcordesSitio) {
-      return "Se muestra como página web. Al guardar la letra completa se ve en hoja blanca.";
-    }
-
     return "Se muestra como página web.";
   })();
-
-  function handleGuardarTap() {
-    if (
-      !seleccionado ||
-      !puedeGuardarEnCancionero ||
-      guardarDeshabilitado ||
-      accionLoading
-    ) {
-      return;
-    }
-
-    if (guardarAccionDirecta) {
-      if (esAcordesSitio) {
-        void handleGuardarLetraCompleta();
-      } else {
-        void handleGuardarLink();
-      }
-      return;
-    }
-
-    if (guardarAbreFab) {
-      setFabGuardarAbierto((abierto) => !abierto);
-    }
-  }
 
   const buscadorCargando =
     !cancioneroListo ||
@@ -1803,12 +1548,12 @@ export default function BuscadorModal({
                 </div>
               </header>
 
-              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame pt-1.5 pb-2">
-                <p className="mb-1 shrink-0 px-[10%] text-xs font-semibold uppercase tracking-wide text-text-primary">
-                  Previsualización
-                </p>
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="relative mx-[10%] h-[80%] min-h-0 overflow-hidden rounded-[12px] border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-preview-frame">
+                <div className="flex h-full min-h-0 flex-col justify-center px-[5%] py-4">
+                  <p className="mb-2 shrink-0 text-center text-base font-bold uppercase tracking-wide text-text-primary">
+                    Previsualización
+                  </p>
+                  <div className="relative h-[50%] min-h-0 shrink-0 overflow-hidden rounded-[12px] border-2 border-dashed border-accent/85 shadow-[0_10px_40px_rgba(0,0,0,0.48),0_4px_12px_rgba(0,0,0,0.28)]">
                     {!previewConLetraLocal && previewIframeConRecorteInicial ? (
                       <LetraRevealFullControl
                         onRevealFull={handleRevealEmbedFull}
@@ -1834,49 +1579,9 @@ export default function BuscadorModal({
                       />
                     )}
 
-                    {fabGuardarAbierto && fabMuestraCancion && (
-                      <>
-                        <button
-                          type="button"
-                          aria-label="Cerrar opciones de guardado"
-                          className="absolute inset-0 z-10"
-                          onClick={() => setFabGuardarAbierto(false)}
-                        />
-                        <div className="absolute bottom-3 right-2 z-20 flex flex-col gap-2">
-                          <TapButton
-                            aria-label={
-                              esLinkGuardadoPreview
-                                ? "Guardar canción"
-                                : "Guardar letra completa"
-                            }
-                            disabled={accionLoading}
-                            onClick={() => void handleGuardarLetraCompleta()}
-                            className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
-                          >
-                            <Bookmark className="size-4 shrink-0 text-accent" />
-                            {accionLoading
-                              ? "Cargando letra..."
-                              : esLinkGuardadoPreview
-                                ? "Guardar canción"
-                                : "Guardar letra completa"}
-                          </TapButton>
-                          {fabMuestraLink && (
-                            <TapButton
-                              aria-label="Guardar link"
-                              disabled={accionLoading}
-                              onClick={() => void handleGuardarLink()}
-                              className="flex min-h-11 items-center gap-2 rounded-full border border-border bg-bg-card px-4 py-2 text-sm font-semibold text-text-primary shadow-[0_6px_20px_rgba(0,0,0,0.38)] disabled:opacity-60"
-                            >
-                              <Link2 className="size-4 shrink-0 text-accent" />
-                              Guardar link
-                            </TapButton>
-                          )}
-                        </div>
-                      </>
-                    )}
                   </div>
 
-                  <div className="mx-[10%] flex min-h-0 flex-1 flex-col justify-start gap-1 pt-2">
+                  <div className="flex shrink-0 flex-col gap-1 pt-2">
                     <div className="flex items-center gap-2">
                       <LetraFuenteIcon tipo={previewIconoTipo} compact />
                       {esCancioneroPreview ? null : (
@@ -1894,34 +1599,6 @@ export default function BuscadorModal({
                   </div>
                 </div>
 
-                {confirmacion && (
-                  <button
-                    type="button"
-                    aria-label="Cerrar confirmación"
-                    onClick={() => setConfirmacion(null)}
-                    className="absolute inset-0 z-30 flex items-center justify-center bg-black/40"
-                  >
-                    <div
-                      role="status"
-                      className="flex flex-col items-center gap-3 rounded-[16px] border border-border bg-bg-card px-8 py-6 shadow-xl"
-                    >
-                      <div
-                        className="flex size-14 items-center justify-center rounded-full"
-                        style={{ backgroundColor: "var(--tuner-in-tune)" }}
-                      >
-                        <Check
-                          className="size-8 text-white"
-                          aria-hidden="true"
-                        />
-                      </div>
-                      <p className="text-lg font-bold text-text-primary">
-                        {confirmacion === "letra"
-                          ? "¡Guardada!"
-                          : "¡Link guardado!"}
-                      </p>
-                    </div>
-                  </button>
-                )}
               </div>
 
               <footer className="shrink-0 border-t border-border bg-bg-darker px-4 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
@@ -1934,13 +1611,7 @@ export default function BuscadorModal({
                 )}
 
                 {isHome ? (
-                  <div
-                    className={`grid gap-1.5 ${
-                      previewEsMisCanciones || !puedeGuardarEnCancionero
-                        ? "grid-cols-2"
-                        : "grid-cols-[2fr_2fr_1fr]"
-                    }`}
-                  >
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       disabled={accionLoading || !hasActivaOPendiente}
@@ -1966,25 +1637,9 @@ export default function BuscadorModal({
                       <Eye className="size-4 shrink-0" aria-hidden="true" />
                       <span className="text-center leading-tight">Ver ahora</span>
                     </button>
-
-                    {!previewEsMisCanciones && puedeGuardarEnCancionero ? (
-                      <button
-                        type="button"
-                        disabled={accionLoading || guardarDeshabilitado}
-                        onClick={handleGuardarTap}
-                        className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
-                      >
-                        <Bookmark className="size-4 shrink-0" aria-hidden="true" />
-                        <span className="text-center leading-tight">Guardar</span>
-                      </button>
-                    ) : null}
                   </div>
                 ) : (
-                  <div
-                    className={`grid gap-1.5 ${
-                      puedeGuardarEnCancionero ? "grid-cols-[2fr_2fr_1fr]" : "grid-cols-2"
-                    }`}
-                  >
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       disabled={accionLoading}
@@ -2007,18 +1662,6 @@ export default function BuscadorModal({
                       <Eye className="size-4 shrink-0" aria-hidden="true" />
                       <span className="text-center leading-tight">Ver ahora</span>
                     </button>
-
-                    {puedeGuardarEnCancionero ? (
-                      <button
-                        type="button"
-                        disabled={accionLoading || guardarDeshabilitado}
-                        onClick={handleGuardarTap}
-                        className="flex min-h-10 flex-col items-center justify-center gap-0 rounded-[10px] border border-border bg-bg-card px-1 py-1 text-xs font-semibold text-text-primary disabled:border-border-subtle disabled:text-text-faint"
-                      >
-                        <Bookmark className="size-4 shrink-0" aria-hidden="true" />
-                        <span className="text-center leading-tight">Guardar</span>
-                      </button>
-                    ) : null}
                   </div>
                 )}
               </footer>
@@ -2026,27 +1669,6 @@ export default function BuscadorModal({
           )}
         </section>
       </div>
-
-      {guardarLetraModal && (
-        <CancioneroFormModal
-          open
-          title="Guardar en cancionero"
-          cancionesExistentes={cancionesCancionero}
-          initialValues={{
-            nombre: guardarLetraModal.nombre,
-            artista: guardarLetraModal.artista,
-            letra: guardarLetraModal.letra,
-          }}
-          onSubmit={handleGuardarLetraDesdeModal}
-          onClose={() => setGuardarLetraModal(null)}
-          onSaved={() => {
-            void onDataChange?.();
-            void cargarCancionesCancionero();
-            mostrarConfirmacion("letra");
-            setGuardarLetraModal(null);
-          }}
-        />
-      )}
 
       <ConfirmDialog
         open={promptVerAhoraSala}

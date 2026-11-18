@@ -497,7 +497,7 @@ export async function guardarLetraEnCancionero(
     letra: string;
     url_letra?: string;
   },
-): Promise<void> {
+): Promise<number> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -520,7 +520,7 @@ export async function guardarLetraEnCancionero(
   }
 
   if (existing) {
-    if (existing.user_id !== userId) return;
+    if (existing.user_id !== userId) return existing.id;
 
     const { error, count } = await supabase
       .from("canciones_guardadas")
@@ -535,21 +535,27 @@ export async function guardarLetraEnCancionero(
     }
     if (count === 0) throw new Error("No tenés permiso para editar esta canción.");
 
-    return;
+    return existing.id;
   }
 
-  const { error } = await supabase.from("canciones_guardadas").insert({
-    sala_id: null,
-    user_id: userId,
-    nombre: data.nombre.trim(),
-    artista: data.artista?.trim() || null,
-    letra: trimmedLetra,
-    url_letra: urlLetra,
-  });
+  const { data: inserted, error } = await supabase
+    .from("canciones_guardadas")
+    .insert({
+      sala_id: null,
+      user_id: userId,
+      nombre: data.nombre.trim(),
+      artista: data.artista?.trim() || null,
+      letra: trimmedLetra,
+      url_letra: urlLetra,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw error;
   }
+
+  return Number(inserted.id);
 }
 
 export async function agregarCancioneroACola(

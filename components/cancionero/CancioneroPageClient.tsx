@@ -17,6 +17,7 @@ import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import CancioneroVirtualGrid from "@/components/cancionero/CancioneroVirtualGrid";
 import ValidacionFichaDialog from "@/components/cancionero/ValidacionFichaDialog";
 import CifradoEditor from "@/components/ui/CifradoEditor";
+import CancioneroBusquedaWebModal from "@/components/cancionero/CancioneroBusquedaWebModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useAutor } from "@/hooks/useAutor";
@@ -55,6 +56,8 @@ import {
   patchValidacionLocal,
 } from "@/lib/offline/cancionero-store";
 import { buildCifradoEditorSession } from "@/lib/cifrado-editor-session";
+import { guardarWebAltaPendiente } from "@/lib/cancionero-web-alta";
+import type { CifradoEditorWebImportData } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
 import type {
   CifradoEditorSession,
   CifradoSaveResult,
@@ -63,6 +66,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   puedeEditarCancionCancionero,
   puedeQuitarValidacion,
+  puedeSumarCanciones,
   puedeValidarCancion,
 } from "@/lib/usuarios-categorias";
 import {
@@ -107,11 +111,13 @@ const SNACKBAR_MS = 3000;
 export type CancioneroPageClientProps = {
   usuarioId: string | null;
   modoSeleccionMisCanciones?: boolean;
+  verCancionId?: number | null;
 };
 
 export default function CancioneroPageClient({
   usuarioId,
   modoSeleccionMisCanciones = false,
+  verCancionId = null,
 }: CancioneroPageClientProps) {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
@@ -135,6 +141,10 @@ export default function CancioneroPageClient({
   const [editorSession, setEditorSession] = useState<CifradoEditorSession | null>(
     null,
   );
+  const [webImport, setWebImport] = useState<CifradoEditorWebImportData | null>(
+    null,
+  );
+  const [busquedaWebOpen, setBusquedaWebOpen] = useState(false);
   const [editorLoading, setEditorLoading] = useState(false);
   const [cancionAEliminar, setCancionAEliminar] = useState<CancionCancionero | null>(
     null,
@@ -146,6 +156,8 @@ export default function CancioneroPageClient({
   );
   const [validacionLoading, setValidacionLoading] = useState(false);
   const validacionEpoch = useRef(0);
+  const verTrasAltaWebRef = useRef(false);
+  const verDesdeUrlHechoRef = useRef<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<number | null>(null);
@@ -551,6 +563,7 @@ export default function CancioneroPageClient({
       });
 
       setEditorSession(session);
+      setWebImport(null);
       setEditorOpen(true);
     } catch (editorError) {
       setActionError(
@@ -580,8 +593,25 @@ export default function CancioneroPageClient({
   }
 
   function handleEditorClose() {
+    verTrasAltaWebRef.current = false;
     setEditorOpen(false);
     setEditorSession(null);
+    setWebImport(null);
+  }
+
+  function abrirAltaDesdeWeb(data: CifradoEditorWebImportData) {
+    verTrasAltaWebRef.current = true;
+    setBusquedaWebOpen(false);
+
+    if (!isDesktop) {
+      guardarWebAltaPendiente(data);
+      navigateWithProgress("/canciones/editor?desde=cancionero&web=1");
+      return;
+    }
+
+    setEditorSession(null);
+    setWebImport(data);
+    setEditorOpen(true);
   }
 
   async function refreshCifradoDetalle(cancionId: number) {
@@ -594,6 +624,9 @@ export default function CancioneroPageClient({
   }
 
   async function handleEditorSaved(result?: CifradoSaveResult) {
+    const abrirGuardada = verTrasAltaWebRef.current && result != null;
+    const guardadaId = result?.id;
+
     if (result) {
       setCanciones((prev) =>
         prev.map((cancion) =>
@@ -631,6 +664,9 @@ export default function CancioneroPageClient({
 
     await reloadCanciones();
     handleEditorClose();
+    if (abrirGuardada && guardadaId != null) {
+      await abrirCancionGuardada(guardadaId);
+    }
   }
 
   function handleVer(cancion: CancionCancionero) {
@@ -644,6 +680,44 @@ export default function CancioneroPageClient({
     setModoLectura(true);
     anotarReciente(cancion.id);
   }
+
+  async function abrirCancionGuardada(id: number) {
+    const { data, error } = await supabase
+      .from("canciones_guardadas")
+      .select(
+        "id, nombre, artista, artista_id, letra, tiene_cifrado_avanzado, user_id, validada_por, validada_en, created_at",
+      )
+      .eq("id", id)
+      .is("sala_id", null)
+      .maybeSingle();
+
+    if (error || !data) {
+      setActionError("No se pudo abrir la canción guardada");
+      return;
+    }
+
+    handleVer({
+      id: data.id,
+      nombre: data.nombre,
+      artista: data.artista,
+      artista_id: data.artista_id,
+      letra: data.letra,
+      tiene_cifrado_avanzado: Boolean(data.tiene_cifrado_avanzado),
+      user_id: data.user_id,
+      validada_por: data.validada_por,
+      validada_en: data.validada_en,
+      created_at: data.created_at,
+    });
+  }
+
+  useEffect(() => {
+    if (verCancionId == null || verDesdeUrlHechoRef.current === verCancionId) {
+      return;
+    }
+
+    verDesdeUrlHechoRef.current = verCancionId;
+    void abrirCancionGuardada(verCancionId);
+  }, [verCancionId]);
 
   function cerrarCancion() {
     setModoLectura(false);
@@ -1066,13 +1140,26 @@ export default function CancioneroPageClient({
                 </p>
               </div>
             ) : cancionesFiltradas.length === 0 && practicaFiltradas.length === 0 ? (
-              <p className="py-8 text-center text-sm text-text-muted">
-                {vistaLista === "recientes"
-                  ? "Todavía no abriste canciones en este celular."
-                  : vistaLista === "favoritas"
-                    ? "Todavía no tenés canciones en Favoritas."
-                    : "No hay canciones que coincidan con tu búsqueda."}
-              </p>
+              <>
+                <p className="py-8 text-center text-sm text-text-muted">
+                  {vistaLista === "recientes"
+                    ? "Todavía no abriste canciones en este celular."
+                    : vistaLista === "favoritas"
+                      ? "Todavía no tenés canciones en Favoritas."
+                      : "No hay canciones que coincidan con tu búsqueda."}
+                </p>
+                {vistaLista === null && online && query.trim() ? (
+                  <div className="flex justify-center pb-8">
+                    <button
+                      type="button"
+                      onClick={() => setBusquedaWebOpen(true)}
+                      className="rounded-[10px] bg-accent px-4 py-2.5 text-sm font-semibold text-white"
+                    >
+                      Buscar en Acordes de Canciones
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="flex flex-col gap-3">
                 <CancioneroVirtualGrid
@@ -1168,8 +1255,24 @@ export default function CancioneroPageClient({
         open={editorOpen}
         isLoggedIn={usuarioLogueado}
         session={editorSession}
+        webImportInicial={webImport}
         onClose={handleEditorClose}
         onSaved={(result) => void handleEditorSaved(result)}
+      />
+
+      <CancioneroBusquedaWebModal
+        open={busquedaWebOpen}
+        consultaInicial={query}
+        puedeDarDeAlta={puedeSumarCanciones(categoria)}
+        onClose={() => setBusquedaWebOpen(false)}
+        onImportar={abrirAltaDesdeWeb}
+        onGuardada={(id) => {
+          setBusquedaWebOpen(false);
+          void (async () => {
+            await reloadCanciones();
+            await abrirCancionGuardada(id);
+          })();
+        }}
       />
 
       <CancioneroVerModal

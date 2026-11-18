@@ -3,6 +3,7 @@
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
+import CifradoIngresoMarcas from "@/components/cifrado/CifradoIngresoMarcas";
 import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
 import CifradoEditorCancioneroPracticaTab from "@/components/cifrado/CifradoEditorCancioneroPracticaTab";
 import {
@@ -56,6 +57,8 @@ import {
   deleteCompasLine,
   DEFAULT_BPM,
   DEFAULT_TONALIDAD,
+  acordeEstaContemplado,
+  AVISO_ACORDE_NO_CONTEMPLADO,
   findAcordeAt,
   insertCifradoLineBelow,
   insertCompasLineBelow,
@@ -86,8 +89,10 @@ import {
 import { DEFAULT_MODO_TONAL, type ModoTonal } from "@/lib/cifrado-escala";
 import {
   analyzePasteIngreso,
+  AVISO_ACORDE_EN_ROJO,
   getPrimerAcordeOrdenado,
   parseLetraTradicional,
+  revisarIngresoAcorde,
   type PasteIngresoAnalysis,
 } from "@/lib/cifrado-import";
 import {
@@ -156,6 +161,8 @@ type CifradoEditorMobileProps = {
    * En el entrenador no aplica: esa lista es otra.
    */
   avisarCancionRepetida?: boolean;
+  /** Alta desde la búsqueda web del cancionero: abre la revisión de esa canción. */
+  webImportInicial?: CifradoEditorWebImportData | null;
 };
 
 /**
@@ -176,6 +183,7 @@ export default function CifradoEditorMobile({
   onSaved,
   anotaciones,
   avisarCancionRepetida = true,
+  webImportInicial = null,
 }: CifradoEditorMobileProps = {}) {
   const basicSongsTabVisible = showBasicSongsTab ?? !onPersist;
   const tabCompacta = onElegirCancionero
@@ -319,6 +327,13 @@ export default function CifradoEditorMobile({
     (ingresoTab === "letra" && draftLyrics.trim().length > 0) ||
     (ingresoTab === "pegar" && draftPaste.trim().length > 0) ||
     (ingresoTab === "web" && pendingWebImport !== null);
+  const revisionPaste = useMemo(
+    () => revisarIngresoAcorde(draftPaste.trim()),
+    [draftPaste],
+  );
+  const ingresoBloqueadoPorRojo =
+    (ingresoTab === "pegar" || (ingresoTab === "web" && pendingWebImport !== null)) &&
+    revisionPaste.hayRojo;
   const pickerExisting = pickerTarget
     ? findAcordeAt(
         cifrado.acordes,
@@ -492,6 +507,11 @@ export default function CifradoEditorMobile({
       const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
       if (!youtubeNormalizado.ok) {
         setError("El link del video no es de YouTube. Corregilo o borralo en Datos y ajustes.");
+        return;
+      }
+
+      if (cifrado.acordes.some((acorde) => !acordeEstaContemplado(acorde))) {
+        setError(AVISO_ACORDE_NO_CONTEMPLADO);
         return;
       }
       const savedId = await onPersist(editingId, {
@@ -1138,6 +1158,11 @@ export default function CifradoEditorMobile({
       return;
     }
 
+    if (revisarIngresoAcorde(trimmed).hayRojo) {
+      setError(AVISO_ACORDE_EN_ROJO);
+      return;
+    }
+
     if (!assertTonalidad()) {
       return;
     }
@@ -1192,6 +1217,22 @@ export default function CifradoEditorMobile({
     setError(null);
   }
 
+  const webImportAplicadoRef = useRef<CifradoEditorWebImportData | null>(null);
+
+  useEffect(() => {
+    if (!webImportInicial) {
+      return;
+    }
+
+    if (webImportAplicadoRef.current === webImportInicial) {
+      return;
+    }
+
+    webImportAplicadoRef.current = webImportInicial;
+    setIngresoTab("web");
+    handleWebImport(webImportInicial);
+  }, [webImportInicial]);
+
   function handleSelectBasicSong(
     cancion: CancionCancionero,
     editable: boolean,
@@ -1220,6 +1261,11 @@ export default function CifradoEditorMobile({
 
     if (!trimmed) {
       setError("Revisá la letra con acordes antes de continuar.");
+      return;
+    }
+
+    if (revisarIngresoAcorde(trimmed).hayRojo) {
+      setError(AVISO_ACORDE_EN_ROJO);
       return;
     }
 
@@ -1432,6 +1478,7 @@ export default function CifradoEditorMobile({
                       style={{ flex: "none", height: "auto", minHeight: 220 }}
                       placeholder="Letra con los acordes encima de cada renglón…"
                     />
+                    <CifradoIngresoMarcas texto={draftPaste} revision={revisionPaste} />
                   </>
                 ) : (
                   <CifradoEditorIngresoWebSearch
@@ -1457,6 +1504,7 @@ export default function CifradoEditorMobile({
                     className={textareaClassName}
                     placeholder="Pegá la letra con los acordes encima de cada renglón…"
                   />
+                  <CifradoIngresoMarcas texto={draftPaste} revision={revisionPaste} />
                 </>
               ) : null}
             </div>
@@ -1556,7 +1604,7 @@ export default function CifradoEditorMobile({
               <TapButton
                 type="button"
                 onClick={handleApplyPaste}
-                disabled={!draftPaste.trim() || !tonalidadLista}
+                disabled={!draftPaste.trim() || !tonalidadLista || ingresoBloqueadoPorRojo}
                 className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
               >
                 Importar y editar
@@ -1567,7 +1615,7 @@ export default function CifradoEditorMobile({
               <TapButton
                 type="button"
                 onClick={handleConfirmWebImport}
-                disabled={!draftPaste.trim() || !tonalidadLista}
+                disabled={!draftPaste.trim() || !tonalidadLista || ingresoBloqueadoPorRojo}
                 className={`mt-4 shrink-0 px-4 py-2.5 text-sm font-bold disabled:opacity-50 ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
               >
                 Importar y editar

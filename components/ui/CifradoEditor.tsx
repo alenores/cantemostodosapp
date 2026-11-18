@@ -9,6 +9,7 @@ import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
+import CifradoIngresoMarcas from "@/components/cifrado/CifradoIngresoMarcas";
 import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
 import CifradoEditorCancioneroPracticaTab from "@/components/cifrado/CifradoEditorCancioneroPracticaTab";
 import {
@@ -146,6 +147,8 @@ import {
   resolveCharOffsetPx,
   renumberLineBarrasCompas,
   upsertAcorde,
+  acordeEstaContemplado,
+  AVISO_ACORDE_NO_CONTEMPLADO,
   type AcordePos,
   type BarraCompas,
   type CifradoData,
@@ -180,8 +183,10 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import {
   analyzePasteIngreso,
+  AVISO_ACORDE_EN_ROJO,
   getPrimerAcordeOrdenado,
   parseLetraTradicional,
+  revisarIngresoAcorde,
   type PasteIngresoAnalysis,
 } from "@/lib/cifrado-import";
 import {
@@ -266,6 +271,8 @@ type CifradoEditorProps = {
    * En el entrenador no aplica: esa lista es otra.
    */
   avisarCancionRepetida?: boolean;
+  /** Alta desde la búsqueda web del cancionero: abre la revisión de esa canción. */
+  webImportInicial?: CifradoEditorWebImportData | null;
 };
 
 type EditorPhase = "ingreso" | "cifrado";
@@ -2679,6 +2686,7 @@ export default function CifradoEditor({
   avisarCancionRepetida = true,
   onAbrirNota,
   tieneNota = false,
+  webImportInicial = null,
 }: CifradoEditorProps) {
   const isPage = isToolPagePresentation(presentation);
   const showCloseButton = !isPage || showPageClose;
@@ -2856,6 +2864,13 @@ export default function CifradoEditor({
       },
     };
   }, [draftPasteTraditional]);
+  const revisionPaste = useMemo(
+    () => revisarIngresoAcorde(draftPasteTraditional.trim()),
+    [draftPasteTraditional],
+  );
+  const ingresoBloqueadoPorRojo =
+    (ingresoTab === "pegar" || (ingresoTab === "web" && pendingWebImport !== null)) &&
+    revisionPaste.hayRojo;
   const ingresoTonalidadLista =
     ingresoTonalidadIndex !== null && ingresoModoTonal !== null;
   /** Tono, nombre y artista recién cuando ya hay canción elegida o letra pegada. */
@@ -3487,6 +3502,11 @@ export default function CifradoEditor({
       return;
     }
 
+    if (revisarIngresoAcorde(trimmed).hayRojo) {
+      setError(AVISO_ACORDE_EN_ROJO);
+      return;
+    }
+
     if (!assertIngresoTonalidad()) {
       return;
     }
@@ -3542,6 +3562,25 @@ export default function CifradoEditor({
     setError(null);
   }
 
+  const webImportAplicadoRef = useRef<CifradoEditorWebImportData | null>(null);
+
+  useEffect(() => {
+    if (!open || !webImportInicial) {
+      if (!open) {
+        webImportAplicadoRef.current = null;
+      }
+      return;
+    }
+
+    if (webImportAplicadoRef.current === webImportInicial) {
+      return;
+    }
+
+    webImportAplicadoRef.current = webImportInicial;
+    setIngresoTab("web");
+    handleWebImport(webImportInicial);
+  }, [open, webImportInicial]);
+
   function handleSelectBasicSong(
     cancion: CancionCancionero,
     editable: boolean,
@@ -3571,6 +3610,11 @@ export default function CifradoEditor({
 
     if (!trimmed) {
       setError("Revisá la letra con acordes antes de continuar.");
+      return;
+    }
+
+    if (revisarIngresoAcorde(trimmed).hayRojo) {
+      setError(AVISO_ACORDE_EN_ROJO);
       return;
     }
 
@@ -4533,6 +4577,11 @@ export default function CifradoEditor({
         setSaveValidation("El link del video no es de YouTube. Corregilo o borralo.");
         return;
       }
+
+      if (cifrado.acordes.some((acorde) => !acordeEstaContemplado(acorde))) {
+        setSaveValidation(AVISO_ACORDE_NO_CONTEMPLADO);
+        return;
+      }
       const youtubeGuardar = youtubeTocado ? youtubeNormalizado.url : undefined;
       const payload = {
         nombre: nombre.trim(),
@@ -4892,7 +4941,7 @@ export default function CifradoEditor({
                         type="button"
                         onClick={handleConfirmWebImport}
                         disabled={
-                          !draftPasteTraditional.trim() || !ingresoTonalidadLista
+                          !draftPasteTraditional.trim() || !ingresoTonalidadLista || ingresoBloqueadoPorRojo
                         }
                         className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                       >
@@ -4940,7 +4989,7 @@ export default function CifradoEditor({
                       type="button"
                       onClick={handleApplyPasteTraditional}
                       disabled={
-                        !draftPasteTraditional.trim() || !ingresoTonalidadLista
+                        !draftPasteTraditional.trim() || !ingresoTonalidadLista || ingresoBloqueadoPorRojo
                       }
                       className={`mt-3 px-4 py-2.5 text-sm font-bold disabled:opacity-50 lg:hidden ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                     >
@@ -5637,9 +5686,16 @@ export default function CifradoEditor({
                       {draftPastePreview.stats.verses} versos ·{" "}
                       {draftPastePreview.stats.total} renglones
                     </p>
-                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary/90">
-                      {draftPastePreview.text}
-                    </p>
+                    {revisionPaste.hayRojo || revisionPaste.hayAmarillo ? (
+                      <CifradoIngresoMarcas
+                        texto={draftPastePreview.text}
+                        revision={revisionPaste}
+                      />
+                    ) : (
+                      <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary/90">
+                        {draftPastePreview.text}
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-text-primary">
@@ -5755,7 +5811,7 @@ export default function CifradoEditor({
                       : handleApplyPasteTraditional
                   }
                   disabled={
-                    !draftPasteTraditional.trim() || !ingresoTonalidadLista
+                    !draftPasteTraditional.trim() || !ingresoTonalidadLista || ingresoBloqueadoPorRojo
                   }
                   className={`w-full ${CIFRADO_EDITOR_PRIMARY_BUTTON_CLASS}`}
                 >

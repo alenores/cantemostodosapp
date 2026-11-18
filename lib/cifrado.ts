@@ -799,6 +799,8 @@ export type CompasMarkerKind = "measure" | "beat";
 export type CompasMarker = {
   kind: CompasMarkerKind;
   leftPx: number;
+  /** Fila visual cuando el celular parte un renglón. 0 es el tramo de arriba. */
+  wrapRow?: number;
   intensidad?: MetronomeBeatLevel;
   cycleId?: string | null;
   /** Índice del golpe dentro del compás (0 = primer golpe). */

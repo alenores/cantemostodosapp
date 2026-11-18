@@ -197,8 +197,8 @@ body[data-tema-lectura="dia"] .cancionero-lectura-encabezado p {
 }
 
 body[data-tema-lectura="dia"] .cancionero-lectura-cerrar {
-  background-color: #3a3a3d;
-  color: #f5f5f7;
+  background-color: #f5f5f7;
+  color: #2c2c2e;
 }
 
 body[data-tema-lectura="escenario"] .cancionero-lectura-encabezado,
@@ -219,8 +219,8 @@ body[data-tema-lectura="escenario"] .cancionero-lectura-encabezado p {
 }
 
 body[data-tema-lectura="escenario"] .cancionero-lectura-cerrar {
-  background-color: #2a2a2c;
-  color: #f5f5f7;
+  background-color: #f5f5f7;
+  color: #1a1a1c;
 }
 
 body[data-tema-lectura="sepia"] .cancionero-lectura-encabezado,
@@ -241,8 +241,8 @@ body[data-tema-lectura="sepia"] .cancionero-lectura-encabezado p {
 }
 
 body[data-tema-lectura="sepia"] .cancionero-lectura-cerrar {
-  background-color: #5c4a3a;
-  color: #f7f1e8;
+  background-color: #f7f1e8;
+  color: #4a3c32;
 }
 
 /* Transiciones fluidas para el modo lectura */

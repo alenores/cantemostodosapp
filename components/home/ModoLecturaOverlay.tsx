@@ -3,7 +3,14 @@
 import {
   LecturaFabOption,
   type LecturaFabItem,
+  type LecturaFabStep,
 } from "@/components/home/LecturaFabOption";
+import { normalizeNotaIndex, type NotaIndex } from "@/lib/cifrado";
+import {
+  LETRA_ZOOM_MAX_LEVEL,
+  LETRA_ZOOM_MIN_LEVEL,
+  type LetraZoomLevel,
+} from "@/lib/letra-zoom";
 import { getLecturaFabMenuTopCss } from "@/lib/sala-layout";
 import {
   AudioLines,
@@ -17,6 +24,27 @@ import {
 } from "lucide-react";
 
 type ResolvedItem = LecturaFabItem & { closeOnClick: boolean };
+
+function letraZoomStep(
+  size: "chica" | "grande",
+  ariaLabel: string,
+  onClick: () => void,
+  disabled: boolean,
+): LecturaFabStep {
+  return {
+    content: (
+      <span
+        className={`font-bold leading-none ${size === "chica" ? "text-[11px]" : "text-[20px]"}`}
+        aria-hidden="true"
+      >
+        A
+      </span>
+    ),
+    ariaLabel,
+    onClick,
+    disabled,
+  };
+}
 
 type ModoLecturaOverlayProps = {
   abierto: boolean;
@@ -44,6 +72,13 @@ type ModoLecturaOverlayProps = {
   onAbrirOcultarElementos?: () => void;
   onAbrirTono?: () => void;
   onAbrirZoom?: () => void;
+  /** Tono actual. Con onTonalidadChange, el menú muestra − y + al lado. */
+  tonalidadIndex?: NotaIndex | null;
+  onTonalidadChange?: (next: NotaIndex) => void;
+  zoomLevel?: LetraZoomLevel;
+  zoomEnabled?: boolean;
+  onZoomDecrease?: () => void;
+  onZoomIncrease?: () => void;
   onAfinador?: () => void;
   temaLectura?: "dia" | "sepia" | "escenario";
   onTemaLecturaChange?: (next: "dia" | "sepia" | "escenario") => void;
@@ -73,6 +108,12 @@ export default function ModoLecturaOverlay({
   onAbrirOcultarElementos,
   onAbrirTono,
   onAbrirZoom,
+  tonalidadIndex = null,
+  onTonalidadChange,
+  zoomLevel = 0,
+  zoomEnabled = true,
+  onZoomDecrease,
+  onZoomIncrease,
   onAfinador,
   temaLectura,
   onTemaLecturaChange,
@@ -126,6 +167,32 @@ export default function ModoLecturaOverlay({
   }
 
   if (showTonoOption && onAbrirTono) {
+    const tonoSteps =
+      tonalidadIndex != null && onTonalidadChange
+        ? {
+            decrease: {
+              content: (
+                <span className="text-lg font-semibold leading-none" aria-hidden="true">
+                  −
+                </span>
+              ),
+              ariaLabel: "Bajar un semitono",
+              onClick: () =>
+                onTonalidadChange(normalizeNotaIndex(tonalidadIndex - 1)),
+            },
+            increase: {
+              content: (
+                <span className="text-lg font-semibold leading-none" aria-hidden="true">
+                  +
+                </span>
+              ),
+              ariaLabel: "Subir un semitono",
+              onClick: () =>
+                onTonalidadChange(normalizeNotaIndex(tonalidadIndex + 1)),
+            },
+          }
+        : undefined;
+
     items.push({
       key: "tono",
       icon: Music,
@@ -133,10 +200,29 @@ export default function ModoLecturaOverlay({
       onClick: onAbrirTono,
       className: "lg:hidden",
       closeOnClick: true,
+      steps: tonoSteps,
     });
   }
 
   if (showZoomOption && onAbrirZoom) {
+    const zoomSteps =
+      onZoomDecrease && onZoomIncrease
+        ? {
+            decrease: letraZoomStep(
+              "chica",
+              "Achicar letra",
+              onZoomDecrease,
+              !zoomEnabled || zoomLevel <= LETRA_ZOOM_MIN_LEVEL,
+            ),
+            increase: letraZoomStep(
+              "grande",
+              "Agrandar letra",
+              onZoomIncrease,
+              !zoomEnabled || zoomLevel >= LETRA_ZOOM_MAX_LEVEL,
+            ),
+          }
+        : undefined;
+
     items.push({
       key: "zoom",
       icon: Type,
@@ -144,6 +230,7 @@ export default function ModoLecturaOverlay({
       onClick: onAbrirZoom,
       className: "lg:hidden",
       closeOnClick: true,
+      steps: zoomSteps,
     });
   }
 

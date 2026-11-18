@@ -292,6 +292,7 @@ export function useCifradoPlayback({
             (marker, index) =>
               marker.leftPx === markers[index]?.leftPx &&
               marker.kind === markers[index]?.kind &&
+              marker.wrapRow === markers[index]?.wrapRow &&
               marker.intensidad === markers[index]?.intensidad,
           )
         ) {

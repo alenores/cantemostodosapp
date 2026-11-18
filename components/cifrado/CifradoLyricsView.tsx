@@ -46,16 +46,126 @@ import { type NotacionAcordes } from "@/lib/notacion-acordes";
 import type { MetronomeBeatLevel } from "@/lib/metronomo";
 import type { PreviewPlaybackAnchor } from "@/lib/cifrado-preview-play";
 import {
+  computeSoftWrapSegments,
+  localizeCompasMarkers,
+  sameMarkerRows,
+  sameWrapSegments,
+  sliceAcordes,
+  sliceLineAnotaciones,
+  type MeasuredChar,
+  type SoftWrapSegment,
+} from "@/lib/cifrado-soft-wrap";
+import {
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type ReactNode,
+  type RefObject,
 } from "react";
 
 export function splitLyricsLines(text: string): string[] {
   return text.replace(/\r\n/g, "\n").split("\n");
+}
+
+const CELULAR_MAX_WIDTH_PX = 1023;
+
+function useIsCelularWidth(): boolean {
+  const [isCelular, setIsCelular] = useState(false);
+
+  useLayoutEffect(() => {
+    const media = window.matchMedia(`(max-width: ${CELULAR_MAX_WIDTH_PX}px)`);
+
+    function update() {
+      setIsCelular(media.matches);
+    }
+
+    update();
+    media.addEventListener("change", update);
+
+    return () => {
+      media.removeEventListener("change", update);
+    };
+  }, []);
+
+  return isCelular;
+}
+
+function contentBoxWidth(element: HTMLElement): number {
+  const style = getComputedStyle(element);
+  const padLeft = Number.parseFloat(style.paddingLeft) || 0;
+  const padRight = Number.parseFloat(style.paddingRight) || 0;
+
+  return Math.max(0, element.clientWidth - padLeft - padRight);
+}
+
+function readMeasureChars(measure: HTMLElement): MeasuredChar[] {
+  const origin = measure.getBoundingClientRect();
+  const spans = measure.querySelectorAll<HTMLElement>("[data-wrap-measure-index]");
+  const positions: MeasuredChar[] = [];
+
+  spans.forEach((span) => {
+    const index = Number(span.getAttribute("data-wrap-measure-index"));
+
+    if (Number.isNaN(index)) {
+      return;
+    }
+
+    const rect = span.getBoundingClientRect();
+
+    positions[index] = {
+      left: rect.left - origin.left,
+      width: rect.width,
+    };
+  });
+
+  return positions;
+}
+
+function LyricMeasureLine({
+  text,
+  laneSlotCount,
+  measureRef,
+}: {
+  text: string;
+  laneSlotCount: number;
+  measureRef: RefObject<HTMLDivElement | null>;
+}) {
+  const characters = [...text];
+  const laneStart = getLineLaneStart(characters.length);
+
+  return (
+    <div
+      ref={measureRef}
+      aria-hidden
+      className="pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap"
+    >
+      {characters.length === 0 ? null : (
+        <>
+          <span className="inline shrink-0">
+            {characters.map((char, index) => (
+              <span key={index} data-wrap-measure-index={index}>
+                {char}
+              </span>
+            ))}
+          </span>
+          <span className={CIFRADO_LINE_LANE_CONTAINER_CLASS}>
+            {Array.from({ length: laneSlotCount }).map((_, slot) => (
+              <span
+                key={slot}
+                data-wrap-measure-index={laneStart + slot}
+                className={CIFRADO_LINE_LANE_SLOT_CLASS}
+              >
+                {"\u00a0"}
+              </span>
+            ))}
+          </span>
+        </>
+      )}
+    </div>
+  );
 }
 
 type CharPosition = {
@@ -194,7 +304,7 @@ export type CifradoLyricsLineProps = {
   tramoColor?: string | null;
 };
 
-export function CifradoLyricsLine({
+function CifradoLyricsRow({
   lineIndex,
   text,
   acordes,
@@ -216,7 +326,24 @@ export function CifradoLyricsLine({
   anotacionesVisibility,
   onOpenNota,
   tramoColor = null,
-}: CifradoLyricsLineProps) {
+  suppressChrome = false,
+  continuation = false,
+  markersOverride = null,
+  reportMarkers = true,
+  wrapRow = 0,
+  showLane = true,
+  measureSlot = null,
+}: CifradoLyricsLineProps & {
+  /** El renglón de afuera ya pone el margen, el rasgueo y la barra de color. */
+  suppressChrome?: boolean;
+  /** Este tramo sigue al de arriba: lo partió el celular, no la canción. */
+  continuation?: boolean;
+  markersOverride?: CompasMarker[] | null;
+  reportMarkers?: boolean;
+  wrapRow?: number;
+  showLane?: boolean;
+  measureSlot?: ReactNode;
+}) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const compasRowRef = useRef<HTMLDivElement>(null);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
@@ -254,8 +381,10 @@ export function CifradoLyricsLine({
     ],
   );
   const activeBeatLeftPx =
-    activeBeatAnchors.find((anchor) => anchor.lineIndex === lineIndex)?.leftPx ??
-    null;
+    activeBeatAnchors.find(
+      (anchor) =>
+        anchor.lineIndex === lineIndex && (anchor.wrapRow ?? 0) === wrapRow,
+    )?.leftPx ?? null;
 
   const measurePositions = useCallback(() => {
     const container = textLaneRef.current;
@@ -319,7 +448,7 @@ export function CifradoLyricsLine({
     };
   }, [measurePositions]);
 
-  const compasMarkers = useMemo(
+  const computedCompasMarkers = useMemo(
     () =>
       showCompas && barras.length > 0
         ? computeLineCompasMarkersPx(
@@ -353,6 +482,7 @@ export function CifradoLyricsLine({
       showCompas,
     ],
   );
+  const compasMarkers = markersOverride ?? computedCompasMarkers;
 
   const previewMeasureStemHeightPx = useMemo(
     () =>
@@ -384,8 +514,12 @@ export function CifradoLyricsLine({
   }, [charPositions, compasMarkers.length, laneSlotCount, showCompas]);
 
   useEffect(() => {
+    if (!reportMarkers) {
+      return;
+    }
+
     onMarkersReady?.(lineIndex, compasMarkers);
-  }, [compasMarkers, lineIndex, onMarkersReady]);
+  }, [compasMarkers, lineIndex, onMarkersReady, reportMarkers]);
 
   const anotacionesActivas = Boolean(anotacionesVisibility);
   const hasArribaAnot =
@@ -405,34 +539,42 @@ export function CifradoLyricsLine({
       }
     : undefined;
 
+  const outerClass = suppressChrome
+    ? letraSheet
+      ? continuation
+        ? "mt-1"
+        : ""
+      : `font-mono ${compact ? "text-xs" : "text-sm"}${continuation ? " mt-1" : ""}`
+    : letraSheet
+      ? "mb-3"
+      : `font-mono ${compact ? "mb-2 text-xs" : "mb-4 text-sm"}`;
+  const innerStyle = suppressChrome
+    ? letraSheetStyle
+    : tramoColor
+      ? {
+          ...letraSheetStyle,
+          boxShadow: `inset 3px 0 0 ${tramoColor}`,
+          paddingLeft: 8,
+        }
+      : letraSheetStyle;
+
   return (
-    <div
-      className={
-        letraSheet
-          ? "mb-3"
-          : `font-mono ${compact ? "mb-2 text-xs" : "mb-4 text-sm"}`
-      }
-    >
-      <RasgueoMarcasLinea
-        anotaciones={anotaciones}
-        visibility={anotacionesVisibility}
-        colapsado
-        tipoCompas={tipoCompas}
-      />
+    <div className={outerClass}>
+      {suppressChrome ? null : (
+        <RasgueoMarcasLinea
+          anotaciones={anotaciones}
+          visibility={anotacionesVisibility}
+          colapsado
+          tipoCompas={tipoCompas}
+        />
+      )}
       <div
         ref={textLaneRef}
         className="relative isolate overflow-hidden text-letra-text"
-        style={
-          tramoColor
-            ? {
-                ...letraSheetStyle,
-                boxShadow: `inset 3px 0 0 ${tramoColor}`,
-                paddingLeft: 8,
-              }
-            : letraSheetStyle
-        }
+        style={innerStyle}
       >
-      {isPlaybackActiveLine && (
+      {measureSlot}
+      {!suppressChrome && isPlaybackActiveLine && (
         <span
           className="pointer-events-none absolute bottom-1 left-0 top-1 w-0.5 rounded-full bg-blue-500/55"
           aria-hidden="true"
@@ -458,7 +600,9 @@ export function CifradoLyricsLine({
         />
       ) : null}
       <div
-        className="pointer-events-none relative flex w-full items-baseline pt-5"
+        className={`pointer-events-none relative flex w-full items-baseline ${
+          continuation && acordes.length === 0 ? "pt-1" : "pt-5"
+        }`}
         style={arribaOffset ? { paddingTop: 20 + arribaOffset } : undefined}
       >
         {characters.length === 0 ? (
@@ -482,20 +626,22 @@ export function CifradoLyricsLine({
                 </span>
               ))}
             </span>
-            <span
-              className={CIFRADO_LINE_LANE_CONTAINER_CLASS}
-              aria-hidden="true"
-            >
-              {Array.from({ length: laneSlotCount }).map((_, slot) => (
-                <span
-                  key={`lyrics-lane-${slot}`}
-                  data-char-index={laneStart + slot}
-                  className={CIFRADO_LINE_LANE_SLOT_CLASS}
-                >
-                  {"\u00a0"}
-                </span>
-              ))}
-            </span>
+            {showLane ? (
+              <span
+                className={CIFRADO_LINE_LANE_CONTAINER_CLASS}
+                aria-hidden="true"
+              >
+                {Array.from({ length: laneSlotCount }).map((_, slot) => (
+                  <span
+                    key={`lyrics-lane-${slot}`}
+                    data-char-index={laneStart + slot}
+                    className={CIFRADO_LINE_LANE_SLOT_CLASS}
+                  >
+                    {"\u00a0"}
+                  </span>
+                ))}
+              </span>
+            ) : null}
           </>
         )}
       </div>
@@ -585,6 +731,283 @@ export function CifradoLyricsLine({
           />
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
+  const {
+    lineIndex,
+    text,
+    acordes,
+    barras = [],
+    tipoCompas = "4-4",
+    intensidadPlantilla = [],
+    showCompas = false,
+    letraSheet = false,
+    compact = false,
+    tramoColor = null,
+    isPlaybackActiveLine = false,
+    anotaciones = [],
+    anotacionesVisibility,
+    nextLineHasCompas = false,
+    lineTerminalOffsets,
+    cyclePiecesById,
+    onMarkersReady,
+  } = props;
+  const celular = useIsCelularWidth();
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [laneSlotCount, setLaneSlotCount] = useState(LINE_LANE_MIN_SLOT_COUNT);
+  const [wrapSegments, setWrapSegments] = useState<SoftWrapSegment[] | null>(
+    null,
+  );
+  const [segmentMarkers, setSegmentMarkers] = useState<CompasMarker[][] | null>(
+    null,
+  );
+  const layoutKey = JSON.stringify({
+    text,
+    showCompas,
+    tipoCompas,
+    barras,
+    acordes,
+    letraSheet,
+    compact,
+    tramoColor,
+    nextLineHasCompas,
+    intensidadPlantilla,
+    lineTerminalOffsets,
+  });
+
+  useLayoutEffect(() => {
+    if (!celular) {
+      return;
+    }
+
+    const measure = measureRef.current;
+    const box = measure?.parentElement;
+
+    if (!measure || !box) {
+      return;
+    }
+
+    const update = () => {
+      const maxWidth = contentBoxWidth(box) - 2;
+
+      if (maxWidth < 8) {
+        return;
+      }
+
+      const nextLane = computeLineLaneSlotCount(maxWidth, [...text].length);
+
+      if (nextLane !== laneSlotCount) {
+        setLaneSlotCount(nextLane);
+        return;
+      }
+
+      const measured = readMeasureChars(measure);
+      const widths = [...text].map((_, index) => measured[index]?.width ?? 0);
+      const segments = computeSoftWrapSegments(text, widths, maxWidth);
+      const wrapped = segments.length > 1;
+
+      if (!wrapped) {
+        setWrapSegments((current) => (current === null ? current : null));
+        setSegmentMarkers((current) => (current === null ? current : null));
+        return;
+      }
+
+      const startLefts: number[] = [];
+
+      for (const segment of segments) {
+        const position = measured[segment.start];
+
+        if (!position) {
+          return;
+        }
+
+        startLefts.push(position.left);
+      }
+
+      const compasConfigForLine = {
+        tipoCompas,
+        intensidadPlantilla,
+        bpm: 0,
+        barras: [] as BarraCompas[],
+        lineTerminalOffsets,
+      };
+      const characters = [...text];
+      const lineTerminalCharOffset =
+        barras.length > 0
+          ? resolveLineTerminalCharOffset(
+              compasConfigForLine,
+              lineIndex,
+              barras,
+              getLineContentEndOffset(characters.length, acordes, barras),
+              characters.length,
+            )
+          : undefined;
+      const markers =
+        showCompas && barras.length > 0
+          ? computeLineCompasMarkersPx(
+              barras,
+              (barra) =>
+                getBarraBeatCount(barra, compasConfigForLine, cyclePiecesById),
+              (offset) => resolveCharOffsetPx(offset, measured),
+              (barra, beatIndex) =>
+                getBarraIntensidad(barra, compasConfigForLine)[beatIndex] ??
+                "medio",
+              {
+                contentEndOffset: getLineContentEndOffset(
+                  characters.length,
+                  acordes,
+                  barras,
+                ),
+                textLength: characters.length,
+                lineTerminalCharOffset,
+                appendTerminalMeasure: nextLineHasCompas,
+              },
+            )
+          : [];
+      const rows = localizeCompasMarkers(markers, startLefts);
+
+      setWrapSegments((current) =>
+        sameWrapSegments(current, segments) ? current : segments,
+      );
+      setSegmentMarkers((current) =>
+        sameMarkerRows(current, rows) ? current : rows,
+      );
+    };
+
+    update();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      update();
+    });
+
+    observer.observe(box);
+    observer.observe(measure);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    acordes,
+    barras,
+    celular,
+    compact,
+    cyclePiecesById,
+    intensidadPlantilla,
+    laneSlotCount,
+    layoutKey,
+    letraSheet,
+    lineIndex,
+    lineTerminalOffsets,
+    nextLineHasCompas,
+    showCompas,
+    text,
+    tipoCompas,
+    tramoColor,
+    wrapSegments,
+  ]);
+
+  const flatMarkers = useMemo(
+    () => (segmentMarkers ? segmentMarkers.flat() : null),
+    [segmentMarkers],
+  );
+
+  useEffect(() => {
+    if (!flatMarkers) {
+      return;
+    }
+
+    onMarkersReady?.(lineIndex, flatMarkers);
+  }, [flatMarkers, lineIndex, onMarkersReady]);
+
+  if (!celular) {
+    return <CifradoLyricsRow {...props} />;
+  }
+
+  const wrapped = Boolean(wrapSegments && wrapSegments.length > 1);
+  const measureLine = (
+    <LyricMeasureLine
+      text={text}
+      laneSlotCount={laneSlotCount}
+      measureRef={measureRef}
+    />
+  );
+
+  if (!wrapped || !wrapSegments || !segmentMarkers) {
+    return <CifradoLyricsRow {...props} measureSlot={measureLine} />;
+  }
+
+  const letraSheetStyle = letraSheet
+    ? {
+        fontSize: "var(--letra-size)",
+        lineHeight: "var(--letra-line-height)",
+        fontWeight: "var(--letra-weight)",
+      }
+    : undefined;
+  const outerClass = letraSheet
+    ? "mb-3"
+    : `font-mono ${compact ? "mb-2 text-xs" : "mb-4 text-sm"}`;
+
+  return (
+    <div className={outerClass} style={letraSheetStyle}>
+      <RasgueoMarcasLinea
+        anotaciones={anotaciones}
+        visibility={anotacionesVisibility}
+        colapsado
+        tipoCompas={tipoCompas}
+      />
+      <div
+        className="relative overflow-hidden text-letra-text"
+        data-cifrado-soft-wrap=""
+        style={
+          tramoColor
+            ? {
+                boxShadow: `inset 3px 0 0 ${tramoColor}`,
+                paddingLeft: 8,
+              }
+            : undefined
+        }
+      >
+        {isPlaybackActiveLine ? (
+          <span
+            className="pointer-events-none absolute bottom-1 left-0 top-1 w-0.5 rounded-full bg-blue-500/55"
+            aria-hidden="true"
+          />
+        ) : null}
+        <div className="relative">
+          {measureLine}
+          <span className="sr-only">{text}</span>
+          <div aria-hidden>
+            {wrapSegments.map((segment, index) => {
+              const { start, end } = segment;
+              const isLast = index === wrapSegments.length - 1;
+
+              return (
+                <CifradoLyricsRow
+                  key={`${start}-${end}`}
+                  {...props}
+                  text={text.slice(start, end)}
+                  acordes={sliceAcordes(acordes, start, end, isLast)}
+                  barras={[]}
+                  anotaciones={sliceLineAnotaciones(anotaciones, start, end, isLast)}
+                  suppressChrome
+                  continuation={index > 0}
+                  markersOverride={segmentMarkers[index] ?? []}
+                  reportMarkers={false}
+                  wrapRow={index}
+                  showLane={isLast}
+                />
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

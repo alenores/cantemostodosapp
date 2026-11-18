@@ -254,9 +254,9 @@ export default function CancioneroModoLectura({
                 setOverlayAbierto(false);
                 onContraer();
               }}
-              className="cancionero-lectura-cerrar absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-bg-card shadow-md"
+              className="cancionero-lectura-cerrar absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-[#f5f5f7] text-[#2c2c2e] shadow-md"
             >
-              <X className="size-5 text-text-primary" aria-hidden="true" />
+              <X className="size-5" aria-hidden="true" />
             </TapButton>
           </header>
 
@@ -402,6 +402,12 @@ export default function CancioneroModoLectura({
         onToggleAcordesOcultos={toggleAcordesOcultos}
         onAbrirZoom={abrirZoom}
         onAbrirTono={abrirTono}
+        tonalidadIndex={lecturaTonalidad?.tonalidadIndex}
+        onTonalidadChange={lecturaTonalidad?.setTonalidad}
+        zoomLevel={zoom.level}
+        zoomEnabled={lecturaZoomEligible}
+        onZoomDecrease={zoom.decrease}
+        onZoomIncrease={zoom.increase}
         temaLectura={temaLectura}
         onTemaLecturaChange={cambiarTemaLectura}
       />

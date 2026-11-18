@@ -850,6 +850,12 @@ export default function SalaPageShell({
             onToggleAcordesOcultos={toggleAcordesOcultos}
             onAbrirZoom={abrirZoom}
             onAbrirTono={abrirTono}
+            tonalidadIndex={lecturaTonalidad?.tonalidadIndex}
+            onTonalidadChange={lecturaTonalidad?.setTonalidad}
+            zoomLevel={zoom.level}
+            zoomEnabled={Boolean(cancionActiva)}
+            onZoomDecrease={zoom.decrease}
+            onZoomIncrease={zoom.increase}
             temaLectura={cancionActivaDelCancionero ? temaLectura : undefined}
             onTemaLecturaChange={
               cancionActivaDelCancionero ? cambiarTemaLectura : undefined

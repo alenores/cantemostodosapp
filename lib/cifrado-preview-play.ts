@@ -90,6 +90,8 @@ export async function playCifradoClick(
 export type PreviewPlaybackAnchor = {
   lineIndex: number;
   leftPx: number;
+  /** Fila visual cuando el celular parte un renglón. */
+  wrapRow?: number;
 };
 
 export type PreviewPlaybackBeat = {
@@ -118,6 +120,7 @@ export function buildDisplayedPreviewPlaybackBeats(
       lastBeat.anchors.push({
         lineIndex,
         leftPx: sharedMarker.leftPx,
+        wrapRow: sharedMarker.wrapRow,
       });
 
       if (sharedMarker.kind === "measure") {
@@ -145,7 +148,13 @@ export function buildDisplayedPreviewPlaybackBeats(
 
       beats.push({
         kind: marker.kind,
-        anchors: [{ lineIndex, leftPx: marker.leftPx }],
+        anchors: [
+          {
+            lineIndex,
+            leftPx: marker.leftPx,
+            wrapRow: marker.wrapRow,
+          },
+        ],
         intensidad:
           marker.intensidad ??
           (marker.kind === "measure" ? "fuerte" : "medio"),

@@ -188,8 +188,8 @@ export default function AppFooter() {
               key={href}
               href={href}
               ariaLabel={displayLabel}
-              noGlobalFeedback
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 ${tabColorClass}`}
+              quiet
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 [-webkit-tap-highlight-color:transparent] ${tabColorClass} [&_svg]:pointer-events-none`}
             >
               {content}
             </TapLink>

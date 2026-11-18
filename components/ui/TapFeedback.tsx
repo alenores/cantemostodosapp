@@ -38,14 +38,22 @@ type TapLinkProps = {
   className?: string;
   ariaLabel?: string;
   noGlobalFeedback?: boolean;
+  /** Sin encogimiento ni círculo de carga. La barra de abajo lo usa para no destellar. */
+  quiet?: boolean;
 };
 
-function TapLinkContent({ children }: { children: ReactNode }) {
+function TapLinkContent({
+  children,
+  quiet,
+}: {
+  children: ReactNode;
+  quiet: boolean;
+}) {
   const { pending } = useLinkStatus();
 
   return (
     <>
-      {pending && (
+      {!quiet && pending && (
         <span
           className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-bg-app/55"
           aria-hidden="true"
@@ -64,6 +72,7 @@ export function TapLink({
   className = "",
   ariaLabel,
   noGlobalFeedback = false,
+  quiet = false,
 }: TapLinkProps) {
   return (
     <Link
@@ -75,11 +84,13 @@ export function TapLink({
           window.location.assign(href);
         }
       }}
-      {...(noGlobalFeedback ? { "data-no-tap-feedback": true } : {})}
-      className={`relative active:scale-[0.96] transition-transform duration-100 ease-out ${className}`.trim()}
+      {...(noGlobalFeedback || quiet ? { "data-no-tap-feedback": true } : {})}
+      className={`relative outline-none focus:outline-none focus-visible:outline-none ${
+        quiet ? "" : "active:scale-[0.96] transition-transform duration-100 ease-out"
+      } ${className}`.trim()}
     >
       <Suspense fallback={children}>
-        <TapLinkContent>{children}</TapLinkContent>
+        <TapLinkContent quiet={quiet}>{children}</TapLinkContent>
       </Suspense>
     </Link>
   );

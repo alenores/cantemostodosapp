@@ -12,9 +12,7 @@ import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import LecturaOcultarElementosPanel from "@/components/home/LecturaOcultarElementosPanel";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
-import LecturaCancionChip, {
-  LECTURA_TOP_CHIP,
-} from "@/components/salas/LecturaCancionChip";
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import VideoFlotante from "@/components/video/VideoFlotante";
 import { TapButton } from "@/components/ui/TapFeedback";
@@ -27,7 +25,6 @@ import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
   getLecturaFabMenuTopCss,
   getLecturaFixedRightCss,
-  getLecturaTopChromeTopCss,
 } from "@/lib/sala-layout";
 import {
   DEFAULT_ANOTACION_VISIBILITY,
@@ -48,15 +45,15 @@ import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import { getLetraTextScrollEndPadding } from "@/lib/sala-layout";
 import { createClient } from "@/lib/supabase/client";
 import {
+  FileText,
   Guitar,
-  Minimize2,
   NotebookPen,
   Pencil,
   SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { NotaIndex } from "@/lib/cifrado";
 
@@ -69,6 +66,8 @@ export default function EntrenadorCancionesVerPageClient() {
   const id = idParam ? Number(idParam) : null;
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const encabezadoRef = useRef<HTMLElement>(null);
+  const [controlesTop, setControlesTop] = useState<number | null>(null);
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [cancion, setCancion] = useState<CancionPractica | null>(null);
@@ -125,6 +124,13 @@ export default function EntrenadorCancionesVerPageClient() {
 
   const letraZoomStyle = getLetraZoomStyle(zoom.factor);
   const lecturaFixedRightCss = getLecturaFixedRightCss();
+  const lecturaFilterTopCss = getLecturaFabMenuTopCss();
+  const controlesTopCss =
+    controlesTop != null ? `${controlesTop}px` : lecturaFilterTopCss;
+  const lecturaOverlayMenuTopCss =
+    controlesTop != null
+      ? `${controlesTop + 44}px`
+      : `calc(${lecturaFilterTopCss} + 44px)`;
 
   const toggleAnotacionTipo = useCallback((tipo: AnotacionTipo) => {
     setAnotacionesVisibility((current) => ({
@@ -227,6 +233,20 @@ export default function EntrenadorCancionesVerPageClient() {
       document.body.removeAttribute("data-modo-lectura");
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const encabezado = encabezadoRef.current;
+    if (!encabezado) return;
+
+    const medir = () => {
+      const rect = encabezado.getBoundingClientRect();
+      setControlesTop(rect.height > 0 ? rect.bottom + 8 : null);
+    };
+
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [cancion?.id, cancion?.nombre, cancion?.artista]);
 
   useEffect(() => {
     async function load() {
@@ -375,12 +395,38 @@ export default function EntrenadorCancionesVerPageClient() {
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala max-lg:fixed max-lg:inset-0 max-lg:z-40 max-lg:h-dvh">
       {detalle ? (
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          <LecturaCancionChip
-            nombre={cancion?.nombre ?? "Canción"}
-            artista={cancion?.artista}
-            nombreRevealKey={String(id ?? "")}
-            nombreRevealClass=""
-          />
+          <header
+            ref={encabezadoRef}
+            className="cancionero-lectura-encabezado relative z-20 shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14 select-none lg:hidden"
+          >
+            <div className="min-w-0">
+              <h2 className="flex min-w-0 items-center gap-1.5 truncate text-lg font-extrabold text-accent">
+                {cancion?.tiene_cifrado_avanzado ? (
+                  <FileText
+                    className="size-3.5 shrink-0 text-[var(--tuner-cerca)]"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span className="truncate">{cancion?.nombre ?? "Canción"}</span>
+              </h2>
+              {cancion?.artista ? (
+                <p className="mt-0.5 truncate text-sm text-text-muted">
+                  {cancion.artista}
+                </p>
+              ) : null}
+            </div>
+            <TapButton
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => {
+                setOverlayAbierto(false);
+                goToList();
+              }}
+              className="cancionero-lectura-cerrar absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-bg-card shadow-md"
+            >
+              <X className="size-5 text-text-primary" aria-hidden="true" />
+            </TapButton>
+          </header>
           <LetraCifradoLecturaShell
             onGuardarTono={guardarTono}
             detalle={detalle}
@@ -424,19 +470,6 @@ export default function EntrenadorCancionesVerPageClient() {
 
       <TapButton
         type="button"
-        aria-label="Contraer"
-        onClick={() => {
-          setOverlayAbierto(false);
-          goToList();
-        }}
-        className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
-        style={{ top: getLecturaTopChromeTopCss(), right: lecturaFixedRightCss }}
-      >
-        <Minimize2 className="size-4 text-black" aria-hidden="true" />
-      </TapButton>
-
-      <TapButton
-        type="button"
         aria-label={
           overlayAbierto ? "Cerrar controles" : "Abrir controles de modo lectura"
         }
@@ -450,7 +483,7 @@ export default function EntrenadorCancionesVerPageClient() {
           overlayAbierto ? "border-accent/45" : ""
         }`}
         style={{
-          top: getLecturaFabMenuTopCss(),
+          top: controlesTopCss,
           right: lecturaFixedRightCss,
         }}
       >
@@ -466,7 +499,7 @@ export default function EntrenadorCancionesVerPageClient() {
         fixedRightCss={lecturaFixedRightCss}
         mobileOnly
         showContraerOption={false}
-        menuTopCss={`calc(${getLecturaFabMenuTopCss()} + 44px)`}
+        menuTopCss={lecturaOverlayMenuTopCss}
         hasCompases={hasCompases}
         compasesOcultos={compasesOcultos}
         acordesOcultos={acordesOcultos}

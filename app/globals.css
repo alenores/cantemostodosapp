@@ -2613,40 +2613,53 @@ html.splash-active body {
 }
 
 .ios-install-paso {
+  position: relative;
+  padding-bottom: 22px;
   opacity: 0;
-  transform: translateY(14px);
-  animation:
-    ios-install-entrar 0.42s cubic-bezier(0.22, 0.9, 0.3, 1) forwards,
-    ios-install-resaltar 1s ease-out 1;
+  transform: translateY(10px);
+  animation: ios-install-entrar 0.42s cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+.ios-install-paso:last-child {
+  padding-bottom: 0;
+}
+
+.ios-install-paso::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--rock-light) 45%, var(--chalk-dark));
+}
+
+.ios-install-paso:first-child::before {
+  top: 13px;
+}
+
+.ios-install-paso:last-child::before {
+  bottom: auto;
+  height: 13px;
 }
 
 .ios-install-paso-1 {
-  animation-delay: 0.1s, 0.52s;
+  animation-delay: 0.05s;
 }
 
 .ios-install-paso-2 {
-  animation-delay: 0.52s, 0.94s;
+  animation-delay: 0.16s;
 }
 
 .ios-install-paso-3 {
-  animation-delay: 0.94s, 1.36s;
+  animation-delay: 0.27s;
 }
 
 @keyframes ios-install-entrar {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes ios-install-resaltar {
-  0% {
-    border-color: var(--chapa);
-    background: color-mix(in srgb, var(--chapa) 9%, var(--chalk-mid));
-  }
-  100% {
-    border-color: var(--chalk-dark);
-    background: var(--chalk-mid);
   }
 }
 
@@ -2706,9 +2719,9 @@ html.splash-active body {
   }
   16%,
   44% {
-    background: color-mix(in srgb, var(--chapa) 16%, transparent);
-    border-color: var(--chapa);
-    color: var(--chapa);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: var(--accent);
+    color: var(--accent);
   }
   56%,
   100% {
@@ -2727,9 +2740,9 @@ html.splash-active body {
   }
   58%,
   88% {
-    background: color-mix(in srgb, var(--chapa) 16%, transparent);
-    border-color: var(--chapa);
-    color: var(--chapa);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: var(--accent);
+    color: var(--accent);
   }
   96%,
   100% {
@@ -2746,10 +2759,10 @@ html.splash-active body {
 @keyframes ios-install-brillo {
   0%,
   100% {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--chapa) 30%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--chapa) 12%, transparent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent);
   }
 }
 

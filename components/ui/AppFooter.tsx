@@ -113,7 +113,7 @@ export default function AppFooter() {
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-bg-dark lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-10 border-t border-white/10 bg-[#2c2c2e] lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <nav className="flex h-[56px] w-full flex-row items-center">
@@ -125,10 +125,10 @@ export default function AppFooter() {
           const displayLabel = inSala && salaNombre ? salaNombre : label;
           const showBadge = isSalasTab && conectados > 0 && online;
           const tabColorClass = salasUnavailable
-            ? "text-text-faint"
+            ? "text-white/45"
             : active
               ? "text-accent"
-              : "text-text-muted";
+              : "text-white";
 
           const content = (
             <>
@@ -139,13 +139,13 @@ export default function AppFooter() {
                 />
                 {salasUnavailable ? (
                   <WifiOff
-                    className="absolute -right-1.5 -top-1 size-3 text-text-faint"
+                    className="absolute -right-1.5 -top-1 size-3 text-white/45"
                     aria-hidden="true"
                   />
                 ) : null}
                 {showBadge ? (
                   <span
-                    className="absolute rounded-[10px] border-[1.5px] border-bg-dark px-[5px] py-px text-[8px] font-bold text-white"
+                    className="absolute rounded-[10px] border-[1.5px] border-[#2c2c2e] px-[5px] py-px text-[8px] font-bold text-white"
                     style={{
                       top: -4,
                       right: -8,

@@ -3,8 +3,8 @@ import { artistaCoincideBusqueda, getAliasBusqueda } from "@/lib/artistas-alias-
 
 import CancioneroCardVisual from "@/components/cancionero/CancioneroCardVisual";
 import CancioneroListSkeleton from "@/components/cancionero/CancioneroListSkeleton";
+import CancioneroModoLectura from "@/components/cancionero/CancioneroModoLectura";
 import CancioneroSubpageShell from "@/components/cancionero/CancioneroSubpageShell";
-import CancioneroVerModal from "@/components/cancionero/CancioneroVerModal";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
 import UrlLetraModal from "@/components/salas/UrlLetraModal";
 import AddButton from "@/components/ui/AddButton";
@@ -21,7 +21,11 @@ import {
   getMisCanciones,
   usuarioCancionToCancionInput,
 } from "@/lib/mis-canciones";
-import { getCancioneroLocalAsCancionero } from "@/lib/offline/cancionero-store";
+import { fetchCancionCifradoDetalle } from "@/lib/cancionero";
+import {
+  getCancioneroLocalAsCancionero,
+  getCancioneroLocalCifradoDetalle,
+} from "@/lib/offline/cancionero-store";
 import { getArtistas } from "@/lib/artistas";
 import {
   ARTISTAS_FOTOS_EVENT,
@@ -29,7 +33,12 @@ import {
   leerArtistasFotos,
 } from "@/lib/offline/artista-fotos";
 import { createClient } from "@/lib/supabase/client";
-import type { Artista, CancionCancionero, UsuarioCancion } from "@/types";
+import type {
+  Artista,
+  CancionCancionero,
+  CancionCifradoDetalle,
+  UsuarioCancion,
+} from "@/types";
 import { ListPlus, Music, Search, Trash2, Users, X } from "lucide-react";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
 import {
@@ -108,6 +117,25 @@ function artistasDelListado(
   return [...vistos.values()].sort((a, b) =>
     a.nombre.localeCompare(b.nombre, "es"),
   );
+}
+
+function cancionDesdeFavorita(
+  cancion: UsuarioCancion,
+  guardadaId: number,
+  local: CancionCancionero | undefined,
+  tieneCifradoAvanzado: boolean,
+): CancionCancionero {
+  if (local) return local;
+
+  return {
+    id: guardadaId,
+    nombre: cancion.nombre,
+    artista: cancion.artista,
+    artista_id: cancion.artista_id ?? null,
+    letra: null,
+    tiene_cifrado_avanzado: tieneCifradoAvanzado,
+    user_id: null,
+  };
 }
 
 function getIconoTipo(cancion: UsuarioCancion): ResultadoIconoTipo {
@@ -331,7 +359,15 @@ export default function MisCancionesPageClient() {
   const [cancionViendo, setCancionViendo] = useState<CancionCancionero | null>(
     null,
   );
-  const [carouselGlobalIds, setCarouselGlobalIds] = useState<number[]>([]);
+  const [modoLectura, setModoLectura] = useState(false);
+  const [cifradoDetalle, setCifradoDetalle] =
+    useState<CancionCifradoDetalle | null>(null);
+  const [cifradoLoading, setCifradoLoading] = useState(false);
+  const [catalogoLocal, setCatalogoLocal] = useState<
+    Map<number, CancionCancionero>
+  >(new Map());
+  const catalogoRef = useRef<Map<number, CancionCancionero>>(new Map());
+  const lecturaSolicitudRef = useRef(0);
   const [urlViendo, setUrlViendo] = useState<{
     url: string;
     titulo: string;
@@ -386,15 +422,21 @@ export default function MisCancionesPageClient() {
     [canciones, nombresArtistaElegidos, query],
   );
 
-  const carouselEntries = useMemo(() => {
-    const globalRefs = cancionesFiltradas.filter(
-      (item) => item.cancion_guardada_id !== null,
-    );
-
-    return globalRefs
-      .map((item) => item.cancion_guardada_id)
-      .filter((id): id is number => id !== null);
-  }, [cancionesFiltradas]);
+  const lecturaItems = useMemo(
+    () =>
+      cancionesFiltradas.flatMap((item) => {
+        if (item.cancion_guardada_id === null) return [];
+        return [
+          cancionDesdeFavorita(
+            item,
+            item.cancion_guardada_id,
+            catalogoLocal.get(item.cancion_guardada_id),
+            cifradoAvanzadoIds.has(item.cancion_guardada_id),
+          ),
+        ];
+      }),
+    [cancionesFiltradas, catalogoLocal, cifradoAvanzadoIds],
+  );
 
   const showSnackbar = useCallback((message: string) => {
     if (snackbarTimerRef.current) {
@@ -467,6 +509,21 @@ export default function MisCancionesPageClient() {
   }, [online, supabase]);
 
   useEffect(() => () => revokeFotosRef.current(), []);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    void getCancioneroLocalAsCancionero().then((lista) => {
+      if (cancelado) return;
+      const mapa = new Map(lista.map((cancion) => [cancion.id, cancion]));
+      catalogoRef.current = mapa;
+      setCatalogoLocal(mapa);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const loadCanciones = useCallback(async () => {
     setLoading(true);
@@ -565,22 +622,61 @@ export default function MisCancionesPageClient() {
     [online, supabase],
   );
 
+  const recordarEnCatalogo = useCallback((cancion: CancionCancionero) => {
+    const next = new Map(catalogoRef.current);
+    next.set(cancion.id, cancion);
+    catalogoRef.current = next;
+    setCatalogoLocal(next);
+  }, []);
+
+  const abrirEnLectura = useCallback(
+    async (cancion: CancionCancionero) => {
+      const solicitud = lecturaSolicitudRef.current + 1;
+      lecturaSolicitudRef.current = solicitud;
+      setViewError(null);
+      setCifradoDetalle(null);
+      setCancionViendo(cancion);
+      setModoLectura(true);
+
+      if (cancion.letra?.trim()) return;
+
+      const data = await resolveGlobalCancion(cancion.id);
+      if (lecturaSolicitudRef.current !== solicitud) return;
+
+      if (!data) {
+        setViewError(
+          "No se pudo cargar la letra. Verificá que la canción esté en el cancionero y sincronizada.",
+        );
+        return;
+      }
+
+      setCancionViendo(data);
+      recordarEnCatalogo(data);
+    },
+    [recordarEnCatalogo, resolveGlobalCancion],
+  );
+
+  const cerrarCancion = useCallback(() => {
+    lecturaSolicitudRef.current += 1;
+    setModoLectura(false);
+    setCancionViendo(null);
+    setCifradoDetalle(null);
+  }, []);
+
   const handleVer = useCallback(
-    async (cancion: UsuarioCancion) => {
+    (cancion: UsuarioCancion) => {
       setViewError(null);
 
       if (cancion.cancion_guardada_id !== null) {
-        const data = await resolveGlobalCancion(cancion.cancion_guardada_id);
-
-        if (!data) {
-          setViewError(
-            "No se pudo cargar la letra. Verificá que la canción esté en el cancionero y sincronizada.",
-          );
-          return;
-        }
-
-        setCarouselGlobalIds(carouselEntries);
-        setCancionViendo(data);
+        const local = catalogoRef.current.get(cancion.cancion_guardada_id);
+        void abrirEnLectura(
+          cancionDesdeFavorita(
+            cancion,
+            cancion.cancion_guardada_id,
+            local,
+            cifradoAvanzadoIds.has(cancion.cancion_guardada_id),
+          ),
+        );
         return;
       }
 
@@ -591,7 +687,7 @@ export default function MisCancionesPageClient() {
 
       setViewError("Esta canción no tiene letra disponible");
     },
-    [carouselEntries, resolveGlobalCancion],
+    [abrirEnLectura, cifradoAvanzadoIds],
   );
 
   const cancionViendoIndex = useMemo(() => {
@@ -599,30 +695,73 @@ export default function MisCancionesPageClient() {
       return -1;
     }
 
-    return carouselGlobalIds.findIndex((id) => id === cancionViendo.id);
-  }, [cancionViendo, carouselGlobalIds]);
+    return lecturaItems.findIndex((cancion) => cancion.id === cancionViendo.id);
+  }, [cancionViendo, lecturaItems]);
 
   const handleNavigateCancion = useCallback(
-    async (direction: -1 | 1) => {
-      if (cancionViendoIndex === -1) {
-        return;
-      }
+    (direction: -1 | 1) => {
+      if (cancionViendoIndex === -1) return;
 
-      const nextIndex = cancionViendoIndex + direction;
+      const siguiente = lecturaItems[cancionViendoIndex + direction];
+      if (!siguiente) return;
 
-      if (nextIndex < 0 || nextIndex >= carouselGlobalIds.length) {
-        return;
-      }
-
-      const nextId = carouselGlobalIds[nextIndex]!;
-      const data = await resolveGlobalCancion(nextId);
-
-      if (data) {
-        setCancionViendo(data);
-      }
+      void abrirEnLectura(siguiente);
     },
-    [cancionViendoIndex, carouselGlobalIds, resolveGlobalCancion],
+    [abrirEnLectura, cancionViendoIndex, lecturaItems],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      if (!cancionViendo?.tiene_cifrado_avanzado) {
+        if (!cancelled) {
+          setCifradoDetalle(null);
+          setCifradoLoading(false);
+        }
+        return;
+      }
+
+      setCifradoLoading(true);
+      const songId = cancionViendo.id;
+      const local = await getCancioneroLocalCifradoDetalle(songId);
+
+      if (cancelled) return;
+
+      setCifradoDetalle((current) => {
+        if (local) return local;
+        if (!online && current?.id === songId) return current;
+        return null;
+      });
+
+      if (!online) {
+        setCifradoLoading(false);
+        return;
+      }
+
+      try {
+        const remote = await fetchCancionCifradoDetalle(supabase, songId);
+
+        if (!cancelled) {
+          setCifradoDetalle(remote ?? local);
+        }
+      } catch {
+        if (!cancelled) {
+          setCifradoDetalle((current) =>
+            local ?? (current?.id === songId ? current : null),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setCifradoLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cancionViendo?.id, cancionViendo?.tiene_cifrado_avanzado, online, supabase]);
 
   const handleAgregarACola = useCallback(
     async (cancion: UsuarioCancion) => {
@@ -695,8 +834,8 @@ export default function MisCancionesPageClient() {
     setCancionAEliminar(null);
   }
 
-  useHardwareBack(cancionViendo !== null, () => {
-    setCancionViendo(null);
+  useHardwareBack(cancionViendo !== null && !modoLectura, () => {
+    cerrarCancion();
   });
 
   useHardwareBack(urlViendo !== null && cancionViendo === null, () => {
@@ -738,7 +877,7 @@ export default function MisCancionesPageClient() {
       ) : null}
       <CancioneroSubpageShell
         title="Favoritas"
-        modalOpen={cancionViendo !== null || urlViendo !== null}
+        modalOpen={cancionViendo !== null || modoLectura || urlViendo !== null}
         headerAction={
           <AddButton
             ariaLabel="Agregar canción desde el cancionero"
@@ -871,18 +1010,26 @@ export default function MisCancionesPageClient() {
         )}
       </CancioneroSubpageShell>
 
-      <CancioneroVerModal
-        open={cancionViendo !== null}
-        cancion={cancionViendo}
-        onClose={() => setCancionViendo(null)}
-        onAnterior={() => void handleNavigateCancion(-1)}
-        onSiguiente={() => void handleNavigateCancion(1)}
-        tieneAnterior={cancionViendoIndex > 0}
-        tieneSiguiente={
-          cancionViendoIndex >= 0 &&
-          cancionViendoIndex < carouselGlobalIds.length - 1
-        }
-      />
+      {cancionViendo ? (
+        <CancioneroModoLectura
+          open={modoLectura}
+          cancion={cancionViendo}
+          cifradoDetalle={cifradoDetalle}
+          cifradoLoading={cifradoLoading}
+          items={lecturaItems}
+          onSelectCancion={(cancion) => {
+            void abrirEnLectura(cancion);
+          }}
+          onAnterior={() => handleNavigateCancion(-1)}
+          onSiguiente={() => handleNavigateCancion(1)}
+          tieneAnterior={cancionViendoIndex > 0}
+          tieneSiguiente={
+            cancionViendoIndex >= 0 &&
+            cancionViendoIndex < lecturaItems.length - 1
+          }
+          onContraer={cerrarCancion}
+        />
+      ) : null}
 
       <UrlLetraModal
         open={urlViendo !== null}

@@ -3,10 +3,10 @@
 import AppReadyMarker from "@/components/AppReadyMarker";
 import LecturaBottomControls from "@/components/home/LecturaBottomControls";
 import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
-import { buildColaLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
 import ColaIndividualSheet from "@/components/home/ColaIndividualSheet";
+import ColaBarraProxima from "@/components/salas/ColaBarraProxima";
 import BuscadorModal from "@/components/salas/BuscadorModal";
 import CancionActivaSection from "@/components/salas/CancionActivaSection";
 import ColaAvisoToast from "@/components/salas/ColaAvisoToast";
@@ -23,14 +23,18 @@ import { triggerHaptic } from "@/lib/haptic";
 import {
   COLA_AVISO_EXIT_MS,
   COLA_AVISO_SHOW_DELAY_MS,
+  CONTROL_LETRA_HORIZONTAL_INSET,
   getLecturaColaAvisoTopCss,
   getLecturaFabMenuTopCss,
   getLecturaFixedRightCss,
   getLecturaTopChromeTopCss,
   getSalaMainFooterPaddingCss,
 } from "@/lib/sala-layout";
-import { Minimize2, Search, SlidersHorizontal, X } from "lucide-react";
-import { SalaColaBootstrapSkeleton } from "@/components/salas/SalasSkeletons";
+import { SlidersHorizontal, X } from "lucide-react";
+import {
+  IndividualFilaSkeleton,
+  SalaColaBootstrapSkeleton,
+} from "@/components/salas/SalasSkeletons";
 import { useColaSidePanel } from "@/hooks/useColaSidePanel";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -57,7 +61,6 @@ export default function HomePageShell() {
   const lecturaConColaLateral = modoLectura && colaSidePanel;
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConColaLateral);
   const lecturaFilterTopCss = getLecturaFabMenuTopCss();
-  const lecturaSearchTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
   const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
   const cancionActivaDelCancionero = Boolean(
     cola.cancionActiva?.url_letra.startsWith("cancionero://"),
@@ -194,12 +197,15 @@ export default function HomePageShell() {
   useEffect(() => {
     if (modoLectura) {
       document.body.setAttribute("data-modo-lectura", "true");
+      document.body.setAttribute("data-hide-app-header", "true");
     } else {
       document.body.removeAttribute("data-modo-lectura");
+      document.body.removeAttribute("data-hide-app-header");
     }
 
     return () => {
       document.body.removeAttribute("data-modo-lectura");
+      document.body.removeAttribute("data-hide-app-header");
     };
   }, [modoLectura]);
 
@@ -248,40 +254,34 @@ export default function HomePageShell() {
     setModoLectura(true);
   }, []);
 
-  const lecturaNavItems = useMemo(() => {
-    if (lecturaConColaLateral) {
-      return [];
-    }
-
-    return buildColaLecturaNavItems({
-      pendientesCount: cola.pendientesCount,
-      siguienteDisabled: !cola.puedeAvanzar,
-      onBuscar: () => setBuscadorOpen(true),
-      onSiguiente: () => void handleSiguienteRef.current?.(),
-      onCola: () => openColaRef.current?.(),
-    });
-  }, [cola.pendientesCount, cola.puedeAvanzar, lecturaConColaLateral]);
+  const listaMovil =
+    !colaSidePanel &&
+    !modoLectura &&
+    !cola.loading &&
+    !cola.activaNoDisponible;
 
   return (
-    <div
-      className="flex flex-col overflow-hidden bg-bg-sala"
-      style={{ height: "100dvh" }}
-    >
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala">
       <main
-        className={`sala-cantar-main relative flex min-h-0 flex-col ${
+        className={`sala-cantar-main relative flex min-h-0 flex-1 flex-col ${
           lecturaPantallaCompleta
             ? "overflow-hidden"
-            : "flex-1 overflow-hidden lg:flex-row"
+            : "overflow-hidden lg:flex-row"
         }`}
         style={
           lecturaPantallaCompleta
-            ? { height: "100dvh" }
+            ? undefined
             : { paddingBottom: getSalaMainFooterPaddingCss() }
         }
       >
+        {listaMovil ? null : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {cola.loading ? (
-            <SalaColaBootstrapSkeleton />
+            colaSidePanel ? (
+              <SalaColaBootstrapSkeleton />
+            ) : (
+              <IndividualFilaSkeleton />
+            )
           ) : cola.activaNoDisponible ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
               <h2>{cola.cancionActiva?.nombre}</h2>
@@ -336,6 +336,8 @@ export default function HomePageShell() {
                   : undefined
               }
               videoLecturaAbierto={video.abierto}
+              mostrarChipLectura={false}
+              barraExterna={lecturaPantallaCompleta}
               onExpand={
                 !modoLectura && cola.cancionActiva ? handleExpand : undefined
               }
@@ -360,8 +362,47 @@ export default function HomePageShell() {
             />
           )}
         </div>
+        )}
+
+        {lecturaPantallaCompleta ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
+            style={{
+              paddingLeft: CONTROL_LETRA_HORIZONTAL_INSET,
+              paddingRight: CONTROL_LETRA_HORIZONTAL_INSET,
+              paddingBottom: "max(8px, env(safe-area-inset-bottom, 0px))",
+            }}
+          >
+            <div className="pointer-events-auto">
+            <ColaBarraProxima
+              mostrarActual
+              cancionActual={
+                cola.cancionActiva
+                  ? {
+                      nombre: cola.cancionActiva.nombre,
+                      artista: cola.cancionActiva.artista,
+                    }
+                  : null
+              }
+              proxima={null}
+              pendientesCount={cola.pendientesCount}
+              aviso={colaAviso}
+              showSiguiente={Boolean(cola.cancionActiva)}
+              siguienteDisabled={!cola.puedeAvanzar}
+              onBuscar={() => setBuscadorOpen(true)}
+              onSiguiente={() => void handleSiguienteRef.current?.()}
+              onAbrir={() => openColaRef.current?.()}
+              onArrastrar={(clientY, clientX) =>
+                arrastrarColaRef.current?.(clientY, clientX)
+              }
+            />
+            </div>
+          </div>
+        ) : null}
 
         <ColaIndividualSheet
+          anclada={listaMovil}
+          onExpandActiva={handleExpand}
           items={cola.items}
           noDisponibles={cola.noDisponibles}
           onOpenBuscador={() => setBuscadorOpen(true)}
@@ -388,7 +429,7 @@ export default function HomePageShell() {
         <>
           <TapButton
             type="button"
-            aria-label="Contraer"
+            aria-label="Cerrar"
             onClick={() => {
               setOverlayAbierto(false);
               salirModoLectura();
@@ -396,7 +437,7 @@ export default function HomePageShell() {
             className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
             style={{ top: getLecturaTopChromeTopCss(), right: lecturaFixedRightCss }}
           >
-            <Minimize2 className="size-4 text-accent" aria-hidden="true" />
+            <X className="size-4 text-black" aria-hidden="true" />
           </TapButton>
 
           <TapButton
@@ -419,37 +460,18 @@ export default function HomePageShell() {
               right: lecturaFixedRightCss,
             }}
           >
-            {overlayAbierto ? (
-              <X className="size-4 text-text-primary" aria-hidden="true" />
-            ) : (
-              <SlidersHorizontal
-                className="size-4 text-accent"
-                aria-hidden="true"
-              />
-            )}
+            <SlidersHorizontal
+              className="size-4 text-black"
+              aria-hidden="true"
+            />
           </TapButton>
-
-          {!overlayAbierto ? (
-            <TapButton
-              type="button"
-              aria-label="Buscar"
-              onClick={() => setBuscadorOpen(true)}
-              className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
-              style={{
-                top: lecturaSearchTopCss,
-                right: lecturaFixedRightCss,
-              }}
-            >
-              <Search className="size-4 text-accent" aria-hidden="true" />
-            </TapButton>
-          ) : null}
 
           <ModoLecturaOverlay
             abierto={overlayAbierto}
             fixedRightCss={lecturaFixedRightCss}
             showContraerOption={false}
             menuTopCss={lecturaOverlayMenuTopCss}
-            navItems={lecturaNavItems}
+            navItems={[]}
             extraItems={lecturaExtraItems}
             showZoomOption={lecturaZoomEligible}
             showTonoOption={Boolean(lecturaTonalidad)}
@@ -510,6 +532,11 @@ export default function HomePageShell() {
             onAutoScrollAccelerate={autoScroll.accelerate}
             onAutoScrollDecelerate={autoScroll.decelerate}
             showDesktopZoom={false}
+            bottomCss={
+              lecturaPantallaCompleta
+                ? "calc(96px + env(safe-area-inset-bottom, 0px))"
+                : undefined
+            }
           />
         </>
       ) : null}

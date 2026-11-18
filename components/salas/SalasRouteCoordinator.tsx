@@ -196,17 +196,26 @@ export default function SalasRouteCoordinator({
 
   return (
     <SalasNavigationContext.Provider value={navigationValue}>
-      <div className={shellSala ? "hidden" : "contents"} aria-hidden={Boolean(shellSala)}>
-        {children}
-      </div>
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          className={
+            shellSala
+              ? "hidden"
+              : "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          }
+          aria-hidden={Boolean(shellSala)}
+        >
+          {children}
+        </div>
 
-      {shellSala ? (
-        <SalaPageShell
-          key={shellSala.id}
-          salaId={shellSala.id}
-          salaNombre={shellSala.nombre}
-        />
-      ) : null}
+        {shellSala ? (
+          <SalaPageShell
+            key={shellSala.id}
+            salaId={shellSala.id}
+            salaNombre={shellSala.nombre}
+          />
+        ) : null}
+      </div>
     </SalasNavigationContext.Provider>
   );
 }

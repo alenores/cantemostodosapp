@@ -18,7 +18,6 @@ import {
   HUB_DESTINATION_PRACTICA_LABEL,
   HUB_DESTINATION_SALAS_DESCRIPTION,
   HUB_DESTINATION_SALAS_LABEL,
-  HUB_SECTION_DESTINOS_LABEL,
   HUB_WELCOME_TITLE,
 } from "@/lib/herramientas-product";
 import type { UsuarioActivo } from "@/types";
@@ -70,15 +69,10 @@ export default function HomeHubDestinations({
   return (
     <section className="flex flex-col gap-5 pb-3">
       {installSlot}
-      <div className="home-inicio-saludo flex flex-col items-center gap-2 text-center">
-        <p className="text-[22px] font-bold leading-[1.5] tracking-tight text-[#1c1c1e]">
-          <span className="home-inicio-saludo__linea">
-            {showName ? `¡${HUB_WELCOME_TITLE} ${displayName}!` : `¡${HUB_WELCOME_TITLE}!`}
-          </span>
+      <div className="home-destination-card home-inicio-saludo-tarjeta flex w-full items-center justify-center rounded-[28px] px-5 py-5 text-center">
+        <p className="text-[22px] font-bold leading-[1.5] tracking-tight text-[#f5f5f7]">
+          {showName ? `¡${HUB_WELCOME_TITLE} ${displayName}!` : `¡${HUB_WELCOME_TITLE}!`}
         </p>
-        <h2 className="text-[16px] font-semibold leading-[1.5] text-[#3f3f46]">
-          <span className="home-inicio-saludo__linea">{HUB_SECTION_DESTINOS_LABEL}</span>
-        </h2>
       </div>
 
       <div className="grid grid-cols-2 gap-3.5">
@@ -122,7 +116,7 @@ export default function HomeHubDestinations({
           onClick={() => goTo("/salas")}
           disabled={!online}
           pending={pendingHref === "/salas"}
-          trailing={!online ? <WifiOff className="size-4 text-text-secondary" /> : null}
+          trailing={!online ? <WifiOff className="size-4 text-[#c5c5cb]" /> : null}
         />
 
         {isLoggedIn ? (
@@ -165,8 +159,8 @@ export default function HomeHubDestinations({
                 <Users className="size-7" strokeWidth={2.2} />
               </span>
               <span className="min-w-0">
-                <span className="block text-[15px] font-extrabold uppercase tracking-[0.015em] text-text-primary">Usuarios</span>
-                <span className="mt-1 block text-[13px] text-text-muted">Administrar cuentas</span>
+                <span className="block text-[15px] font-extrabold uppercase tracking-[0.015em] text-[#f5f5f7]">Usuarios</span>
+                <span className="mt-1 block text-[13px] text-[#8e8e93]">Administrar cuentas</span>
               </span>
             </TapButton>
           </div>

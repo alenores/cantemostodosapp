@@ -8,9 +8,7 @@ import ModoLecturaOverlay from "@/components/home/ModoLecturaOverlay";
 import { buildCancioneroLecturaNavItems } from "@/components/home/lecturaModoNavItems";
 import LecturaTonoPanel from "@/components/home/LecturaTonoPanel";
 import LecturaZoomPanel from "@/components/home/LecturaZoomPanel";
-import LecturaCancionChip, {
-  LECTURA_TOP_CHIP,
-} from "@/components/salas/LecturaCancionChip";
+import { LECTURA_TOP_CHIP } from "@/components/salas/LecturaCancionChip";
 import LetraTexto from "@/components/salas/LetraTexto";
 import AfinadorLayer from "@/components/ui/AfinadorLayer";
 import VideoFlotante from "@/components/video/VideoFlotante";
@@ -26,13 +24,12 @@ import { getLetraZoomStyle } from "@/lib/letra-zoom";
 import {
   getLecturaFabMenuTopCss,
   getLecturaFixedRightCss,
-  getLecturaTopChromeTopCss,
   getLetraTextScrollEndPadding,
   MODO_LECTURA_OVERLAY_Z_CLASS,
 } from "@/lib/sala-layout";
 import type { CancionCancionero, CancionCifradoDetalle } from "@/types";
-import { Minimize2, SlidersHorizontal, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FileText, SlidersHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type CancioneroModoLecturaProps = {
@@ -64,6 +61,8 @@ export default function CancioneroModoLectura({
 }: CancioneroModoLecturaProps) {
   const isDesktop = useIsDesktop();
   const letraScrollRef = useRef<HTMLDivElement>(null);
+  const encabezadoRef = useRef<HTMLElement>(null);
+  const [controlesTop, setControlesTop] = useState<number | null>(null);
   const [portalMounted, setPortalMounted] = useState(false);
 
   useBodyScrollLock(open);
@@ -79,7 +78,12 @@ export default function CancioneroModoLectura({
   const lecturaFixedRightCss = getLecturaFixedRightCss(lecturaConListaLateral);
   const menuCompacto = lecturaConListaLateral;
   const lecturaFilterTopCss = getLecturaFabMenuTopCss();
-  const lecturaOverlayMenuTopCss = `calc(${lecturaFilterTopCss} + 44px)`;
+  const controlesTopCss =
+    controlesTop != null ? `${controlesTop}px` : lecturaFilterTopCss;
+  const lecturaOverlayMenuTopCss =
+    controlesTop != null
+      ? `${controlesTop + 44}px`
+      : `calc(${lecturaFilterTopCss} + 44px)`;
 
   const {
     overlayAbierto,
@@ -138,6 +142,22 @@ export default function CancioneroModoLectura({
   useEffect(() => {
     setPortalMounted(true);
   }, []);
+
+  useLayoutEffect(() => {
+    const encabezado = encabezadoRef.current;
+    if (!open || !encabezado) {
+      return;
+    }
+
+    const medir = () => {
+      const alto = encabezado.getBoundingClientRect().height;
+      setControlesTop(alto > 0 ? alto + 8 : null);
+    };
+
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [open, portalMounted, cancion.id]);
 
   useEffect(() => {
     if (!open) {
@@ -207,13 +227,38 @@ export default function CancioneroModoLectura({
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <LecturaCancionChip
-            nombre={cancion.nombre}
-            artista={cancion.artista}
-            nombreRevealKey={contentKey}
-            nombreRevealClass=""
-            reservarColaLateral={lecturaConListaLateral}
-          />
+          <header
+            ref={encabezadoRef}
+            className="cancionero-lectura-encabezado relative z-20 shrink-0 border-b border-border bg-bg-dark px-4 py-3 pr-14 select-none lg:hidden"
+          >
+            <div className="min-w-0">
+              <h2 className="flex min-w-0 items-center gap-1.5 truncate text-lg font-extrabold text-accent">
+                {cancion.tiene_cifrado_avanzado ? (
+                  <FileText
+                    className="size-3.5 shrink-0 text-[var(--tuner-cerca)]"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span className="truncate">{cancion.nombre}</span>
+              </h2>
+              {cancion.artista ? (
+                <p className="mt-0.5 truncate text-sm text-text-muted">
+                  {cancion.artista}
+                </p>
+              ) : null}
+            </div>
+            <TapButton
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => {
+                setOverlayAbierto(false);
+                onContraer();
+              }}
+              className="cancionero-lectura-cerrar absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-full bg-bg-card shadow-md"
+            >
+              <X className="size-5 text-text-primary" aria-hidden="true" />
+            </TapButton>
+          </header>
 
           {showCifradoAvanzado && cifradoDetalle ? (
             <LetraCifradoLecturaShell
@@ -308,22 +353,6 @@ export default function CancioneroModoLectura({
 
       <TapButton
         type="button"
-        aria-label="Contraer"
-        onClick={() => {
-          setOverlayAbierto(false);
-          onContraer();
-        }}
-        className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
-        style={{
-          top: getLecturaTopChromeTopCss(),
-          right: lecturaFixedRightCss,
-        }}
-      >
-        <Minimize2 className="size-4 text-accent" aria-hidden="true" />
-      </TapButton>
-
-      <TapButton
-        type="button"
         aria-label={
           overlayAbierto
             ? "Cerrar controles"
@@ -338,15 +367,15 @@ export default function CancioneroModoLectura({
           overlayAbierto ? "border-accent/45" : ""
         }`}
         style={{
-          top: lecturaFilterTopCss,
+          top: controlesTopCss,
           right: lecturaFixedRightCss,
         }}
       >
         {overlayAbierto ? (
-          <X className="size-4 text-text-primary" aria-hidden="true" />
+          <X className="size-4 text-black" aria-hidden="true" />
         ) : (
           <SlidersHorizontal
-            className="size-4 text-accent"
+            className="size-4 text-black"
             aria-hidden="true"
           />
         )}

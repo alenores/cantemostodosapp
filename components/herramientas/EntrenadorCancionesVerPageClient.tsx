@@ -432,7 +432,7 @@ export default function EntrenadorCancionesVerPageClient() {
         className={`fixed z-50 flex size-9 items-center justify-center lg:hidden ${LECTURA_TOP_CHIP}`}
         style={{ top: getLecturaTopChromeTopCss(), right: lecturaFixedRightCss }}
       >
-        <Minimize2 className="size-4 text-accent" aria-hidden="true" />
+        <Minimize2 className="size-4 text-black" aria-hidden="true" />
       </TapButton>
 
       <TapButton
@@ -455,9 +455,9 @@ export default function EntrenadorCancionesVerPageClient() {
         }}
       >
         {overlayAbierto ? (
-          <X className="size-4 text-text-primary" aria-hidden="true" />
+          <X className="size-4 text-black" aria-hidden="true" />
         ) : (
-          <SlidersHorizontal className="size-4 text-accent" aria-hidden="true" />
+          <SlidersHorizontal className="size-4 text-black" aria-hidden="true" />
         )}
       </TapButton>
 

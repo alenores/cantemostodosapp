@@ -127,6 +127,10 @@ type ColaJuntadaSheetProps = {
   onOpenBuscador: () => void;
   onSettledOpenChange?: (open: boolean) => void;
   onRequestOpen?: (open: () => void) => void;
+  /** Celular, sin la letra abierta: la fila es la pantalla, no un panel que se desliza. */
+  anclada?: boolean;
+  /** Abre la letra de la canción que está sonando. Solo en la fila anclada. */
+  onExpandActiva?: () => void;
   /** Celular: el dedo sobre la barrita cerrada puede arrastrar el panel hacia arriba. */
   onRequestArrastre?: (arrastrar: (clientY: number, clientX: number) => void) => void;
   onRequestSiguiente?: (siguiente: () => void) => void;
@@ -203,6 +207,8 @@ export default function ColaJuntadaSheet({
   onColaChange,
   onItemsReordered,
   onOpenBuscador,
+  anclada = false,
+  onExpandActiva,
   onSettledOpenChange,
   onRequestOpen,
   onRequestArrastre,
@@ -213,6 +219,7 @@ export default function ColaJuntadaSheet({
   const premiumIds = usePremiumCancioneroIds();
   const colaSidePanelMode =
     useColaSidePanel() && !presentacionOculta && !controlsHidden;
+  const listaAnclada = anclada && !colaSidePanelMode;
   const [panelEstado, setPanelEstado] = useState<ColaPanelEstado>("cerrado");
   const panelVisible = panelEstado !== "cerrado";
   const panelRef = useRef<ColaPanelDeslizableHandle>(null);
@@ -326,7 +333,7 @@ export default function ColaJuntadaSheet({
     }
   }, [controlsHidden, closeCola]);
 
-  useHardwareBack(panelVisible && !colaSidePanelMode, () => {
+  useHardwareBack(panelVisible && !colaSidePanelMode && !listaAnclada, () => {
     if (showDeleteAllDialog) {
       setShowDeleteAllDialog(false);
       return;
@@ -526,7 +533,11 @@ export default function ColaJuntadaSheet({
 
               {activaItem ? (
                 <div className="mb-2">
-                  <ColaJuntadaItem item={activaItem} variant="activa" />
+                  <ColaJuntadaItem
+                    item={activaItem}
+                    variant="activa"
+                    onExpand={listaAnclada ? onExpandActiva : undefined}
+                  />
                 </div>
               ) : null}
 
@@ -600,8 +611,12 @@ export default function ColaJuntadaSheet({
       onDragEnd={(event) => void handleDragEnd(event)}
       onDragCancel={handleDragCancel}
     >
-      {colaSidePanelMode
-        ? renderColaPanelShell("flex min-h-0 flex-1 flex-col")
+      {colaSidePanelMode || listaAnclada
+        ? renderColaPanelShell(
+            listaAnclada
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-dark"
+              : "flex min-h-0 flex-1 flex-col",
+          )
         : null}
 
       <DragOverlay dropAnimation={null} style={{ zIndex: COLA_MODAL_LAYER_Z + 2 }}>
@@ -622,7 +637,7 @@ export default function ColaJuntadaSheet({
   );
 
   const colaSheetLayer =
-    !colaSidePanelMode && portalMounted
+    !colaSidePanelMode && !listaAnclada && portalMounted
       ? createPortal(
           <ColaPanelDeslizable
             ref={panelRef}
@@ -633,6 +648,12 @@ export default function ColaJuntadaSheet({
             barra={
               <ColaBarraProximaContenido
                 decorativa
+                mostrarActual={presentacionOculta}
+                cancionActual={
+                  activaItem
+                    ? { nombre: activaItem.nombre, artista: activaItem.artista }
+                    : null
+                }
                 proxima={
                   proximaItem
                     ? { nombre: proximaItem.nombre, artista: proximaItem.artista }
@@ -687,7 +708,11 @@ export default function ColaJuntadaSheet({
 
   return (
     <>
-      {colaSidePanelMode ? (
+      {listaAnclada ? (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {colaDndLayer}
+        </div>
+      ) : colaSidePanelMode ? (
         <aside className={COLA_SIDE_PANEL_CLASS}>{colaDndLayer}</aside>
       ) : null}
 

@@ -47,13 +47,13 @@ export default function HomeDestinationCard({
         </span>
       ) : null}
 
-      <span className="flex flex-1 items-center justify-center text-text-primary" aria-hidden="true">
+      <span className="flex flex-1 items-center justify-center text-[#f5f5f7]" aria-hidden="true">
         <Icon className={featured ? "size-[58px]" : "size-[52px]"} strokeWidth={2.2} />
       </span>
-      <span className="block min-h-[2.5em] w-full text-[15px] font-extrabold uppercase leading-tight tracking-[0.015em] text-text-primary">
+      <span className="block min-h-[2.5em] w-full text-[15px] font-extrabold uppercase leading-tight tracking-[0.015em] text-[#f5f5f7]">
         {label}
       </span>
-      <span className="block w-full text-[13px] leading-tight text-text-muted">
+      <span className="block w-full text-[13px] leading-tight text-[#8e8e93]">
         {subtitle}
       </span>
       {trailing ? <span className="absolute right-3 top-3" aria-hidden="true">{trailing}</span> : null}

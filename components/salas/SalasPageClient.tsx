@@ -6,7 +6,6 @@ import CrearSalaModal from "@/components/salas/CrearSalaModal";
 import EditarSalaModal from "@/components/salas/EditarSalaModal";
 import SalaCard from "@/components/salas/SalaCard";
 import SalaMiembrosDetalleModal from "@/components/salas/SalaMiembrosDetalleModal";
-import AppTopHeader from "@/components/ui/AppTopHeader";
 import { useSalasNavigation } from "@/components/salas/SalasRouteCoordinator";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useHardwareBack } from "@/hooks/useHardwareBack";
@@ -126,9 +125,8 @@ export default function SalasPageClient({
   });
 
   return (
-    <div className="tono-pagina relative flex min-h-full flex-1 flex-col">
+    <div className="tono-pagina relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto">
       <AppReadyMarker />
-      <AppTopHeader usuario={usuario} />
 
       <main className="app-page-main flex flex-1 flex-col gap-5 px-5 py-7 pb-28 lg:gap-6 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-1 flex-col gap-5 lg:gap-6">

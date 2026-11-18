@@ -35,6 +35,8 @@ type LecturaBottomControlsProps = {
   onAutoScrollDecelerate: () => void;
   /** En el cancionero el tamaño queda en el panel izquierdo. */
   showDesktopZoom?: boolean;
+  /** Si la letra tiene una tarjeta abajo, los controles flotan por encima. */
+  bottomCss?: string;
 };
 
 export default function LecturaBottomControls({
@@ -58,6 +60,7 @@ export default function LecturaBottomControls({
   onAutoScrollAccelerate,
   onAutoScrollDecelerate,
   showDesktopZoom = true,
+  bottomCss,
 }: LecturaBottomControlsProps) {
   const showMobileCompasControls = hasCompases && !compasesOcultos;
   const showMobileAutoScroll =
@@ -68,7 +71,7 @@ export default function LecturaBottomControls({
     <div
       className="fixed z-[45] flex flex-col items-end gap-2 lg:flex-row lg:items-center"
       style={{
-        bottom: getLecturaAutoScrollBottomCss(),
+        bottom: bottomCss ?? getLecturaAutoScrollBottomCss(),
         right: fixedRightCss ?? getLecturaFixedRightCss(),
       }}
     >

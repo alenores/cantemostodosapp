@@ -3,10 +3,11 @@
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { useAutor } from "@/hooks/useAutor";
 import LetraFuenteIcon from "@/components/salas/LetraFuenteIcon";
+import { TapButton } from "@/components/ui/TapFeedback";
 import { getColaItemIconoTipo } from "@/lib/buscador";
 import { isColaAgregadoAleatorio } from "@/lib/cola-aleatorio";
 import type { ColaItem } from "@/types";
-import { Check, GripVertical, Play, Shuffle } from "lucide-react";
+import { Check, GripVertical, Maximize2, Play, Shuffle } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
@@ -37,6 +38,8 @@ type ColaJuntadaItemProps = {
   showAgregadoAvatar?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
   onVolverAPendiente?: (id: number) => void;
+  /** En la fila fija del celular: abre la letra de la canción que está sonando. */
+  onExpand?: () => void;
   nombreRevealGeneration?: number;
   nombreRevealIndex?: number;
 };
@@ -50,6 +53,7 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
       requiereConexion = false,
       dragHandleProps,
       onVolverAPendiente,
+      onExpand,
       nombreRevealGeneration,
       nombreRevealIndex,
       showAgregadoAvatar = true,
@@ -84,37 +88,62 @@ const ColaJuntadaItem = forwardRef<HTMLDivElement, ColaJuntadaItemProps>(
 
     if (variant === "activa") {
       return (
-        <div className="pointer-events-none flex items-center gap-3 rounded-xl bg-white px-3 py-3">
-          <Play
-            className="pointer-events-none size-4 shrink-0 text-[#f4845f]"
-            fill="#f4845f"
-            aria-hidden="true"
-          />
-          <div className="pointer-events-none min-w-0 flex-1">
-            <p className="pointer-events-none truncate text-[15px] font-semibold leading-snug text-gray-900">
-              {item.nombre}
-            </p>
-            {requiereConexion ? <p className="text-xs text-amber-700">Requiere conexión</p> : null}
-            {item.artista ? (
-              <p className="pointer-events-none truncate text-[13px] leading-snug text-gray-500">
-                {item.artista}
-              </p>
-            ) : null}
-          </div>
+        <div
+          className={
+            onExpand
+              ? "flex flex-col gap-2 rounded-xl bg-white px-3 py-2.5"
+              : "pointer-events-none flex items-center gap-3 rounded-xl bg-white px-3 py-3"
+          }
+        >
           <div
-            className="pointer-events-none cola-activa-eq shrink-0 rounded bg-[var(--accent)]/15 px-2.5 py-1.5"
-            role="status"
-            aria-label="Tocando"
+            className={
+              onExpand
+                ? "pointer-events-none flex min-w-0 items-center gap-3"
+                : "contents"
+            }
           >
-            {[0, 1, 2, 3].map((index) => (
-              <span
-                key={index}
-                className="cola-activa-eq-bar"
-                style={{ animationDelay: `${index * 0.12}s` }}
-                aria-hidden="true"
-              />
-            ))}
+            <Play
+              className="pointer-events-none size-4 shrink-0 text-[#f4845f]"
+              fill="#f4845f"
+              aria-hidden="true"
+            />
+            <div className="pointer-events-none min-w-0 flex-1">
+              <p className="pointer-events-none truncate text-[15px] font-semibold leading-snug text-gray-900">
+                {item.nombre}
+              </p>
+              {requiereConexion ? <p className="text-xs text-amber-700">Requiere conexión</p> : null}
+              {item.artista ? (
+                <p className="pointer-events-none truncate text-[13px] leading-snug text-gray-500">
+                  {item.artista}
+                </p>
+              ) : null}
+            </div>
+            <div
+              className="pointer-events-none cola-activa-eq shrink-0 rounded bg-[var(--accent)]/15 px-2.5 py-1.5"
+              role="status"
+              aria-label="Tocando"
+            >
+              {[0, 1, 2, 3].map((index) => (
+                <span
+                  key={index}
+                  className="cola-activa-eq-bar"
+                  style={{ animationDelay: `${index * 0.12}s` }}
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
           </div>
+          {onExpand ? (
+            <TapButton
+              type="button"
+              aria-label="Expandir letra"
+              onClick={onExpand}
+              className="pointer-events-auto mx-auto flex items-center gap-1 rounded-full border border-border/60 bg-bg-dark px-3 py-1 text-xs font-medium text-text-primary"
+            >
+              <Maximize2 className="size-3.5 text-text-primary" aria-hidden="true" />
+              <span>Expandir</span>
+            </TapButton>
+          ) : null}
         </div>
       );
     }

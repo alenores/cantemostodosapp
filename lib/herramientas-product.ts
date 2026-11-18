@@ -17,7 +17,6 @@ export const COMPOSITOR_VS_ENTRENADOR_NOTE =
 
 export const HUB_WELCOME_TITLE = "Bienvenid@";
 
-export const HUB_SECTION_DESTINOS_LABEL = "¿Qué querés hacer?";
 export const HUB_DESTINATION_SALAS_LABEL = "Salas";
 export const HUB_DESTINATION_SALAS_DESCRIPTION =
   "Cantar en grupo en tiempo real";

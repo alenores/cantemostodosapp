@@ -17,41 +17,51 @@ export default function CancioneroCardVisual({
   iconos,
   reservarEsquina = false,
 }: CancioneroCardVisualProps) {
+  const aireDerecha = iconos
+    ? reservarEsquina
+      ? "pr-[4.5rem]"
+      : "pr-8"
+    : reservarEsquina
+      ? "pr-8"
+      : "";
+
   return (
-    <div className="min-w-0">
-      <div className="flex min-w-0 items-end gap-3">
-        <div className="relative size-[76px] shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#3b3542] via-[#34343a] to-[#25272c] ring-1 ring-white/10">
-          {artistaAvatarUrl ? (
-            // Fotos públicas de artistas con dominios variables.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={artistaAvatarUrl}
-              alt=""
-              loading="lazy"
-              className="size-full object-cover"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center text-[32px] font-semibold text-white/70">
-              {artista ? artista.charAt(0).toLocaleUpperCase("es") : <Music2 className="size-8" aria-hidden="true" />}
-            </div>
-          )}
+    <div className="relative min-w-0">
+      <div className={aireDerecha}>
+        <div className="flex min-w-0 items-end gap-3">
+          <div className="relative size-[76px] shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#3b3542] via-[#34343a] to-[#25272c] ring-1 ring-white/10">
+            {artistaAvatarUrl ? (
+              // Fotos públicas de artistas con dominios variables.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={artistaAvatarUrl}
+                alt=""
+                loading="lazy"
+                className="size-full object-cover"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center text-[32px] font-semibold text-white/70">
+                {artista ? artista.charAt(0).toLocaleUpperCase("es") : <Music2 className="size-8" aria-hidden="true" />}
+              </div>
+            )}
+          </div>
+          <p className="min-w-0 flex-1 self-center break-words text-[18px] font-bold leading-tight text-text-primary">
+            {nombre}
+          </p>
         </div>
-        <p
-          className={`min-w-0 flex-1 self-center break-words text-[18px] font-bold leading-tight text-text-primary ${
-            reservarEsquina ? "pr-8" : ""
+        <p className="mt-1.5 break-words text-left text-[15px] leading-tight text-text-secondary">
+          {artista || "Artista sin indicar"}
+        </p>
+      </div>
+      {iconos ? (
+        <div
+          className={`absolute bottom-0 top-0 flex w-6 flex-col-reverse items-center justify-start gap-0.5 [&>*]:shrink-0 ${
+            reservarEsquina ? "right-9" : "right-0"
           }`}
         >
-          {nombre}
-        </p>
-        {iconos ? (
-          <div className="flex max-w-[48%] shrink-0 flex-wrap items-center justify-end gap-x-2.5 gap-y-1.5">
-            {iconos}
-          </div>
-        ) : null}
-      </div>
-      <p className="mt-1.5 break-words text-left text-[15px] leading-tight text-text-secondary">
-        {artista || "Artista sin indicar"}
-      </p>
+          {iconos}
+        </div>
+      ) : null}
     </div>
   );
 }

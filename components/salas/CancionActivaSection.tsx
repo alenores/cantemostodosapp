@@ -221,6 +221,10 @@ type CancionActivaSectionProps = {
   onAfinadorLectura?: () => void;
   onVideoLectura?: () => void;
   videoLecturaAbierto?: boolean;
+  /** En Individual el nombre va en la tarjeta de abajo, no en el chip de arriba. */
+  mostrarChipLectura?: boolean;
+  /** La tarjeta de la fila está fuera de esta sección: no reservar el borde inferior. */
+  barraExterna?: boolean;
 };
 
 function LetraEmptySheet({
@@ -288,6 +292,8 @@ export default function CancionActivaSection({
   onAfinadorLectura,
   onVideoLectura,
   videoLecturaAbierto = false,
+  mostrarChipLectura = true,
+  barraExterna = false,
 }: CancionActivaSectionProps) {
   const letraScrollRefLocal = useRef<HTMLDivElement>(null);
   const letraScrollRef = letraScrollRefProp ?? letraScrollRefLocal;
@@ -481,7 +487,7 @@ export default function CancionActivaSection({
       />
     ) : null;
 
-  const lecturaChipViewport = lecturaChipProps ? (
+  const lecturaChipViewport = mostrarChipLectura && lecturaChipProps ? (
     <LecturaCancionChip
       {...lecturaChipProps}
       reservarColaLateral={colaSidePanel}
@@ -509,23 +515,29 @@ export default function CancionActivaSection({
     modoLectura && lecturaZoomEligible
       ? getLetraZoomStyle(letraZoomFactor)
       : undefined;
+  const lecturaScrollEndPadding = barraExterna
+    ? "calc(88px + env(safe-area-inset-bottom, 0px))"
+    : "calc(16px + env(safe-area-inset-bottom, 0px))";
+  const lecturaSectionPaddingBottom = barraExterna
+    ? "0px"
+    : "env(safe-area-inset-bottom, 0px)";
 
   if (showLetraSheet) {
     const scrollEndPadding = modoLectura
-      ? "calc(16px + env(safe-area-inset-bottom, 0px))"
+      ? lecturaScrollEndPadding
       : getLetraTextScrollEndPadding();
     const textoPlano =
       contenido?.mode === "texto" ? contenido.texto : letraTexto?.trim() ?? "";
 
     return (
       <section
-        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala ${
-          modoLectura ? "px-0 pt-0" : "pt-0"
+        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden ${
+          modoLectura ? "bg-letra-bg px-0 pt-0" : "bg-bg-sala pt-0"
         }`}
         style={{
           ...(modoLectura ? {} : getControlCantarHorizontalPaddingStyle()),
           paddingBottom: modoLectura
-            ? "env(safe-area-inset-bottom, 0px)"
+            ? lecturaSectionPaddingBottom
             : getLetraSectionTextBottomPadding(),
         }}
       >
@@ -673,7 +685,7 @@ export default function CancionActivaSection({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-1 flex-col bg-bg-sala ${
+      className={`flex h-full min-h-0 flex-1 flex-col ${modoLectura ? "bg-letra-bg" : "bg-bg-sala"} ${
         modoLectura
           ? "overflow-hidden px-0 pb-0 pt-0 lg:flex-row"
           : showEmbed
@@ -682,7 +694,9 @@ export default function CancionActivaSection({
       }`}
       style={
         modoLectura
-          ? undefined
+          ? barraExterna
+            ? { paddingBottom: lecturaSectionPaddingBottom }
+            : undefined
           : {
               ...getControlCantarHorizontalPaddingStyle(),
               paddingBottom: showEmbed

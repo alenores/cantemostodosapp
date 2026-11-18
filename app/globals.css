@@ -178,6 +178,73 @@ body[data-tema-lectura="dia"] {
   --letra-text: #111111;
 }
 
+/* Barra de la canción y controles de abajo a la derecha: siguen el tema para no perderse. */
+body[data-tema-lectura="dia"] .cancionero-lectura-encabezado,
+body[data-tema-lectura="dia"] .lectura-control-flotante {
+  background-color: #2c2c2e;
+  border-color: #3a3a3d;
+  color: #f5f5f7;
+}
+
+body[data-tema-lectura="dia"] .cancionero-lectura-encabezado h2,
+body[data-tema-lectura="dia"] .lectura-control-flotante span,
+body[data-tema-lectura="dia"] .lectura-control-flotante svg {
+  color: #f5f5f7;
+}
+
+body[data-tema-lectura="dia"] .cancionero-lectura-encabezado p {
+  color: #c5c5cb;
+}
+
+body[data-tema-lectura="dia"] .cancionero-lectura-cerrar {
+  background-color: #3a3a3d;
+  color: #f5f5f7;
+}
+
+body[data-tema-lectura="escenario"] .cancionero-lectura-encabezado,
+body[data-tema-lectura="escenario"] .lectura-control-flotante {
+  background-color: #1a1a1c;
+  border-color: #4a4a4e;
+  color: #f5f5f7;
+}
+
+body[data-tema-lectura="escenario"] .cancionero-lectura-encabezado h2,
+body[data-tema-lectura="escenario"] .lectura-control-flotante span,
+body[data-tema-lectura="escenario"] .lectura-control-flotante svg {
+  color: #f5f5f7;
+}
+
+body[data-tema-lectura="escenario"] .cancionero-lectura-encabezado p {
+  color: #c5c5cb;
+}
+
+body[data-tema-lectura="escenario"] .cancionero-lectura-cerrar {
+  background-color: #2a2a2c;
+  color: #f5f5f7;
+}
+
+body[data-tema-lectura="sepia"] .cancionero-lectura-encabezado,
+body[data-tema-lectura="sepia"] .lectura-control-flotante {
+  background-color: #4a3c32;
+  border-color: #6b5848;
+  color: #f7f1e8;
+}
+
+body[data-tema-lectura="sepia"] .cancionero-lectura-encabezado h2,
+body[data-tema-lectura="sepia"] .lectura-control-flotante span,
+body[data-tema-lectura="sepia"] .lectura-control-flotante svg {
+  color: #f7f1e8;
+}
+
+body[data-tema-lectura="sepia"] .cancionero-lectura-encabezado p {
+  color: #e4d5c4;
+}
+
+body[data-tema-lectura="sepia"] .cancionero-lectura-cerrar {
+  background-color: #5c4a3a;
+  color: #f7f1e8;
+}
+
 /* Transiciones fluidas para el modo lectura */
 .bg-letra-bg,
 .text-letra-text,
@@ -298,6 +365,14 @@ body[data-tema-lectura] button {
 .home-destination-card:active {
   transform: translateY(2px) scale(0.99);
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+.home-inicio-saludo-tarjeta.home-destination-card:active {
+  transform: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 8px 14px rgba(0, 0, 0, 0.32);
 }
 
 .home-destination-card:focus-visible {
@@ -1910,13 +1985,17 @@ html.splash-active body {
   box-shadow: 0 0 0 2px #3a2224;
 }
 
-/* Práctica y Cancionero en el celular: misma partitura clara del inicio. */
+/* Práctica y Cancionero, pantalla de entrada del celular: partitura en negro detrás y tarjetas claras. */
 .practica-hub {
-  background-color: #f7f4ee;
-  background-image: url("/fondo-inicio.webp?v=3");
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
+  background-color: #101012;
+}
+
+.practica-hub h2 {
+  color: #f5f5f7;
+}
+
+.practica-hub > main p {
+  color: #c5c5cb;
 }
 
 .practica-hub::before {
@@ -1925,7 +2004,9 @@ html.splash-active body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  display: none;
+  background: url("/fondo-inicio.webp?v=3") center top / cover no-repeat;
+  filter: invert(1) brightness(0.8);
+  opacity: 0.34;
 }
 
 .practica-hub > * {
@@ -1937,7 +2018,6 @@ html.splash-active body {
 @media (min-width: 1024px) {
   .practica-hub {
     background-color: var(--bg-app);
-    background-image: none;
   }
 
   .practica-hub::before {
@@ -1946,9 +2026,14 @@ html.splash-active body {
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] {
-  border: 1px solid #e4ddd3;
-  background: #fffdf9;
-  box-shadow: 0 8px 18px rgba(60, 40, 20, 0.08);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, #d2d2d6 0%, #c6c6ca 58%, #bcbcc0 100%) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.12) 36%, rgba(0, 0, 0, 0.28) 100%) border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 1px 0 rgba(0, 0, 0, 0.2),
+    0 8px 14px rgba(0, 0, 0, 0.38);
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] p {
@@ -1979,20 +2064,21 @@ html.splash-active body {
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] {
-  background: #fffdf9;
-  border-color: #e7b2aa;
+  background:
+    linear-gradient(180deg, #5c3232 0%, #3c2224 58%, #2a181a 100%) padding-box,
+    linear-gradient(180deg, rgba(255, 170, 160, 0.75) 0%, rgba(255, 255, 255, 0.08) 32%, rgba(0, 0, 0, 0.55) 100%) border-box;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] p {
-  color: #1c1c1e;
+  color: #f5f5f7;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="novedades"] .hub-module-card__icon {
-  color: #e85d4a;
+  color: #ff8f84;
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__cta {
-  background: #efeae2;
+  background: #b0b0b4;
   color: #1c1c1e;
 }
 
@@ -2876,6 +2962,18 @@ html.splash-active body {
     background: #fffdf9;
     border: 1px solid #e4ddd3;
     box-shadow: 0 8px 18px rgba(60, 40, 20, 0.08);
+  }
+
+  /* Inicio: el gris oscuro que tenían las tarjetas antes del fondo claro. */
+  .home-inicio-pantalla .home-destination-card {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(180deg, #46464a 0%, #2c2c2e 58%, #242426 100%) padding-box,
+      linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.08) 30%, rgba(0, 0, 0, 0.72) 100%) border-box;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      0 1px 0 rgba(0, 0, 0, 0.4),
+      0 8px 14px rgba(0, 0, 0, 0.32);
   }
 
   html.splash-active,

@@ -344,7 +344,7 @@ export function DesktopAppSkeleton() {
 export function HomeWelcomeSkeleton() {
   return (
     <div
-      className="home-inicio-fondo flex min-h-full flex-1 flex-col"
+      className="home-inicio-fondo home-inicio-pantalla flex min-h-full flex-1 flex-col"
       role="status"
       aria-live="polite"
       aria-label="Cargando inicio"
@@ -353,9 +353,8 @@ export function HomeWelcomeSkeleton() {
       <main className="app-page-main flex flex-col gap-3 bg-transparent px-5 py-5 pb-28 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-col gap-5">
           <div className="h-[46px] w-full rounded-xl bg-accent/40" aria-hidden="true" />
-          <div className="home-inicio-saludo flex flex-col items-center gap-2">
-            <ShimmerBlock className="h-7 w-40 rounded-lg" />
-            <ShimmerBlock className="h-6 w-44 rounded-lg" delayMs={50} />
+          <div className="home-destination-card home-inicio-saludo-tarjeta flex w-full items-center justify-center rounded-[28px] px-5 py-5">
+            <ShimmerBlock className="h-7 w-52 rounded-lg" />
           </div>
 
           <div className="grid grid-cols-2 gap-3.5">
@@ -409,12 +408,47 @@ export function HubSectionSkeleton({
 /** @deprecated Alias histórico — el home real es HomeWelcomeSkeleton. */
 export const HerramientasHubSkeleton = HomeWelcomeSkeleton;
 
-/** Skeleton de navegación a /individual — modo control vacío. */
+/** En el celular Individual abre directo en la fila, debajo del encabezado celeste. */
+export function IndividualFilaSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-dark"
+      aria-hidden="true"
+    >
+      <div className="relative shrink-0 border-b border-border px-4 py-3">
+        <div className="flex items-center justify-center">
+          <ShimmerBlock className="absolute left-4 size-9 rounded-full" />
+          <ShimmerBlock className="h-5 w-36" delayMs={30} />
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <ShimmerBlock className="size-9 rounded-full" delayMs={40} />
+          <ShimmerBlock className="size-9 rounded-full" delayMs={70} />
+          <ShimmerBlock className="size-9 rounded-full" delayMs={100} />
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 py-3">
+        <ShimmerBlock className="h-3 w-[46%] opacity-40" delayMs={20} />
+        <ShimmerBlock className="h-3 w-[34%] opacity-40" delayMs={40} />
+        <div className="rounded-xl bg-white px-3 py-3">
+          <ShimmerBlock className="h-4 w-[55%] bg-black/10" delayMs={50} />
+          <ShimmerBlock className="mt-2 h-3 w-[32%] bg-black/10" delayMs={70} />
+          <div className="mt-2 flex justify-center">
+            <ShimmerBlock className="h-6 w-20 rounded-full" delayMs={90} />
+          </div>
+        </div>
+        <ShimmerBlock className="h-14 w-full rounded-xl" delayMs={80} />
+        <ShimmerBlock className="h-14 w-full rounded-xl" delayMs={120} />
+        <ShimmerBlock className="h-14 w-full rounded-xl" delayMs={160} />
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton de navegación a /individual — fila en el celular, modo control en la computadora. */
 export function HomePageSkeleton() {
   return (
     <div
-      className="flex flex-col overflow-hidden bg-bg-sala"
-      style={{ height: "100dvh" }}
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala"
       role="status"
       aria-live="polite"
       aria-label="Cargando inicio"
@@ -423,7 +457,10 @@ export function HomePageSkeleton() {
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
         style={{ paddingBottom: getSalaMainFooterPaddingCss() }}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
+          <IndividualFilaSkeleton />
+        </div>
+        <div className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
           <ControlModeShellSkeleton />
         </div>
       </main>
@@ -432,17 +469,15 @@ export function HomePageSkeleton() {
   );
 }
 
-/** Skeleton del listado /salas — replica SalasPageClient. */
+/** Skeleton del listado /salas — el encabezado celeste lo aporta el layout. */
 export function SalasPageSkeleton() {
   return (
     <div
-      className="flex min-h-full flex-1 flex-col bg-bg-app"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-bg-app"
       role="status"
       aria-live="polite"
       aria-label="Cargando salas"
     >
-      <AppTopHeaderSkeleton />
-
       <main className="app-page-main flex flex-1 flex-col gap-5 px-5 py-7 pb-28 lg:gap-6 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-1 flex-col gap-5 lg:gap-6">
           <SalasSectionLabelSkeleton />
@@ -458,12 +493,33 @@ export function SalasPageSkeleton() {
   );
 }
 
-/** Skeleton de navegación a /salas/[id] — modo control con back. */
+function SalaParticipantesSkeleton() {
+  return (
+    <div className="flex shrink-0 items-center gap-2 bg-bg-sala px-4 py-2" aria-hidden="true">
+      <ShimmerBlock className="size-8 rounded-full" />
+      <ShimmerBlock className="size-8 rounded-full" delayMs={40} />
+      <ShimmerBlock className="size-8 rounded-full" delayMs={80} />
+      <div className="flex-1" />
+      <ShimmerBlock className="h-3 w-16" delayMs={60} />
+    </div>
+  );
+}
+
+/** En el celular la sala abre en la fila, con la gente de la sala abajo. */
+function SalaFilaMovilSkeleton() {
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <IndividualFilaSkeleton />
+      <SalaParticipantesSkeleton />
+    </div>
+  );
+}
+
+/** Skeleton de navegación a /salas/[id] — fila en el celular, letra en la computadora. */
 export function SalaPageSkeleton() {
   return (
     <div
-      className="flex flex-col overflow-hidden bg-bg-sala"
-      style={{ height: "100dvh" }}
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg-sala"
       role="status"
       aria-live="polite"
       aria-label="Cargando sala"
@@ -472,7 +528,10 @@ export function SalaPageSkeleton() {
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
         style={{ paddingBottom: getSalaMainFooterPaddingCss() }}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:hidden">
+          <SalaFilaMovilSkeleton />
+        </div>
+        <div className="hidden min-h-0 flex-1 flex-col overflow-hidden lg:flex">
           <ControlModeShellSkeleton />
         </div>
       </main>

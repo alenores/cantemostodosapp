@@ -700,7 +700,14 @@ export default function CancioneroPageClient({
 
     setCifradoDetalle(null);
     setCancionViendo(cancion);
+    setModoLectura(true);
     anotarReciente(cancion.id);
+  }
+
+  function cerrarCancion() {
+    setModoLectura(false);
+    setCancionViendo(null);
+    setCifradoDetalle(null);
   }
 
   useEffect(() => {
@@ -1249,10 +1256,7 @@ export default function CancioneroPageClient({
             ? cancionesFiltradas[cancionViendoIndex + 1]!
             : null
         }
-        onClose={() => {
-          setCancionViendo(null);
-          setCifradoDetalle(null);
-        }}
+        onClose={cerrarCancion}
         onAnterior={() => handleNavigateCancion(-1)}
         onSiguiente={() => handleNavigateCancion(1)}
         onExpand={() => setModoLectura(true)}
@@ -1281,7 +1285,7 @@ export default function CancioneroPageClient({
             cancionViendoIndex >= 0 &&
             cancionViendoIndex < cancionesFiltradas.length - 1
           }
-          onContraer={() => setModoLectura(false)}
+          onContraer={cerrarCancion}
         />
       ) : null}
 

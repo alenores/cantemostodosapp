@@ -111,7 +111,7 @@ Además, en el inicio pueden aparecer:
 
 ### 5.2 Navegación en celular
 
-La cabecera superior se oculta en **Individual** y **Salas** para dejar más espacio a la canción.
+La cabecera celeste (logo, nombre de la app y perfil) se ve en Individual, en el listado de Salas y adentro de una sala. Se oculta solo cuando la letra está expandida.
 
 En la parte inferior hay una **barra fija con cinco pestañas**:
 
@@ -172,17 +172,15 @@ El modo **Individual** es la experiencia de **cantar solo**. Es la pantalla prin
 
 ### 6.1 Pantalla principal
 
-La persona usuaria ve:
+En **celular**, al entrar se ve la **fila de canciones**, debajo de la cabecera celeste. La canción que está sonando tiene el botón **Expandir** al medio y abajo. Ese botón abre la letra a pantalla completa y esconde la cabecera.
 
-- La **canción activa** (letra en pantalla). Arriba: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). Igual en Salas, en celular y computadora. La etiqueta de **Cifra Club** lleva un **?**: al tocarla abre la ayuda que explica por qué la letra se ve como página web. Sobre la letra de Cifra Club queda solo el botón **Recargar** (arriba a la izquierda) y las flechas de página completa (arriba a la derecha).
-- Un botón para **buscar canción**.
-- Acceso a la **fila de canciones** (lista personal de qué va a cantar).
+En **computadora** se ve la letra al lado de la fila. Arriba de la letra: título, artista y, en una tercera línea más chica, la etiqueta de origen (**Cancionero**, **Acordes de Canciones** o **Cifra Club**). La etiqueta de **Cifra Club** lleva un **?**: al tocarla abre la ayuda que explica por qué la letra se ve como página web. Sobre la letra de Cifra Club queda solo el botón **Recargar** (arriba a la izquierda) y las flechas de página completa (arriba a la derecha).
 
 ### 6.2 Fila de canciones (individual)
 
 La fila es una **cola personal** que no se comparte con nadie. Cada canción puede estar en uno de estos estados:
 
-En celular, debajo de la letra está la **barrita de la fila**: una pastillita arriba, **Próxima · N en fila** con el nombre y artista de la próxima canción, la **lupa** para buscar y **Siguiente**. Tocarla o deslizarla hacia arriba la estira hasta la fila completa, como un panel pegado abajo de borde a borde que sigue al dedo; mientras crece, la barrita se transforma en la lista. Para cerrarla se baja con el dedo desde la cabecera, o desde la lista cuando ya está arriba de todo; si se suelta a mitad de camino, termina de abrirse o de cerrarse según hacia dónde iba. También se cierra tocando el fondo oscuro. Igual en la fila de la juntada (Salas). En computadora la fila es el panel del costado.
+En celular, con la letra expandida, abajo flota la **barrita de la fila**: una pastillita arriba, el nombre y artista de la canción que se está viendo, la **lupa** para buscar y **Siguiente**. Tocarla o deslizarla hacia arriba la estira hasta la fila completa, por encima de la letra, y se baja para volver a la letra. Igual en la fila de la juntada (Salas). En computadora la fila es el panel del costado y, si la letra no está expandida, la barrita muestra la próxima canción.
 
 | Estado | Significado |
 |--------|-------------|
@@ -225,7 +223,7 @@ Al abrir una pantalla con conexión, la app busca la versión actual antes de us
 
 **Si la señal se cae al cambiar de pantalla**, a los 6 segundos se abre la copia guardada de esa pantalla en lugar de quedarse esperando (vale para las pantallas que funcionan sin conexión).
 
-En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. **Contraer** queda como botón independiente, arriba del filtro. El menú de controles comienza justo debajo del filtro. En los controles de tono, la flecha izquierda baja un semitono y la derecha lo sube.
+En la letra expandida, los temas **Claro, Sepia y Escenario** solo se pueden cambiar para canciones del Cancionero. La **cruz** para cerrar queda arriba del filtro. El menú de controles comienza justo debajo del filtro. En los controles de tono, la flecha izquierda baja un semitono y la derecha lo sube.
 
 ---
 
@@ -442,7 +440,7 @@ Todos los participantes conectados comparten:
 - La **misma fila de canciones** (cola de la juntada).
 - Una **barra de presencia** con avatares, contador (*"X en la sala"*), indicador **"en vivo"** y botón **QR** para invitar.
 
-El encabezado de la canción es igual al de Individual: **sin flecha de volver**. En celular, para salir de la sala se usa el botón atrás del teléfono.
+En celular, adentro de la sala, la pantalla es la misma que Individual: la fila de canciones, y al expandir, la letra con la barrita abajo. La única diferencia es la **barra de presencia**, que queda abajo de la fila y se esconde al abrir la letra. En computadora se ve la letra al lado de la fila, con la barra de presencia debajo de la letra. No hay flecha de volver: en celular se sale con el botón atrás del teléfono.
 
 **Controles de la fila** (iguales a Individual, más sincronización grupal):
 
@@ -516,12 +514,12 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 ### 12.1 Cómo se entra y sale
 
 - Se entra con **Expandir** desde la vista de una canción (cancionero, individual, sala o entrenador de canciones).
-- Se sale con **Contraer**.
+- Se sale con la **cruz** en Individual y Salas, y con **Contraer** en el resto.
 
 ### 12.2 Controles en celular (menú flotante)
 
-- **Contraer** (salir del modo lectura). En Individual, Salas, Cancionero y Entrenador de canciones queda como botón independiente, arriba del filtro.
-- **Buscar**, **Siguiente**, **Fila · N** (cantidad de pendientes) — en individual y sala
+- **Cerrar** (la cruz) en Individual y Salas, arriba del filtro. En Cancionero y Entrenador de canciones el botón equivalente es **Contraer**. El botón del filtro no cambia de ícono al abrir el menú.
+- **Buscar**, **Siguiente** y **Fila** no están en el menú de Individual ni de Salas: viven en la barrita de abajo. En el resto siguen en el menú.
 - **Anterior**, **Siguiente** — en cancionero (solo celular)
 - **Activar compases** (si estaban ocultos)
 - **Mostrar / Ocultar acordes**

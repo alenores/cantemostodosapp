@@ -38,6 +38,9 @@ type ColaBarraProximaContenidoProps = {
   onSiguiente?: () => void;
   /** Copia visual dentro del panel mientras se transforma: sin botones activos. */
   decorativa?: boolean;
+  /** La tarjeta muestra la canción que está sonando, en lugar de la próxima. */
+  mostrarActual?: boolean;
+  cancionActual?: ColaProximaDisplay | null;
 };
 
 /** Próxima canción + lupa + siguiente (sin la pastilla ni el contorno). */
@@ -50,32 +53,54 @@ export function ColaBarraProximaContenido({
   onBuscar,
   onSiguiente,
   decorativa = false,
+  mostrarActual = false,
+  cancionActual = null,
 }: ColaBarraProximaContenidoProps) {
-  const etiqueta =
-    aviso ?? (pendientesCount > 0 ? `Próxima · ${pendientesCount} en fila` : "Fila");
+  const etiqueta = mostrarActual
+    ? aviso
+    : (aviso ?? (pendientesCount > 0 ? `Próxima · ${pendientesCount} en fila` : "Fila"));
+  const cancionMostrada = mostrarActual ? cancionActual : proxima;
 
   return (
     <div className="flex items-center gap-2 px-3 pb-2">
       <div className="min-w-0 flex-1 leading-tight">
-        <p
-          role={aviso && !decorativa ? "status" : undefined}
-          aria-live={aviso && !decorativa ? "polite" : undefined}
-          className="truncate text-[10px] font-semibold uppercase tracking-wide text-accent"
-        >
-          {etiqueta}
-        </p>
-        {proxima ? (
-          <p className="mt-0.5 truncate">
-            <span className="text-[15px] font-semibold text-text-primary">
-              {proxima.nombre}
-            </span>
-            {proxima.artista ? (
-              <span className="text-xs text-text-muted"> · {proxima.artista}</span>
-            ) : null}
+        {etiqueta ? (
+          <p
+            role={aviso && !decorativa ? "status" : undefined}
+            aria-live={aviso && !decorativa ? "polite" : undefined}
+            className="truncate text-[10px] font-semibold uppercase tracking-wide text-accent"
+          >
+            {etiqueta}
           </p>
+        ) : null}
+        {cancionMostrada ? (
+          mostrarActual ? (
+            <div className={etiqueta ? "mt-0.5" : undefined}>
+              <p className="truncate text-[15px] font-semibold text-text-primary">
+                {cancionMostrada.nombre}
+              </p>
+              {cancionMostrada.artista ? (
+                <p className="truncate text-xs text-text-muted">
+                  {cancionMostrada.artista}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-0.5 truncate">
+              <span className="text-[15px] font-semibold text-text-primary">
+                {cancionMostrada.nombre}
+              </span>
+              {cancionMostrada.artista ? (
+                <span className="text-xs text-text-muted">
+                  {" "}
+                  · {cancionMostrada.artista}
+                </span>
+              ) : null}
+            </p>
+          )
         ) : (
           <p className="mt-0.5 truncate text-xs text-text-muted">
-            Sin canciones en fila
+            {mostrarActual ? "Sin canción" : "Sin canciones en fila"}
           </p>
         )}
       </div>

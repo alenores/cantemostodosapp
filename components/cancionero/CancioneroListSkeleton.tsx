@@ -37,37 +37,39 @@ export function CancioneroCardSkeleton({
       aria-hidden="true"
     >
       {isCancionero ? (
-        <div>
-          <div className="flex items-end gap-3">
+        <div className="relative">
+          <div className="pr-8">
+            <div className="flex items-end gap-3">
+              <div
+                className="cancionero-skeleton-shimmer size-[76px] shrink-0 rounded-full"
+                style={{ animationDelay: `${shimmerDelayMs}ms` }}
+              />
+              <div className="min-w-0 flex-1 self-center">
+                <div
+                  className={`cancionero-skeleton-shimmer h-[18px] rounded-md ${titleWidth}`}
+                  style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
+                />
+              </div>
+            </div>
             <div
-              className="cancionero-skeleton-shimmer size-[76px] shrink-0 rounded-full"
-              style={{ animationDelay: `${shimmerDelayMs}ms` }}
+              className={`cancionero-skeleton-shimmer mt-1.5 h-[15px] rounded-md ${artistWidth}`}
+              style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
             />
-            <div className="min-w-0 flex-1 self-center">
-              <div
-                className={`cancionero-skeleton-shimmer h-[18px] rounded-md ${titleWidth}`}
-                style={{ animationDelay: `${shimmerDelayMs + 40}ms` }}
-              />
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <div
-                className="cancionero-skeleton-shimmer size-5 rounded-full"
-                style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
-              />
-              <div
-                className="cancionero-skeleton-shimmer size-4 rounded-sm"
-                style={{ animationDelay: `${shimmerDelayMs + 110}ms` }}
-              />
-              <div
-                className="cancionero-skeleton-shimmer size-4 rounded-sm"
-                style={{ animationDelay: `${shimmerDelayMs + 140}ms` }}
-              />
-            </div>
           </div>
-          <div
-            className={`cancionero-skeleton-shimmer mt-1.5 h-[15px] rounded-md ${artistWidth}`}
-            style={{ animationDelay: `${shimmerDelayMs + 180}ms` }}
-          />
+          <div className="absolute bottom-0 right-0 top-0 flex w-6 flex-col-reverse items-center justify-start gap-1">
+            <div
+              className="cancionero-skeleton-shimmer size-5 shrink-0 rounded-full"
+              style={{ animationDelay: `${shimmerDelayMs + 80}ms` }}
+            />
+            <div
+              className="cancionero-skeleton-shimmer size-4 shrink-0 rounded-sm"
+              style={{ animationDelay: `${shimmerDelayMs + 110}ms` }}
+            />
+            <div
+              className="cancionero-skeleton-shimmer size-4 shrink-0 rounded-sm"
+              style={{ animationDelay: `${shimmerDelayMs + 140}ms` }}
+            />
+          </div>
         </div>
       ) : (
         <div

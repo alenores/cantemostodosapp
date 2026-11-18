@@ -135,6 +135,10 @@ type ColaIndividualSheetProps = {
   noDisponibles?: ReadonlySet<number>;
   onOpenBuscador: () => void;
   presentacionOculta?: boolean;
+  /** Celular, sin la letra abierta: la fila es la pantalla, no un panel que se desliza. */
+  anclada?: boolean;
+  /** Abre la letra de la canción que está sonando. Solo en la fila anclada. */
+  onExpandActiva?: () => void;
   onRequestOpen?: (open: () => void) => void;
   /** Celular: el dedo sobre la barrita cerrada puede arrastrar el panel hacia arriba. */
   onRequestArrastre?: (arrastrar: (clientY: number, clientX: number) => void) => void;
@@ -206,6 +210,8 @@ export default function ColaIndividualSheet({
   noDisponibles = NONE_UNAVAILABLE,
   onOpenBuscador,
   presentacionOculta = false,
+  anclada = false,
+  onExpandActiva,
   onRequestOpen,
   onRequestArrastre,
   onRequestSiguiente,
@@ -218,6 +224,7 @@ export default function ColaIndividualSheet({
 }: ColaIndividualSheetProps) {
   const premiumIds = usePremiumCancioneroIds();
   const colaSidePanelMode = useColaSidePanel() && !presentacionOculta;
+  const listaAnclada = anclada && !colaSidePanelMode;
   const [panelEstado, setPanelEstado] = useState<ColaPanelEstado>("cerrado");
   const panelVisible = panelEstado !== "cerrado";
   const panelRef = useRef<ColaPanelDeslizableHandle>(null);
@@ -438,6 +445,7 @@ export default function ColaIndividualSheet({
                     variant="activa"
                     requiereConexion={noDisponibles.has(activaItem.id)}
                     showAgregadoAvatar={false}
+                    onExpand={listaAnclada ? onExpandActiva : undefined}
                   />
                 </div>
               ) : null}
@@ -518,8 +526,12 @@ export default function ColaIndividualSheet({
         setDragOverDelete(false);
       }}
     >
-      {colaSidePanelMode
-        ? renderColaPanelShell("flex min-h-0 flex-1 flex-col")
+      {colaSidePanelMode || listaAnclada
+        ? renderColaPanelShell(
+            listaAnclada
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-dark"
+              : "flex min-h-0 flex-1 flex-col",
+          )
         : null}
 
       <DragOverlay dropAnimation={null} style={{ zIndex: COLA_MODAL_LAYER_Z + 2 }}>
@@ -538,7 +550,7 @@ export default function ColaIndividualSheet({
   );
 
   const colaSheetLayer =
-    !colaSidePanelMode && portalMounted
+    !colaSidePanelMode && !listaAnclada && portalMounted
       ? createPortal(
           <ColaPanelDeslizable
             ref={panelRef}
@@ -549,6 +561,12 @@ export default function ColaIndividualSheet({
             barra={
               <ColaBarraProximaContenido
                 decorativa
+                mostrarActual={presentacionOculta}
+                cancionActual={
+                  activaItem
+                    ? { nombre: activaItem.nombre, artista: activaItem.artista }
+                    : null
+                }
                 proxima={
                   proximaItem
                     ? { nombre: proximaItem.nombre, artista: proximaItem.artista }
@@ -604,7 +622,11 @@ export default function ColaIndividualSheet({
 
   return (
     <>
-      {colaSidePanelMode ? (
+      {listaAnclada ? (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {colaDndLayer}
+        </div>
+      ) : colaSidePanelMode ? (
         <aside className={COLA_SIDE_PANEL_CLASS}>{colaDndLayer}</aside>
       ) : null}
 

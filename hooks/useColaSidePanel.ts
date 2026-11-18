@@ -1,7 +1,7 @@
 "use client";
 
 import { DESKTOP_MIN_WIDTH_PX } from "@/lib/app-layout";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /** true cuando la fila se muestra como panel lateral fijo (lg+, alineado al sidebar). */
 export function useColaSidePanel(
@@ -9,7 +9,7 @@ export function useColaSidePanel(
 ): boolean {
   const [sidePanel, setSidePanel] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const mediaQuery = window.matchMedia(`(min-width: ${minWidth}px)`);
 
     function update() {

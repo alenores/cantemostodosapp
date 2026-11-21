@@ -12,7 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Categoría de la cuenta activa (dueño / amigos / público). `null` mientras
+ * Categoría de la cuenta activa (dueño / superamigos / amigos / público). `null` mientras
  * carga, sin sesión o si todavía no se conoce.
  */
 export function useCategoriaUsuario(

@@ -267,7 +267,10 @@ export default function AppSidebarNavSections({
         if (!active) return;
         const value = data?.categoria;
         setCategoria(
-          value === "dueno" || value === "amigos" || value === "publico"
+          value === "dueno" ||
+            value === "superamigos" ||
+            value === "amigos" ||
+            value === "publico"
             ? value
             : null,
         );

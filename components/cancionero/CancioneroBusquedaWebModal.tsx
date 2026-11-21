@@ -28,7 +28,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 type Props = {
   open: boolean;
   consultaInicial: string;
-  /** Dueño y amigos: el alta completa. El resto guarda solo la letra. */
+  /** Dueño, superamigos y amigos: el alta completa. El resto guarda solo la letra. */
   puedeDarDeAlta: boolean;
   onClose: () => void;
   onImportar: (data: CifradoEditorWebImportData) => void;
@@ -245,7 +245,7 @@ export default function CancioneroBusquedaWebModal({
         {pantalla === "busqueda" ? (
           <section className="absolute inset-0 flex flex-col">
             <header className="shrink-0 border-b border-border px-4 py-3">
-              <form className="flex items-center gap-3" onSubmit={handleSearch}>
+              <div className="flex items-start gap-3">
                 <button
                   type="button"
                   aria-label="Cerrar búsqueda"
@@ -254,13 +254,23 @@ export default function CancioneroBusquedaWebModal({
                 >
                   <X className="size-5 text-text-primary" aria-hidden="true" />
                 </button>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <h2 className="text-lg font-extrabold text-text-primary">
+                    Resultados de la web
+                  </h2>
+                  <p className="text-sm text-text-muted">
+                    Vienen de acordesdcanciones.com
+                  </p>
+                </div>
+              </div>
+              <form className="mt-3 flex items-center gap-3" onSubmit={handleSearch}>
                 <input
                   type="text"
                   inputMode="search"
                   enterKeyHint="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Buscar en Acordes de Canciones..."
+                  placeholder="Buscar canción..."
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
@@ -407,29 +417,26 @@ export default function CancioneroBusquedaWebModal({
               {error ? (
                 <p className="mb-2 text-center text-sm text-accent">{error}</p>
               ) : null}
-              <div className={puedeDarDeAlta ? "grid grid-cols-2 gap-1.5" : ""}>
-                <button
-                  type="button"
-                  disabled={confirmando}
-                  onClick={() => void guardarSimple()}
-                  className="flex min-h-10 w-full items-center justify-center rounded-[10px] bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {confirmando ? "Cargando..." : "Guardar"}
-                </button>
+              <div>
                 {puedeDarDeAlta ? (
                   <button
                     type="button"
                     disabled={confirmando}
                     onClick={() => void importarCompleta()}
-                    className="flex min-h-10 w-full items-center justify-center rounded-[10px] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                    style={{
-                      backgroundColor:
-                        "color-mix(in srgb, var(--accent) 48%, white)",
-                    }}
+                    className="flex min-h-10 w-full items-center justify-center rounded-[10px] bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   >
-                    Confirmar e importar
+                    {confirmando ? "Cargando..." : "Confirmar e importar"}
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    disabled={confirmando}
+                    onClick={() => void guardarSimple()}
+                    className="flex min-h-10 w-full items-center justify-center rounded-[10px] bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {confirmando ? "Cargando..." : "Guardar"}
+                  </button>
+                )}
               </div>
             </footer>
           </section>

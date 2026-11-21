@@ -40,7 +40,8 @@ type CancioneroItemCardProps = {
   cancion: CancionCancionero;
   isDesktop?: boolean;
   mutationsEnabled?: boolean;
-  puedeEditarEliminar?: boolean;
+  puedeEditar?: boolean;
+  puedeEliminar?: boolean;
   isFavorita?: boolean;
   mostrarSumarMisCanciones?: boolean;
   modoSeleccion?: boolean;
@@ -66,7 +67,8 @@ export default function CancioneroItemCard({
   cancion,
   isDesktop = false,
   mutationsEnabled = true,
-  puedeEditarEliminar = false,
+  puedeEditar = false,
+  puedeEliminar = false,
   isFavorita = false,
   mostrarSumarMisCanciones = false,
   modoSeleccion = false,
@@ -111,13 +113,15 @@ export default function CancioneroItemCard({
     mostrarSumarMisCanciones;
 
   const mostrarMenuEscritorio =
-    isDesktop && !modoSeleccion && (puedeEditarEliminar || puedePonerValidacion);
+    isDesktop &&
+    !modoSeleccion &&
+    (puedeEditar || puedeEliminar || puedePonerValidacion);
 
   const longPressEnabled =
     !isDesktop &&
     !modoSeleccion &&
     ((mostrarSumarMisCanciones && Boolean(onAlternarFavorita)) ||
-      (mutationsEnabled && puedeEditarEliminar) ||
+      (mutationsEnabled && (puedeEditar || puedeEliminar)) ||
       puedePonerValidacion);
 
   useEffect(() => {
@@ -286,7 +290,7 @@ export default function CancioneroItemCard({
           action: () => onValidar(cancion),
         }
       : null,
-    mutationsEnabled && puedeEditarEliminar
+    mutationsEnabled && puedeEditar
       ? {
           key: "editar",
           label: `Editar ${cancion.nombre}`,
@@ -296,7 +300,7 @@ export default function CancioneroItemCard({
           action: () => onEditar(cancion),
         }
       : null,
-    mutationsEnabled && puedeEditarEliminar
+    mutationsEnabled && puedeEliminar
       ? {
           key: "eliminar",
           label: `Eliminar ${cancion.nombre}`,
@@ -473,7 +477,7 @@ export default function CancioneroItemCard({
             if (actionsOpen) onCloseActions();
             else onOpenActions();
           }}
-          className="absolute right-1.5 top-1.5 z-20 flex size-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-text-primary disabled:opacity-40"
+          className="absolute right-2 top-1.5 z-20 flex size-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-text-primary disabled:opacity-40"
         >
           <MoreHorizontal className="size-5" aria-hidden="true" />
         </TapButton>
@@ -493,7 +497,7 @@ export default function CancioneroItemCard({
           />
           <div
             role="menu"
-            className="absolute right-1.5 top-10 z-50 w-40 overflow-hidden rounded-xl border border-border bg-bg-dark py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+            className="absolute right-2 top-10 z-50 w-40 overflow-hidden rounded-xl border border-border bg-bg-dark py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >
@@ -509,7 +513,7 @@ export default function CancioneroItemCard({
                 Validar
               </button>
             ) : null}
-            {puedeEditarEliminar ? (
+            {puedeEditar ? (
               <button
                 type="button"
                 role="menuitem"
@@ -521,7 +525,7 @@ export default function CancioneroItemCard({
                 Editar
               </button>
             ) : null}
-            {puedeEditarEliminar ? (
+            {puedeEliminar ? (
               <button
                 type="button"
                 role="menuitem"

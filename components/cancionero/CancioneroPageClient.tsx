@@ -65,6 +65,7 @@ import type {
 import { createClient } from "@/lib/supabase/client";
 import {
   puedeEditarCancionCancionero,
+  puedeEliminarCancionCancionero,
   puedeQuitarValidacion,
   puedeSumarCanciones,
   puedeValidarCancion,
@@ -807,7 +808,7 @@ export default function CancioneroPageClient({
   }
 
   function handleEliminar(cancion: CancionCancionero) {
-    if (!online || !usuarioLogueado || !puedeEditarCancionCancionero(cancion, usuarioId, categoria)) {
+    if (!online || !usuarioLogueado || !puedeEliminarCancionCancionero(cancion, usuarioId, categoria)) {
       return;
     }
 
@@ -926,6 +927,19 @@ export default function CancioneroPageClient({
 
   const mutationsEnabled = online && usuarioLogueado;
   const mostrarSumarMisCanciones = usuarioLogueado && online;
+  const mostrarBuscarEnLaWeb =
+    vistaLista === null && online && query.trim().length > 0;
+  const botonBuscarEnLaWeb = mostrarBuscarEnLaWeb ? (
+    <div className="flex justify-center py-2">
+      <button
+        type="button"
+        onClick={() => setBusquedaWebOpen(true)}
+        className="rounded-[10px] bg-accent px-4 py-2.5 text-sm font-semibold text-white"
+      >
+        Buscar en la web
+      </button>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -1025,6 +1039,20 @@ export default function CancioneroPageClient({
                     className={claseFiltro(selectedArtistaIds.size > 0)}
                   >
                     <Users className="size-4 lg:size-5" />
+                  </TapButton>
+                  <TapButton
+                    type="button"
+                    aria-label="Recientes"
+                    aria-pressed={vistaLista === "recientes"}
+                    onClick={() => {
+                      setQuery("");
+                      setSelectedArtistaIds(new Set());
+                      setVistaLista("recientes");
+                      setActiveCardId(null);
+                    }}
+                    className={claseFiltro(vistaLista === "recientes")}
+                  >
+                    <Clock className="size-4 lg:size-5" />
                   </TapButton>
                   {usuarioLogueado ? (
                     <TapButton
@@ -1148,17 +1176,7 @@ export default function CancioneroPageClient({
                       ? "Todavía no tenés canciones en Favoritas."
                       : "No hay canciones que coincidan con tu búsqueda."}
                 </p>
-                {vistaLista === null && online && query.trim() ? (
-                  <div className="flex justify-center pb-8">
-                    <button
-                      type="button"
-                      onClick={() => setBusquedaWebOpen(true)}
-                      className="rounded-[10px] bg-accent px-4 py-2.5 text-sm font-semibold text-white"
-                    >
-                      Buscar en Acordes de Canciones
-                    </button>
-                  </div>
-                ) : null}
+                {botonBuscarEnLaWeb}
               </>
             ) : (
               <div className="flex flex-col gap-3">
@@ -1187,7 +1205,12 @@ export default function CancioneroPageClient({
                         mostrarAvatarUsuario={online}
                         isDesktop={isDesktop}
                         mutationsEnabled={mutationsEnabled}
-                        puedeEditarEliminar={puedeEditarCancionCancionero(
+                        puedeEditar={puedeEditarCancionCancionero(
+                          cancion,
+                          usuarioId,
+                          categoria,
+                        )}
+                        puedeEliminar={puedeEliminarCancionCancionero(
                           cancion,
                           usuarioId,
                           categoria,
@@ -1245,6 +1268,7 @@ export default function CancioneroPageClient({
                     ))}
                   </div>
                 ) : null}
+                {botonBuscarEnLaWeb}
               </div>
             )}
           </>

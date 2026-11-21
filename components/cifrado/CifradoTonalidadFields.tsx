@@ -25,6 +25,10 @@ export type CifradoTonalidadFieldsProps = {
   fieldLabelClassName?: string;
   /** Sin valor elegido, el botón muestra «Elegí…» (siempre activo con la lista propia). */
   requireSelection?: boolean;
+  /** Borde rojo: falta elegir el tono. */
+  marcarTono?: boolean;
+  /** Borde rojo: falta elegir el modo. */
+  marcarModo?: boolean;
   inputClassName?: string;
   onTonalidadChange: (next: NotaIndex) => void;
   onModoTonalChange: (next: ModoTonal) => void;
@@ -40,6 +44,8 @@ export function CifradoTonalidadFields({
   showTonalidadStepButtons = false,
   stepButtonClassName = "flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-card text-text-primary disabled:opacity-50",
   fieldLabelClassName = CIFRADO_CONTROLS_SECTION_LABEL_CLASS,
+  marcarTono = false,
+  marcarModo = false,
   inputClassName = CIFRADO_CONTROLS_INPUT_CLASS,
   onTonalidadChange,
   onModoTonalChange,
@@ -64,7 +70,14 @@ export function CifradoTonalidadFields({
     <div className={containerClassName}>
       <div className={showTonalidadStepButtons ? "min-w-0" : undefined}>
         <label htmlFor={`${idPrefix}-tonalidad`}>
-          <span className={fieldLabelClassName}>Tono</span>
+          <span className={fieldLabelClassName}>
+            Tono
+            {marcarTono ? (
+              <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                *
+              </span>
+            ) : null}
+          </span>
         </label>
         <div className={showTonalidadStepButtons ? "flex items-center gap-2" : undefined}>
           {showTonalidadStepButtons ? (
@@ -93,7 +106,7 @@ export function CifradoTonalidadFields({
             }))}
             onChange={onTonalidadChange}
             hideChevron={showTonalidadStepButtons}
-            className={tonalidadSelectClassName}
+            className={`${tonalidadSelectClassName}${marcarTono ? " !border-red-500" : ""}`}
             style={
               showTonalidadStepButtons
                 ? { width: "auto", minWidth: "4.5rem", flex: 1 }
@@ -120,7 +133,14 @@ export function CifradoTonalidadFields({
 
       {showModoTonal ? (
         <label htmlFor={`${idPrefix}-modo-tonal`}>
-          <span className={fieldLabelClassName}>Modo</span>
+          <span className={fieldLabelClassName}>
+            Modo
+            {marcarModo ? (
+              <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                *
+              </span>
+            ) : null}
+          </span>
           <AppSelect
             id={`${idPrefix}-modo-tonal`}
             title="Elegir modo"
@@ -128,7 +148,7 @@ export function CifradoTonalidadFields({
             value={modoTonal}
             options={MODOS_TONALES.map((modo) => ({ value: modo.id, label: modo.label }))}
             onChange={onModoTonalChange}
-            className={selectClassName}
+            className={`${selectClassName}${marcarModo ? " !border-red-500" : ""}`}
           />
         </label>
       ) : null}

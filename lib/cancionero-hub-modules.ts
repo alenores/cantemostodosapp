@@ -31,9 +31,9 @@ export type HubModuleDef = {
   href?: string;
   requiresAuth?: boolean;
   requiresOwner?: boolean;
-  /** Dueño y amigos: pueden sumar una canción nueva. */
+  /** Dueño, superamigos y amigos: pueden sumar una canción nueva. */
   requiresCreator?: boolean;
-  /** Dueño y amigos (el público no lo ve). */
+  /** Dueño, superamigos y amigos (el público no lo ve). */
   requiresAmigos?: boolean;
   ctaLabel?: string;
   /** @deprecated Prefer ctaMode; kept for callers that still branch on accent/neutral. */

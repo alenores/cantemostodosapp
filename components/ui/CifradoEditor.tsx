@@ -9,7 +9,7 @@ import { hayConexion } from "@/lib/conexion";
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
-import CifradoIngresoMarcas from "@/components/cifrado/CifradoIngresoMarcas";
+import CifradoIngresoCampo from "@/components/cifrado/CifradoIngresoCampo";
 import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
 import CifradoEditorCancioneroPracticaTab from "@/components/cifrado/CifradoEditorCancioneroPracticaTab";
 import {
@@ -80,6 +80,10 @@ import {
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import {
+  mensajeDatosFaltantesGuardar,
+  mensajeErrorAlGuardar,
+} from "@/lib/cifrado-guardar-aviso";
 import { TapButton } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
 import CancionYoutubeField from "@/components/cifrado/CancionYoutubeField";
@@ -2742,6 +2746,9 @@ export default function CifradoEditor({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveValidation, setSaveValidation] = useState<string | null>(null);
+  const [avisoGuardar, setAvisoGuardar] = useState<string | null>(null);
+  const [marcarFaltantes, setMarcarFaltantes] = useState(false);
+  const [marcarArtistaDudoso, setMarcarArtistaDudoso] = useState(false);
   const nombreInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<string | null>(null);
   const tapTimestampsRef = useRef<number[]>([]);
@@ -4520,24 +4527,26 @@ export default function CifradoEditor({
 
   async function handleSave() {
     if (!isLoggedIn) {
-      setSaveValidation("Iniciá sesión para guardar en el cancionero.");
+      setAvisoGuardar("Iniciá sesión para guardar en el cancionero.");
       return;
     }
 
     if (phase !== "cifrado") {
-      setSaveValidation("Aplicá la letra y empezá a cifrar antes de guardar.");
+      setAvisoGuardar("Aplicá la letra y empezá a cifrar antes de guardar.");
       return;
     }
 
-    if (!nombre.trim()) {
-      setSaveValidation("Completá el nombre de la canción.");
-      nombreInputRef.current?.focus();
-      nombreInputRef.current?.scrollIntoView({ block: "nearest" });
-      return;
-    }
-
-    if (!lyricsText.trim()) {
-      setSaveValidation("La letra no puede estar vacía.");
+    const faltantes: string[] = [];
+    if (!nombre.trim()) faltantes.push("El nombre de la canción");
+    if (!artista.trim()) faltantes.push("El artista");
+    if (!lyricsText.trim()) faltantes.push("La letra");
+    if (faltantes.length > 0) {
+      setMarcarFaltantes(true);
+      setAvisoGuardar(mensajeDatosFaltantesGuardar(faltantes));
+      if (!nombre.trim()) {
+        nombreInputRef.current?.focus();
+        nombreInputRef.current?.scrollIntoView({ block: "nearest" });
+      }
       return;
     }
 
@@ -4545,7 +4554,9 @@ export default function CifradoEditor({
     try {
       artistaGuardar = await artistaVinculo.resolverParaGuardar();
     } catch (artistaError) {
-      setSaveValidation(
+      setMarcarFaltantes(true);
+      setMarcarArtistaDudoso(true);
+      setAvisoGuardar(
         artistaError instanceof Error ? artistaError.message : String(artistaError),
       );
       return;
@@ -4567,19 +4578,19 @@ export default function CifradoEditor({
       } = await supabase.auth.getSession();
 
       if (!authSession) {
-        setSaveValidation("Iniciá sesión para guardar en el cancionero.");
+        setAvisoGuardar("Iniciá sesión para guardar en el cancionero.");
         return;
       }
 
       const clampedBpm = Math.max(40, Math.min(240, compasConfig.bpm));
       const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
       if (!youtubeNormalizado.ok) {
-        setSaveValidation("El link del video no es de YouTube. Corregilo o borralo.");
+        setAvisoGuardar("El link del video no es de YouTube. Corregilo o borralo.");
         return;
       }
 
       if (cifrado.acordes.some((acorde) => !acordeEstaContemplado(acorde))) {
-        setSaveValidation(AVISO_ACORDE_NO_CONTEMPLADO);
+        setAvisoGuardar(AVISO_ACORDE_NO_CONTEMPLADO);
         return;
       }
       const youtubeGuardar = youtubeTocado ? youtubeNormalizado.url : undefined;
@@ -4675,12 +4686,7 @@ export default function CifradoEditor({
       });
       onClose();
     } catch (saveError) {
-      const message =
-        saveError instanceof Error
-          ? saveError.message
-          : "No se pudo guardar la canción";
-      setSaveValidation(message);
-      setError(message);
+      setAvisoGuardar(mensajeErrorAlGuardar(saveError));
     } finally {
       setLoading(false);
     }
@@ -4925,16 +4931,16 @@ export default function CifradoEditor({
                       >
                         Letra con acordes
                       </label>
-                      <textarea
+                      <CifradoIngresoCampo
                         id="cifrado-letra-web-revisar"
                         value={draftPasteTraditional}
-                        onChange={(event) => {
-                          setDraftPasteTraditional(event.target.value);
+                        onChange={(valor) => {
+                          setDraftPasteTraditional(valor);
                           if (error) {
                             setError(null);
                           }
                         }}
-                        className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
+                        className="min-h-[240px] flex-1 lg:min-h-0"
                         placeholder="Letra con los acordes encima de cada renglón…"
                       />
                       <TapButton
@@ -4976,13 +4982,11 @@ export default function CifradoEditor({
                         Ver links guardados
                       </TapButton>
                     </div>
-                    <textarea
+                    <CifradoIngresoCampo
                       id="cifrado-letra-pegar"
                       value={draftPasteTraditional}
-                      onChange={(event) =>
-                        handleDraftPasteTraditionalChange(event.target.value)
-                      }
-                      className={`${textareaClassName} min-h-[240px] flex-1 resize-none lg:min-h-0`}
+                      onChange={handleDraftPasteTraditionalChange}
+                      className="min-h-[240px] flex-1 lg:min-h-0"
                       placeholder="Pegá la letra con los acordes encima de cada renglón…"
                     />
                     <TapButton
@@ -5405,24 +5409,37 @@ export default function CifradoEditor({
                   titleClassName="mb-3 text-sm font-semibold normal-case text-text-primary"
                   accentVar="var(--accent)"
                   collapsible
+                  alerta={!nombre.trim() || !artista.trim() || marcarArtistaDudoso}
+                  forceOpen={
+                    marcarFaltantes &&
+                    (!nombre.trim() || !artista.trim() || marcarArtistaDudoso)
+                  }
                 >
                   <label
                     className="mb-1.5 block text-xs font-medium normal-case text-text-primary"
                     htmlFor="cifrado-nombre"
                   >
-                    Nombre *
+                    Nombre
+                    {!nombre.trim() ? (
+                      <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                        *
+                      </span>
+                    ) : null}
                   </label>
                   <input
                     id="cifrado-nombre"
                     ref={nombreInputRef}
                     value={nombre}
+                    aria-invalid={!nombre.trim()}
                     onChange={(event) => {
                       setNombre(event.target.value);
                       if (saveValidation) {
                         setSaveValidation(null);
                       }
                     }}
-                    className={inputClassName}
+                    className={`${inputClassName}${
+                      !nombre.trim() ? " !border-red-500" : ""
+                    }`}
                     placeholder="Nombre de la canción"
                   />
                   {avisarCancionRepetida ? (
@@ -5447,17 +5464,26 @@ export default function CifradoEditor({
                     htmlFor="cifrado-artista"
                   >
                     Artista
+                    {!artista.trim() || marcarArtistaDudoso ? (
+                      <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                        *
+                      </span>
+                    ) : null}
                   </label>
                   <input
                     id="cifrado-artista"
                     value={artista}
+                    aria-invalid={!artista.trim()}
                     onChange={(event) => {
                       setArtista(event.target.value);
+                      setMarcarArtistaDudoso(false);
                       if (saveValidation) {
                         setSaveValidation(null);
                       }
                     }}
-                    className={inputClassName}
+                    className={`${inputClassName}${
+                      !artista.trim() || marcarArtistaDudoso ? " !border-red-500" : ""
+                    }`}
                     placeholder="Artista"
                   />
                   <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
@@ -5556,14 +5582,6 @@ export default function CifradoEditor({
             </div>
 
             <div className="border-t border-black/10 bg-[var(--bg-panel-claro-titulo)] p-3">
-              {saveValidation && (
-                <p
-                  className="mb-3 rounded-lg border border-[var(--tuner-lejos)]/40 bg-[var(--tuner-lejos)]/10 px-3 py-2 text-sm text-[var(--tuner-lejos)]"
-                  role="alert"
-                >
-                  {saveValidation}
-                </p>
-              )}
               <TapButton
                 type="button"
                 onClick={() => void handleSave()}
@@ -5686,16 +5704,9 @@ export default function CifradoEditor({
                       {draftPastePreview.stats.verses} versos ·{" "}
                       {draftPastePreview.stats.total} renglones
                     </p>
-                    {revisionPaste.hayRojo || revisionPaste.hayAmarillo ? (
-                      <CifradoIngresoMarcas
-                        texto={draftPastePreview.text}
-                        revision={revisionPaste}
-                      />
-                    ) : (
-                      <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary/90">
-                        {draftPastePreview.text}
-                      </p>
-                    )}
+                    <p className="mt-2 line-clamp-5 whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary/90">
+                      {draftPastePreview.text}
+                    </p>
                   </>
                 ) : (
                   <p className="mt-2 text-sm text-text-primary">
@@ -5905,6 +5916,16 @@ export default function CifradoEditor({
         zIndex={70}
         onConfirm={handleConfirmPasteIngreso}
         onDismiss={cerrarSugerenciaPegado}
+      />
+
+      <ConfirmDialog
+        open={avisoGuardar !== null}
+        message={avisoGuardar ?? ""}
+        confirmLabel="Entendido"
+        hideCancel
+        zIndex={80}
+        onConfirm={() => setAvisoGuardar(null)}
+        onCancel={() => setAvisoGuardar(null)}
       />
 
       <ConfirmDialog

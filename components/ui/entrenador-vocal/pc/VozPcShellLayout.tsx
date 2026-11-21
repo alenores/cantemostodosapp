@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export function VozPcShellLayout({
   config,
@@ -48,6 +48,8 @@ export function VozPcConfigCard({
   titleClassName,
   accentVar = "var(--voz-config)",
   collapsible = false,
+  alerta = false,
+  forceOpen = false,
   children,
 }: {
   title?: string;
@@ -56,9 +58,30 @@ export function VozPcConfigCard({
   accentVar?: string;
   /** Arranca cerrada. El título la abre y la cierra. */
   collapsible?: boolean;
+  /** Asterisco rojo en el título: adentro falta un dato. */
+  alerta?: boolean;
+  /** La abre cuando falta un dato al guardar. */
+  forceOpen?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (forceOpen) {
+      setOpen(true);
+    }
+  }, [forceOpen]);
+
+  const titulo = title ? (
+    <>
+      {title}
+      {alerta ? (
+        <span className="ml-1 font-bold text-red-500" aria-hidden="true">
+          *
+        </span>
+      ) : null}
+    </>
+  ) : null;
 
   if (!collapsible) {
     return (
@@ -70,7 +93,7 @@ export function VozPcConfigCard({
             className={titleClassName ?? "mb-4 text-[11px] font-bold uppercase tracking-wide"}
             style={{ color: accentVar }}
           >
-            {title}
+            {titulo}
           </p>
         ) : null}
         {children}
@@ -95,7 +118,7 @@ export function VozPcConfigCard({
             className={`${titleClassName ?? "text-[11px] font-bold uppercase tracking-wide"} !mb-0`}
             style={{ color: accentVar }}
           >
-            {title}
+            {titulo}
           </span>
           <ChevronDown
             className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}

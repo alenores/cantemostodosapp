@@ -26,8 +26,9 @@ BEGIN
     JOIN auth.users au ON au.id = uc.user_id
     ORDER BY CASE uc.categoria
       WHEN 'dueno' THEN 0
-      WHEN 'amigos' THEN 1
-      ELSE 2
+      WHEN 'superamigos' THEN 1
+      WHEN 'amigos' THEN 2
+      ELSE 3
     END, lower(au.email);
 END;
 $$;
@@ -47,7 +48,7 @@ BEGIN
     RAISE EXCEPTION 'Sin permiso para cambiar categorias' USING errcode = '42501';
   END IF;
 
-  IF p_categoria NOT IN ('amigos', 'publico') THEN
+  IF p_categoria NOT IN ('superamigos', 'amigos', 'publico') THEN
     RAISE EXCEPTION 'Categoria invalida' USING errcode = '22023';
   END IF;
 

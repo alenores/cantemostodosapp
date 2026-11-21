@@ -3,30 +3,33 @@ import type { CancionCancionero } from "@/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Categoría global de la cuenta (tabla `usuarios_categorias`). */
-export type CategoriaUsuario = "dueno" | "amigos" | "publico";
+export type CategoriaUsuario = "dueno" | "superamigos" | "amigos" | "publico";
 
 const CATEGORIA_STORAGE_PREFIX = "cantemos-categoria-usuario:";
 export const CATEGORIA_COOKIE = "cantemos-categoria";
 
 function normalizeCategoriaUsuario(value: unknown): CategoriaUsuario | null {
-  return value === "dueno" || value === "amigos" || value === "publico"
+  return value === "dueno" ||
+    value === "superamigos" ||
+    value === "amigos" ||
+    value === "publico"
     ? value
     : null;
 }
 
-/** Dueño o amigos (todo menos el público). */
+/** Dueño, superamigos o amigos (todo menos el público). */
 export function esDuenoOAmigos(categoria: CategoriaUsuario | null): boolean {
-  return categoria === "dueno" || categoria === "amigos";
+  return categoria === "dueno" || categoria === "superamigos" || categoria === "amigos";
 }
 
-/** Dueño y amigos suman canciones al Cancionero; el público no. */
+/** Dueño, superamigos y amigos suman canciones al Cancionero; el público no. */
 export function puedeSumarCanciones(categoria: CategoriaUsuario | null): boolean {
-  return categoria === "dueno" || categoria === "amigos";
+  return categoria === "dueno" || categoria === "superamigos" || categoria === "amigos";
 }
 
 /**
- * Editar o eliminar una canción del Cancionero:
- * dueño → cualquiera; amigos → solo las que subió; público → ninguna.
+ * Editar una canción del Cancionero:
+ * dueño y superamigos → cualquiera; amigos → solo las que subió; público → ninguna.
  */
 export function puedeEditarCancionCancionero(
   cancion: Pick<CancionCancionero, "user_id">,
@@ -34,13 +37,30 @@ export function puedeEditarCancionCancionero(
   categoria: CategoriaUsuario | null,
 ): boolean {
   if (usuarioId === null) return false;
-  if (categoria === "dueno") return true;
+  if (categoria === "dueno" || categoria === "superamigos") return true;
   return categoria === "amigos" && cancion.user_id === usuarioId;
 }
 
-/** Dueño y amigos pueden marcar una canción como revisada. El público no. */
+/**
+ * Borrar una canción del Cancionero:
+ * dueño → cualquiera; superamigos y amigos → solo las que subieron; público → ninguna.
+ */
+export function puedeEliminarCancionCancionero(
+  cancion: Pick<CancionCancionero, "user_id">,
+  usuarioId: string | null,
+  categoria: CategoriaUsuario | null,
+): boolean {
+  if (usuarioId === null) return false;
+  if (categoria === "dueno") return true;
+  return (
+    (categoria === "superamigos" || categoria === "amigos") &&
+    cancion.user_id === usuarioId
+  );
+}
+
+/** Dueño, superamigos y amigos pueden marcar una canción como revisada. El público no. */
 export function puedeValidarCancion(categoria: CategoriaUsuario | null): boolean {
-  return categoria === "dueno" || categoria === "amigos";
+  return categoria === "dueno" || categoria === "superamigos" || categoria === "amigos";
 }
 
 /** Quitar el tilde: quien lo puso, y el dueño. */

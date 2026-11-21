@@ -11,7 +11,7 @@ type UsuarioCategoria = {
   email: string;
   nombre: string | null;
   avatar_url: string | null;
-  categoria: "dueno" | "amigos" | "publico";
+  categoria: "dueno" | "superamigos" | "amigos" | "publico";
 };
 
 export default function UsuariosPageClient() {
@@ -31,7 +31,10 @@ export default function UsuariosPageClient() {
     void Promise.resolve().then(cargar).catch(() => setError("No se pudo cargar la lista de usuarios.")).finally(() => setLoading(false));
   }, [cargar]);
 
-  async function cambiarCategoria(userId: string, categoria: "amigos" | "publico") {
+  async function cambiarCategoria(
+    userId: string,
+    categoria: "superamigos" | "amigos" | "publico",
+  ) {
     setError(null);
     setSavingId(userId);
     try {
@@ -52,7 +55,9 @@ export default function UsuariosPageClient() {
     <main className="mx-auto w-full max-w-3xl px-4 pb-28 pt-6 text-text-primary">
       <AppReadyMarker />
       <h1 className="text-2xl font-bold">Usuarios</h1>
-      <p className="mt-2 text-sm text-text-muted">Elegí quiénes son amigos y quiénes son público.</p>
+      <p className="mt-2 text-sm text-text-muted">
+        Elegí quiénes son superamigos, amigos o público.
+      </p>
       {error ? <p role="alert" className="mt-4 text-sm text-accent">{error}</p> : null}
       {loading ? <p className="mt-6 text-sm text-text-muted">Cargando usuarios…</p> : null}
       {!loading && usuarios.length === 0 ? <p className="mt-6 text-sm text-text-muted">Todavía no hay usuarios.</p> : null}
@@ -77,12 +82,13 @@ export default function UsuariosPageClient() {
               </div>
             </div>
             {usuario.categoria === "dueno" ? null : (
-              <AppSelect<"amigos" | "publico">
+              <AppSelect<"superamigos" | "amigos" | "publico">
                 title="Categoría"
                 aria-label={`Categoría de ${usuario.email}`}
                 value={usuario.categoria}
                 disabled={savingId === usuario.user_id}
                 options={[
+                  { value: "superamigos", label: "Superamigos" },
                   { value: "amigos", label: "Amigos" },
                   { value: "publico", label: "Público" },
                 ]}

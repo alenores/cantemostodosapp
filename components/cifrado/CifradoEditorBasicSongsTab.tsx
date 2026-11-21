@@ -84,7 +84,7 @@ export default function CifradoEditorBasicSongsTab({ onSelect }: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-estandar border border-border bg-bg-card p-3">
       <p className="shrink-0 text-sm text-text-muted">
-        Canciones del cancionero que todavía no tienen acordes y compases editados.
+        Estas canciones están guardadas de forma simple: la letra y los acordes van juntos, escritos como texto. Elegí una para separarlos y completarla.
       </p>
       <input
         value={query}

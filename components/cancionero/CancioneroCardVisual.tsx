@@ -6,7 +6,7 @@ type CancioneroCardVisualProps = {
   artista: string | null;
   artistaAvatarUrl?: string | null;
   iconos?: ReactNode;
-  /** Deja libre la esquina de arriba a la derecha (menú de opciones). */
+  /** Deja aire para el botón de opciones, en la misma columna derecha que los iconos. */
   reservarEsquina?: boolean;
 };
 
@@ -17,13 +17,7 @@ export default function CancioneroCardVisual({
   iconos,
   reservarEsquina = false,
 }: CancioneroCardVisualProps) {
-  const aireDerecha = iconos
-    ? reservarEsquina
-      ? "pr-[4.5rem]"
-      : "pr-8"
-    : reservarEsquina
-      ? "pr-8"
-      : "";
+  const aireDerecha = reservarEsquina ? "pr-10" : iconos ? "pr-8" : "";
 
   return (
     <div className="relative min-w-0">
@@ -55,9 +49,7 @@ export default function CancioneroCardVisual({
       </div>
       {iconos ? (
         <div
-          className={`absolute bottom-0 top-0 flex w-6 flex-col-reverse items-center justify-start gap-0.5 [&>*]:shrink-0 ${
-            reservarEsquina ? "right-9" : "right-0"
-          }`}
+          className="absolute bottom-0 right-0 top-0 flex w-6 flex-col-reverse items-center justify-start gap-0.5 [&>*]:shrink-0"
         >
           {iconos}
         </div>

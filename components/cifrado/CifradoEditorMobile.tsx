@@ -3,7 +3,7 @@
 import CifradoEditorIngresoWebSearch, {
   type CifradoEditorWebImportData,
 } from "@/components/cifrado/CifradoEditorIngresoWebSearch";
-import CifradoIngresoMarcas from "@/components/cifrado/CifradoIngresoMarcas";
+import CifradoIngresoCampo from "@/components/cifrado/CifradoIngresoCampo";
 import CifradoEditorBasicSongsTab from "@/components/cifrado/CifradoEditorBasicSongsTab";
 import CifradoEditorCancioneroPracticaTab from "@/components/cifrado/CifradoEditorCancioneroPracticaTab";
 import {
@@ -32,6 +32,10 @@ import {
   cifradoEditorToolbarSegmentedButtonClass,
 } from "@/components/cifrado/cifrado-controls-ui";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import {
+  mensajeDatosFaltantesGuardar,
+  mensajeErrorAlGuardar,
+} from "@/lib/cifrado-guardar-aviso";
 import { TapButton, TapLink } from "@/components/ui/TapFeedback";
 import IntercambiarNombreArtista from "@/components/cifrado/IntercambiarNombreArtista";
 import CampoArtistaVinculo from "@/components/cifrado/CampoArtistaVinculo";
@@ -232,6 +236,9 @@ export default function CifradoEditorMobile({
     createDefaultCompasConfig,
   );
   const [error, setError] = useState<string | null>(null);
+  const [avisoGuardar, setAvisoGuardar] = useState<string | null>(null);
+  const [marcarFaltantes, setMarcarFaltantes] = useState(false);
+  const [marcarArtistaDudoso, setMarcarArtistaDudoso] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -264,22 +271,6 @@ export default function CifradoEditorMobile({
   const [pendingWebImport, setPendingWebImport] =
     useState<CifradoEditorWebImportData | null>(null);
   const [webSearchResetKey, setWebSearchResetKey] = useState(0);
-
-  useEffect(() => {
-    if (!pendingWebImport) {
-      return;
-    }
-
-    const textarea = document.getElementById(
-      "cifrado-mobile-web-revisar",
-    ) as HTMLTextAreaElement | null;
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.max(textarea.scrollHeight, 220)}px`;
-  }, [draftPaste, pendingWebImport]);
 
   const lastPasteProposeSignatureRef = useRef<string | null>(null);
   /** Ya se mostró la sugerencia de tono: editar la letra no la vuelve a abrir. */
@@ -458,27 +449,29 @@ export default function CifradoEditorMobile({
     }
 
     if (!isLoggedIn) {
-      setError("Iniciá sesión para guardar.");
+      setAvisoGuardar("Iniciá sesión para guardar.");
       return;
     }
 
     if (phase !== "cifrado") {
-      setError("Aplicá la letra y empezá a cifrar antes de guardar.");
+      setAvisoGuardar("Aplicá la letra y empezá a cifrar antes de guardar.");
       return;
     }
 
-    if (!nombre.trim()) {
-      setError("Completá el nombre de la canción.");
-      return;
-    }
-
-    if (!lyricsText.trim()) {
-      setError("La letra no puede estar vacía.");
+    const faltantes: string[] = [];
+    if (!nombre.trim()) faltantes.push("El nombre de la canción");
+    if (!artista.trim()) faltantes.push("El artista");
+    if (tonalidadIndex === null) faltantes.push("El tono");
+    if (modoTonal === null) faltantes.push("El modo");
+    if (!lyricsText.trim()) faltantes.push("La letra");
+    if (faltantes.length > 0) {
+      setMarcarFaltantes(true);
+      setConfigOpen(true);
+      setAvisoGuardar(mensajeDatosFaltantesGuardar(faltantes));
       return;
     }
 
     if (tonalidadIndex === null || modoTonal === null) {
-      setError("Completá la tonalidad.");
       return;
     }
 
@@ -486,7 +479,10 @@ export default function CifradoEditorMobile({
     try {
       artistaGuardar = await artistaVinculo.resolverParaGuardar();
     } catch (artistaError) {
-      setError(
+      setMarcarFaltantes(true);
+      setMarcarArtistaDudoso(true);
+      setConfigOpen(true);
+      setAvisoGuardar(
         artistaError instanceof Error ? artistaError.message : String(artistaError),
       );
       return;
@@ -506,12 +502,12 @@ export default function CifradoEditorMobile({
           : editingCancionIdRef.current ?? session?.cancionId;
       const youtubeNormalizado = normalizarYoutubeUrl(youtubeUrl);
       if (!youtubeNormalizado.ok) {
-        setError("El link del video no es de YouTube. Corregilo o borralo en Datos y ajustes.");
+        setAvisoGuardar("El link del video no es de YouTube. Corregilo o borralo en Datos y ajustes.");
         return;
       }
 
       if (cifrado.acordes.some((acorde) => !acordeEstaContemplado(acorde))) {
-        setError(AVISO_ACORDE_NO_CONTEMPLADO);
+        setAvisoGuardar(AVISO_ACORDE_NO_CONTEMPLADO);
         return;
       }
       const savedId = await onPersist(editingId, {
@@ -542,11 +538,7 @@ export default function CifradoEditorMobile({
         tiene_compases: (compasConfig.barras?.length ?? 0) > 0,
       });
     } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "No se pudo guardar la canción",
-      );
+      setAvisoGuardar(mensajeErrorAlGuardar(saveError));
     } finally {
       setSaveLoading(false);
     }
@@ -1467,18 +1459,17 @@ export default function CifradoEditorMobile({
                     >
                       Letra con acordes
                     </label>
-                    <textarea
+                    <CifradoIngresoCampo
                       id="cifrado-mobile-web-revisar"
+                      crece
                       value={draftPaste}
-                      onChange={(event) => {
-                        setDraftPaste(event.target.value);
+                      onChange={(valor) => {
+                        setDraftPaste(valor);
                         clearError();
                       }}
-                      className={`${textareaClassName} shrink-0 overflow-hidden`}
-                      style={{ flex: "none", height: "auto", minHeight: 220 }}
+                      className="min-h-[220px] shrink-0"
                       placeholder="Letra con los acordes encima de cada renglón…"
                     />
-                    <CifradoIngresoMarcas texto={draftPaste} revision={revisionPaste} />
                   </>
                 ) : (
                   <CifradoEditorIngresoWebSearch
@@ -1495,16 +1486,13 @@ export default function CifradoEditorMobile({
                   <label className={labelClassName} htmlFor="cifrado-mobile-pegar">
                     Letra con acordes
                   </label>
-                  <textarea
+                  <CifradoIngresoCampo
                     id="cifrado-mobile-pegar"
                     value={draftPaste}
-                    onChange={(event) => {
-                      handleDraftPasteChange(event.target.value);
-                    }}
-                    className={textareaClassName}
+                    onChange={handleDraftPasteChange}
+                    className="h-[50dvh] min-h-[240px] shrink-0"
                     placeholder="Pegá la letra con los acordes encima de cada renglón…"
                   />
-                  <CifradoIngresoMarcas texto={draftPaste} revision={revisionPaste} />
                 </>
               ) : null}
             </div>
@@ -1520,15 +1508,23 @@ export default function CifradoEditorMobile({
                     htmlFor="cifrado-mobile-nombre"
                   >
                     Nombre
+                    {!nombre.trim() ? (
+                      <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                        *
+                      </span>
+                    ) : null}
                   </label>
                   <input
                     id="cifrado-mobile-nombre"
                     value={nombre}
+                    aria-invalid={!nombre.trim()}
                     onChange={(event) => {
                       setNombre(event.target.value);
                       clearError();
                     }}
-                    className={CIFRADO_CONTROLS_INPUT_CLASS}
+                    className={`${CIFRADO_CONTROLS_INPUT_CLASS}${
+                      !nombre.trim() ? " !border-red-500" : ""
+                    }`}
                     placeholder="Nombre de la canción"
                   />
                   {avisarCancionRepetida ? (
@@ -1551,12 +1547,23 @@ export default function CifradoEditorMobile({
                     htmlFor="cifrado-mobile-artista"
                   >
                     Artista
+                    {!artista.trim() ? (
+                      <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                        *
+                      </span>
+                    ) : null}
                   </label>
                   <input
                     id="cifrado-mobile-artista"
                     value={artista}
-                    onChange={(event) => setArtista(event.target.value)}
-                    className={CIFRADO_CONTROLS_INPUT_CLASS}
+                    aria-invalid={!artista.trim()}
+                    onChange={(event) => {
+                      setArtista(event.target.value);
+                      setMarcarArtistaDudoso(false);
+                    }}
+                    className={`${CIFRADO_CONTROLS_INPUT_CLASS}${
+                      !artista.trim() || marcarArtistaDudoso ? " !border-red-500" : ""
+                    }`}
                     placeholder="Artista"
                   />
                   <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
@@ -1570,6 +1577,8 @@ export default function CifradoEditorMobile({
                     modoTonal={modoTonal}
                     fieldLabelClassName={CIFRADO_DETAILS_FIELD_LABEL_CLASS}
                     requireSelection
+                    marcarTono={tonalidadIndex === null}
+                    marcarModo={modoTonal === null}
                     onTonalidadChange={(next) => {
                       setTonalidadIndex(next);
                       clearError();
@@ -1909,15 +1918,23 @@ export default function CifradoEditorMobile({
                   htmlFor="cifrado-mobile-cfg-nombre"
                 >
                   Nombre
+                  {!nombre.trim() ? (
+                    <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                      *
+                    </span>
+                  ) : null}
                 </label>
                 <input
                   id="cifrado-mobile-cfg-nombre"
                   value={nombre}
+                  aria-invalid={!nombre.trim()}
                   onChange={(event) => {
                     setNombre(event.target.value);
                     clearError();
                   }}
-                  className={CIFRADO_CONTROLS_INPUT_CLASS}
+                  className={`${CIFRADO_CONTROLS_INPUT_CLASS}${
+                    !nombre.trim() ? " !border-red-500" : ""
+                  }`}
                   placeholder="Nombre de la canción"
                 />
                 {avisarCancionRepetida ? (
@@ -1932,12 +1949,23 @@ export default function CifradoEditorMobile({
                   htmlFor="cifrado-mobile-cfg-artista"
                 >
                   Artista
+                  {!artista.trim() ? (
+                    <span className="ml-0.5 font-bold text-red-500" aria-hidden="true">
+                      *
+                    </span>
+                  ) : null}
                 </label>
                 <input
                   id="cifrado-mobile-cfg-artista"
                   value={artista}
-                  onChange={(event) => setArtista(event.target.value)}
-                  className={CIFRADO_CONTROLS_INPUT_CLASS}
+                  aria-invalid={!artista.trim()}
+                  onChange={(event) => {
+                    setArtista(event.target.value);
+                    setMarcarArtistaDudoso(false);
+                  }}
+                  className={`${CIFRADO_CONTROLS_INPUT_CLASS}${
+                    !artista.trim() || marcarArtistaDudoso ? " !border-red-500" : ""
+                  }`}
                   placeholder="Artista"
                 />
                 <CampoArtistaVinculo vinculo={artistaVinculo} texto={artista} />
@@ -1971,6 +1999,8 @@ export default function CifradoEditorMobile({
                   modoTonal={modoTonal}
                   fieldLabelClassName={CIFRADO_DATOS_FIELD_LABEL_CLASS}
                   requireSelection
+                  marcarTono={tonalidadIndex === null}
+                  marcarModo={modoTonal === null}
                   onTonalidadChange={(next) => {
                     setTonalidadIndex(next);
                     clearError();
@@ -2068,6 +2098,15 @@ export default function CifradoEditorMobile({
         </div>
       ) : null}
 
+      <ConfirmDialog
+        open={avisoGuardar !== null}
+        message={avisoGuardar ?? ""}
+        confirmLabel="Entendido"
+        hideCancel
+        zIndex={90}
+        onConfirm={() => setAvisoGuardar(null)}
+        onCancel={() => setAvisoGuardar(null)}
+      />
       <ConfirmDialog
         open={exigenciaAbandonConfirmOpen}
         message={CIFRADO_CONFIRM_ABANDON_EXIGENCIA_RANGO_MESSAGE}

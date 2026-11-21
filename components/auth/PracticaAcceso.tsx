@@ -8,7 +8,7 @@ import { useEffect } from "react";
 
 /**
  * Práctica es solo para cuentas: el invitado vuelve al inicio.
- * El Entrenador Vocal es de dueño y amigos: el público vuelve a Práctica.
+ * El Entrenador Vocal es de dueño, superamigos y amigos: el público vuelve a Práctica.
  */
 export default function PracticaAcceso() {
   const router = useRouter();

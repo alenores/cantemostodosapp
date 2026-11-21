@@ -38,7 +38,9 @@ BEGIN
   FROM public.usuarios_categorias uc
   WHERE uc.user_id = v_uid;
 
-  IF v_categoria IS DISTINCT FROM 'dueno' AND v_categoria IS DISTINCT FROM 'amigos' THEN
+  IF v_categoria IS DISTINCT FROM 'dueno'
+     AND v_categoria IS DISTINCT FROM 'superamigos'
+     AND v_categoria IS DISTINCT FROM 'amigos' THEN
     RAISE EXCEPTION 'No podés validar canciones.';
   END IF;
 

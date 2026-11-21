@@ -211,7 +211,7 @@ export default function PracticaCancionCard({
             if (actionsOpen) onCloseActions();
             else onOpenActions();
           }}
-          className="absolute right-1.5 top-1.5 z-20 flex size-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-text-primary"
+          className="absolute right-2 top-1.5 z-20 flex size-8 items-center justify-center rounded-full text-text-muted hover:bg-white/10 hover:text-text-primary"
         >
           <MoreHorizontal className="size-5" aria-hidden="true" />
         </TapButton>
@@ -231,7 +231,7 @@ export default function PracticaCancionCard({
           />
           <div
             role="menu"
-            className="absolute right-1.5 top-10 z-50 w-40 overflow-hidden rounded-xl border border-border bg-bg-dark py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+            className="absolute right-2 top-10 z-50 w-40 overflow-hidden rounded-xl border border-border bg-bg-dark py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
           >

@@ -54,7 +54,7 @@ export const CANCIONERO_HUB_MODULES: HubModuleDef[] = [
     icon: FileText,
     accentVar: "--accent-cancionero",
     accentDimVar: "--accent-cancionero-dim",
-    iconColor: "var(--tuner-cerca)",
+    iconColor: "var(--cancionero-hoja)",
     kind: "route",
     section: "canciones",
     href: "/canciones/cancionero",

@@ -229,7 +229,7 @@ function CancionSlide({
           >
             {tieneCifradoAvanzado && (
               <FileText
-                className="size-3.5 shrink-0 text-[var(--tuner-cerca)]"
+                className="size-3.5 shrink-0 text-[var(--cancionero-hoja)]"
                 aria-hidden="true"
               />
             )}

@@ -66,7 +66,7 @@ export default function LetraFuenteIcon({
     return (
       <FileText
         className={className}
-        style={{ color: "var(--tuner-cerca)" }}
+        style={{ color: "var(--cancionero-hoja)" }}
         aria-label="Canción con cifrado avanzado"
       />
     );

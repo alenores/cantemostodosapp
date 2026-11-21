@@ -107,6 +107,7 @@
   --accent-cancionero: #5FC4A8;
   --accent-cancionero-dim: rgba(95, 196, 168, 0.14);
   --cancionero-icon: #9AE0C8;
+  --cancionero-hoja: #bd9f32;
   --accent-afinador: var(--tuner-in-tune);
   --accent-afinador-dim: rgba(84, 200, 100, 0.14);
 
@@ -2060,7 +2061,7 @@ html.splash-active body {
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="cancionero"] .hub-module-card__icon {
-  color: var(--tuner-cerca);
+  color: var(--cancionero-hoja);
 }
 
 .practica-hub-claro > .hub-module-card[data-hub-accent="mis-canciones"] .hub-module-card__icon {

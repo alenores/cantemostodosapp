@@ -235,7 +235,7 @@ export default function CancioneroModoLectura({
               <h2 className="flex min-w-0 items-center gap-1.5 truncate text-lg font-extrabold text-accent">
                 {cancion.tiene_cifrado_avanzado ? (
                   <FileText
-                    className="size-3.5 shrink-0 text-[var(--tuner-cerca)]"
+                    className="size-3.5 shrink-0 text-[var(--cancionero-hoja)]"
                     aria-hidden="true"
                   />
                 ) : null}

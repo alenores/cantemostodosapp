@@ -2059,6 +2059,15 @@ html.splash-active body {
   color: #1c1c1e;
 }
 
+.practica-hub-claro > .hub-module-card[data-hub-accent="cancionero"] .hub-module-card__icon {
+  color: var(--tuner-cerca);
+}
+
+.practica-hub-claro > .hub-module-card[data-hub-accent="mis-canciones"] .hub-module-card__icon {
+  color: var(--tuner-in-tune);
+  fill: currentColor;
+}
+
 .practica-hub-claro > .hub-module-card[data-hub-accent="entrenador-canciones"] .hub-module-card__icon {
   color: var(--accent-vocal);
   fill: currentColor;
@@ -2081,6 +2090,27 @@ html.splash-active body {
 .practica-hub-claro > .hub-module-card[data-hub-accent] .hub-module-card__cta {
   background: #b0b0b4;
   color: #1c1c1e;
+}
+
+/* En la computadora, Práctica muestra estas tarjetas: mismo criterio que el celular. */
+@media (min-width: 1024px) {
+  .hub-module-card[data-hub-accent] {
+    border-color: var(--border-card);
+    box-shadow: none;
+  }
+
+  .hub-module-card[data-hub-accent] .hub-module-card__icon-wrap {
+    background: transparent;
+  }
+
+  .hub-module-card[data-hub-accent] .hub-module-card__icon {
+    color: var(--text-primary);
+  }
+
+  .hub-module-card[data-hub-accent="entrenador-canciones"] .hub-module-card__icon {
+    color: var(--accent-vocal);
+    fill: currentColor;
+  }
 }
 
 /* Listados en columnas */

@@ -20,12 +20,6 @@ import { ChevronDown, WifiOff } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const SECTION_ICON_COLOR: Record<string, string | undefined> = {
-  canciones: "var(--accent-cancionero)",
-  herramientas: "var(--accent-afinador)",
-  practica: "var(--accent-vocal)",
-};
-
 type AppSidebarNavSectionsProps = {
   usuario: UsuarioActivo;
   online: boolean;
@@ -178,12 +172,7 @@ function SidebarExpandableSection({
           />
         ) : null}
 
-        <Icon
-          className="size-5 shrink-0"
-          color={SECTION_ICON_COLOR[section.id]}
-          style={{ color: SECTION_ICON_COLOR[section.id] }}
-          aria-hidden="true"
-        />
+        <Icon className="size-5 shrink-0" aria-hidden="true" />
 
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">
@@ -208,6 +197,8 @@ function SidebarExpandableSection({
             const href = item.href ?? "/";
             const active = isPcNavItemActive(pathname, href);
             const ItemIcon = item.icon;
+            const iconoRelleno =
+              item.id === "mis-canciones" || item.id === "entrenador-canciones";
 
             return (
               <TapLink
@@ -221,9 +212,9 @@ function SidebarExpandableSection({
                 }`}
               >
                 <ItemIcon
-                  className="size-4 shrink-0"
+                  className={`size-4 shrink-0${iconoRelleno ? " fill-current" : ""}`}
                   color={item.iconColor}
-                  style={{ color: item.iconColor }}
+                  style={item.iconColor ? { color: item.iconColor } : undefined}
                   aria-hidden="true"
                 />
                 <span className="truncate text-sm font-medium">{item.label}</span>

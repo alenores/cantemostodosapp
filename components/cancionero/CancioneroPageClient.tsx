@@ -85,7 +85,7 @@ import {
   artistasConFotoLocal,
   leerArtistasFotos,
 } from "@/lib/offline/artista-fotos";
-import { Bell, Bookmark, Clock, Music, Search, Star, WifiOff, X, Users } from "lucide-react";
+import { Bell, Bookmark, Clock, Music, Search, Star, X, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const inputClassName =
@@ -952,6 +952,7 @@ export default function CancioneroPageClient({
           artistas={artistas}
           conteoCanciones={conteoCancionesPorArtista}
           selectedIds={selectedArtistaIds}
+          usuarioId={usuarioId}
           onApply={(ids) => {
             setSelectedArtistaIds(ids);
             setArtistasFilterOpen(false);
@@ -990,16 +991,6 @@ export default function CancioneroPageClient({
               <X className="size-4 text-text-primary" aria-hidden="true" />
             </TapButton>
           </div>
-        )}
-
-        {!online && (
-          <p
-            className="flex items-center gap-2 rounded-[10px] border border-border bg-bg-card px-3 py-2.5 text-sm text-text-muted"
-            role="status"
-          >
-            <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-            Sin conexión · mostrando copia local (solo lectura)
-          </p>
         )}
 
         {!localReady ? (

@@ -341,7 +341,11 @@ function MiCancionItem({
   );
 }
 
-export default function MisCancionesPageClient() {
+export default function MisCancionesPageClient({
+  usuarioId,
+}: {
+  usuarioId: string;
+}) {
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
   const supabase = useMemo(() => createClient(), []);
@@ -862,6 +866,7 @@ export default function MisCancionesPageClient() {
           artistas={artistasFavoritas}
           conteoCanciones={conteoPorArtista}
           selectedIds={selectedArtistaIds}
+          usuarioId={usuarioId}
           onApply={(ids) => {
             setSelectedArtistaIds(ids);
             setArtistasFilterOpen(false);

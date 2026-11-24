@@ -9,6 +9,7 @@ import {
   getLineContentEndOffset,
   getLineLaneStart,
   LINE_LANE_MIN_SLOT_COUNT,
+  LINE_LANE_SLOT_WIDTH_PX,
   resolveCharOffsetPx,
   resolveLineTerminalCharOffset,
   type AcordePos,
@@ -124,17 +125,49 @@ function readMeasureChars(measure: HTMLElement): MeasuredChar[] {
   return positions;
 }
 
+function acordeMeasureClass(letraSheet: boolean, compact: boolean): string {
+  return `pointer-events-none absolute whitespace-nowrap rounded px-0.5 font-bold leading-none ${CIFRADO_ACORDE_TEXT_CLASS} ${
+    letraSheet
+      ? "text-[length:var(--letra-size)]"
+      : compact
+        ? "text-[10px]"
+        : "text-xs"
+  }`;
+}
+
 function LyricMeasureLine({
   text,
   laneSlotCount,
   measureRef,
+  acordes = [],
+  notacion = "es",
+  letraSheet = false,
+  compact = false,
+  showAcordes = true,
 }: {
   text: string;
   laneSlotCount: number;
   measureRef: RefObject<HTMLDivElement | null>;
+  acordes?: AcordePos[];
+  notacion?: NotacionAcordes;
+  letraSheet?: boolean;
+  compact?: boolean;
+  showAcordes?: boolean;
 }) {
   const characters = [...text];
   const laneStart = getLineLaneStart(characters.length);
+  const laneSlots =
+    laneSlotCount > 0
+      ? Array.from({ length: laneSlotCount }).map((_, slot) => (
+          <span
+            key={slot}
+            data-wrap-measure-index={laneStart + slot}
+            className={`${CIFRADO_LINE_LANE_SLOT_CLASS} shrink-0`}
+          >
+            {"\u00a0"}
+          </span>
+        ))
+      : null;
 
   return (
     <div
@@ -142,7 +175,9 @@ function LyricMeasureLine({
       aria-hidden
       className="pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap"
     >
-      {characters.length === 0 ? null : (
+      {characters.length === 0 ? (
+        laneSlots ? <span className="inline-flex shrink-0">{laneSlots}</span> : null
+      ) : (
         <>
           <span className="inline shrink-0">
             {characters.map((char, index) => (
@@ -151,21 +186,48 @@ function LyricMeasureLine({
               </span>
             ))}
           </span>
-          <span className={CIFRADO_LINE_LANE_CONTAINER_CLASS}>
-            {Array.from({ length: laneSlotCount }).map((_, slot) => (
-              <span
-                key={slot}
-                data-wrap-measure-index={laneStart + slot}
-                className={CIFRADO_LINE_LANE_SLOT_CLASS}
-              >
-                {"\u00a0"}
-              </span>
-            ))}
-          </span>
+          {laneSlots ? (
+            <span className="inline-flex shrink-0">{laneSlots}</span>
+          ) : null}
         </>
       )}
+      {showAcordes
+        ? acordes.map((acorde) => (
+            <span
+              key={`measure-acorde-${acorde.charOffset}`}
+              data-wrap-chord-offset={acorde.charOffset}
+              className={acordeMeasureClass(letraSheet, compact)}
+            >
+              <AcordeLabel
+                noteIndex={acorde.noteIndex}
+                modifier={acorde.modifier}
+                bassNoteIndex={acorde.bassNoteIndex}
+                agregada={acorde.agregada}
+                notacion={notacion}
+                className={CIFRADO_ACORDE_TEXT_CLASS}
+              />
+            </span>
+          ))
+        : null}
     </div>
   );
+}
+
+function readChordLabelWidths(measure: HTMLElement): Map<number, number> {
+  const widths = new Map<number, number>();
+  const spans = measure.querySelectorAll<HTMLElement>("[data-wrap-chord-offset]");
+
+  spans.forEach((span) => {
+    const offset = Number(span.getAttribute("data-wrap-chord-offset"));
+
+    if (Number.isNaN(offset)) {
+      return;
+    }
+
+    widths.set(offset, span.getBoundingClientRect().width);
+  });
+
+  return widths;
 }
 
 type CharPosition = {
@@ -333,6 +395,7 @@ function CifradoLyricsRow({
   wrapRow = 0,
   showLane = true,
   measureSlot = null,
+  laneSlotCountOverride,
 }: CifradoLyricsLineProps & {
   /** El renglón de afuera ya pone el margen, el rasgueo y la barra de color. */
   suppressChrome?: boolean;
@@ -343,12 +406,19 @@ function CifradoLyricsRow({
   wrapRow?: number;
   showLane?: boolean;
   measureSlot?: ReactNode;
+  /** Casillas vacías de este tramo. Si viene, no se estira el carril entero. */
+  laneSlotCountOverride?: number;
 }) {
   const textLaneRef = useRef<HTMLDivElement>(null);
   const compasRowRef = useRef<HTMLDivElement>(null);
   const [charPositions, setCharPositions] = useState<CharPosition[]>([]);
   const [compasRowBottomPx, setCompasRowBottomPx] = useState<number | undefined>();
   const [laneSlotCount, setLaneSlotCount] = useState(LINE_LANE_MIN_SLOT_COUNT);
+  const renderedLaneSlotCount = laneSlotCountOverride ?? laneSlotCount;
+  const laneClassName =
+    laneSlotCountOverride === undefined
+      ? CIFRADO_LINE_LANE_CONTAINER_CLASS
+      : "inline-flex shrink-0";
   const characters = [...text];
   const laneStart = getLineLaneStart(characters.length);
   const compasConfigForLine = useMemo(
@@ -394,14 +464,17 @@ function CifradoLyricsRow({
     }
 
     const containerRect = container.getBoundingClientRect();
-    const nextLaneSlotCount = computeLineLaneSlotCount(
-      containerRect.width,
-      text.length,
-    );
 
-    setLaneSlotCount((current) =>
-      current === nextLaneSlotCount ? current : nextLaneSlotCount,
-    );
+    if (laneSlotCountOverride === undefined) {
+      const nextLaneSlotCount = computeLineLaneSlotCount(
+        containerRect.width,
+        text.length,
+      );
+
+      setLaneSlotCount((current) =>
+        current === nextLaneSlotCount ? current : nextLaneSlotCount,
+      );
+    }
 
     const spans = container.querySelectorAll("[data-char-index]");
     const positions: CharPosition[] = [];
@@ -424,11 +497,11 @@ function CifradoLyricsRow({
     });
 
     setCharPositions(positions);
-  }, [text]);
+  }, [laneSlotCountOverride, text]);
 
   useLayoutEffect(() => {
     measurePositions();
-  }, [laneSlotCount, measurePositions, text, showCompas]);
+  }, [laneSlotCount, laneSlotCountOverride, measurePositions, text, showCompas]);
 
   useEffect(() => {
     const container = textLaneRef.current;
@@ -606,14 +679,22 @@ function CifradoLyricsRow({
         style={arribaOffset ? { paddingTop: 20 + arribaOffset } : undefined}
       >
         {characters.length === 0 ? (
-          <span className={`${CIFRADO_LINE_LANE_CONTAINER_CLASS} w-full`}>
-            {Array.from({ length: laneSlotCount }).map((_, slot) => (
+          <span
+            className={
+              laneSlotCountOverride === undefined
+                ? `${CIFRADO_LINE_LANE_CONTAINER_CLASS} w-full`
+                : laneClassName
+            }
+          >
+            {Array.from({ length: renderedLaneSlotCount }).map((_, slot) => (
               <span
                 key={`lyrics-lane-${slot}`}
                 data-char-index={slot}
                 className={CIFRADO_LINE_LANE_SLOT_CLASS}
               >
-                {slot === 0 ? " " : "\u00a0"}
+                {laneSlotCountOverride === undefined && slot === 0
+                  ? " "
+                  : "\u00a0"}
               </span>
             ))}
           </span>
@@ -628,10 +709,10 @@ function CifradoLyricsRow({
             </span>
             {showLane ? (
               <span
-                className={CIFRADO_LINE_LANE_CONTAINER_CLASS}
+                className={laneClassName}
                 aria-hidden="true"
               >
-                {Array.from({ length: laneSlotCount }).map((_, slot) => (
+                {Array.from({ length: renderedLaneSlotCount }).map((_, slot) => (
                   <span
                     key={`lyrics-lane-${slot}`}
                     data-char-index={laneStart + slot}
@@ -745,8 +826,10 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
     tipoCompas = "4-4",
     intensidadPlantilla = [],
     showCompas = false,
+    showAcordes = true,
     letraSheet = false,
     compact = false,
+    notacion = "es",
     tramoColor = null,
     isPlaybackActiveLine = false,
     anotaciones = [],
@@ -806,9 +889,40 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
       }
 
       const measured = readMeasureChars(measure);
-      const widths = [...text].map((_, index) => measured[index]?.width ?? 0);
-      const segments = computeSoftWrapSegments(text, widths, maxWidth);
-      const wrapped = segments.length > 1;
+      const characters = [...text];
+      const widths = characters.map((_, index) => measured[index]?.width ?? 0);
+      const maxChordOffset = showAcordes
+        ? acordes.reduce(
+            (max, acorde) => Math.max(max, acorde.charOffset),
+            -1,
+          )
+        : -1;
+      const laneFrom = characters.length;
+      const laneTo = Math.max(characters.length, maxChordOffset + 1);
+      const laneWidths: number[] = [];
+
+      for (let offset = laneFrom; offset < laneTo; offset += 1) {
+        const measuredWidth = measured[offset]?.width ?? 0;
+        laneWidths.push(
+          measuredWidth > 0 ? measuredWidth : LINE_LANE_SLOT_WIDTH_PX,
+        );
+      }
+
+      const measuredChordWidths = showAcordes
+        ? readChordLabelWidths(measure)
+        : new Map<number, number>();
+      const chordLabelWidths = showAcordes
+        ? acordes.map((acorde) => ({
+            offset: acorde.charOffset,
+            width: measuredChordWidths.get(acorde.charOffset) ?? 0,
+          }))
+        : [];
+      const segments = computeSoftWrapSegments(text, widths, maxWidth, {
+        laneWidths,
+        chordLabelWidths,
+      });
+      const wrapped =
+        segments.length > 1 || (segments[0]?.start ?? 0) > 0;
 
       if (!wrapped) {
         setWrapSegments((current) => (current === null ? current : null));
@@ -835,7 +949,6 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
         barras: [] as BarraCompas[],
         lineTerminalOffsets,
       };
-      const characters = [...text];
       const lineTerminalCharOffset =
         barras.length > 0
           ? resolveLineTerminalCharOffset(
@@ -907,6 +1020,8 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
     lineIndex,
     lineTerminalOffsets,
     nextLineHasCompas,
+    notacion,
+    showAcordes,
     showCompas,
     text,
     tipoCompas,
@@ -931,12 +1046,30 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
     return <CifradoLyricsRow {...props} />;
   }
 
-  const wrapped = Boolean(wrapSegments && wrapSegments.length > 1);
+  const wrapped = Boolean(
+    wrapSegments &&
+      (wrapSegments.length > 1 || (wrapSegments[0]?.start ?? 0) > 0),
+  );
+  const textChars = [...text];
+  const farthestChord = showAcordes
+    ? acordes.reduce((max, acorde) => Math.max(max, acorde.charOffset), -1)
+    : -1;
+  const measureLaneCount = Math.max(
+    laneSlotCount,
+    farthestChord >= textChars.length
+      ? farthestChord - textChars.length + 1
+      : 0,
+  );
   const measureLine = (
     <LyricMeasureLine
       text={text}
-      laneSlotCount={laneSlotCount}
+      laneSlotCount={measureLaneCount}
       measureRef={measureRef}
+      acordes={acordes}
+      notacion={notacion}
+      letraSheet={letraSheet}
+      compact={compact}
+      showAcordes={showAcordes}
     />
   );
 
@@ -988,12 +1121,22 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
             {wrapSegments.map((segment, index) => {
               const { start, end } = segment;
               const isLast = index === wrapSegments.length - 1;
+              const laneCount = Math.max(
+                0,
+                end - Math.max(start, textChars.length),
+              );
+              const segmentText =
+                start >= textChars.length
+                  ? ""
+                  : textChars
+                      .slice(start, Math.min(end, textChars.length))
+                      .join("");
 
               return (
                 <CifradoLyricsRow
                   key={`${start}-${end}`}
                   {...props}
-                  text={text.slice(start, end)}
+                  text={segmentText}
                   acordes={sliceAcordes(acordes, start, end, isLast)}
                   barras={[]}
                   anotaciones={sliceLineAnotaciones(anotaciones, start, end, isLast)}
@@ -1002,7 +1145,10 @@ export function CifradoLyricsLine(props: CifradoLyricsLineProps) {
                   markersOverride={segmentMarkers[index] ?? []}
                   reportMarkers={false}
                   wrapRow={index}
-                  showLane={isLast}
+                  showLane={laneCount > 0 || isLast}
+                  laneSlotCountOverride={
+                    laneCount > 0 ? laneCount : undefined
+                  }
                 />
               );
             })}

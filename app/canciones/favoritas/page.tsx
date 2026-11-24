@@ -11,5 +11,5 @@ export default async function CancionesFavoritasPage() {
     redirect("/");
   }
 
-  return <MisCancionesPageClient />;
+  return <MisCancionesPageClient usuarioId={user.id} />;
 }

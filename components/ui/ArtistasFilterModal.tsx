@@ -1,4 +1,8 @@
 import { artistaCoincideBusqueda } from "@/lib/artistas-alias-busqueda";
+import {
+  leerArtistasRecientes,
+  recordarArtistaReciente,
+} from "@/lib/artistas-recientes";
 import { useAliasBusqueda } from "@/hooks/useAliasBusqueda";
 import VincularNombreArtista from "@/components/artistas/VincularNombreArtista";
 import { Search, X, Settings, Check } from "lucide-react";
@@ -15,6 +19,7 @@ type Props = {
   selectedIds: Set<string>;
   onApply: (ids: Set<string>) => void;
   onManageArtistas?: () => void;
+  usuarioId?: string | null;
 };
 
 function textoCanciones(cantidad: number): string {
@@ -29,16 +34,35 @@ export function ArtistasFilterModal({
   selectedIds,
   onApply,
   onManageArtistas,
+  usuarioId = null,
 }: Props) {
   const [query, setQuery] = useState("");
   const [draftSelected, setDraftSelected] = useState<Set<string>>(selectedIds);
+  const [recientesIds, setRecientesIds] = useState<string[]>(() =>
+    leerArtistasRecientes(usuarioId),
+  );
 
   const aliasBusqueda = useAliasBusqueda();
+  const buscando = query.trim().length > 0;
+
+  const artistasPorId = useMemo(
+    () => new Map(artistas.map((artista) => [artista.id, artista])),
+    [artistas],
+  );
+
+  const recientesVisibles = useMemo(() => {
+    const lista: Artista[] = [];
+    for (const id of recientesIds) {
+      const artista = artistasPorId.get(id);
+      if (artista) lista.push(artista);
+    }
+    return lista;
+  }, [artistasPorId, recientesIds]);
 
   const filteredArtistas = useMemo(() => {
-    if (!query.trim()) return artistas;
+    if (!buscando) return recientesVisibles;
     return artistas.filter((a) => artistaCoincideBusqueda(a.nombre, query, aliasBusqueda));
-  }, [aliasBusqueda, artistas, query]);
+  }, [aliasBusqueda, artistas, buscando, query, recientesVisibles]);
 
   const cancionesSeleccionadas = useMemo(
     () =>
@@ -51,12 +75,16 @@ export function ArtistasFilterModal({
   if (!isOpen) return null;
 
   function toggleArtista(id: string) {
+    const yaEstaba = draftSelected.has(id);
     setDraftSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+    if (yaEstaba) return;
+    const siguientes = recordarArtistaReciente(usuarioId, id);
+    if (buscando) setRecientesIds(siguientes);
   }
 
   const haySeleccion = draftSelected.size > 0;
@@ -72,7 +100,11 @@ export function ArtistasFilterModal({
             <p className="text-xs text-text-muted">
               {haySeleccion
                 ? `${draftSelected.size} elegido${draftSelected.size === 1 ? "" : "s"} · ${textoCanciones(cancionesSeleccionadas)}`
-                : "Tocá uno o más artistas"}
+                : buscando
+                  ? "Tocá uno o más artistas"
+                  : recientesVisibles.length > 0
+                    ? "Últimos buscados"
+                    : "Buscá un artista"}
             </p>
           </div>
           {onManageArtistas ? (
@@ -113,7 +145,9 @@ export function ArtistasFilterModal({
         <div className="flex-1 overflow-y-auto p-3">
           {filteredArtistas.length === 0 ? (
             <div className="py-8 text-center text-sm text-text-muted">
-              No se encontraron artistas.
+              {buscando
+                ? "No se encontraron artistas."
+                : "Todavía no buscaste artistas."}
             </div>
           ) : (
             <ul className="flex flex-col gap-2">

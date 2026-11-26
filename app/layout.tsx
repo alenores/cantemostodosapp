@@ -1,6 +1,7 @@
 import AppLoadingSkeleton from "@/components/ui/AppLoadingSkeleton";
 import SplashScreen from "@/components/SplashScreen";
 import AuthSessionListener from "@/components/auth/AuthSessionListener";
+import FotoObligatoriaGate from "@/components/auth/FotoObligatoriaGate";
 import AppFooter from "@/components/ui/AppFooter";
 import AppSidebar from "@/components/ui/AppSidebar";
 import CancioneroSyncRunner from "@/components/offline/CancioneroSyncRunner";
@@ -87,6 +88,7 @@ export default function RootLayout({
                 <OfflinePrefetchRunner />
                 <OfflineWarmRunner />
                 <AuthSessionListener />
+                <FotoObligatoriaGate />
                 <SplashScreen />
                 <AppSidebar />
                 <div className="app-shell-main flex min-h-dvh w-full min-w-0 flex-1 flex-col overflow-x-clip">

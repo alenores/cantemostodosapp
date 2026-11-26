@@ -54,6 +54,12 @@
   --accent-dim: rgba(244, 132, 95, 0.12);
   --preview-frame-bg: #4d4540;
 
+  /* Estados de las solicitudes de canciones (chips y avisos). */
+  --solicitud-ok: #2e8b4e;
+  --solicitud-ya: #3474ad;
+  --solicitud-revision: #b07a00;
+  --solicitud-no: #c0392b;
+
   /* Letra activa — siempre blanco/negro */
   --letra-bg: #ffffff;
   --letra-text: #111111;
@@ -423,6 +429,10 @@ body[data-tema-lectura] button {
   --color-compositor-block-bateria: var(--compositor-block-bateria);
   --color-compositor-block-viento: var(--compositor-block-viento);
   --color-tool-practice: var(--tool-practice);
+  --color-solicitud-ok: var(--solicitud-ok);
+  --color-solicitud-ya: var(--solicitud-ya);
+  --color-solicitud-revision: var(--solicitud-revision);
+  --color-solicitud-no: var(--solicitud-no);
   --font-sans: var(--font-app);
   --radius-sutil: var(--radius-sutil);
   --radius-estandar: var(--radius-estandar);

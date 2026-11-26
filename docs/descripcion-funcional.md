@@ -92,7 +92,7 @@ Al abrir la app en el celular, la persona usuaria ve:
 - Un saludo: **"Bienvenid@"**
 - Su nombre, si inició sesión.
 - La pregunta: **"¿Qué querés hacer?"**
-- Cinco accesos principales en forma de tarjetas. En celular, **Individual** ocupa una tarjeta principal de ancho completo. Debajo, Cancionero, Salas, Práctica y Afinador aparecen en dos columnas de tarjetas oscuras con iconos blancos y rótulos breves. El saludo queda alineado a la izquierda y el naranja se usa como acento. Se conserva la campanita de novedades del Cancionero.
+- Accesos principales en forma de tarjetas oscuras con iconos blancos y rótulos breves. **Cancionero** ocupa una tarjeta principal de ancho completo, con su campanita de novedades. Justo debajo, a lo ancho, **Solicitar canción** (*"Un agente de IA la carga"*), con su propia campanita (ver 8.4). Debajo, Individual, Salas, Práctica y Afinador en dos columnas.
 - Solo para el dueño de la aplicación aparece, al final de esos accesos, **Usuarios** para administrar las cuentas.
 
 | Acceso | Qué dice | Qué permite |
@@ -100,6 +100,7 @@ Al abrir la app en el celular, la persona usuaria ve:
 | **Salas** | "En grupo" | Salas compartidas (requiere internet) |
 | **Individual** | "Cantar solo" | Modo personal de canto |
 | **Cancionero** | "Explorar" | Ir al hub de canciones |
+| **Solicitar canción** | "Un agente de IA la carga" | Ver y pedir canciones para el Cancionero (8.4) |
 | **Práctica** | "Practicar" | Herramientas de ensayo |
 | **Afinador** | "Afinar" | Se abre encima, sin salir del inicio |
 
@@ -128,7 +129,7 @@ La barra **desaparece** cuando entrás en **modo lectura** (letra a pantalla com
 En computadora la experiencia es distinta:
 
 - Hay un **menú lateral izquierdo** permanente con secciones desplegables:
-  - **Canciones** → Cancionero, Favoritas
+  - **Canciones** → Cancionero, Favoritas, Solicitar canción
   - **Individual**
   - **Salas**
   - **Herramientas** → Afinador
@@ -152,6 +153,7 @@ Tanto **Canciones** como **Práctica** tienen una pantalla intermedia (hub) que 
 **Canciones:**
 - Cancionero
 - Favoritas (requiere cuenta)
+- Solicitar canción
 
 El editor de canciones no tiene tarjeta propia: se entra con el botón **+** dentro del Cancionero (canción nueva) o con **Editar** en una canción que la cuenta puede editar (ver sección 18).
 
@@ -325,6 +327,28 @@ Al ver una canción:
 - Navegación **Anterior / Siguiente** entre canciones del listado filtrado.
 - Botón **Expandir** para entrar al **modo lectura**.
 - **Video de YouTube**: si la canción tiene link cargado y hay conexión, arriba de la letra aparece una tarjeta con la miniatura. Al tocarla se reproduce ahí mismo; recién entonces carga el video.
+
+### 8.4 Solicitudes de canciones
+
+Para quien quiere una canción que no está y no quiere (o no puede) usar el editor: la pide y un **agente de IA** la carga al Cancionero.
+
+- Se entra desde la tarjeta **Solicitar canción** del inicio (celular) o desde **Canciones** en el menú de la computadora.
+- **Todos ven la lista**, también sin cuenta. Para pedir hay que tener cuenta: el botón **+** le dice al invitado *"Para pedir canciones, iniciá sesión"* y lo lleva a entrar.
+- **Pestaña Pendientes:** las canciones pedidas, por orden de llegada, con la foto de quien la pidió. Las propias aparecen resaltadas con la marca **Tuya**.
+- **Pestaña Procesadas:** no se borra nunca; muestra lo que la app ya entregó. Estados:
+
+| Estado | Qué ve la persona |
+|--------|-------------------|
+| **Ya está** | La canción se cargó a su nombre: su foto aparece en el Cancionero. Tocarla la abre |
+| **Ya estaba** | Ya la había cargado otra persona: la canción está, pero no a su nombre. Tocarla la abre |
+| **En revisión** | El agente no pudo; la revisa el dueño |
+| **No se pudo** | El dueño decidió que no se puede cargar |
+
+- **Pedir (botón +):** **Canción** y **Artista**, ambos obligatorios. Mientras se escribe el artista, se sugieren los artistas ya cargados (también por otros nombres); si no aparece, se usa lo escrito. Si la canción ya está en el Cancionero o ya fue pedida, no deja pedirla y muestra cuál encontró (con **Verla** si está en el Cancionero). No hay límite de pedidos ni votos.
+- **Campanita propia** en la tarjeta del inicio: se enciende cuando una canción pedida queda **Ya está**, **Ya estaba** o **No se pudo**. Se apaga al abrir la pantalla.
+- **Sin señal:** se puede ver la última lista guardada y pedir; el pedido queda guardado en el celular (*"Sin enviar"*) y se manda cuando vuelve la señal. Si mientras tanto alguien la pidió o la cargó, avisa que ya estaba.
+- **Solo dueño — pestaña Revisar:** las que el agente no pudo cargar. Por cada una: **Cargar en editor** (al guardar queda vinculada y a nombre de quien la pidió), **Ya está cargada** (elegir la canción del Cancionero) o **No se puede**.
+- El agente trabaja con una regla fija (`docs/agente-solicitudes.md`), la dispare el dueño a mano o una tarea programada.
 
 ---
 
@@ -756,7 +780,7 @@ Para **Exigencia:** el primer toque marca el inicio del rango; el segundo marca 
 - Botón **Registrarse**.
 - Enlace: *"¿Ya tenés cuenta? Iniciá sesión"*.
 - Requiere **conexión a internet**.
-- Tras registrarse, va al inicio.
+- Tras registrarse, va al inicio y aparece la ventana **Subí tu foto** (ver 14.5).
 
 ### 14.2 Iniciar sesión
 
@@ -788,6 +812,10 @@ Solo disponible **con cuenta iniciada**.
 - Nombre mostrado: **"Invitado"**.
 - Puede: usar el Cancionero descargado, Individual offline y afinador.
 - No puede: Práctica (metrónomo, entrenador vocal, compositor, entrenador de canciones), Favoritas, editor, entrar a una sala, guardar canciones, ni traer resultados de la web en el buscador de Individual. Sí puede abrir Salas y leer para qué sirve.
+
+### 14.5 Foto obligatoria
+
+En la app nadie está sin foto. Apenas hay una cuenta iniciada sin foto (recién registrada o vieja), aparece la ventana **Subí tu foto**, que tapa todo y no se puede cerrar hasta guardarla. Se sube liviana, sola. En Mi perfil la foto se puede cambiar pero no quitar. Sin señal no aparece (no se podría subir); vuelve a aparecer con señal.
 
 ---
 
@@ -928,6 +956,9 @@ Todos los usuarios con cuenta tienen las mismas capacidades generales, con estas
 | Editar | No | Cualquiera | Solo las propias | No |
 | Eliminar del cancionero global | No | Cualquiera | Solo las propias | No |
 | Guardar en Favoritas | No | Sí | Sí | Sí |
+| Ver solicitudes de canciones | Sí | Sí | Sí | Sí |
+| Solicitar canción | No | Sí | Sí | Sí |
+| Revisar solicitudes que el agente no pudo | No | Sí | No | No |
 | Entrenador de canciones (versión propia) | No | Sí, privada | Sí, privada | Sí, privada |
 
 ---

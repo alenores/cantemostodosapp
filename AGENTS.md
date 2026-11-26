@@ -274,6 +274,9 @@ nombre y la foto de quien la cargó, y actualizarlos les cambiaba la fecha.
   nadie la escribe directo desde la app (solo las funciones).
 - **Todo agente que procese solicitudes cumple `docs/agente-solicitudes.md`**, aunque lo dispare Ale a
   mano. La canción cargada queda a nombre de quien la pidió; si ya existía, no se toca.
+- **Todo agente que cargue canciones cumple `docs/agente-carga-canciones.md`** y convierte **solo** con
+  `scripts/carga-canciones/convertir.mjs` (mismo convertidor que el editor). Nada de conversores propios ni
+  reglas que vivan solo en el chat: lo que se decide se anota en ese documento.
 - La lista y los pedidos sin señal se guardan en el celular (`lib/solicitudes.ts`).
 - **Foto obligatoria:** `FotoObligatoriaGate` (en el layout) tapa la app a toda cuenta sin foto
   hasta que la sube. No agregar en ningún lado la opción de quitar la foto.

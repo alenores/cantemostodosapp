@@ -9,6 +9,10 @@ conversación.
   inventando: preguntarle a Ale.
 - Etiquetas: `[✅ verificado]` = leído en la base o en el repo durante la redacción; `[⚠️ NO VERIFICADO]` =
   viene de la memoria del agente o de instrucciones de Ale dadas en conversación.
+- **Herramienta obligatoria:** la conversión de texto con acordes al formato de la app se hace **siempre** con
+  `scripts/carga-canciones/convertir.mjs` (sección 3.5). No se escriben conversores propios.
+- Decisiones de Ale del 2026-11-26 incorporadas (fuentes, «(x2)», video, foto, alias, herramienta, bajo y notas
+  agregadas): ya no son [NO SEGURO].
 - Este documento **no reemplaza** `docs/agente-solicitudes.md` (solicitudes que piden las personas desde la app):
   esa regla usa este proceso para cargar y le suma sus propias reglas.
 
@@ -34,21 +38,18 @@ conversación.
 
 ## 1. De dónde salen la letra y los acordes
 
-[⚠️ NO VERIFICADO — memoria del agente; el orden exacto de preferencia es [NO SEGURO]]
+[✅ decisión de Ale, 2026-11-26]
 
-Sitios aceptados (los únicos que se usaron):
+**Se puede sacar de cualquier página, sin limitación.** Lo que importa es encontrar la canción con letra y
+acordes confiables. El orden es solo una **prioridad por confiabilidad** (las más populares y aceptadas primero):
 
-1. **lacuerda.net** — `https://acordes.lacuerda.net/<artista>/<cancion>.shtml`. Fue la fuente más usada.
-   El índice del artista (`https://acordes.lacuerda.net/<artista>/`) lista los nombres exactos de las
-   páginas: el nombre de la canción en la URL no siempre coincide (ej. «Callejero de Boedo» es
-   `callejero_de_boedo`, no `…_boedos`). Si la URL adivinada da 404, mirar el índice antes de rendirse.
-2. **acordesdcanciones** (acordesdcanciones.com) — alternativa cuando lacuerda no la tiene.
-3. **Ultimate Guitar** (`tabs.ultimate-guitar.com`) — último recurso. Se busca la canción en su buscador,
-   se toma el JSON `js-store` de la página y de ahí el texto de la tablatura, donde los acordes vienen
-   como `[ch]X[/ch]`. Se usó para «Prohibido» de Callejeros.
-
-**[NO SEGURO]:** si el orden de preferencia entre acordesdcanciones y Ultimate Guitar era una regla fija o
-una elección canción por canción. Lo usado en la práctica: lacuerda → (acordesdcanciones) → Ultimate Guitar.
+1. **lacuerda.net** — `https://acordes.lacuerda.net/<artista>/<cancion>.shtml` (469 de las 507 cargas del
+   agente). El índice del artista (`https://acordes.lacuerda.net/<artista>/`) lista los nombres exactos de las
+   páginas: si la URL adivinada da 404, mirar el índice antes de rendirse.
+2. **acordesdcanciones.com** (21 cargas).
+3. **Ultimate Guitar** (`tabs.ultimate-guitar.com`, 16 cargas): el texto está en el JSON `js-store` de la página;
+   los acordes vienen como `[ch]X[/ch]` (quitar las marcas antes de convertir).
+4. **Cualquier otra** (ej. acordesweb.com, 1 carga), si las anteriores no la tienen o están peor.
 
 **Se descarta una fuente cuando:**
 
@@ -135,8 +136,8 @@ repararla, se carga la nueva y recién después se borra la vieja (sección 7.3)
 - Se arreglan caracteres raros de la fuente: BOM, letras cirílicas que parecen latinas, comillas rizadas,
   `\x85 \x91 \x92` (ver sección 8).
 - Los apóstrofes de la letra van como `'` normal (ej. `rock 'n roll`).
-- **[NO SEGURO]:** si hay que quitar también las repeticiones tipo «(x2)» pegadas a la letra. En lo cargado
-  se dejaron los `(X 3)` de las líneas de intro y se quitaron los de la línea de acordes.
+- Repeticiones «(x2)» [✅ decisión de Ale]: se **quitan de la línea de acordes** y se **dejan en el texto**
+  (intro, rótulos, letra), como se venía haciendo.
 
 ### 3.3 El `cifrado` [✅ verificado — filas 4565, 4570, 4575]
 
@@ -152,6 +153,11 @@ repararla, se carga la nueva y recién después se borra la vieja (sección 7.3)
   Bemoles se pasan a sostenidos (SOLb → FA#, SIb → LA#).
 - `modifier` admitidos: `''` (mayor), `m`, `7`, `m7`, `5`, `maj7`, `sus4`, `dim`, `6`, `sus2`, `aug`. Cualquier
   otro **no** lo acepta la app (ver 3.5).
+- `bassNoteIndex` (opcional): **bajo** del acorde con barra. `LAm/SOL` → `noteIndex 9, modifier "m", bassNoteIndex 7`.
+- `agregada` (opcional): **nota agregada** (2, 4, 6, 9, 11 o 13), se ve como número chico. `DO9` → `DO7₉`
+  (`modifier "7", agregada 9`); `SOLadd4` → `SOL₄`.
+- [✅ decisión de Ale] **Bajo y nota agregada se usan siempre** que la fuente los traiga: la app los muestra. Antes
+  se tiraban (casi ninguna carga los tiene); desde ahora no.
 - Orden: por línea y columna. Dos acordes no pueden pisarse (ver 3.5).
 
 ### 3.4 El `compas_config` [✅ verificado — idéntico en 4565, 4570, 4575]
@@ -163,39 +169,30 @@ repararla, se carga la nueva y recién después se borra la vieja (sección 7.3)
 
 Es siempre el mismo, para toda canción cargada por el agente. No se calcula tempo ni compás por canción.
 
-### 3.5 Acordes que la app no soporta, pegados o superpuestos
+### 3.5 Convertir: siempre con la herramienta del proyecto
 
-[⚠️ NO VERIFICADO — método acordado con Ale en conversación]
+[✅ verificado — probada contra la canción 4575: resultado idéntico acorde por acorde]
 
-Método de **izquierda a derecha** (prefijo más largo que la app acepta):
-
-1. Separar la raíz (`DO RE MI FA SOL LA SI` o `A–G`, con `#` o `b`) del resto.
-2. Si el resto es un modificador admitido, queda tal cual.
-3. Si no, **ir quitando caracteres de la derecha** hasta que el resto sea un modificador admitido; si no
-   queda ninguno, queda la raíz sola (mayor).
-4. `maj` es **atómico**: `maj9` → `maj` no vale → se prueba más corto, pero **nunca un acorde mayor pasa a
-   menor** (si el acorde empezaba con `maj` y el recorte da `m…`, se descarta ese recorte).
-5. **Acordes con barra** (`Am/G`): se toma la nota **antes de la barra** (`Am`).
-6. Tolerancias aprobadas: mayúsculas/minúsculas (`do`, `Re`, `a`), notación inglesa o latina indistinta.
-7. Dos acordes **idénticos pegados** se juntan en uno. Dos **distintos que se pisan** se corren a la derecha
-   conservando el orden (separación mínima de 1 carácter, contando el largo de la etiqueta, ej. `FA#` = 3).
-8. Notas sueltas de solo/riff/saxo y líneas de tablatura **no** son acordes: se ignoran.
-
-Cuando se reduce algún acorde, **avisar a Ale** cuáles y a qué quedaron.
-
-Referencia de código (no está en el repo; los scripts se perdieron con el contenedor):
-
-```python
-SP = {'DO':0,'RE':2,'MI':4,'FA':5,'SOL':7,'LA':9,'SI':11}; EN = {'C':0,'D':2,'E':4,'F':5,'G':7,'A':9,'B':11}
-MODS = {'', 'm', '7', 'm7', '5', 'maj7', 'sus4', 'dim', '6', 'sus2', 'aug'}
-def parse(tok):
-    m = re.match(r'^(DO|RE|MI|FA|SOL|LA|SI|[A-G])([#b]?)(.*)$', tok)
-    base = (SP.get(m[1], EN.get(m[1])) + {'#':1,'b':-1,'':0}[m[2]]) % 12
-    rest = m[3]
-    while rest not in MODS and rest:      # quitar de la derecha
-        rest = rest[:-1]
-    return base, rest
+```bash
+node scripts/carga-canciones/probar.mjs            # primero: tiene que decir «✓»
+node scripts/carga-canciones/convertir.mjs cancion.txt
 ```
+
+- `cancion.txt` = el texto de la fuente tal cual: acordes en el renglón de arriba de la letra. Notación latina o
+  inglesa, mayúsculas o minúsculas.
+- Usa **el mismo convertidor que el editor de la app** al pegar una letra: lo que carga el agente queda igual a lo
+  que carga una persona. Ya resuelve:
+  - Bajo (`LAm/SOL`) y nota agregada (`DO9` → `DO7₉`).
+  - Reducción de acordes que la app no tiene al más parecido (`FA#m7b5` → `FA#m7`).
+  - Renglones de solo acordes (intro, solo, final) y rótulo con acordes en el mismo renglón
+    («SOLO: SI FA# DO#» → acordes sobre el rótulo).
+  - Limpieza de caracteres raros (BOM, comillas rizadas, letras cirílicas, `\x85`, tablatura `e|---3---|`).
+- Devuelve: letra, acordes, tonalidad, modo, **avisos** (leerlos e informarlos) y **errores**. Con errores
+  **no se carga**: corregir el texto de entrada (no el resultado) y volver a convertir. El error típico es
+  «parece tener acordes dentro del texto»: un renglón de acordes que no se reconoció.
+- Notas sueltas de solo/riff/saxo y tablatura **no** son acordes: sacarlas del texto antes de convertir.
+- Si alguna vez la herramienta da algo mal: **se arregla la herramienta** (y su prueba), se anota acá, y recién
+  después se sigue cargando. Nunca se corrige a mano el resultado de una sola canción.
 
 ### 3.6 Tonalidad y modo [✅ verificado — coincide en las filas leídas]
 
@@ -222,35 +219,23 @@ def parse(tok):
 - **Regla de Ale: si no se encuentra video, la canción se carga igual, con `youtube_url = null`**, y se avisa
   en el informe («sin video»).
 - Si el video elegido es dudoso, decirlo («video flojo») en el informe.
-- **[NO SEGURO]:** criterio exacto cuando hay varios videos oficiales de la misma canción (se tomó el que
-  figura como audio o mezcla original).
+- [✅ decisión de Ale] Varios videos oficiales: el **audio de estudio del canal oficial**; si hay varios, el del
+  **disco original**.
 
-### 3.9 Cómo escribir el INSERT [✅ verificado — consulta usada en 4570–4575]
+### 3.9 Cómo escribir el INSERT [✅ verificado — generado por la herramienta]
 
-Se usa *dollar quoting* para no escapar comillas de la letra y se arma el `cifrado` con `jsonb_build_object` a
-partir de una lista `linea:offset:nota:modificador;…`. Antes de escribir, comprobar que la letra no contenga
-`$L$`:
+La misma herramienta arma el INSERT completo (letra con *dollar quoting*, acordes, compás fijo, tonalidad, modo):
 
-```sql
-insert into canciones_guardadas
- (nombre,artista,artista_id,url_letra,letra,cifrado,compas_config,tiene_cifrado_avanzado,
-  tonalidad_default,modo_tonal_default,youtube_url,user_id)
-values
- ('<Nombre>','<Artista>','<artista_id>','<url_fuente>',
-  $L$<letra sin acordes>$L$,
-  (select jsonb_build_object('version',1,'acordes',jsonb_agg(jsonb_build_object(
-      'lineIndex',split_part(x,':',1)::int,'charOffset',split_part(x,':',2)::int,
-      'noteIndex',split_part(x,':',3)::int,'modifier',split_part(x,':',4)) order by o))
-   from unnest(string_to_array('0:7:9:5;3:1:10:;…',';')) with ordinality t(x,o)),
-  $K${"bpm": 120, "barras": [], "tipoCompas": "4-4", "cycleGolpes": 4, "barrasVersion": 2,
-      "intensidadPlantilla": ["fuerte", "medio", "medio", "medio"]}$K$::jsonb,
-  true, <tonalidad>, '<mayor|menor>', '<url_youtube o null>',
-  '<user_id>')
-returning id, nombre, jsonb_array_length(cifrado->'acordes') a, md5(letra) m;
+```bash
+node scripts/carga-canciones/convertir.mjs cancion.txt --sql \
+  --nombre "<Nombre>" --artista "<Artista>" --artista-id <uuid> --url <url de la fuente> \
+  [--youtube <url>] [--user-id <uuid>]
 ```
 
-Detalles: el MCP de Supabase **devuelve solo el resultado de la última sentencia** de un bloque: ejecutar
-consultas de a una. Cargar **de a 5 canciones por lote**.
+- Sin `--user-id` queda a nombre de Ale. Si viene de una **solicitud**, pasar el `user_id` de la solicitud.
+- Ejecutar el `sql` que devuelve **tal cual**, una sentencia por vez (el MCP de Supabase devuelve solo el
+  resultado de la última). Comprobar el `returning`: id, cantidad de acordes = `cantidad_acordes`.
+- Cargar **de a 5 canciones por lote** y verificar (sección 6) antes del siguiente.
 
 ---
 
@@ -282,11 +267,28 @@ insert into artistas (nombre, avatar_url) values ('<Nombre>', '<url foto o null>
   del artista o de la banda.
 - **Si no hay foto razonable, `avatar_url = null` y se avisa a Ale en el informe** («artista nuevo sin foto»).
   Hoy hay 81 de 346 artistas sin foto.
-- Las fotos ya guardadas por la app están en el bucket `artistas-avatares` con nombre
-  `<artista_id>-<timestamp>.webp` (ej. Callejeros). **[NO SEGURO]:** si el agente debe re-subir la foto de
-  Wikipedia a ese bucket (no se hizo; se dejó la URL de Wikimedia) o si la app la convierte sola.
-- **No existe columna de «otros nombres» en `artistas`**: los apodos van en la tabla `artistas_alias`.
-  **[NO SEGURO]:** si el agente debe crear alias (en la tanda no se creó ninguno; solo se leyeron).
+- [✅ decisión de Ale] Se deja el **link directo de Wikipedia/Wikimedia** (hoy 103 artistas así; 162 tienen la
+  foto subida desde la app). No hace falta subirla al almacenamiento de la app.
+- **Otros nombres del artista** van en la tabla `artistas_alias` (`artista_id`, `alias`, `alias_norm`).
+  [✅ decisión de Ale] **El agente los puede crear**, siempre revisando antes que no estén repetidos: ni como
+  alias (de este u otro artista) ni como nombre de un artista.
+
+  ```sql
+  -- 1) ¿Ya existe ese nombre?
+  select 'alias' t, artista_id::text, alias from artistas_alias
+   where public.normalizar_texto_solicitud(alias) = public.normalizar_texto_solicitud('<alias>')
+  union all
+  select 'artista', id::text, nombre from artistas
+   where public.normalizar_texto_solicitud(nombre) = public.normalizar_texto_solicitud('<alias>');
+  ```
+
+  2) Si no hay nada, crearlo con la herramienta (arma `alias_norm` igual que la app) y ejecutar el `sql` que devuelve:
+
+  ```bash
+  node scripts/carga-canciones/alias.mjs "<otro nombre>" <artista_id>
+  ```
+
+  Si aparece repetido, no se crea y se informa.
 
 ---
 
@@ -390,8 +392,11 @@ insert into artistas (nombre, avatar_url) values ('<Nombre>', '<url foto o null>
 10. **Responder largo o mezclado:** Ale pidió varias veces respuestas cortas y solo sobre lo preguntado. →
     Informe en lista breve, una pregunta clave por vez.
 11. **Herramientas locales perdidas:** los scripts de conversión estaban en `/tmp` y se perdieron al reiniciar
-    el contenedor; hubo que reescribirlos. → Este documento describe las reglas; **[NO SEGURO]** si conviene
-    guardarlos en el repositorio (decisión de Ale).
+    el contenedor; hubo que reescribirlos. → [✅ decisión de Ale] La herramienta vive en el proyecto
+    (`scripts/carga-canciones/`) y es la única que se usa.
+13. **Tonalidad en las primeras cargas:** 31 de las 507 canciones del agente (las primeras, ids 4000–4053
+    aprox.) no tienen la tonalidad del primer acorde. → Para lo nuevo manda la regla de 3.6 (la calcula la
+    herramienta). Las viejas no se tocan.
 12. **URL adivinada de lacuerda:** una URL inexistente da 404 aunque la canción esté. → Leer el índice del
     artista (sección 1).
 
@@ -457,13 +462,13 @@ persona (`user_id` distinto, `bpm_default` 120, sin `url_letra` ni video): confi
 - Los scripts de conversión (`conv.py`, `build.py`, `post.py`) no están en el repositorio; el bloque de
   código de 3.5 es una reconstrucción mínima, no el script original.
 
-**3. Pendiente de verificación (los [NO SEGURO]):**
+**3. Pendiente de verificación:**
 
-- Orden de preferencia exacto entre acordesdcanciones y Ultimate Guitar (sección 1).
-- Tratamiento de repeticiones «(x2)» pegadas a la letra (3.2).
-- Criterio cuando hay varios videos oficiales de la misma canción (3.8).
-- Si hay que re-subir la foto de Wikipedia al bucket `artistas-avatares` o la deja así la app (sección 4).
-- Si el agente debe crear alias en `artistas_alias` (sección 4).
-- Si conviene guardar los scripts de conversión dentro del repositorio (sección 8, punto 11).
+- Ninguno de los [NO SEGURO] originales: los resolvió Ale el 2026-11-26 (fuentes, «(x2)», video, foto, alias,
+  herramienta). Quedan como **no verificadas** (de memoria del agente) las secciones 0, 7 y 8: se confirman con el
+  uso.
 
-Este documento NO está listo para compartir externamente hasta resolver los puntos pendientes.
+**Revisión del 2026-11-26 contra la base:** 507 canciones del agente (ids ≥ 4000, con fuente, a nombre de Ale):
+todas en edición avanzada, sin validar, con artista y compás idéntico; tipos de acorde = los de la app; 476 con
+tonalidad = primer acorde; 58 acordes con nota agregada y ninguno con bajo. La herramienta reproduce exacta la
+canción 4575.

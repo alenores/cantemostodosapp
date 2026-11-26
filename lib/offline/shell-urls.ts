@@ -14,6 +14,7 @@ export const OFFLINE_SHELL_URLS = [
   "/canciones",
   "/canciones/cancionero",
   "/canciones/favoritas",
+  "/canciones/solicitudes",
   "/canciones/editor",
   "/practica",
   "/practica/metronomo",

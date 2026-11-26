@@ -35,6 +35,7 @@ import {
   puedeSumarCanciones,
 } from "@/lib/usuarios-categorias";
 import { useRouter, useSearchParams } from "next/navigation";
+import { SOLICITUDES_HREF, resolverSolicitud } from "@/lib/solicitudes";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function EditorCancionesPageClient() {
@@ -45,18 +46,25 @@ export default function EditorCancionesPageClient() {
   const idParam = searchParams.get("id");
   const editingId = idParam ? Number(idParam) : null;
   const desde = searchParams.get("desde");
+  /** Dueño cargando a mano una solicitud que el agente no pudo: al guardar se vincula. */
+  const solicitudParam = searchParams.get("solicitud");
+  const solicitudId = solicitudParam ? Number(solicitudParam) : null;
   const backHref =
     desde === "hub"
       ? "/canciones"
       : desde === "favoritas"
         ? "/canciones/favoritas"
-        : "/canciones/cancionero";
+        : desde === "solicitudes"
+          ? SOLICITUDES_HREF
+          : "/canciones/cancionero";
   const backAriaLabel =
     desde === "hub"
       ? "Volver a Canciones"
       : desde === "favoritas"
         ? "Volver a Favoritas"
-        : "Volver al cancionero";
+        : desde === "solicitudes"
+          ? "Volver a Solicitudes"
+          : "Volver al cancionero";
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [session, setSession] = useState<CifradoEditorSession | null>(null);
   const [webImport, setWebImport] = useState<CifradoEditorWebImportData | null>(
@@ -250,20 +258,30 @@ export default function EditorCancionesPageClient() {
     if (online) requestCancioneroUpdateCheck();
   }, [online]);
 
+  const vincularSolicitud = useCallback(
+    async (result?: CifradoSaveResult) => {
+      if (solicitudId == null || !Number.isFinite(solicitudId) || result?.id == null) return;
+      await resolverSolicitud(supabase, solicitudId, result.id);
+    },
+    [solicitudId, supabase],
+  );
+
   const handleSavedMobile = useCallback(async (result?: CifradoSaveResult) => {
     await actualizarCopiaLocalEditada(result);
+    await vincularSolicitud(result);
     await syncCancionero();
     if (searchParams.get("web") === "1" && result?.id != null) {
       router.push(`/canciones/cancionero?ver=${result.id}`);
       return;
     }
     router.push(backHref);
-  }, [actualizarCopiaLocalEditada, backHref, router, searchParams, syncCancionero]);
+  }, [actualizarCopiaLocalEditada, backHref, router, searchParams, syncCancionero, vincularSolicitud]);
 
   const handleSavedDesktop = useCallback(async (result?: CifradoSaveResult) => {
     await actualizarCopiaLocalEditada(result);
+    await vincularSolicitud(result);
     await syncCancionero();
-  }, [actualizarCopiaLocalEditada, syncCancionero]);
+  }, [actualizarCopiaLocalEditada, syncCancionero, vincularSolicitud]);
 
   if (isLoggedIn !== true || (editingId != null && !ready)) {
     return null;

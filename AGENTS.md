@@ -267,6 +267,17 @@ nombre y la foto de quien la cargó, y actualizarlos les cambiaba la fecha.
 - Las columnas viejas (`agregado_nombre`, `agregado_avatar_url`, `validada_nombre`,
   `validada_avatar_url`) se borraron (`supabase/perfiles-publicos-limpieza.sql`).
 
+### Solicitudes de canciones y foto obligatoria (2026-11-26)
+
+- La gente con cuenta pide canciones (tarjeta **Solicitar canción**, `/canciones/solicitudes`); un agente
+  de IA las carga. Tabla `solicitudes_canciones` y funciones en `supabase/solicitudes-canciones.sql`;
+  nadie la escribe directo desde la app (solo las funciones).
+- **Todo agente que procese solicitudes cumple `docs/agente-solicitudes.md`**, aunque lo dispare Ale a
+  mano. La canción cargada queda a nombre de quien la pidió; si ya existía, no se toca.
+- La lista y los pedidos sin señal se guardan en el celular (`lib/solicitudes.ts`).
+- **Foto obligatoria:** `FotoObligatoriaGate` (en el layout) tapa la app a toda cuenta sin foto
+  hasta que la sube. No agregar en ningún lado la opción de quitar la foto.
+
 ### Colas
 - **Cola individual** — setlist personal del momento. Vive en Home. Persistida
   en Supabase si hay sesión; en memoria (efímera) para invitados.

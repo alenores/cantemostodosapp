@@ -20,7 +20,9 @@ import {
   HUB_WELCOME_TITLE,
 } from "@/lib/herramientas-product";
 import type { UsuarioActivo } from "@/types";
-import { Bell, Gauge, Guitar, Library, Loader2, MicVocal, Users, WifiOff } from "lucide-react";
+import { useSolicitudes } from "@/hooks/useSolicitudes";
+import { SOLICITUDES_HREF } from "@/lib/solicitudes";
+import { Bell, Gauge, Guitar, Library, ListPlus, Loader2, MicVocal, Users, WifiOff } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 type HomeHubDestinationsProps = {
@@ -39,6 +41,7 @@ export default function HomeHubDestinations({
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
   const novedades = useCancioneroNovedades();
+  const solicitudes = useSolicitudes();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const isLoggedIn = usuario.id !== OFFLINE_GUEST_USUARIO.id;
@@ -81,6 +84,38 @@ export default function HomeHubDestinations({
               <Bell className="size-5" aria-hidden="true" />
               <span className="absolute right-2 top-2 size-2 rounded-full bg-[#e85d4a]" aria-hidden="true" />
             </button>
+          ) : null}
+        </div>
+
+        <div className="relative col-span-2 min-w-0">
+          <TapButton
+            type="button"
+            aria-label={`Ir a Solicitar canción${solicitudes.avisos ? `: ${solicitudes.avisos} novedades` : ""}`}
+            onClick={() => goTo(SOLICITUDES_HREF)}
+            disabled={pendingHref === SOLICITUDES_HREF}
+            className="home-destination-card relative flex w-full items-center gap-4 rounded-[24px] px-5 py-4 text-left"
+          >
+            {pendingHref === SOLICITUDES_HREF ? (
+              <span className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-bg-app/55" aria-hidden="true">
+                <Loader2 className="size-6 animate-spin text-text-primary" />
+              </span>
+            ) : null}
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-bg-darker text-text-primary" aria-hidden="true">
+              <ListPlus className="size-7" strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-extrabold uppercase tracking-[0.015em] text-[#f5f5f7]">Solicitar canción</span>
+              <span className="mt-1 block text-[13px] text-[#8e8e93]">Un agente de IA la carga</span>
+            </span>
+          </TapButton>
+          {solicitudes.avisos > 0 ? (
+            <span
+              className="pointer-events-none absolute right-3 top-3 z-10 flex size-8 items-center justify-center text-[#e85d4a]"
+              aria-hidden="true"
+            >
+              <Bell className="size-5" />
+              <span className="absolute right-1 top-1 size-2 rounded-full bg-[#e85d4a]" />
+            </span>
           ) : null}
         </div>
 

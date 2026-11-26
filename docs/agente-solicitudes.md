@@ -7,7 +7,12 @@ mano («procesá las solicitudes») o una tarea programada. El procedimiento es 
 
 Las personas con cuenta piden canciones desde la app (tarjeta **Solicitar canción**). Cada
 pedido es una fila en `public.solicitudes_canciones` (proyecto Supabase `cantemostodosapp`).
-El agente las carga al Cancionero con su proceso habitual de carga de canciones.
+El agente las carga al Cancionero **con el procedimiento de `docs/agente-carga-canciones.md`**
+(fuentes, herramienta de conversión, formato, artista, controles). Este documento solo agrega
+lo propio de las solicitudes.
+
+**Disparador:** Ale escribe «procesá las solicitudes» en una sesión de este proyecto. Antes de
+empezar: leer los dos documentos y correr `node scripts/carga-canciones/probar.mjs`.
 
 ## Estados (columna `estado`)
 
@@ -52,9 +57,9 @@ La campanita se enciende sola con `aviso_visto = false`. Siempre poner `aviso_vi
    where id = <solicitud> and estado = 'pendiente';
    ```
 
-4. **Si no existe:** cargarla con el proceso habitual (sin validar, en edición avanzada, como
-   cualquier canción que carga el agente), con estas dos diferencias:
-   - `canciones_guardadas.user_id` = `user_id` de la solicitud. La canción queda **agregada por
+4. **Si no existe:** cargarla con `docs/agente-carga-canciones.md` (sin validar, en edición
+   avanzada, como cualquier canción que carga el agente), con estas dos diferencias:
+   - `canciones_guardadas.user_id` = `user_id` de la solicitud (en la herramienta: `--user-id`). La canción queda **agregada por
      quien la pidió** (su avatar en el Cancionero), aunque sea de la categoría público.
    - Vincular el artista (`artista_id`) como siempre; si la solicitud trae `artista_id`, usarlo.
 

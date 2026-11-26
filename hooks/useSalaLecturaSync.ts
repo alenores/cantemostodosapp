@@ -98,10 +98,12 @@ export function useSalaLecturaSync({
             return;
           }
 
+          // El aviso sale con el ancla recién tomada: se usa la hora de llegada de este
+          // celular, así una diferencia de reloj entre teléfonos no corre la letra.
           onRemoteStateRef.current({
             level: message.level,
             offsetRatio: message.offsetRatio,
-            anchorMs: message.anchorMs,
+            anchorMs: Date.now(),
           });
         })
         .subscribe();

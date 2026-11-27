@@ -511,7 +511,7 @@ Desde dentro de la sala, el botón **QR** abre la ventana de **Invitación**:
 |-------------------|----------------|
 | Canción activa | Cambia para todos cuando alguien pone **Ver ahora** o avanza **Siguiente** |
 | Fila de canciones | Agregar, reordenar, eliminar y finalizar se reflejan en todos los dispositivos |
-| Modo lectura — auto-scroll | La posición de lectura se comparte entre participantes que ven la misma canción |
+| Scroll de la letra y auto-scroll | La posición de la letra y la velocidad del auto-scroll se comparten entre quienes ven la misma canción, casi en vivo mientras alguien arrastra |
 | Presencia | Quién está conectado se actualiza en vivo |
 
 ### 11.6 Roles en salas
@@ -565,7 +565,12 @@ El **modo lectura** es la pantalla inmersiva para cantar: letra grande, mínimos
 
 ### 12.4 Sincronización en sala
 
-En modo lectura dentro de una sala conectada, el auto-scroll puede **seguir al líder** de la lectura compartida: todos ven la letra moverse al mismo ritmo.
+En una sala conectada (en modo control y en modo lectura), cualquiera puede mover la letra y se mueve en todos los celulares; no hay líder: manda el último que la mueve.
+
+- Mientras alguien arrastra, los demás ven la letra deslizarse casi en vivo (avisos chiquitos varias veces por segundo), sin saltos.
+- Un celular nunca reenvía un movimiento que le llegó de otro (evita el sube y baja entre teléfonos).
+- Quien está moviendo la letra en su celular no es arrastrado por los avisos de los demás.
+- La velocidad del auto-scroll también se comparte: todos ven la letra moverse al mismo ritmo.
 
 ### 12.5 Temas de lectura
 

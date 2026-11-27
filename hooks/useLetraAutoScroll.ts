@@ -13,6 +13,14 @@ export const LETRA_AUTO_SCROLL_SPEEDS = [14, 21, 28];
 export const LETRA_AUTO_SCROLL_MAX_LEVEL = LETRA_AUTO_SCROLL_SPEEDS.length;
 
 const MANUAL_SCROLL_SYNC_DEBOUNCE_MS = 150;
+/** Mientras alguien arrastra la letra, cada cuánto se avisa a la sala (casi en vivo). */
+const SYNC_SEND_INTERVAL_MS = 100;
+/** Tras mover la letra con el dedo, se ignoran avisos de otros durante este tiempo. */
+const LOCAL_SCROLL_PRIORITY_MS = 300;
+/** Diferencia máxima (px) para reconocer un scroll que hizo la propia app. */
+const PROGRAMMATIC_SCROLL_TOLERANCE_PX = 1.5;
+/** Fracción del camino que recorre la letra por cuadro al seguir a otro celular. */
+const REMOTE_FOLLOW_EASE_PER_FRAME = 0.35;
 
 type UseLetraAutoScrollOptions = {
   /** Activa animación y listeners (scroll compartido en sala). */
@@ -117,6 +125,15 @@ export function useLetraAutoScroll(
   const skipNextLevelEmitRef = useRef(false);
   const onSyncStateChangeRef = useRef(onSyncStateChange);
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Último scrollTop que puso la app (auto-scroll o seguir a otro); null = ninguno. */
+  const programmaticScrollPxRef = useRef<number | null>(null);
+  const lastLocalUserScrollMsRef = useRef(0);
+  const lastSyncEmitMsRef = useRef(0);
+  /** Hubo scroll del usuario desde que apoyó el dedo (un toque solo no avisa). */
+  const userScrolledInGestureRef = useRef(false);
+  const remoteFollowActiveRef = useRef(false);
+  const remoteFollowFrameRef = useRef(0);
+  const remoteFollowLastMsRef = useRef(0);
 
   const [autoScrollLevel, setAutoScrollLevel] = useState(0);
 
@@ -142,6 +159,7 @@ export function useLetraAutoScroll(
 
       const scrollEl = scrollRef.current;
       if (scrollEl && elementHasScrollRange(scrollEl)) {
+        programmaticScrollPxRef.current = clamped;
         scrollEl.scrollTop = clamped;
         return;
       }
@@ -153,6 +171,15 @@ export function useLetraAutoScroll(
     },
     [embedIframeRef, getMaxScrollPx, scrollRef],
   );
+
+  const stopRemoteFollow = useCallback(() => {
+    remoteFollowActiveRef.current = false;
+
+    if (remoteFollowFrameRef.current) {
+      cancelAnimationFrame(remoteFollowFrameRef.current);
+      remoteFollowFrameRef.current = 0;
+    }
+  }, []);
 
   const captureAnchorFromCurrentOffset = useCallback(() => {
     const scrollEl = scrollRef.current;
@@ -210,9 +237,60 @@ export function useLetraAutoScroll(
     [getMaxScrollPx],
   );
 
+  /**
+   * Desliza la letra hacia la posición que avisó otro celular (sin saltos).
+   * Con auto-scroll activo el objetivo avanza solo; al alcanzarlo, sigue el tick normal.
+   */
+  const startRemoteFollow = useCallback(() => {
+    remoteFollowActiveRef.current = true;
+
+    if (remoteFollowFrameRef.current) {
+      return;
+    }
+
+    remoteFollowLastMsRef.current = performance.now();
+
+    function step(nowMs: number) {
+      remoteFollowFrameRef.current = 0;
+
+      if (!remoteFollowActiveRef.current) {
+        return;
+      }
+
+      const elapsedMs = Math.max(1, nowMs - remoteFollowLastMsRef.current);
+      remoteFollowLastMsRef.current = nowMs;
+
+      const target = computeOffsetPxFromAnchor(
+        autoScrollLevelRef.current,
+        syncAnchorRatioRef.current,
+        syncAnchorMsRef.current,
+      );
+      const current = autoScrollOffsetRef.current;
+      const diff = target - current;
+
+      if (Math.abs(diff) <= 0.5) {
+        applyOffsetPx(target);
+        remoteFollowActiveRef.current = false;
+        return;
+      }
+
+      const ease =
+        1 - Math.pow(1 - REMOTE_FOLLOW_EASE_PER_FRAME, elapsedMs / (1000 / 60));
+      applyOffsetPx(current + diff * ease);
+      remoteFollowFrameRef.current = requestAnimationFrame(step);
+    }
+
+    remoteFollowFrameRef.current = requestAnimationFrame(step);
+  }, [applyOffsetPx, computeOffsetPxFromAnchor]);
+
   const applySyncState = useCallback(
     (state: LecturaScrollSyncState) => {
       if (manualScrollActiveRef.current) {
+        return;
+      }
+
+      // Quien está moviendo la letra en este celular manda sobre los avisos de otros.
+      if (Date.now() - lastLocalUserScrollMsRef.current < LOCAL_SCROLL_PRIORITY_MS) {
         return;
       }
 
@@ -225,46 +303,65 @@ export function useLetraAutoScroll(
 
       syncAnchorRatioRef.current = anchorRatio;
       syncAnchorMsRef.current = anchorMs;
-      autoScrollLevelRef.current = level;
-      skipNextLevelEmitRef.current = true;
-      setAutoScrollLevel(level);
 
-      const offsetPx = computeOffsetPxFromAnchor(level, anchorRatio, anchorMs);
-      applyOffsetPx(offsetPx);
+      if (autoScrollLevelRef.current !== level) {
+        autoScrollLevelRef.current = level;
+        skipNextLevelEmitRef.current = true;
+        setAutoScrollLevel(level);
+      }
+
+      startRemoteFollow();
     },
-    [applyOffsetPx, computeOffsetPxFromAnchor],
+    [startRemoteFollow],
   );
 
-  const scheduleManualScrollSync = useCallback(() => {
+  const emitSyncNow = useCallback(() => {
+    if (scrollEndTimerRef.current) {
+      clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = null;
+    }
+
+    lastSyncEmitMsRef.current = Date.now();
+    captureAnchorFromCurrentOffset();
+    emitLocalSyncState();
+  }, [captureAnchorFromCurrentOffset, emitLocalSyncState]);
+
+  /** Avisa la posición como mucho cada SYNC_SEND_INTERVAL_MS y siempre la última. */
+  const scheduleThrottledSync = useCallback(() => {
     if (!syncEnabled) {
       return;
     }
 
+    const sinceLastMs = Date.now() - lastSyncEmitMsRef.current;
+
+    if (sinceLastMs >= SYNC_SEND_INTERVAL_MS) {
+      emitSyncNow();
+      return;
+    }
+
     if (scrollEndTimerRef.current) {
-      clearTimeout(scrollEndTimerRef.current);
+      return;
     }
 
     scrollEndTimerRef.current = setTimeout(() => {
       scrollEndTimerRef.current = null;
-      captureAnchorFromCurrentOffset();
-      emitLocalSyncState();
-    }, MANUAL_SCROLL_SYNC_DEBOUNCE_MS);
-  }, [captureAnchorFromCurrentOffset, emitLocalSyncState, syncEnabled]);
+      emitSyncNow();
+    }, SYNC_SEND_INTERVAL_MS - sinceLastMs);
+  }, [emitSyncNow, syncEnabled]);
 
   const finishManualScroll = useCallback(() => {
     manualScrollActiveRef.current = false;
 
-    if (scrollEndTimerRef.current) {
-      clearTimeout(scrollEndTimerRef.current);
-      scrollEndTimerRef.current = null;
+    const scrolled = userScrolledInGestureRef.current;
+    userScrolledInGestureRef.current = false;
+
+    if (syncEnabled && scrolled) {
+      emitSyncNow();
+      return;
     }
 
     captureAnchorFromCurrentOffset();
-
-    if (syncEnabled) {
-      emitLocalSyncState();
-    }
-  }, [captureAnchorFromCurrentOffset, emitLocalSyncState, syncEnabled]);
+  }, [captureAnchorFromCurrentOffset, emitSyncNow, syncEnabled]);
 
   const accelerate = useCallback(() => {
     if (!controlsActive) {
@@ -312,6 +409,8 @@ export function useLetraAutoScroll(
   ]);
 
   const reset = useCallback(() => {
+    stopRemoteFollow();
+    programmaticScrollPxRef.current = 0;
     scrollRef.current?.scrollTo(0, 0);
     autoScrollOffsetRef.current = 0;
     syncAnchorRatioRef.current = 0;
@@ -323,18 +422,19 @@ export function useLetraAutoScroll(
     }
 
     setAutoScrollLevel(0);
-  }, [embedIframeRef, scrollRef]);
+  }, [embedIframeRef, scrollRef, stopRemoteFollow]);
 
   useEffect(() => {
     autoScrollLevelRef.current = autoScrollLevel;
 
-    if (autoScrollLevel > 0) {
-      captureAnchorFromCurrentOffset();
-    }
-
+    // Velocidad que llegó de otro celular: el ancla ya es la suya, no se recalcula ni se reenvía.
     if (skipNextLevelEmitRef.current) {
       skipNextLevelEmitRef.current = false;
       return;
+    }
+
+    if (autoScrollLevel > 0) {
+      captureAnchorFromCurrentOffset();
     }
 
     if (syncEnabled) {
@@ -389,7 +489,7 @@ export function useLetraAutoScroll(
         return;
       }
 
-      if (manualScrollActiveRef.current) {
+      if (manualScrollActiveRef.current || remoteFollowActiveRef.current) {
         frameId = requestAnimationFrame(tick);
         return;
       }
@@ -416,6 +516,7 @@ export function useLetraAutoScroll(
         syncAnchorMsRef.current = Date.now();
 
         if (usesElementScroll && scrollEl) {
+          programmaticScrollPxRef.current = maxScroll;
           scrollEl.scrollTop = maxScroll;
         } else if (iframe) {
           applyEmbedVisualScroll(iframe, maxScroll);
@@ -426,6 +527,7 @@ export function useLetraAutoScroll(
       }
 
       if (usesElementScroll && scrollEl) {
+        programmaticScrollPxRef.current = offsetPx;
         scrollEl.scrollTop = offsetPx;
       } else if (iframe) {
         applyEmbedVisualScroll(iframe, offsetPx);
@@ -463,6 +565,8 @@ export function useLetraAutoScroll(
     function beginManualScroll() {
       if (syncEnabled || autoScrollLevelRef.current > 0) {
         manualScrollActiveRef.current = true;
+        userScrolledInGestureRef.current = false;
+        stopRemoteFollow();
       }
     }
 
@@ -539,17 +643,35 @@ export function useLetraAutoScroll(
         return;
       }
 
+      const scrollTop = scrollEl.scrollTop;
+
       if (
         elementHasScrollRange(scrollEl) &&
         (manualScrollActiveRef.current ||
           autoScrollLevelRef.current > 0 ||
           syncEnabled)
       ) {
-        autoScrollOffsetRef.current = scrollEl.scrollTop;
+        autoScrollOffsetRef.current = scrollTop;
       }
 
-      if (syncEnabled && !manualScrollActiveRef.current) {
-        scheduleManualScrollSync();
+      const programmaticPx = programmaticScrollPxRef.current;
+
+      // Lo movió la app (auto-scroll o seguir a otro celular): nunca se reenvía.
+      if (
+        programmaticPx !== null &&
+        Math.abs(scrollTop - programmaticPx) <= PROGRAMMATIC_SCROLL_TOLERANCE_PX
+      ) {
+        return;
+      }
+
+      // Lo movió la persona (dedo, inercia, rueda o teclado).
+      programmaticScrollPxRef.current = null;
+      lastLocalUserScrollMsRef.current = Date.now();
+      userScrolledInGestureRef.current = true;
+      stopRemoteFollow();
+
+      if (syncEnabled) {
+        scheduleThrottledSync();
       }
     }
 
@@ -587,10 +709,13 @@ export function useLetraAutoScroll(
     embedIframeRef,
     enabled,
     finishManualScroll,
-    scheduleManualScrollSync,
+    scheduleThrottledSync,
     scrollRef,
+    stopRemoteFollow,
     syncEnabled,
   ]);
+
+  useEffect(() => stopRemoteFollow, [stopRemoteFollow]);
 
   return {
     autoScrollLevel,

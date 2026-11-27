@@ -12,6 +12,7 @@ import {
 } from "@/lib/offline/cancionero-sync";
 import { syncArtistaFotos } from "@/lib/offline/artista-fotos";
 import { asegurarAutores } from "@/lib/offline/autores";
+import { guardarTotalCancionero } from "@/lib/cancionero-total";
 import {
   getCancioneroLocalAll,
   getCancioneroLocalMeta,
@@ -43,7 +44,9 @@ export function useCancioneroSync() {
     try {
       do {
         checkRequested.current = false;
-        setPlan(await checkCancioneroUpdates(createClient()));
+        const plan = await checkCancioneroUpdates(createClient());
+        setPlan(plan);
+        guardarTotalCancionero(plan.snapshot.count);
       } while (checkRequested.current && hayConexion());
       setError(null);
       void syncArtistaFotos(createClient()).catch(() => {});

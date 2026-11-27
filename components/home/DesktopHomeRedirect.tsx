@@ -1,18 +1,17 @@
 "use client";
 
-import { useIsDesktop } from "@/hooks/useIsDesktop";
-import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useLayoutEffect } from "react";
 
+/** En computadora no hay inicio: se abre el Cancionero. */
 export default function DesktopHomeRedirect() {
-  const isDesktop = useIsDesktop();
-  const navigateWithProgress = useNavigateWithProgress();
+  const router = useRouter();
 
-  useEffect(() => {
-    if (isDesktop) {
-      navigateWithProgress("/individual");
+  useLayoutEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      router.replace("/canciones/cancionero");
     }
-  }, [isDesktop, navigateWithProgress]);
+  }, [router]);
 
   return null;
 }

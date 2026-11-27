@@ -1,3 +1,4 @@
+import CompartirLaApp from "@/components/ui/CompartirLaApp";
 import QrDeLaApp from "@/components/ui/QrDeLaApp";
 import UserAvatar from "@/components/perfil/UserAvatar";
 import { TapLink } from "@/components/ui/TapFeedback";
@@ -31,7 +32,12 @@ export default function AppTopHeader({
         <h1 className="min-w-0 flex-1 text-lg font-extrabold tracking-tight text-bg-darker">
           CantemosTodosApp
         </h1>
-        {mostrarQr ? <QrDeLaApp /> : null}
+        {mostrarQr ? (
+          <>
+            <CompartirLaApp />
+            <QrDeLaApp />
+          </>
+        ) : null}
         <TapLink
           href="/perfil"
           ariaLabel="Mi perfil"

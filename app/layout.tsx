@@ -1,5 +1,5 @@
-import AppLoadingSkeleton from "@/components/ui/AppLoadingSkeleton";
 import SplashScreen from "@/components/SplashScreen";
+import PresentacionArranque from "@/components/pwa/PresentacionArranque";
 import AuthSessionListener from "@/components/auth/AuthSessionListener";
 import FotoObligatoriaGate from "@/components/auth/FotoObligatoriaGate";
 import AppFooter from "@/components/ui/AppFooter";
@@ -75,7 +75,7 @@ export default function RootLayout({
       <body
         className="flex min-h-full flex-col"
       >
-        <div id="inline-splash"><AppLoadingSkeleton /></div>
+        <PresentacionArranque />
         <ConexionRunner />
         <SerwistProvider>
           <TapFeedbackProvider>

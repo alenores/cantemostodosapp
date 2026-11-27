@@ -2,7 +2,7 @@
   "name": "CantemosTodos",
   "short_name": "CanToApp",
   "description": "Letras en tiempo real para reuniones musicales con amigos",
-  "start_url": "/pwa-boot.html",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#f7f4ee",
   "theme_color": "#f7f4ee",

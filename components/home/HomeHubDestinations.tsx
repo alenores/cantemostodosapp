@@ -4,6 +4,7 @@ import HomeDestinationCard from "@/components/home/HomeDestinationCard";
 import { useCancioneroNovedades } from "@/components/offline/CancioneroNovedadesContext";
 import { TapButton } from "@/components/ui/TapFeedback";
 import { useNavigateWithProgress } from "@/hooks/useNavigateWithProgress";
+import { useTotalCancionero } from "@/hooks/useTotalCancionero";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { OFFLINE_GUEST_USUARIO } from "@/lib/auth/offline-entry";
 import {
@@ -41,6 +42,7 @@ export default function HomeHubDestinations({
   const navigateWithProgress = useNavigateWithProgress();
   const online = useOnlineStatus();
   const novedades = useCancioneroNovedades();
+  const totalCanciones = useTotalCancionero();
   const solicitudes = useSolicitudes();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
@@ -68,7 +70,11 @@ export default function HomeHubDestinations({
           <HomeDestinationCard
             featured
             label={HUB_DESTINATION_CANCIONERO_LABEL}
-            subtitle="Explorar"
+            subtitle={
+              totalCanciones != null
+                ? `Explora las ${totalCanciones.toLocaleString("es-AR")} canciones`
+                : "Explorar"
+            }
             icon={Library}
             ariaLabel={`Ir a Cancionero: ${HUB_DESTINATION_CANCIONERO_DESCRIPTION}`}
             onClick={() => goTo("/canciones")}

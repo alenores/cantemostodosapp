@@ -87,7 +87,9 @@ La app se organiza en **cinco grandes áreas**, más la cuenta de usuario:
 
 ### 5.1 Pantalla de inicio (celular)
 
-Al abrir la app en el celular, la persona usuaria ve:
+Al abrirla desde el ícono, el teléfono muestra primero el ícono grande. Después queda una pantalla negra: desde la derecha entra **cantemos**, debajo **todos**, y luego una negra, una corchea, una semicorchea y otra corchea. Cada una rebota y se frena. Cuando el inicio ya está armado, se van por la derecha y el telón negro baja, dejando ver el inicio de arriba hacia abajo. Si el celular todavía no guardó la app y no hay internet, en lugar de eso aparece el aviso de abrirla una vez con WiFi.
+
+En ese inicio se ve:
 
 - Un saludo: **"Bienvenid@"**
 - Su nombre, si inició sesión.
@@ -99,7 +101,7 @@ Al abrir la app en el celular, la persona usuaria ve:
 |--------|----------|-------------|
 | **Salas** | "En grupo" | Salas compartidas (requiere internet) |
 | **Individual** | "Cantar solo" | Modo personal de canto |
-| **Cancionero** | "Explorar" | Ir al hub de canciones |
+| **Cancionero** | "Explora las N canciones" | Ir al hub de canciones. N es la cantidad del Cancionero, la última guardada en el celular |
 | **Solicitar canción** | "Un agente de IA la carga" | Ver y pedir canciones para el Cancionero (8.4) |
 | **Práctica** | "Practicar" | Herramientas de ensayo |
 | **Afinador** | "Afinar" | Se abre encima, sin salir del inicio |
@@ -112,7 +114,7 @@ Además, en el inicio pueden aparecer:
 
 ### 5.2 Navegación en celular
 
-La cabecera celeste (logo, nombre de la app y perfil) se ve en Individual, en el listado de Salas y adentro de una sala. Se oculta solo cuando la letra está expandida.
+La cabecera celeste (logo, nombre de la app y perfil) se ve en Individual, en el listado de Salas y adentro de una sala. En el inicio, además, hay un ícono para compartir la app y el código QR. Compartir abre la ventana del teléfono: el mensaje lleva el enlace de la app y un texto con saltos de línea y emojis. La cabecera se oculta solo cuando la letra está expandida.
 
 En la parte inferior hay una **barra fija con cinco pestañas**:
 
@@ -128,14 +130,15 @@ La barra **desaparece** cuando entrás en **modo lectura** (letra a pantalla com
 
 En computadora la experiencia es distinta:
 
-- Hay un **menú lateral izquierdo** permanente con secciones desplegables:
+- Hay un **menú lateral izquierdo** permanente. Arriba, al lado del nombre, está el mismo ícono para compartir la app.
+- Las secciones se despliegan:
   - **Canciones** → Cancionero, Favoritas, Solicitar canción
   - **Individual**
   - **Salas**
   - **Herramientas** → Afinador
   - **Práctica** → Metrónomo, Entrenador Vocal, Compositor, Entrenador de canciones
 - Abajo del menú: acceso a **Mi perfil** o **Iniciar sesión**.
-- Al abrir la app en computadora, el inicio con tarjetas **no se muestra**: la app va **directo a Individual**.
+- Al abrir la app en computadora, el inicio con tarjetas y la partitura **no se muestran**: la app va **directo al Cancionero**, que queda seleccionado en el menú.
 - Varias herramientas (afinador, editor, metrónomo, etc.) se abren como **ventanas superpuestas** en lugar de ocupar toda la pantalla.
 - La fila de canciones aparece como **panel fijo al costado** de la letra, no como panel que sube desde abajo.
 
@@ -170,7 +173,7 @@ El editor de canciones no tiene tarjeta propia: se entra con el botón **+** den
 
 ## 6. Modo Individual
 
-El modo **Individual** es la experiencia de **cantar solo**. Es la pantalla principal en computadora y una de las pestañas centrales en celular.
+El modo **Individual** es la experiencia de **cantar solo**. En el celular es una de las pestañas centrales. En computadora se abre desde el menú; al entrar, la app abre el Cancionero.
 
 ### 6.1 Pantalla principal
 
@@ -835,7 +838,7 @@ Sin señal, caminar por la app se siente igual. Lo que no se puede es lo que dep
 
 ### 15.1 Requisito inicial
 
-La primera vez se necesita **conexión a internet** para abrir la app. La **primera descarga del Cancionero es automática**: si el celular todavía no tiene ninguna canción, se bajan todas solas al abrir la app con conexión, sin tocar la campanita, y al terminar aparece **"Todo listo en tu celular"**. Si falla, queda la campanita para reintentar, y se vuelve a intentar sola la próxima vez que se abre la app. Las novedades siguientes sí piden aceptación.
+La primera vez se necesita **conexión a internet** para abrir la app. La **primera descarga del Cancionero es automática**: si el celular todavía no tiene ninguna canción, se bajan todas solas al abrir la app con conexión, sin tocar la campanita, y al terminar aparece **"Todo listo en tu celular"** en el celular, o **"Todo listo en tu computadora"** en la computadora. Si falla, queda la campanita para reintentar, y se vuelve a intentar sola la próxima vez que se abre la app. Las novedades siguientes sí piden aceptación.
 
 - Las pantallas para usar sin conexión se guardan en el celular **una sola vez al abrir la app**, y después como mucho cada 10 minutos al volver a ella. Al iniciar sesión y al terminar una descarga del Cancionero se guardan de nuevo en el momento.
 
@@ -887,13 +890,14 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 - Banner **"Instalá la app"** con pasos para iPhone (Safari: compartir → agregar a inicio) y Android.
 - Mensaje: usar siempre el **ícono de inicio** de Cantemos Todos, no el navegador.
 - Ayuda si se abrió desde un link externo: buscar el ícono en la pantalla de inicio.
-- Android en Chrome: el botón **"Instalá la app"** queda apagado cuando el navegador no ofrece instalar (por ejemplo, si ya está instalada), con el enlace de WhatsApp debajo en la misma pantalla. Cuando sí ofrece instalar, el botón titila.
+- En el inicio hay una tarjeta gris clara, con un borde fino. Adentro, un botón rojo más chico dice **Instalá la app**. Debajo, en una sola línea, dice que la app es más rápida y que el cancionero queda en el celular y funciona sin internet. El enlace **¿No podés instalarla? Escribime por WhatsApp** aparece recién después de tocar el botón y que la instalación no se pueda hacer. El primer toque siempre intenta instalar.
+- En la tarjeta **Cancionero** del inicio, debajo del nombre, dice **Explora las N canciones**. N es la cantidad del Cancionero. Se muestra al instante la última cantidad guardada en el celular, también sin internet, y solo cambia cuando una revisión logra traer un número nuevo. Si todavía no hay ninguna cantidad guardada, dice **Explorar**.
 
 ### 15.5 Preparación offline completa
 
 - Al aceptar **Descargar todo**, la app guarda las canciones nuevas y actualizadas y luego prepara las pantallas necesarias para navegar sin conexión.
 - La ventana permanece abierta y no se puede cerrar mientras se realiza este proceso.
-- Al terminar ambas tareas se muestra únicamente un check verde y **“Todo listo en tu celular”**, con una X para cerrar. Desde ese momento no hace falta recorrer previamente cada pantalla ni cada canción.
+- Al terminar ambas tareas se muestra un tilde verde y **“Todo listo en tu celular”** en el celular, o **“Todo listo en tu computadora”** en la computadora, con una X para cerrar. Desde ese momento no hace falta recorrer previamente cada pantalla ni cada canción.
 - Si ya hay una copia guardada, se muestra al instante. No hay una espera gris mientras se pide la pantalla por internet. Un esqueleto de carga solo aparece cuando todavía no hay nada guardado en el celular. No se usa la pantalla de guitarra ni un tiempo mínimo artificial.
 
 ---
@@ -902,7 +906,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 
 | Área | Celular | Computadora |
 |------|---------|-------------|
-| Inicio | Hub con 5 tarjetas + guías de instalación | Redirige a Individual; menú lateral |
+| Inicio | Hub con 5 tarjetas + guías de instalación | Abre el Cancionero, seleccionado en el menú lateral |
 | Menú principal | Barra inferior (5 pestañas) | Barra lateral izquierda |
 | Editor de canciones | Pantalla completa | Ventana superpuesta |
 | Herramientas (afinador, metrónomo, voz, compositor) | Ventana o pantalla según entrada | Ventana superpuesta desde el hub; pantallas dedicadas en Práctica |

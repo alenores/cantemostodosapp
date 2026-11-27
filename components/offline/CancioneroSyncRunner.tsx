@@ -64,16 +64,23 @@ export default function CancioneroSyncRunner({ children }: { children: ReactNode
         }}
         aria-labelledby="cancionero-updates-title"
         aria-describedby={ready ? undefined : "cancionero-updates-description"}
-        className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-hidden rounded-xl border border-border bg-bg-card p-0 text-text-primary backdrop:bg-black/60">
-        <div className="flex max-h-[85dvh] flex-col p-5">
+        className={ready
+          ? "fixed inset-0 m-auto w-[min(100%_-_2.5rem,20rem)] overflow-hidden rounded-3xl border-0 bg-bg-sala p-0 text-text-primary backdrop:bg-black/60"
+          : "fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-hidden rounded-xl border border-border bg-bg-card p-0 text-text-primary backdrop:bg-black/60"}>
+        <div className={ready ? "" : "flex max-h-[85dvh] flex-col p-5"}>
           {ready ? (
-            <div className="flex items-center gap-3 py-4" role="status">
-              <CheckCircle2 className="size-9 shrink-0 text-green-500" aria-hidden="true" />
-              <h2 id="cancionero-updates-title" className="text-lg font-semibold">Todo listo en tu celular</h2>
+            <div className="relative flex flex-col items-center px-6 pb-8 pt-8 text-center" role="status">
               <button type="button" aria-label="Cerrar novedades" onClick={closeDialog}
-                className="ml-auto flex size-11 shrink-0 items-center justify-center rounded-full bg-bg-app">
+                className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-bg-darker text-text-primary">
                 <X className="size-5" aria-hidden="true" />
               </button>
+              <span className="flex size-16 items-center justify-center rounded-full bg-green-500/15">
+                <CheckCircle2 className="size-9 text-green-500" aria-hidden="true" />
+              </span>
+              <h2 id="cancionero-updates-title" className="mt-4 text-xl font-extrabold leading-snug">
+                <span className="lg:hidden">Todo listo en tu celular</span>
+                <span className="hidden lg:inline">Todo listo en tu computadora</span>
+              </h2>
             </div>
           ) : <>
           <div className="flex items-center justify-between gap-2">

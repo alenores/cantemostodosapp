@@ -90,6 +90,7 @@ export default function InstallHomeButton() {
   const [iphone, setIphone] = useState(false);
   const [inApp, setInApp] = useState(false);
   const [detectado, setDetectado] = useState(false);
+  const [intentoFallido, setIntentoFallido] = useState(false);
 
   useEffect(() => {
     setIphone(isIphoneForPwaInstall());
@@ -99,13 +100,21 @@ export default function InstallHomeButton() {
   }, []);
 
   const caminoChrome = detectado && !iphone && !inApp && !otroNavegador;
-  const sinOfertaDeChrome = caminoChrome && !installPrompt;
 
   const instalarEnChrome = async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setIntentoFallido(true);
+      return;
+    }
 
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
+    let choice: { outcome: "accepted" | "dismissed" };
+    try {
+      await installPrompt.prompt();
+      choice = await installPrompt.userChoice;
+    } catch {
+      setIntentoFallido(true);
+      return;
+    }
     if (choice.outcome === "accepted") {
       beginInstallFeedbackCooldown(INSTALL_FEEDBACK_DELAY_MS);
       clearInstallPrompt();
@@ -122,6 +131,7 @@ export default function InstallHomeButton() {
       }
     } else {
       clearInstallPrompt();
+      setIntentoFallido(true);
     }
   };
 
@@ -166,8 +176,7 @@ export default function InstallHomeButton() {
     <TapButton
       type="button"
       onClick={onClick}
-      disabled={sinOfertaDeChrome}
-      className="home-instalar-app w-full rounded-xl px-4 py-[13px] text-sm font-bold text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+      className="home-instalar-app rounded-full px-6 py-2.5 text-base font-extrabold text-white active:scale-[0.98]"
     >
       Instalá la app
     </TapButton>
@@ -175,10 +184,12 @@ export default function InstallHomeButton() {
 
   return (
     <>
-      {caminoChrome ? (
-        <div className="flex w-full flex-col gap-2">
-          {/* El anillo que titila encuadra solo el botón; el WhatsApp va afuera. */}
-          <div className="preinstall-install-cta-ring">{botonInstalar}</div>
+      <div className="flex w-full flex-col items-center gap-3 rounded-[28px] border border-[#b7b4ae] bg-[#d9d7d3] px-4 py-4 shadow-[0_8px_18px_rgba(60,40,20,0.12)]">
+        {botonInstalar}
+        <p className="m-0 whitespace-nowrap text-center text-[10px] font-medium leading-none tracking-tight text-[#1c1c1e]">
+          Más rápida. El cancionero queda en tu celular y funciona sin internet.
+        </p>
+        {caminoChrome && intentoFallido ? (
           <a
             href={whatsappAndroid}
             target="_blank"
@@ -188,10 +199,8 @@ export default function InstallHomeButton() {
             <IconoWhatsApp className="h-3.5 w-3.5 shrink-0 fill-current text-[#25D366]" />
             ¿No podés instalarla? Escribime por WhatsApp
           </a>
-        </div>
-      ) : (
-        botonInstalar
-      )}
+        ) : null}
+      </div>
 
       <IosInstallCta abierta={panel === "ios"} onClose={() => setPanel(null)} />
 

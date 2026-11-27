@@ -74,10 +74,16 @@ export function AppTopHeaderSkeleton({ conQr = false }: { conQr?: boolean } = {}
           aria-hidden="true"
         />
         {conQr ? (
-          <div
-            className="size-9 shrink-0 animate-pulse rounded-full bg-bg-darker/20"
-            aria-hidden="true"
-          />
+          <>
+            <div
+              className="size-9 shrink-0 animate-pulse rounded-full bg-bg-darker/20"
+              aria-hidden="true"
+            />
+            <div
+              className="size-9 shrink-0 animate-pulse rounded-full bg-bg-darker/20"
+              aria-hidden="true"
+            />
+          </>
         ) : null}
         <div
           className="size-8 shrink-0 animate-pulse rounded-full bg-bg-darker/25"

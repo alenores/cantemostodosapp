@@ -335,6 +335,14 @@ body[data-tema-lectura] button {
   background-repeat: no-repeat;
 }
 
+@media (min-width: 1024px) {
+  .home-inicio-fondo {
+    visibility: hidden;
+    background-color: transparent;
+    background-image: none;
+  }
+}
+
 .home-inicio-saludo {
   width: 100%;
 }
@@ -359,14 +367,13 @@ body[data-tema-lectura] button {
 }
 
 .home-instalar-app {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(180deg, #6aa8ba 0%, #45788a 100%) padding-box,
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.1) 32%, rgba(0, 0, 0, 0.45) 100%) border-box;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 1px 0 rgba(0, 0, 0, 0.28),
-    0 8px 14px rgba(20, 40, 48, 0.32);
+  border: none;
+  background: #e85d4a;
+  box-shadow: 0 8px 16px rgba(232, 93, 74, 0.28);
+}
+
+.home-instalar-app:active {
+  background: #d44a38;
 }
 
 .home-destination-card:active {
@@ -566,6 +573,106 @@ html.splash-active,
 html.splash-active body {
   overflow: hidden;
   background-color: #232323;
+}
+
+/* Presentación de arranque: el nombre y las notas entran desde la derecha. */
+.presentacion {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.presentacion-fondo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  transition: transform 0.9s cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+.presentacion-baja .presentacion-fondo {
+  transform: translateY(100%);
+}
+
+.presentacion-escena {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  max-width: 100%;
+  padding: 0 1.25rem;
+}
+
+.presentacion-palabra {
+  margin: 0;
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(2.7rem, 13vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+}
+
+.presentacion-notas {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.85rem;
+  margin-top: 1.35rem;
+  color: #fff;
+}
+
+.presentacion-figura {
+  display: block;
+  width: 2.6rem;
+  height: 3.3rem;
+}
+
+.presentacion-pieza {
+  animation: presentacion-entrada 0.92s ease-out both;
+}
+
+.presentacion-cantemos { animation-delay: 0.08s; }
+.presentacion-todos { animation-delay: 0.4s; }
+.presentacion-nota:nth-child(1) { animation-delay: 0.76s; }
+.presentacion-nota:nth-child(2) { animation-delay: 0.92s; }
+.presentacion-nota:nth-child(3) { animation-delay: 1.08s; }
+.presentacion-nota:nth-child(4) { animation-delay: 1.24s; }
+
+.presentacion-sale .presentacion-pieza {
+  animation: presentacion-salida 0.42s ease-in both;
+}
+
+.presentacion-sale .presentacion-nota:nth-child(4) { animation-delay: 0s; }
+.presentacion-sale .presentacion-nota:nth-child(3) { animation-delay: 0.06s; }
+.presentacion-sale .presentacion-nota:nth-child(2) { animation-delay: 0.12s; }
+.presentacion-sale .presentacion-nota:nth-child(1) { animation-delay: 0.18s; }
+.presentacion-sale .presentacion-todos { animation-delay: 0.28s; }
+.presentacion-sale .presentacion-cantemos { animation-delay: 0.4s; }
+
+@keyframes presentacion-entrada {
+  0% { transform: translate3d(120vw, 0, 0); }
+  58% { transform: translate3d(-18px, 0, 0); }
+  74% { transform: translate3d(8px, 0, 0); }
+  88% { transform: translate3d(-3px, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes presentacion-salida {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(120vw, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presentacion-pieza {
+    animation: none;
+  }
+
+  .presentacion-baja .presentacion-fondo {
+    transition: none;
+  }
 }
 
 .splash-screen {

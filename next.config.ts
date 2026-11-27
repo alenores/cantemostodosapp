@@ -30,6 +30,14 @@ function getSupabaseHostname(): string | undefined {
 const supabaseHostname = getSupabaseHostname();
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Las pestañas ya abiertas o traídas de antemano se muestran al instante, sin volver a
+    // pedirlas a internet ni pasar por la pantalla de espera.
+    staleTimes: {
+      dynamic: 3600,
+      static: 3600,
+    },
+  },
   allowedDevOrigins: ["192.168.16.106", "192.168.16.108", "192.168.16.105"],
   env: {
     NEXT_PUBLIC_GIT_COMMIT_SHA: getCommitSha(),

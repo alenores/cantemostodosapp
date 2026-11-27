@@ -838,6 +838,8 @@ La confirmación en el momento, como un pago, queda solo para una acción que im
 
 Sin señal, caminar por la app se siente igual. Lo que no se puede es lo que depende de otros en ese instante.
 
+Las pestañas de la barra de abajo (Individual, Salas, Inicio, Práctica y Cancionero) se traen de antemano y quedan armadas mientras la app está abierta: tocarlas no vuelve a pedir nada a internet ni muestra bloques grises. Si alguna todavía no llegó, la pantalla de espera nunca tapa la barra de abajo. La fila de Individual ya vista se pinta al volver, sin esperar. Al cerrar sesión se descartan las pantallas armadas con la cuenta anterior.
+
 ### 15.1 Requisito inicial
 
 La primera vez se necesita **conexión a internet** para abrir la app. La **primera descarga del Cancionero es automática**: si el celular todavía no tiene ninguna canción, se bajan todas solas al abrir la app con conexión, sin tocar la campanita, y al terminar aparece **"Todo listo en tu celular"** en el celular, o **"Todo listo en tu computadora"** en la computadora. Si falla, queda la campanita para reintentar, y se vuelve a intentar sola la próxima vez que se abre la app. Las novedades siguientes sí piden aceptación.

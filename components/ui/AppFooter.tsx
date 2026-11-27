@@ -189,6 +189,7 @@ export default function AppFooter() {
               href={href}
               ariaLabel={displayLabel}
               quiet
+              prefetchCompleto
               className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 [-webkit-tap-highlight-color:transparent] ${tabColorClass} [&_svg]:pointer-events-none`}
             >
               {content}

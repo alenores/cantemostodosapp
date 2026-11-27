@@ -32,6 +32,8 @@ import {
 } from "@/lib/cola-individual";
 import { createClient } from "@/lib/supabase/client";
 import { getActiveUserId, leerIdUsuarioGuardado } from "@/lib/auth/offline-user";
+import { leerIdDeSesionGuardada } from "@/lib/auth/sesion-vigente";
+import { parseCookieHeader } from "@supabase/ssr";
 import { readColaIndividual, addColaIndividualLocal } from "@/lib/offline/cola-individual-store";
 import type { CancionActivaData } from "@/lib/sala-data";
 import type { ColaIndividualItem } from "@/types";
@@ -40,18 +42,37 @@ import { getCancioneroLocalAll } from "@/lib/offline/cancionero-store";
 import { cancionDisponibleOffline } from "@/lib/cola-offline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+/**
+ * Última fila vista en esta apertura de la app, por cuenta. Al volver a Individual se pinta
+ * desde acá antes del primer cuadro: sin esqueleto ni espera.
+ */
+const filaEnMemoria = new Map<string, ColaIndividualItem[]>();
+
+function idDeLaCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  return leerIdDeSesionGuardada(parseCookieHeader(document.cookie));
+}
+
 export type ColaIndividualRow = ColaIndividualItem | GuestColaItem;
 
 export function useColaIndividual() {
   const supabase = useMemo(() => createClient(), []);
-  const [usuarioLogueado, setUsuarioLogueado] = useState<boolean | null>(null);
-  const [authItems, setAuthItems] = useState<ColaIndividualItem[]>([]);
+  // Al abrir la app la memoria está vacía: coincide con lo que arma el servidor.
+  const [filaInicial] = useState(() => {
+    const userId = idDeLaCookie();
+    const items = userId ? filaEnMemoria.get(userId) : undefined;
+    return userId && items ? { userId, items } : null;
+  });
+  const [usuarioLogueado, setUsuarioLogueado] = useState<boolean | null>(filaInicial ? true : null);
+  const [authItems, setAuthItems] = useState<ColaIndividualItem[]>(filaInicial?.items ?? []);
   const [guestItems, setGuestItems] = useState<GuestColaItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const cuentaFilaRef = useRef<string | null | undefined>(undefined);
+  const [loading, setLoading] = useState(!filaInicial);
+  const cuentaFilaRef = useRef<string | null | undefined>(filaInicial?.userId);
   const online = useOnlineStatus();
   const [descargadas, setDescargadas] = useState<ReadonlySet<number>>(new Set());
   useEffect(() => {
+    // Solo sirve sin señal: con señal no se lee el cancionero entero (frenaba la fila).
+    if (online) return;
     let cancelled = false;
     void getCancioneroLocalAll().then(songs => {
       if (!cancelled) setDescargadas(new Set(songs.filter(song => song.letra?.trim()).map(song => song.id)));
@@ -84,6 +105,22 @@ export function useColaIndividual() {
     await loadAuthCola();
   }, [isGuest, loadAuthCola]);
 
+  // Volver a Individual: la fila ya vista se pinta desde el primer cuadro.
+  useEffect(() => {
+    const userId = filaInicial?.userId;
+    if (!userId || !hayConexion()) return;
+    void getColaIndividual(supabase)
+      .then((cola) => {
+        if (cola.every((item) => item.user_id === userId)) filaEnMemoria.set(userId, cola);
+      })
+      .catch(() => undefined);
+  }, [filaInicial, supabase]);
+
+  useEffect(() => {
+    const userId = cuentaFilaRef.current;
+    if (!loading && usuarioLogueado && userId) filaEnMemoria.set(userId, authItems);
+  }, [authItems, loading, usuarioLogueado]);
+
   useEffect(() => {
     let cancelled = false;
     let revision = 0;
@@ -107,7 +144,14 @@ export function useColaIndividual() {
         if (!sigueVigente()) return;
         if (saved) {
           setAuthItems(saved.items);
-          if (hayConexion()) void getColaIndividual(supabase).catch(() => undefined);
+          if (hayConexion()) {
+            // Lo nuevo de internet queda para la próxima vez; no cambia lo que se está viendo.
+            void getColaIndividual(supabase)
+              .then((cola) => {
+                if (cola.every((item) => item.user_id === userId)) filaEnMemoria.set(userId, cola);
+              })
+              .catch(() => undefined);
+          }
           return;
         }
         if (!hayConexion()) return;

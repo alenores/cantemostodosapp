@@ -22,6 +22,8 @@ export default function AuthSessionListener() {
 
       olvidarCategoriaRecordada();
       void olvidarPantallasGuardadas();
+      // Descarta las pantallas ya armadas con la cuenta anterior.
+      router.refresh();
 
       const path = window.location.pathname;
 

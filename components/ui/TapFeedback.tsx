@@ -40,6 +40,8 @@ type TapLinkProps = {
   noGlobalFeedback?: boolean;
   /** Sin encogimiento ni círculo de carga. La barra de abajo lo usa para no destellar. */
   quiet?: boolean;
+  /** Trae la pantalla entera de antemano para abrirla sin esperar. */
+  prefetchCompleto?: boolean;
 };
 
 function TapLinkContent({
@@ -73,10 +75,12 @@ export function TapLink({
   ariaLabel,
   noGlobalFeedback = false,
   quiet = false,
+  prefetchCompleto = false,
 }: TapLinkProps) {
   return (
     <Link
       href={href}
+      {...(prefetchCompleto ? { prefetch: true } : {})}
       aria-label={ariaLabel}
       onNavigate={(event) => {
         if (!hayConexion() && isOfflineNavigableRoute(href)) {

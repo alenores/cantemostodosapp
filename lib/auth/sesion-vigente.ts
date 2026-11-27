@@ -2,7 +2,7 @@ import { resolveAuthCookieName } from "@/lib/supabase/auth-cookie";
 
 const BASE64_PREFIX = "base64-";
 
-type CookieLike = { name: string; value: string };
+type CookieLike = { name: string; value?: string };
 
 function fromBase64Url(value: string): string {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -84,6 +84,17 @@ export function leerUserDeLasCookies(cookies: CookieLike[]): {
     return null;
   }
 }
+
+/** Identifica la copia privada del dispositivo aunque la sesión deba renovarse. */
+export function leerIdDeSesionGuardada(cookies: CookieLike[]): string | null {
+  try {
+    const id = leerSesion(cookies)?.user?.id;
+    return typeof id === "string" && id ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function noHayCookieDeSesion(cookies: CookieLike[]): boolean {
   const key = resolveAuthCookieName(cookies);
   return !cookies.some(

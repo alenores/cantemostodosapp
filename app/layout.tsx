@@ -14,7 +14,7 @@ import SerwistProvider from "@/components/offline/SerwistProvider";
 import NavigationProgressProvider from "@/components/ui/NavigationProgress";
 import CerrarConEscape from "@/components/ui/CerrarConEscape";
 import TapFeedbackProvider from "@/components/ui/TapFeedbackProvider";
-import { APP_SHELL_BG } from "@/lib/splash-theme";
+import { APP_SHELL_BG, PREPARAR_PRESENTACION_ARRANQUE } from "@/lib/splash-theme";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Suspense } from "react";
@@ -59,13 +59,15 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${font.variable} splash-active h-full antialiased`}
+      className={`${font.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <meta
           name="apple-mobile-web-app-status-bar-style"
           content="default"
         />
+        <script dangerouslySetInnerHTML={{ __html: PREPARAR_PRESENTACION_ARRANQUE }} />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{if(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true){localStorage.setItem("pwa-installed-v1","1");localStorage.setItem("pwa-ever-standalone-v1","1");}}catch(e){}})();`,

@@ -187,7 +187,7 @@ export default function InstallHomeButton() {
       <div className="flex w-full flex-col items-center gap-3 rounded-[28px] border border-[#b7b4ae] bg-[#d9d7d3] px-4 py-4 shadow-[0_8px_18px_rgba(60,40,20,0.12)]">
         {botonInstalar}
         <p className="m-0 whitespace-nowrap text-center text-[10px] font-medium leading-none tracking-tight text-[#1c1c1e]">
-          Más rápida. El cancionero queda en tu celular y funciona sin internet.
+          Más rápida y funciona sin conexión
         </p>
         {caminoChrome && intentoFallido ? (
           <a

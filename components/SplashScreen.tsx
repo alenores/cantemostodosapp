@@ -16,7 +16,7 @@ const TELON_MS = 900;
 export default function SplashScreen() {
   useEffect(() => {
     const splash = document.getElementById("inline-splash");
-    if (!splash) return;
+    if (!splash || !document.documentElement.classList.contains("splash-active")) return;
 
     let vivo = true;
     let listo = document.documentElement.dataset.appReady === "true";
@@ -59,8 +59,6 @@ export default function SplashScreen() {
     }
 
     function destapar() {
-      splash!.style.display = "none";
-      splash!.setAttribute("aria-hidden", "true");
       document.documentElement.classList.remove("splash-active");
       if (theme && themeAnterior) theme.setAttribute("content", themeAnterior);
     }

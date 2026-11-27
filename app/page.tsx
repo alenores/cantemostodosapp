@@ -22,7 +22,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     <div className="home-inicio-fondo home-inicio-pantalla flex h-dvh max-h-dvh min-h-0 flex-1 flex-col overflow-hidden">
       <RecordarEntrada userId={user?.id ?? null} categoria={categoria} />
       <DesktopHomeRedirect />
-      <AppTopHeader usuario={usuario} mostrarQr />
+      <AppTopHeader usuario={usuario} mostrarCompartir />
       <CancioneroHubPageClient
         usuario={usuario}
         avisoInicial={aviso}

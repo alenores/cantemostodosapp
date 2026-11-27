@@ -31,14 +31,14 @@ import {
   volverAPendienteIndividual,
 } from "@/lib/cola-individual";
 import { createClient } from "@/lib/supabase/client";
-import { getActiveUserId } from "@/lib/auth/offline-user";
+import { getActiveUserId, leerIdUsuarioGuardado } from "@/lib/auth/offline-user";
 import { readColaIndividual, addColaIndividualLocal } from "@/lib/offline/cola-individual-store";
 import type { CancionActivaData } from "@/lib/sala-data";
 import type { ColaIndividualItem } from "@/types";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { getCancioneroLocalAll } from "@/lib/offline/cancionero-store";
 import { cancionDisponibleOffline } from "@/lib/cola-offline";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type ColaIndividualRow = ColaIndividualItem | GuestColaItem;
 
@@ -48,6 +48,7 @@ export function useColaIndividual() {
   const [authItems, setAuthItems] = useState<ColaIndividualItem[]>([]);
   const [guestItems, setGuestItems] = useState<GuestColaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const cuentaFilaRef = useRef<string | null | undefined>(undefined);
   const online = useOnlineStatus();
   const [descargadas, setDescargadas] = useState<ReadonlySet<number>>(new Set());
   useEffect(() => {
@@ -65,11 +66,14 @@ export function useColaIndividual() {
 
   const loadAuthCola = useCallback(async () => {
     const userId = await getActiveUserId(supabase);
-    if (!userId) return;
+    if (!userId || cuentaFilaRef.current !== userId) return;
     const saved = await readColaIndividual(userId);
+    if (cuentaFilaRef.current !== userId) return;
     if (saved) setAuthItems(saved.items);
     const cola = await getColaIndividual(supabase);
-    setAuthItems(cola);
+    if (cuentaFilaRef.current === userId && cola.every((item) => item.user_id === userId)) {
+      setAuthItems(cola);
+    }
   }, [supabase]);
 
   const refresh = useCallback(async () => {
@@ -82,45 +86,47 @@ export function useColaIndividual() {
 
   useEffect(() => {
     let cancelled = false;
+    let revision = 0;
 
-    async function bootstrap() {
-      setLoading(true);
-
-      const userId = await getActiveUserId(supabase);
-
-      if (cancelled) {
-        return;
-      }
-
+    async function mostrarFila(userId: string | null) {
+      if (cancelled || cuentaFilaRef.current === userId) return;
+      const carga = ++revision;
+      const sigueVigente = () => !cancelled && carga === revision;
+      cuentaFilaRef.current = userId;
+      setUsuarioLogueado(userId !== null);
+      setAuthItems([]);
       if (!userId) {
-        setUsuarioLogueado(false);
-        setAuthItems([]);
         setLoading(false);
         return;
       }
 
-      setUsuarioLogueado(true);
-
-      const saved = await readColaIndividual(userId);
-      if (cancelled) return;
-
-      if (saved) {
-        setAuthItems(saved.items);
-        setLoading(false);
-        void getColaIndividual(supabase).catch(() => undefined);
-        return;
-      }
-
+      setGuestItems([]);
+      setLoading(true);
       try {
-        await loadAuthCola();
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
+        const saved = await readColaIndividual(userId);
+        if (!sigueVigente()) return;
+        if (saved) {
+          setAuthItems(saved.items);
+          if (hayConexion()) void getColaIndividual(supabase).catch(() => undefined);
+          return;
         }
+        if (!hayConexion()) return;
+
+        const cola = await getColaIndividual(supabase);
+        if (sigueVigente() && cola.every((item) => item.user_id === userId)) {
+          setAuthItems(cola);
+        }
+      } finally {
+        if (sigueVigente()) setLoading(false);
       }
     }
 
-    void bootstrap().catch(() => { if (!cancelled) setLoading(false); });
+    void leerIdUsuarioGuardado()
+      .catch(() => null)
+      .then((userId) => {
+        if (revision === 0) return mostrarFila(userId);
+      })
+      .catch(() => undefined);
 
     function handleColaChanged() {
       if (!cancelled) {
@@ -139,22 +145,21 @@ export function useColaIndividual() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!hayConexion() && event !== "SIGNED_OUT") return;
-      if (!session?.user) {
-        setUsuarioLogueado(false);
-        setAuthItems([]);
+      if (cancelled) return;
+      if (event === "SIGNED_OUT") {
         setGuestItems([]);
+        void mostrarFila(null);
         return;
       }
 
-      setUsuarioLogueado(true);
-      setGuestItems([]);
-      // No consultar Auth dentro de su propio callback.
-      window.setTimeout(() => { void loadAuthCola().catch(() => {}); }, 0);
+      // La lectura local cede el turno antes de consultar la sesión.
+      const userId = session?.user?.id;
+      if (userId) void mostrarFila(userId).catch(() => undefined);
     });
 
     return () => {
       cancelled = true;
+      cuentaFilaRef.current = undefined;
       window.removeEventListener(COLA_INDIVIDUAL_CHANGED_EVENT, handleColaChanged);
       window.removeEventListener("online", handleConexion);
       window.removeEventListener(EVENTO_CONEXION, handleConexion);

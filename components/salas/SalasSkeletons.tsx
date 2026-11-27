@@ -57,8 +57,8 @@ function ShimmerBlock({
   );
 }
 
-/** Replica visual de AppTopHeader (accent). En el inicio también está el QR. */
-export function AppTopHeaderSkeleton({ conQr = false }: { conQr?: boolean } = {}) {
+/** Replica visual de AppTopHeader. En el Inicio incluye Compartir junto al avatar. */
+export function AppTopHeaderSkeleton({ conCompartir = false }: { conCompartir?: boolean } = {}) {
   return (
     <header
       className="shrink-0 overflow-x-clip border-b border-accent/40 bg-accent px-4 pb-3 lg:hidden"
@@ -73,22 +73,20 @@ export function AppTopHeaderSkeleton({ conQr = false }: { conQr?: boolean } = {}
           className="h-5 max-w-[11.5rem] flex-1 animate-pulse rounded-lg bg-bg-darker/25"
           aria-hidden="true"
         />
-        {conQr ? (
-          <>
+        <div className="ml-auto flex shrink-0 items-center">
+          {conCompartir ? (
             <div
               className="size-9 shrink-0 animate-pulse rounded-full bg-bg-darker/20"
               aria-hidden="true"
             />
+          ) : null}
+          <div className="py-1 pl-2 pr-1">
             <div
-              className="size-9 shrink-0 animate-pulse rounded-full bg-bg-darker/20"
+              className="size-8 shrink-0 animate-pulse rounded-full bg-bg-darker/25"
               aria-hidden="true"
             />
-          </>
-        ) : null}
-        <div
-          className="size-8 shrink-0 animate-pulse rounded-full bg-bg-darker/25"
-          aria-hidden="true"
-        />
+          </div>
+        </div>
       </div>
     </header>
   );
@@ -355,7 +353,7 @@ export function HomeWelcomeSkeleton() {
       aria-live="polite"
       aria-label="Cargando inicio"
     >
-      <AppTopHeaderSkeleton conQr />
+      <AppTopHeaderSkeleton conCompartir />
       <main className="app-page-main flex flex-col gap-3 bg-transparent px-5 py-5 pb-28 lg:px-8 lg:py-8">
         <div className="app-page-container flex flex-col gap-5">
           <div className="h-[46px] w-full rounded-xl bg-accent/40" aria-hidden="true" />

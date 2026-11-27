@@ -577,10 +577,15 @@ html.splash-active body {
 
 /* Presentación de arranque: el nombre y las notas entran desde la derecha. */
 .presentacion {
+  display: none;
   position: fixed;
   inset: 0;
   z-index: 200;
   overflow: hidden;
+}
+
+html.splash-active .presentacion {
+  display: block;
 }
 
 .presentacion-fondo {

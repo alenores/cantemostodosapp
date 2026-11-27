@@ -144,7 +144,7 @@ export function colaIndividualPuedeAvanzar<T extends GuestColaItem>(
 export function avanzarGuestCola(items: GuestColaItem[], disponible: (item: GuestColaItem) => boolean = () => true): GuestColaItem[] {
   const activa = items.find((item) => item.estado === "activa");
 
-  if (!activa) {
+  if (!activa || !colaIndividualPuedeAvanzar(items, disponible)) {
     return items;
   }
 

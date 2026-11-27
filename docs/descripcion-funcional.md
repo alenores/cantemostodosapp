@@ -89,6 +89,8 @@ La app se organiza en **cinco grandes áreas**, más la cuenta de usuario:
 
 Al abrirla desde el ícono, el teléfono muestra primero el ícono grande. Después queda una pantalla negra: desde la derecha entra **cantemos**, debajo **todos**, y luego una negra, una corchea, una semicorchea y otra corchea. Cada una rebota y se frena. Cuando el inicio ya está armado, se van por la derecha y el telón negro baja, dejando ver el inicio de arriba hacia abajo. Si el celular todavía no guardó la app y no hay internet, en lugar de eso aparece el aviso de abrirla una vez con WiFi.
 
+Al cambiar de pestaña, volver a Inicio desde otra pantalla o retomar una pantalla, se abre directamente el destino. Esto también vale cuando la app recurre a la copia guardada por falta de señal. La presentación queda reservada para una apertura nueva de Inicio.
+
 En ese inicio se ve:
 
 - Un saludo: **"Bienvenid@"**
@@ -114,7 +116,7 @@ Además, en el inicio pueden aparecer:
 
 ### 5.2 Navegación en celular
 
-La cabecera celeste (logo, nombre de la app y perfil) se ve en Individual, en el listado de Salas y adentro de una sala. En el inicio, además, hay un ícono para compartir la app y el código QR. Compartir abre la ventana del teléfono: el mensaje lleva el enlace de la app y un texto con saltos de línea y emojis. La cabecera se oculta solo cuando la letra está expandida.
+La cabecera celeste (logo, nombre de la app y perfil) se ve en Individual, en el listado de Salas y adentro de una sala. En el Inicio del celular, el ícono de **Compartir la app** está justo al lado del avatar. Compartir abre la ventana del teléfono con el enlace de la app y un mensaje con saltos de línea y emojis. La cabecera se oculta solo cuando la letra está expandida.
 
 En la parte inferior hay una **barra fija con cinco pestañas**:
 
@@ -214,7 +216,7 @@ Al sumar una canción aparece el aviso: **"Canción sumada a la lista"**.
 
 ### 6.3 Funcionamiento sin conexión
 
-La fila conserva también los enlaces externos del día anterior: aparecen como **Requiere conexión**, sin borrarlos ni marcarlos como tocados. **Siguiente** los saltea y avanza a la próxima canción disponible en el celular. Si no quedan canciones disponibles, se informa y no se intenta cargar internet. El buscador y Favoritas solo ofrecen canciones disponibles localmente al estar sin conexión. Agregar canciones descargadas o usar **Ver ahora** guarda los cambios en la fila local y los sincroniza al reconectar.
+La fila conserva también los enlaces externos del día anterior: aparecen como **Requiere conexión**, sin borrarlos ni marcarlos como tocados. **Siguiente** los saltea y avanza a la próxima canción disponible en el celular. Si no queda otra canción disponible, se informa y se conservan la canción actual y el orden de la fila, incluso si la conexión se corta justo al tocar **Siguiente**. El buscador y Favoritas solo ofrecen canciones disponibles localmente al estar sin conexión. Agregar canciones descargadas o usar **Ver ahora** guarda los cambios en la fila local y los sincroniza al reconectar.
 
 Individual funciona **sin internet** con el Cancionero descargado. Cuando hay conexión, la app consulta si hay novedades y las muestra en un listado. El usuario acepta con **Descargar todo**: se bajan todas las canciones nuevas y modificadas del listado, sin selección individual. Las que no cambiaron permanecen en el celular.
 
@@ -222,7 +224,7 @@ Si el usuario edita desde el celular una canción que ya tenía descargada, la c
 
 **Volver a la app la deja donde estaba.** Si la app queda en segundo plano y el celular la rearma, vuelve a la misma pantalla (cancionero, editor, sala, etc.), nunca al inicio. Cerrarla a mano y abrirla desde el ícono sí arranca en el inicio.
 
-Abrir y cambiar de pantalla muestra al instante lo guardado en el celular. Vale para toda la app, también Individual. La regla completa está en la sección 15.0.
+Al entrar a Individual se muestra la fila que ya está guardada para la cuenta de este celular. La comprobación de la sesión y de la fila por internet corre en segundo plano y prepara la copia para la próxima entrada. La regla completa está en la sección 15.0.
 
 **Señal débil = sin conexión.** Con una rayita de cobertura que no deja pasar nada, la app se da cuenta sola (el servidor no le contesta a tiempo) y se comporta exactamente igual que con modo avión. Apenas la señal vuelve a responder, pasa sola al modo con conexión, sin tocar nada. Esa comprobación no frena ni cambia la pantalla que se está viendo.
 
@@ -890,7 +892,7 @@ La app se puede **agregar al inicio del celular** como si fuera una aplicación 
 - Banner **"Instalá la app"** con pasos para iPhone (Safari: compartir → agregar a inicio) y Android.
 - Mensaje: usar siempre el **ícono de inicio** de Cantemos Todos, no el navegador.
 - Ayuda si se abrió desde un link externo: buscar el ícono en la pantalla de inicio.
-- En el inicio hay una tarjeta gris clara, con un borde fino. Adentro, un botón rojo más chico dice **Instalá la app**. Debajo, en una sola línea, dice que la app es más rápida y que el cancionero queda en el celular y funciona sin internet. El enlace **¿No podés instalarla? Escribime por WhatsApp** aparece recién después de tocar el botón y que la instalación no se pueda hacer. El primer toque siempre intenta instalar.
+- En el Inicio hay una tarjeta gris clara, con un borde fino. Adentro, un botón rojo más chico dice **Instalá la app**. Debajo, en una sola línea, dice **Más rápida y funciona sin conexión**. El enlace **¿No podés instalarla? Escribime por WhatsApp** aparece recién después de tocar el botón y que la instalación no se pueda hacer. El primer toque siempre intenta instalar.
 - En la tarjeta **Cancionero** del inicio, debajo del nombre, dice **Explora las N canciones**. N es la cantidad del Cancionero. Se muestra al instante la última cantidad guardada en el celular, también sin internet, y solo cambia cuando una revisión logra traer un número nuevo. Si todavía no hay ninguna cantidad guardada, dice **Explorar**.
 
 ### 15.5 Preparación offline completa

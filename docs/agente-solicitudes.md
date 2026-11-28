@@ -12,7 +12,8 @@ El agente las carga al Cancionero **con el procedimiento de `docs/agente-carga-c
 lo propio de las solicitudes.
 
 **Disparador:** Ale escribe «procesá las solicitudes» en una sesión de este proyecto. Antes de
-empezar: leer los dos documentos y correr `node scripts/carga-canciones/probar.mjs`.
+empezar: leer los dos documentos, instalar las dependencias si no está la carpeta `node_modules`
+(`npm ci --ignore-scripts`) y correr `node scripts/carga-canciones/probar.mjs` (tiene que decir «✓»).
 
 ## Estados (columna `estado`)
 
@@ -48,6 +49,11 @@ La campanita se enciende sola con `aviso_visto = false`. Siempre poner `aviso_vi
    Solo cuenta un resultado con `"tipo": "cancionero"`. Un resultado `"tipo": "solicitud"` es la
    misma solicitud: ignorarlo.
 
+   **El control de la base solo atrapa el mismo nombre** (sin tildes ni signos): «callejeros de
+   boedo» no encuentra «Callejero de Boedo». Por eso **siempre** hacer también la búsqueda manual
+   de `docs/agente-carga-canciones.md` (sección 2b: fragmentos del título y del artista con `ilike`)
+   antes de decidir que no existe. Pasó con la solicitud #1.
+
 3. **Si ya existe:** no cargarla de nuevo y **no tocar la canción existente** (ni letra, ni autor:
    el avatar sigue siendo el de quien la cargó primero).
 
@@ -62,6 +68,12 @@ La campanita se enciende sola con `aviso_visto = false`. Siempre poner `aviso_vi
    - `canciones_guardadas.user_id` = `user_id` de la solicitud (en la herramienta: `--user-id`). La canción queda **agregada por
      quien la pidió** (su avatar en el Cancionero), aunque sea de la categoría público.
    - Vincular el artista (`artista_id`) como siempre; si la solicitud trae `artista_id`, usarlo.
+   - Si la fuente atribuye la canción a **otro artista** que el pedido, **no inventar ni cargarla en
+     silencio**: preguntarle a Ale (o dejarla `en_revision`). La solicitud conserva el artista que
+     escribió la persona (no se edita). Decisión de Ale (2026-11-28): **Serú Girán, Sui Generis y
+     Charly García se tratan como el mismo artista**; si el pedido es de uno de los tres y la fuente
+     la lista bajo otro de los tres, se carga con el artista que dice la fuente. Ejemplo: «Rezo por
+     vos» pedida como Serú Girán se cargó como Charly García (canción 4577).
 
    Después:
 

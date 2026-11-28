@@ -45,7 +45,11 @@ acordes confiables. El orden es solo una **prioridad por confiabilidad** (las m�
 
 1. **lacuerda.net** — `https://acordes.lacuerda.net/<artista>/<cancion>.shtml` (469 de las 507 cargas del
    agente). El índice del artista (`https://acordes.lacuerda.net/<artista>/`) lista los nombres exactos de las
-   páginas: si la URL adivinada da 404, mirar el índice antes de rendirse.
+   páginas: si la URL adivinada da 404, mirar el índice antes de rendirse. **La carpeta del artista no siempre es
+   el nombre pegado**: `cielo_razzo`, `seru_giran`, `charly_garcia` (con guion bajo). Lo más rápido es copiar
+   el patrón del `url_letra` de otra canción del mismo artista en la base. Una canción puede figurar en la
+   fuente bajo **otro artista** que el del pedido («Rezo por vos» está en `charly_garcia`, no en `seru_giran`):
+   ver la regla de `docs/agente-solicitudes.md`.
 2. **acordesdcanciones.com** (21 cargas).
 3. **Ultimate Guitar** (`tabs.ultimate-guitar.com`, 16 cargas): el texto está en el JSON `js-store` de la página;
    los acordes vienen como `[ch]X[/ch]` (quitar las marcas antes de convertir).
@@ -174,9 +178,13 @@ Es siempre el mismo, para toda canción cargada por el agente. No se calcula tem
 [✅ verificado — probada contra la canción 4575: resultado idéntico acorde por acorde]
 
 ```bash
+npm ci --ignore-scripts                            # solo si no está la carpeta node_modules (sesión nueva)
 node scripts/carga-canciones/probar.mjs            # primero: tiene que decir «✓»
 node scripts/carga-canciones/convertir.mjs cancion.txt
 ```
+
+- La herramienta usa el convertidor del propio proyecto (vía `jiti`, que llega con las dependencias). **Sin
+  `node_modules` falla** con «Cannot find package 'jiti'»: instalar primero.
 
 - `cancion.txt` = el texto de la fuente tal cual: acordes en el renglón de arriba de la letra. Notación latina o
   inglesa, mayúsculas o minúsculas.
@@ -191,6 +199,17 @@ node scripts/carga-canciones/convertir.mjs cancion.txt
   **no se carga**: corregir el texto de entrada (no el resultado) y volver a convertir. El error típico es
   «parece tener acordes dentro del texto»: un renglón de acordes que no se reconoció.
 - Notas sueltas de solo/riff/saxo y tablatura **no** son acordes: sacarlas del texto antes de convertir.
+- **Preparar el texto de entrada** (lo que se puede tocar; el resultado no): sacar los bloques de tablatura y sus
+  rótulos («[Tab - Riff 1]»), las líneas de notas sueltas y los «(Riff 2)» pegados a la letra, y quitar el
+  paréntesis de las líneas de acordes (`( D G D G )` → `D G D G`). Tras convertir, **mirar los renglones**: letra,
+  y los acordes en el renglón que corresponde.
+- **Manías del convertidor** (es el del editor; se resuelven en el texto de entrada):
+  - Rótulos con corchetes que empiezan con una nota (`[Estribillo]` se lee como acorde MI): escribirlos
+    `Estribillo:`.
+  - `INTRO: Bm A x2` parte el renglón y deja `x2` suelto: sacar el `x2` de la línea de acordes.
+  - `INTRO x2: Bm A` pierde los acordes: usar `INTRO: Bm A`.
+  - Un renglón de letra que empieza con «Solo» se toma como rótulo de solo y sus acordes quedan en el renglón de
+    arriba (pasó con «Solo veo la cruz…» en «Rezo por vos»): no se toca la letra; se informa.
 - Si alguna vez la herramienta da algo mal: **se arregla la herramienta** (y su prueba), se anota acá, y recién
   después se sigue cargando. Nunca se corrige a mano el resultado de una sola canción.
 
@@ -394,11 +413,17 @@ insert into artistas (nombre, avatar_url) values ('<Nombre>', '<url foto o null>
 11. **Herramientas locales perdidas:** los scripts de conversión estaban en `/tmp` y se perdieron al reiniciar
     el contenedor; hubo que reescribirlos. → [✅ decisión de Ale] La herramienta vive en el proyecto
     (`scripts/carga-canciones/`) y es la única que se usa.
+12. **URL adivinada de lacuerda:** una URL inexistente da 404 aunque la canción esté. → Leer el índice del
+    artista (sección 1) o copiar el patrón de otra canción del artista.
 13. **Tonalidad en las primeras cargas:** 31 de las 507 canciones del agente (las primeras, ids 4000–4053
     aprox.) no tienen la tonalidad del primer acorde. → Para lo nuevo manda la regla de 3.6 (la calcula la
     herramienta). Las viejas no se tocan.
-12. **URL adivinada de lacuerda:** una URL inexistente da 404 aunque la canción esté. → Leer el índice del
-    artista (sección 1).
+14. **Control de duplicados incompleto (2026-11-28):** «callejeros de boedo» no coincidió con «Callejero de
+    Boedo» en el control automático. → Siempre hacer también la búsqueda manual (sección 2b).
+15. **Herramienta sin dependencias (2026-11-28):** en una sesión limpia `probar.mjs` falla porque falta `jiti`. →
+    `npm ci --ignore-scripts` antes (sección 3.5).
+16. **Rótulos que el convertidor lee mal (2026-11-28):** `[Estribillo]` como acorde, `x2` suelto, `INTRO x2:`
+    sin acordes. → Preparar el texto de entrada como indica la sección 3.5.
 
 ---
 
@@ -431,6 +456,17 @@ from canciones_guardadas where id in (4575, 4570);
 - 54 acordes, tonalidad 5 (FA) / mayor. Video `https://www.youtube.com/watch?v=MWwaih5U710`, **copiado** del
   registro viejo antes de borrarlo.
 
+**Referencia 3 — ids 4576 y 4577, cargadas desde solicitudes (2026-11-28)**
+
+- **4576 «Ultraliviano» (Cielo Razzo):** solicitud #3, `user_id` de quien la pidió, fuente
+  `https://acordes.lacuerda.net/cielo_razzo/ultraliviano.shtml`, 80 acordes, SI menor, con bajo (`D/Fa#`). Video
+  en vivo (no se encontró estudio suelto): se informó como «video flojo».
+- **4577 «Rezo por vos» (Charly García):** solicitud #2 pedida como Serú Girán; fuente
+  `https://acordes.lacuerda.net/charly_garcia/rezo_por_vos.shtml`, 92 acordes, RE mayor. Se limpió tablatura y
+  rótulos antes de convertir (sección 3.5).
+- Ambas: mismos controles de la sección 6 (md5 de la letra y cantidad de acordes iguales a lo calculado, contador
+  alineado) y solicitud en `cargada` con su `cancion_id`.
+
 **Contraejemplo (no es del agente):** id 4566, «Volando» (El Bordo) fue cargada desde la app por otra
 persona (`user_id` distinto, `bpm_default` 120, sin `url_letra` ni video): confirma que el resto del formato
 (`cifrado` v1, `compas_config`, `tiene_cifrado_avanzado = true`) es el mismo que arma la app.
@@ -459,8 +495,9 @@ persona (`user_id` distinto, `bpm_default` 120, sin `url_letra` ni video): confi
 - Sección 0 (reglas de trabajo de Ale) y secciones 1 (orden de fuentes), 3.2, 3.5, 3.8, 4 (método de foto),
   7 y 8: vienen de instrucciones de Ale dadas en conversaciones anteriores y de la memoria del agente, no se
   pudieron releer completas porque esa parte de la conversación ya no está disponible.
-- Los scripts de conversión (`conv.py`, `build.py`, `post.py`) no están en el repositorio; el bloque de
-  código de 3.5 es una reconstrucción mínima, no el script original.
+- Revisión del 2026-11-28 (sesión que procesó las solicitudes #1, #2 y #3): se **leyó y ejecutó** la herramienta
+  `scripts/carga-canciones/` (probar, convertir) y se cargaron las canciones 4576 y 4577, verificadas en la base.
+  Las secciones 3.5 (manías del convertidor) y 14–16 de errores salen de ese uso real.
 
 **3. Pendiente de verificación:**
 
